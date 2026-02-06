@@ -164,6 +164,49 @@ export const translations = {
   'dashboard.spendByPlatform': { ru: 'Расходы по платформам', en: 'Spend by Platform' },
   'dashboard.recentActivity': { ru: 'Последняя активность', en: 'Recent Activity' },
 
+  // Dashboard v2 Controls
+  'dashboard.today': { ru: 'Сегодня', en: 'Today' },
+  'dashboard.7days': { ru: '7 дней', en: '7 days' },
+  'dashboard.14days': { ru: '14 дней', en: '14 days' },
+  'dashboard.30days': { ru: '30 дней', en: '30 days' },
+  'dashboard.90days': { ru: '90 дней', en: '90 days' },
+  'dashboard.customRange': { ru: 'Произвольный', en: 'Custom' },
+  'dashboard.vsPreviousPeriod': { ru: 'К прошлому периоду', en: 'vs Previous Period' },
+  'dashboard.vsPreviousMonth': { ru: 'К прошлому месяцу', en: 'vs Previous Month' },
+  'dashboard.allPlatforms': { ru: 'Все', en: 'All' },
+
+  // Dashboard KPI Sections
+  'dashboard.financial': { ru: 'Финансы', en: 'Financial' },
+  'dashboard.performanceSection': { ru: 'Эффективность', en: 'Performance' },
+  'dashboard.operations': { ru: 'Операции', en: 'Operations' },
+  'dashboard.vsPrevious': { ru: 'к пред. периоду', en: 'vs previous period' },
+
+  // Attention Required
+  'dashboard.attentionRequired': { ru: 'Требует внимания', en: 'Attention Required' },
+  'dashboard.noAlerts': { ru: 'Всё в норме', en: 'Everything is OK' },
+
+  // Chart
+  'dashboard.spend': { ru: 'Расходы', en: 'Spend' },
+  'dashboard.leads': { ru: 'Лиды', en: 'Leads' },
+  'dashboard.cpl': { ru: 'CPL', en: 'CPL' },
+  'dashboard.absolute': { ru: 'Абсолютные', en: 'Absolute' },
+  'dashboard.normalized': { ru: 'Нормализованные', en: 'Normalized' },
+
+  // Platform & Clients
+  'dashboard.platform': { ru: 'Платформа', en: 'Platform' },
+  'dashboard.clientsPerformance': { ru: 'Эффективность клиентов', en: 'Clients Performance' },
+  'dashboard.clientName': { ru: 'Клиент', en: 'Client' },
+  'dashboard.deltaCpl': { ru: 'Δ CPL', en: 'Δ CPL' },
+  'dashboard.allStatuses': { ru: 'Все', en: 'All' },
+
+  // Data Status
+  'dashboard.dataStatus': { ru: 'Статус данных', en: 'Data Status' },
+  'dashboard.syncOk': { ru: 'OK', en: 'OK' },
+  'dashboard.syncDelayed': { ru: 'Задержка', en: 'Delayed' },
+  'dashboard.syncError': { ru: 'Ошибка', en: 'Error' },
+  'dashboard.lastUpdated': { ru: 'Обновлено', en: 'Last updated' },
+  'dashboard.dataDelayNote': { ru: 'Данные могут обновляться с задержкой', en: 'Data may be delayed' },
+
   // Clients
   'clients.title': { ru: 'Клиенты', en: 'Clients' },
   'clients.addClient': { ru: 'Добавить клиента', en: 'Add Client' },
