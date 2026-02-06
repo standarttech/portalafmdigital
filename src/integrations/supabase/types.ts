@@ -57,6 +57,13 @@ export type Database = {
             referencedRelation: "platform_connections"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ad_accounts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       agency_users: {
@@ -424,7 +431,6 @@ export type Database = {
       }
       platform_connections: {
         Row: {
-          access_token_encrypted: string | null
           account_name: string | null
           client_id: string
           created_at: string
@@ -432,14 +438,12 @@ export type Database = {
           is_active: boolean
           last_sync_at: string | null
           platform: Database["public"]["Enums"]["platform_type"]
-          refresh_token_encrypted: string | null
           sync_error: string | null
           sync_status: Database["public"]["Enums"]["sync_status"]
-          token_expires_at: string | null
+          token_reference: string | null
           updated_at: string
         }
         Insert: {
-          access_token_encrypted?: string | null
           account_name?: string | null
           client_id: string
           created_at?: string
@@ -447,14 +451,12 @@ export type Database = {
           is_active?: boolean
           last_sync_at?: string | null
           platform: Database["public"]["Enums"]["platform_type"]
-          refresh_token_encrypted?: string | null
           sync_error?: string | null
           sync_status?: Database["public"]["Enums"]["sync_status"]
-          token_expires_at?: string | null
+          token_reference?: string | null
           updated_at?: string
         }
         Update: {
-          access_token_encrypted?: string | null
           account_name?: string | null
           client_id?: string
           created_at?: string
@@ -462,10 +464,9 @@ export type Database = {
           is_active?: boolean
           last_sync_at?: string | null
           platform?: Database["public"]["Enums"]["platform_type"]
-          refresh_token_encrypted?: string | null
           sync_error?: string | null
           sync_status?: Database["public"]["Enums"]["sync_status"]
-          token_expires_at?: string | null
+          token_reference?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -723,7 +724,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      platform_connections_safe: {
+        Row: {
+          account_name: string | null
+          client_id: string | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          last_sync_at: string | null
+          platform: Database["public"]["Enums"]["platform_type"] | null
+          sync_error: string | null
+          sync_status: Database["public"]["Enums"]["sync_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_name?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          platform?: Database["public"]["Enums"]["platform_type"] | null
+          sync_error?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_name?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          platform?: Database["public"]["Enums"]["platform_type"] | null
+          sync_error?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_connections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_client_access: {
