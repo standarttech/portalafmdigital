@@ -16,6 +16,7 @@ import UsersPage from "@/pages/UsersPage";
 import SyncMonitorPage from "@/pages/SyncMonitorPage";
 import ReportsPage from "@/pages/ReportsPage";
 import AuditPage from "@/pages/AuditPage";
+import ClientDetailPage from "@/pages/ClientDetailPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ function AppRoutes() {
       <Route element={<MainLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/clients" element={<ClientsPage />} />
+        <Route path="/clients/:id" element={<ClientDetailPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/sync" element={<SyncMonitorPage />} />
         <Route path="/reports" element={<ReportsPage />} />

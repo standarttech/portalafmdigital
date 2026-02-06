@@ -48,13 +48,18 @@ export default function AppSidebar() {
     >
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border gap-3">
-        <div className="h-8 w-8 flex-shrink-0 bg-sidebar-primary/20 rounded-lg flex items-center justify-center overflow-hidden">
+        <div className="h-8 w-8 flex-shrink-0 bg-primary/20 rounded-lg flex items-center justify-center overflow-hidden">
           <img src={logoAfm} alt="AFM" className="h-5 w-auto" />
         </div>
         {!collapsed && (
-          <span className="font-bold text-sidebar-foreground text-sm tracking-wide">
-            AFM DIGITAL
-          </span>
+          <div className="flex flex-col">
+            <span className="font-bold text-sidebar-foreground text-sm tracking-widest">
+              AFM
+            </span>
+            <span className="text-[10px] tracking-[0.2em] text-primary font-medium -mt-0.5">
+              DIGITAL
+            </span>
+          </div>
         )}
       </div>
 
@@ -69,11 +74,11 @@ export default function AppSidebar() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-sidebar-primary/15 text-sidebar-primary'
+                  ? 'bg-primary/15 text-primary'
                   : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
               )}
             >
-              <item.icon className={cn('h-4.5 w-4.5 flex-shrink-0', isActive && 'text-sidebar-primary')} />
+              <item.icon className={cn('h-4.5 w-4.5 flex-shrink-0', isActive && 'text-primary')} />
               {!collapsed && <span>{t(item.key)}</span>}
             </Link>
           );

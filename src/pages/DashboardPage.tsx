@@ -26,9 +26,9 @@ const spendData = [
 ];
 
 const platformData = [
-  { name: 'Meta Ads', value: 108500, color: 'hsl(217, 91%, 60%)' },
+  { name: 'Meta Ads', value: 108500, color: 'hsl(42, 87%, 55%)' },
   { name: 'Google Ads', value: 73600, color: 'hsl(160, 84%, 39%)' },
-  { name: 'TikTok Ads', value: 51800, color: 'hsl(291, 64%, 52%)' },
+  { name: 'TikTok Ads', value: 51800, color: 'hsl(217, 91%, 60%)' },
 ];
 
 const container = {
@@ -46,7 +46,7 @@ const item = {
 
 export default function DashboardPage() {
   const { t, formatCurrency, formatNumber } = useLanguage();
-  const { user, agencyRole } = useAuth();
+  const { user } = useAuth();
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Admin';
 
@@ -67,7 +67,7 @@ export default function DashboardPage() {
       <motion.div variants={item} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            {t('dashboard.welcome')}, {displayName}
+            {t('dashboard.welcome')}, <span className="gradient-text">{displayName}</span>
           </h1>
           <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-1">
             <Info className="h-3.5 w-3.5" />
@@ -108,33 +108,33 @@ export default function DashboardPage() {
                   <AreaChart data={spendData}>
                     <defs>
                       <linearGradient id="metaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0} />
+                        <stop offset="5%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="googleGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
                         <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="tiktokGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(291, 64%, 52%)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(291, 64%, 52%)" stopOpacity={0} />
+                        <stop offset="5%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" strokeOpacity={0.3} />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="hsl(220, 9%, 46%)" />
-                    <YAxis tick={{ fontSize: 12 }} stroke="hsl(220, 9%, 46%)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
+                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                    <YAxis tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'hsl(222, 47%, 8%)',
-                        border: '1px solid hsl(217, 33%, 17%)',
+                        backgroundColor: 'hsl(225, 30%, 9%)',
+                        border: '1px solid hsl(225, 20%, 14%)',
                         borderRadius: '8px',
                         fontSize: '12px',
-                        color: 'hsl(213, 31%, 91%)',
+                        color: 'hsl(40, 20%, 90%)',
                       }}
                     />
-                    <Area type="monotone" dataKey="meta" stroke="hsl(217, 91%, 60%)" fill="url(#metaGrad)" strokeWidth={2} name="Meta Ads" />
+                    <Area type="monotone" dataKey="meta" stroke="hsl(42, 87%, 55%)" fill="url(#metaGrad)" strokeWidth={2} name="Meta Ads" />
                     <Area type="monotone" dataKey="google" stroke="hsl(160, 84%, 39%)" fill="url(#googleGrad)" strokeWidth={2} name="Google Ads" />
-                    <Area type="monotone" dataKey="tiktok" stroke="hsl(291, 64%, 52%)" fill="url(#tiktokGrad)" strokeWidth={2} name="TikTok Ads" />
+                    <Area type="monotone" dataKey="tiktok" stroke="hsl(217, 91%, 60%)" fill="url(#tiktokGrad)" strokeWidth={2} name="TikTok Ads" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -167,11 +167,11 @@ export default function DashboardPage() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'hsl(222, 47%, 8%)',
-                        border: '1px solid hsl(217, 33%, 17%)',
+                        backgroundColor: 'hsl(225, 30%, 9%)',
+                        border: '1px solid hsl(225, 20%, 14%)',
                         borderRadius: '8px',
                         fontSize: '12px',
-                        color: 'hsl(213, 31%, 91%)',
+                        color: 'hsl(40, 20%, 90%)',
                       }}
                     />
                   </PieChart>
