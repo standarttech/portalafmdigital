@@ -9,7 +9,20 @@ interface LanguageContextType {
   formatNumber: (value: number) => string;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+// Default fallback so the hook never throws during HMR / mount race
+const defaultValue: LanguageContextType = {
+  language: 'en',
+  setLanguage: () => {},
+  t: (key: TranslationKey) => {
+    const entry = translations[key];
+    return entry?.en ?? key;
+  },
+  formatCurrency: (v: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v),
+  formatNumber: (v: number) => new Intl.NumberFormat('en-US').format(v),
+};
+
+const LanguageContext = createContext<LanguageContextType>(defaultValue);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>('en');
@@ -50,9 +63,5 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useLanguage() {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
-  return context;
+  return useContext(LanguageContext);
 }
