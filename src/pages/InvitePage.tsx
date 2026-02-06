@@ -1,0 +1,300 @@
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/i18n/LanguageContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
+import logoAfm from '@/assets/logo-afm.png';
+import { motion } from 'framer-motion';
+import { Loader2, UserPlus, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Invitation {
+  id: string;
+  email: string;
+  role: string;
+  token: string;
+  status: string;
+  expires_at: string;
+}
+
+export default function InvitePage() {
+  const { t } = useLanguage();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = searchParams.get('token');
+
+  const [invitation, setInvitation] = useState<Invitation | null>(null);
+  const [loadingInvite, setLoadingInvite] = useState(true);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!token) {
+      setInviteError(t('invite.invalidLink'));
+      setLoadingInvite(false);
+      return;
+    }
+
+    const fetchInvitation = async () => {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('id, email, role, token, status, expires_at')
+        .eq('token', token)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      if (error || !data) {
+        setInviteError(t('invite.invalidOrExpired'));
+        setLoadingInvite(false);
+        return;
+      }
+
+      // Check if expired
+      if (new Date(data.expires_at) < new Date()) {
+        setInviteError(t('invite.expired'));
+        setLoadingInvite(false);
+        return;
+      }
+
+      setInvitation(data);
+      setLoadingInvite(false);
+    };
+
+    fetchInvitation();
+  }, [token, t]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!invitation) return;
+
+    if (password.length < 6) {
+      toast.error(t('auth.passwordTooShort'));
+      return;
+    }
+
+    if (!displayName.trim()) {
+      toast.error(t('auth.allFieldsRequired'));
+      return;
+    }
+
+    setIsLoading(true);
+
+    // Create user account
+    const redirectUrl = `${window.location.origin}/`;
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: invitation.email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: { display_name: displayName.trim() },
+      },
+    });
+
+    if (signUpError) {
+      setIsLoading(false);
+      if (signUpError.message.includes('already registered')) {
+        toast.error(t('auth.userExists'));
+      } else {
+        toast.error(signUpError.message);
+      }
+      return;
+    }
+
+    if (!signUpData.user) {
+      setIsLoading(false);
+      toast.error('Failed to create account');
+      return;
+    }
+
+    // Try to sign in (if auto-confirm is on)
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: invitation.email,
+      password,
+    });
+
+    if (signInError) {
+      // User needs to confirm email first
+      setIsLoading(false);
+      toast.success(t('invite.checkEmail'));
+      return;
+    }
+
+    // Create agency_users or client_users record
+    if (invitation.role === 'Client') {
+      // Client user — linked to specific client
+      const { data: inviteData } = await supabase
+        .from('invitations')
+        .select('client_id')
+        .eq('id', invitation.id)
+        .single();
+
+      if (inviteData?.client_id) {
+        await supabase.from('client_users').insert({
+          user_id: signUpData.user.id,
+          client_id: inviteData.client_id,
+          role: 'Client',
+        });
+      }
+    } else {
+      // MediaBuyer — agency user
+      await supabase.from('agency_users').insert({
+        user_id: signUpData.user.id,
+        agency_role: 'MediaBuyer',
+        display_name: displayName.trim(),
+      });
+
+      // Create permissions from invitation
+      const { data: invitePerms } = await supabase
+        .from('invitations')
+        .select('permissions')
+        .eq('id', invitation.id)
+        .single();
+
+      const perms = (invitePerms?.permissions as Record<string, boolean>) || {};
+      await supabase.from('user_permissions').insert({
+        user_id: signUpData.user.id,
+        can_add_clients: perms.can_add_clients || false,
+        can_edit_clients: perms.can_edit_clients || false,
+        can_assign_clients_to_users: perms.can_assign_clients_to_users || false,
+        can_connect_integrations: perms.can_connect_integrations || false,
+        can_run_manual_sync: perms.can_run_manual_sync || false,
+        can_edit_metrics_override: perms.can_edit_metrics_override || false,
+        can_manage_tasks: perms.can_manage_tasks || false,
+        can_publish_reports: perms.can_publish_reports || false,
+        can_view_audit_log: perms.can_view_audit_log || false,
+      });
+    }
+
+    // Mark invitation as accepted
+    await supabase
+      .from('invitations')
+      .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+      .eq('id', invitation.id);
+
+    // Create default user settings
+    await supabase.from('user_settings').insert({
+      user_id: signUpData.user.id,
+      language: 'ru',
+      theme: 'dark',
+    });
+
+    setIsLoading(false);
+    toast.success(t('invite.accepted'));
+    navigate('/dashboard');
+  };
+
+  if (loadingInvite) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (inviteError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md text-center"
+        >
+          <div className="flex justify-center mb-6">
+            <div className="h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">{t('invite.error')}</h1>
+          <p className="text-muted-foreground mb-6">{inviteError}</p>
+          <Button variant="outline" onClick={() => navigate('/auth')}>
+            {t('auth.backToLogin')}
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
+      >
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-6">
+            <div className="h-16 w-auto bg-primary/10 rounded-2xl p-3 flex items-center justify-center">
+              <img src={logoAfm} alt="AFM DIGITAL" className="h-10 w-auto invert dark:invert-0" />
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <UserPlus className="h-5 w-5 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">{t('invite.title')}</h1>
+          </div>
+          <p className="text-muted-foreground">{t('invite.subtitle')}</p>
+        </div>
+
+        <Card className="glass-card-elevated">
+          <CardHeader>
+            <CardTitle className="text-lg">{t('invite.completeSignup')}</CardTitle>
+            <CardDescription>
+              {t('invite.invitedAs')} <span className="font-medium text-foreground">{invitation?.email}</span>
+              {' · '}
+              <span className="font-medium text-primary">
+                {invitation?.role === 'Client' ? t('role.client') : t('role.mediaBuyer')}
+              </span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="displayName">{t('auth.fullName')}</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  placeholder={t('auth.fullNamePlaceholder')}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">{t('common.password')}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder={t('auth.passwordPlaceholder')}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('common.loading')}
+                  </>
+                ) : (
+                  t('invite.acceptAndCreate')
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}

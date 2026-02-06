@@ -8,12 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import logoAfm from '@/assets/logo-afm.png';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function AuthPage() {
   const { t } = useLanguage();
-  const { signIn, signUp } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,22 +33,9 @@ export default function AuthPage() {
 
     setIsLoading(true);
 
-    if (isLogin) {
-      const { error } = await signIn(email, password);
-      if (error) {
-        toast.error(t('auth.loginError'));
-      }
-    } else {
-      const { error } = await signUp(email, password);
-      if (error) {
-        if (error.includes('already registered')) {
-          toast.error(t('auth.userExists'));
-        } else {
-          toast.error(error);
-        }
-      } else {
-        toast.success(t('auth.signupSuccess'));
-      }
+    const { error } = await signIn(email, password);
+    if (error) {
+      toast.error(t('auth.loginError'));
     }
 
     setIsLoading(false);
@@ -74,12 +61,8 @@ export default function AuthPage() {
 
         <Card className="glass-card-elevated">
           <CardHeader>
-            <CardTitle className="text-lg">
-              {isLogin ? t('auth.login') : t('auth.signup')}
-            </CardTitle>
-            <CardDescription>
-              {isLogin ? t('auth.loginSubtitle') : t('admin.setup.description')}
-            </CardDescription>
+            <CardTitle className="text-lg">{t('auth.login')}</CardTitle>
+            <CardDescription>{t('auth.loginSubtitle')}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,22 +96,21 @@ export default function AuthPage() {
                     {t('common.loading')}
                   </>
                 ) : (
-                  isLogin ? t('auth.login') : t('auth.signup')
+                  t('auth.login')
                 )}
               </Button>
             </form>
 
-            <div className="mt-4 text-center text-sm">
-              <span className="text-muted-foreground">
-                {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}{' '}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-primary hover:underline font-medium"
-              >
-                {isLogin ? t('auth.signup') : t('auth.login')}
-              </button>
+            <div className="mt-6 pt-4 border-t border-border">
+              <p className="text-center text-sm text-muted-foreground mb-3">
+                {t('auth.noAccountYet')}
+              </p>
+              <Link to="/request-access">
+                <Button variant="outline" className="w-full gap-2">
+                  <Mail className="h-4 w-4" />
+                  {t('auth.requestAccess')}
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

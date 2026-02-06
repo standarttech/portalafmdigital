@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
 import AuthPage from "@/pages/AuthPage";
 import AdminSetupPage from "@/pages/AdminSetup";
+import RequestAccessPage from "@/pages/RequestAccessPage";
+import InvitePage from "@/pages/InvitePage";
 import DashboardPage from "@/pages/DashboardPage";
 import ClientsPage from "@/pages/ClientsPage";
 import UsersPage from "@/pages/UsersPage";
@@ -42,12 +44,13 @@ function AppRoutes() {
     );
   }
 
-  // Not authenticated
+  // Not authenticated — admin exists, show login + request access + invite
   if (!user) {
     return (
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
-        <Route path="/setup" element={<AdminSetupPage />} />
+        <Route path="/request-access" element={<RequestAccessPage />} />
+        <Route path="/invite" element={<InvitePage />} />
         <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     );
@@ -67,6 +70,8 @@ function AppRoutes() {
       </Route>
       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/request-access" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/invite" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
