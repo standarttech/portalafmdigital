@@ -1,6 +1,6 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { motion } from 'framer-motion';
-import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy } from 'lucide-react';
+import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -158,24 +158,33 @@ export default function UsersPage() {
     }
 
     setInviteLoading(true);
-    const { error } = await supabase.from('invitations').insert({
-      email: inviteEmail.trim().toLowerCase(),
-      role: inviteRole,
-      client_id: inviteRole === 'Client' ? inviteClientId : null,
+
+    // Use edge function to create user and send email
+    const { data, error } = await supabase.functions.invoke('approve-user', {
+      body: {
+        action: 'create_invite',
+        email: inviteEmail.trim().toLowerCase(),
+        full_name: inviteEmail.split('@')[0],
+        role: inviteRole,
+        client_id: inviteRole === 'Client' ? inviteClientId : null,
+        permissions: {},
+      },
     });
+
     setInviteLoading(false);
 
     if (error) {
-      toast.error(error.message);
+      toast.error(error.message || 'Error creating invitation');
       return;
     }
 
-    toast.success(t('invite.createInvite'));
+    toast.success(t('users.approvedAndEmailSent'));
     setInviteOpen(false);
     setInviteEmail('');
     setInviteRole('MediaBuyer');
     setInviteClientId('');
     fetchInvitations();
+    fetchUsers();
   };
 
   const handleApproveRequest = async () => {
@@ -187,32 +196,64 @@ export default function UsersPage() {
 
     setApproveLoading(true);
 
-    // Update request status
-    await supabase
-      .from('access_requests')
-      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
-      .eq('id', approveRequest.id);
-
-    // Create invitation for this user
-    await supabase.from('invitations').insert({
-      email: approveRequest.email,
-      role: approveRole,
-      client_id: approveRole === 'Client' ? approveClientId : null,
+    // Call edge function to create user, set temp password, send email
+    const { data, error } = await supabase.functions.invoke('approve-user', {
+      body: {
+        action: 'approve',
+        request_id: approveRequest.id,
+        email: approveRequest.email,
+        full_name: approveRequest.full_name,
+        role: approveRole,
+        client_id: approveRole === 'Client' ? approveClientId : null,
+        permissions: {},
+      },
     });
 
     setApproveLoading(false);
-    toast.success(t('common.approved'));
+
+    if (error) {
+      toast.error(error.message || 'Error approving request');
+      return;
+    }
+
+    // Show temp password to admin as fallback
+    if (data?.temp_password) {
+      toast.success(t('users.approvedAndEmailSent'), {
+        description: `Temp password: ${data.temp_password}`,
+        duration: 15000,
+        action: {
+          label: t('invite.copyLink'),
+          onClick: () => {
+            navigator.clipboard.writeText(data.temp_password);
+            toast.success(t('profile.tempPasswordCopied'));
+          },
+        },
+      });
+    } else {
+      toast.success(t('users.approvedAndEmailSent'));
+    }
+
     setApproveOpen(false);
     setApproveRequest(null);
     fetchRequests();
     fetchInvitations();
+    fetchUsers();
   };
 
-  const handleDenyRequest = async (id: string) => {
-    await supabase
-      .from('access_requests')
-      .update({ status: 'denied', reviewed_at: new Date().toISOString() })
-      .eq('id', id);
+  const handleDenyRequest = async (request: AccessRequest) => {
+    const { error } = await supabase.functions.invoke('approve-user', {
+      body: {
+        action: 'deny',
+        request_id: request.id,
+        email: request.email,
+      },
+    });
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
     toast.success(t('common.denied'));
     fetchRequests();
   };
@@ -224,6 +265,39 @@ export default function UsersPage() {
       .eq('id', id);
     toast.success(t('common.revoked'));
     fetchInvitations();
+  };
+
+  const handleResendTempPassword = async (emailOrUserId: string, isUserId = false) => {
+    const body: Record<string, string> = { action: 'resend_temp_password' };
+    if (isUserId) {
+      body.user_id = emailOrUserId;
+    } else {
+      body.email = emailOrUserId;
+    }
+    const { data, error } = await supabase.functions.invoke('approve-user', {
+      body,
+    });
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    if (data?.temp_password) {
+      toast.success(t('users.tempPasswordGenerated'), {
+        description: `Temp password: ${data.temp_password}`,
+        duration: 15000,
+        action: {
+          label: t('invite.copyLink'),
+          onClick: () => {
+            navigator.clipboard.writeText(data.temp_password);
+            toast.success(t('profile.tempPasswordCopied'));
+          },
+        },
+      });
+    } else {
+      toast.success(t('users.tempPasswordGenerated'));
+    }
   };
 
   const copyInviteLink = (token: string) => {
@@ -301,7 +375,7 @@ export default function UsersPage() {
                 <Button variant="outline">{t('common.cancel')}</Button>
               </DialogClose>
               <Button onClick={handleCreateInvite} disabled={inviteLoading}>
-                {t('invite.createInvite')}
+                {inviteLoading ? t('users.approving') : t('invite.createInvite')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -344,18 +418,19 @@ export default function UsersPage() {
                       <TableRow>
                         <TableHead className="min-w-[200px]">User</TableHead>
                         <TableHead>{t('users.role')}</TableHead>
+                        <TableHead>{t('common.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loadingUsers ? (
                         <TableRow>
-                          <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                             {t('common.loading')}
                           </TableCell>
                         </TableRow>
                       ) : filteredUsers.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                             {t('common.noData')}
                           </TableCell>
                         </TableRow>
@@ -381,6 +456,18 @@ export default function UsersPage() {
                               <Badge variant="outline" className={roleStyles[u.agency_role] || ''}>
                                 {u.agency_role === 'AgencyAdmin' ? t('role.agencyAdmin') : t('role.mediaBuyer')}
                               </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1"
+                                onClick={() => handleResendTempPassword(u.user_id, true)}
+                                title="Generate new temp password"
+                              >
+                                <Key className="h-3.5 w-3.5" />
+                                {t('users.resendTempPassword')}
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))
@@ -452,7 +539,7 @@ export default function UsersPage() {
                                     variant="outline"
                                     size="sm"
                                     className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                                    onClick={() => handleDenyRequest(r.id)}
+                                    onClick={() => handleDenyRequest(r)}
                                   >
                                     <XCircle className="h-3.5 w-3.5" />
                                     {t('common.deny')}
@@ -535,6 +622,17 @@ export default function UsersPage() {
                                     </Button>
                                   </>
                                 )}
+                                {inv.status === 'accepted' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1"
+                                    onClick={() => handleResendTempPassword(inv.email)}
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                    {t('users.resendTempPassword')}
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -590,7 +688,7 @@ export default function UsersPage() {
               <Button variant="outline">{t('common.cancel')}</Button>
             </DialogClose>
             <Button onClick={handleApproveRequest} disabled={approveLoading}>
-              {t('common.approve')}
+              {approveLoading ? t('users.approving') : t('common.approve')}
             </Button>
           </DialogFooter>
         </DialogContent>
