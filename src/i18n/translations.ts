@@ -217,6 +217,27 @@ export const translations = {
   'clients.cpl': { ru: 'CPL', en: 'CPL' },
   'clients.lastSync': { ru: 'Последняя синхронизация', en: 'Last Sync' },
 
+  // Reports
+  'reports.subtitle': { ru: 'Создавайте, планируйте и отправляйте отчёты', en: 'Create, schedule, and send reports' },
+  'reports.createReport': { ru: 'Создать отчёт', en: 'Create Report' },
+  'reports.wizardDesc': { ru: 'Выберите параметры и сгенерируйте отчёт', en: 'Select parameters and generate a report' },
+  'reports.selectScope': { ru: 'Выберите охват', en: 'Select Scope' },
+  'reports.agencyWide': { ru: 'Агентство целиком', en: 'Agency-wide' },
+  'reports.singleClient': { ru: 'Отдельный клиент', en: 'Single Client' },
+  'reports.selectTemplate': { ru: 'Выберите шаблон', en: 'Select Template' },
+  'reports.selectSections': { ru: 'Выберите разделы', en: 'Select Sections' },
+  'reports.next': { ru: 'Далее', en: 'Next' },
+  'reports.scope': { ru: 'Охват', en: 'Scope' },
+  'reports.sections': { ru: 'Разделы', en: 'Sections' },
+  'reports.generatePdf': { ru: 'Сгенерировать PDF', en: 'Generate PDF' },
+  'reports.history': { ru: 'История отчётов', en: 'Report History' },
+  'reports.templates': { ru: 'Шаблоны', en: 'Templates' },
+  'reports.scheduled': { ru: 'Расписание', en: 'Scheduled' },
+  'reports.published': { ru: 'Опубликован', en: 'Published' },
+  'reports.draft': { ru: 'Черновик', en: 'Draft' },
+  'reports.send': { ru: 'Отправить', en: 'Send' },
+  'reports.lastSent': { ru: 'Последняя отправка', en: 'Last sent' },
+
   // Users
   'users.title': { ru: 'Пользователи и доступ', en: 'Users & Access' },
   'users.addUser': { ru: 'Добавить пользователя', en: 'Add User' },

@@ -280,6 +280,47 @@ export type Database = {
           },
         ]
       }
+      client_targets: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          target_cpl: number | null
+          target_ctr: number | null
+          target_leads: number | null
+          target_roas: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          target_cpl?: number | null
+          target_ctr?: number | null
+          target_leads?: number | null
+          target_roas?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          target_cpl?: number | null
+          target_ctr?: number | null
+          target_leads?: number | null
+          target_roas?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_targets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_users: {
         Row: {
           client_id: string
@@ -609,6 +650,36 @@ export type Database = {
           },
         ]
       }
+      report_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          default_sections: Json
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          default_sections?: Json
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          default_sections?: Json
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           client_id: string
@@ -655,6 +726,75 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_reports: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          day_of_month: number | null
+          day_of_week: number | null
+          enabled: boolean
+          frequency: string
+          id: string
+          last_sent_at: string | null
+          recipients: Json
+          scope: string
+          send_time: string
+          template_id: string | null
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          last_sent_at?: string | null
+          recipients?: Json
+          scope?: string
+          send_time?: string
+          template_id?: string | null
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          last_sent_at?: string | null
+          recipients?: Json
+          scope?: string
+          send_time?: string
+          template_id?: string | null
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_reports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_reports_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
             referencedColumns: ["id"]
           },
         ]

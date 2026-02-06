@@ -1,4 +1,5 @@
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Building2, Plus, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -16,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import type { TranslationKey } from '@/i18n/translations';
 
 interface Client {
   id: string;
@@ -43,19 +46,21 @@ const item = {
 };
 
 // Demo clients for display when no DB data
-const demoClients: Client[] = [
-  { id: 'demo-1', name: 'TechStart Inc.', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-01-15' },
-  { id: 'demo-2', name: 'FashionBrand Pro', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-02-01' },
-  { id: 'demo-3', name: 'HealthPlus Medical', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-01-20' },
-  { id: 'demo-4', name: 'AutoDeal Motors', status: 'paused', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2024-11-10' },
-  { id: 'demo-5', name: 'EduLearn Academy', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-03-05' },
+const demoClients: (Client & { spend: number; leads: number; cpl: number })[] = [
+  { id: 'demo-1', name: 'TechStart Inc.', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-01-15', spend: 42500, leads: 890, cpl: 47.75 },
+  { id: 'demo-2', name: 'FashionBrand Pro', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-02-01', spend: 31200, leads: 520, cpl: 60.00 },
+  { id: 'demo-3', name: 'HealthPlus Medical', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-01-20', spend: 28900, leads: 410, cpl: 70.49 },
+  { id: 'demo-4', name: 'AutoDeal Motors', status: 'paused', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2024-11-10', spend: 8900, leads: 140, cpl: 63.57 },
+  { id: 'demo-5', name: 'EduLearn Academy', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-03-05', spend: 12300, leads: 290, cpl: 42.41 },
 ];
 
 export default function ClientsPage() {
-  const { t } = useLanguage();
+  const { t, formatCurrency, formatNumber } = useLanguage();
+  const { agencyRole } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [clients, setClients] = useState<Client[]>([]);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [clients, setClients] = useState<typeof demoClients>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchClients = useCallback(async () => {
@@ -67,7 +72,7 @@ export default function ClientsPage() {
     if (error || !data || data.length === 0) {
       setClients(demoClients);
     } else {
-      setClients(data);
+      setClients(data.map(c => ({ ...c, spend: 0, leads: 0, cpl: 0 })));
     }
     setLoading(false);
   }, []);
@@ -76,9 +81,12 @@ export default function ClientsPage() {
     fetchClients();
   }, [fetchClients]);
 
-  const filtered = clients.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = clients
+    .filter((c) => statusFilter === 'all' || c.status === statusFilter)
+    .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+
+  const statusButtons = ['all', 'active', 'paused', 'inactive'] as const;
+  const canAddClients = agencyRole === 'AgencyAdmin';
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -89,13 +97,15 @@ export default function ClientsPage() {
             {filtered.length} {t('clients.title').toLowerCase()}
           </p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          {t('clients.addClient')}
-        </Button>
+        {canAddClients && (
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            {t('clients.addClient')}
+          </Button>
+        )}
       </motion.div>
 
-      <motion.div variants={item}>
+      <motion.div variants={item} className="flex items-center gap-3 flex-wrap">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -104,6 +114,19 @@ export default function ClientsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+        </div>
+        <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5">
+          {statusButtons.map(s => (
+            <Button
+              key={s}
+              variant="ghost"
+              size="sm"
+              onClick={() => setStatusFilter(s)}
+              className={cn('h-7 px-2.5 text-xs rounded-md', statusFilter === s && 'bg-primary text-primary-foreground')}
+            >
+              {s === 'all' ? t('dashboard.allStatuses') : t(`common.${s}` as TranslationKey)}
+            </Button>
+          ))}
         </div>
       </motion.div>
 
@@ -116,20 +139,22 @@ export default function ClientsPage() {
                   <TableRow>
                     <TableHead className="min-w-[200px]">{t('clients.clientName')}</TableHead>
                     <TableHead>{t('common.status')}</TableHead>
+                    <TableHead className="text-right">{t('clients.spend')}</TableHead>
+                    <TableHead className="text-right">{t('clients.leads')}</TableHead>
+                    <TableHead className="text-right">{t('clients.cpl')}</TableHead>
                     <TableHead>Timezone</TableHead>
-                    <TableHead>Currency</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         {t('common.loading')}
                       </TableCell>
                     </TableRow>
                   ) : filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         {t('common.noData')}
                       </TableCell>
                     </TableRow>
@@ -150,11 +175,19 @@ export default function ClientsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={statusStyles[client.status] || ''}>
-                            {t(`common.${client.status}` as any)}
+                            {t(`common.${client.status}` as TranslationKey)}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {client.spend > 0 ? formatCurrency(client.spend) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {client.leads > 0 ? formatNumber(client.leads) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {client.cpl > 0 ? formatCurrency(client.cpl) : '—'}
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{client.timezone}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{client.currency}</TableCell>
                       </TableRow>
                     ))
                   )}
