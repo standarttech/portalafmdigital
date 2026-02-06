@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -12,8 +13,11 @@ import {
   TrendingUp,
   BarChart3,
   FileText,
-  Settings,
   Table2,
+  Link2,
+  ListTodo,
+  Clock,
+  Target,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
 } from 'recharts';
 
 // Demo data generators
@@ -70,6 +75,12 @@ const generateDailyTableData = () => {
   return rows;
 };
 
+const demoPlatformData = [
+  { name: 'Meta Ads', spend: 8500, leads: 180, color: 'hsl(42, 87%, 55%)' },
+  { name: 'Google Ads', spend: 5200, leads: 120, color: 'hsl(160, 84%, 39%)' },
+  { name: 'TikTok Ads', spend: 3100, leads: 65, color: 'hsl(217, 91%, 60%)' },
+];
+
 interface ClientData {
   id: string;
   name: string;
@@ -98,8 +109,11 @@ export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, formatCurrency, formatNumber } = useLanguage();
+  const { agencyRole } = useAuth();
   const [client, setClient] = useState<ClientData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const isAgency = agencyRole === 'AgencyAdmin' || agencyRole === 'MediaBuyer';
 
   const spendData = useMemo(() => generateDemoSpendData(), []);
   const dailyData = useMemo(() => generateDailyTableData(), []);
@@ -127,7 +141,6 @@ export default function ClientDetailPage() {
   const fetchClient = useCallback(async () => {
     if (!id) return;
 
-    // Check for demo IDs
     if (id.startsWith('demo-')) {
       const demoNames: Record<string, string> = {
         'demo-1': 'TechStart Inc.',
@@ -225,60 +238,125 @@ export default function ClientDetailPage() {
       {/* Tabs */}
       <motion.div variants={item}>
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Overview
             </TabsTrigger>
             <TabsTrigger value="daily" className="gap-2">
               <Table2 className="h-4 w-4" />
-              Daily Table
+              Daily
+            </TabsTrigger>
+            <TabsTrigger value="campaigns" className="gap-2">
+              <Target className="h-4 w-4" />
+              Campaigns
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-2">
+              <ListTodo className="h-4 w-4" />
+              Tasks
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-2">
               <FileText className="h-4 w-4" />
               {t('nav.reports')}
             </TabsTrigger>
+            {isAgency && (
+              <TabsTrigger value="connections" className="gap-2">
+                <Link2 className="h-4 w-4" />
+                Connections
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-4">
-            <Card className="glass-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{t('dashboard.performance')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={spendData}>
-                      <defs>
-                        <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="leadsGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
-                      <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                      <YAxis tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(225, 30%, 9%)',
-                          border: '1px solid hsl(225, 20%, 14%)',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          color: 'hsl(40, 20%, 90%)',
-                        }}
-                      />
-                      <Area type="monotone" dataKey="spend" stroke="hsl(42, 87%, 55%)" fill="url(#spendGrad)" strokeWidth={2} name="Spend ($)" />
-                      <Area type="monotone" dataKey="leads" stroke="hsl(160, 84%, 39%)" fill="url(#leadsGrad)" strokeWidth={2} name="Leads" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Performance chart */}
+              <Card className="glass-card lg:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{t('dashboard.performance')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={spendData}>
+                        <defs>
+                          <linearGradient id="clientSpendGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="clientLeadsGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
+                        <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                        <YAxis tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(225, 30%, 9%)',
+                            border: '1px solid hsl(225, 20%, 14%)',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            color: 'hsl(40, 20%, 90%)',
+                          }}
+                        />
+                        <Area type="monotone" dataKey="spend" stroke="hsl(42, 87%, 55%)" fill="url(#clientSpendGrad)" strokeWidth={2} name="Spend ($)" />
+                        <Area type="monotone" dataKey="leads" stroke="hsl(160, 84%, 39%)" fill="url(#clientLeadsGrad)" strokeWidth={2} name="Leads" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Platform breakdown */}
+              <Card className="glass-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{t('dashboard.spendByPlatform')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[180px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={demoPlatformData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="spend">
+                          {demoPlatformData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(225, 30%, 9%)',
+                            border: '1px solid hsl(225, 20%, 14%)',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            color: 'hsl(40, 20%, 90%)',
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-2 mt-2">
+                    {demoPlatformData.map(p => (
+                      <div key={p.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                          <span className="text-muted-foreground">{p.name}</span>
+                        </div>
+                        <span className="font-mono font-medium">{formatCurrency(p.spend)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Data freshness */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+              <Clock className="h-3.5 w-3.5" />
+              <span>{t('dashboard.lastUpdated')}: {new Date().toLocaleDateString()}</span>
+              <span className="text-muted-foreground/40">·</span>
+              <span className="text-muted-foreground/60">{t('dashboard.dataDelayNote')}</span>
+            </div>
           </TabsContent>
 
           {/* DAILY TABLE TAB */}
@@ -342,20 +420,41 @@ export default function ClientDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* CAMPAIGNS TAB */}
+          <TabsContent value="campaigns" className="space-y-4">
+            <EmptyTabState icon={Target} title="Campaigns" description="Campaign data will appear here once ad accounts are connected." />
+          </TabsContent>
+
+          {/* TASKS TAB */}
+          <TabsContent value="tasks" className="space-y-4">
+            <EmptyTabState icon={ListTodo} title="Tasks" description="Tasks for this client will appear here." />
+          </TabsContent>
+
           {/* REPORTS TAB */}
           <TabsContent value="reports" className="space-y-4">
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                <FileText className="h-7 w-7 text-primary" />
-              </div>
-              <h2 className="text-lg font-semibold text-foreground mb-2">{t('common.noData')}</h2>
-              <p className="text-muted-foreground text-sm max-w-md">
-                Reports for this client will appear here once configured.
-              </p>
-            </div>
+            <EmptyTabState icon={FileText} title={t('nav.reports')} description="Reports for this client will appear here once configured." />
           </TabsContent>
+
+          {/* CONNECTIONS TAB */}
+          {isAgency && (
+            <TabsContent value="connections" className="space-y-4">
+              <EmptyTabState icon={Link2} title="Connections" description="Platform connections and sync status for this client." />
+            </TabsContent>
+          )}
         </Tabs>
       </motion.div>
     </motion.div>
+  );
+}
+
+function EmptyTabState({ icon: Icon, title, description }: { icon: any; title: string; description: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+        <Icon className="h-7 w-7 text-primary" />
+      </div>
+      <h2 className="text-lg font-semibold text-foreground mb-2">{title}</h2>
+      <p className="text-muted-foreground text-sm max-w-md">{description}</p>
+    </div>
   );
 }

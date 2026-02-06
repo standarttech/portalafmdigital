@@ -1,12 +1,13 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, GitCompareArrows } from 'lucide-react';
+import { ChevronDown, GitCompareArrows, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DateRange, Comparison, PlatformFilter } from './dashboardData';
 import type { TranslationKey } from '@/i18n/translations';
@@ -18,6 +19,8 @@ interface Props {
   onComparisonChange: (c: Comparison) => void;
   platform: PlatformFilter;
   onPlatformChange: (p: PlatformFilter) => void;
+  search?: string;
+  onSearchChange?: (s: string) => void;
 }
 
 const dateRangeOptions: { value: DateRange; key: TranslationKey }[] = [
@@ -39,6 +42,7 @@ export default function DashboardControls({
   dateRange, onDateRangeChange,
   comparison, onComparisonChange,
   platform, onPlatformChange,
+  search, onSearchChange,
 }: Props) {
   const { t } = useLanguage();
 
@@ -84,6 +88,19 @@ export default function DashboardControls({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Search (optional) */}
+      {onSearchChange && (
+        <div className="relative ml-auto lg:ml-0">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder={t('common.search') + '...'}
+            className="h-7 w-40 pl-8 text-xs bg-secondary/50 border-border/50"
+            value={search || ''}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+        </div>
+      )}
 
       {/* Platform Filter */}
       <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5 ml-auto">

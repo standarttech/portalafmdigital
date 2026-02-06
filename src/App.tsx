@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SidebarStateProvider } from "@/contexts/SidebarContext";
 import MainLayout from "@/components/layout/MainLayout";
 import AuthPage from "@/pages/AuthPage";
 import AdminSetupPage from "@/pages/AdminSetup";
@@ -43,9 +44,7 @@ function AppRoutes() {
       .maybeSingle();
 
     if (data?.force_password_change) {
-      // Check if temp password expired
       if (data.temp_password_expires_at && new Date(data.temp_password_expires_at) < new Date()) {
-        // Expired - sign out user
         await supabase.auth.signOut();
         setForcePasswordChange(false);
       } else {
@@ -72,7 +71,6 @@ function AppRoutes() {
     );
   }
 
-  // First-run: no admin exists, show setup
   if (adminExists === false && !user) {
     return (
       <Routes>
@@ -82,7 +80,6 @@ function AppRoutes() {
     );
   }
 
-  // Not authenticated — admin exists, show login + request access + invite
   if (!user) {
     return (
       <Routes>
@@ -94,7 +91,6 @@ function AppRoutes() {
     );
   }
 
-  // Force password change
   if (forcePasswordChange) {
     return (
       <ForcePasswordChangePage
@@ -103,7 +99,6 @@ function AppRoutes() {
     );
   }
 
-  // Authenticated
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -130,13 +125,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
+        <SidebarStateProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </SidebarStateProvider>
       </AuthProvider>
     </LanguageProvider>
   </QueryClientProvider>
