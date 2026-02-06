@@ -30,12 +30,33 @@ serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Read and validate environment variables
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_KEY");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing environment variables:", {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey,
+      });
+      return new Response(
+        JSON.stringify({ error: "Server configuration error: Missing Supabase credentials." }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!supabaseAnonKey) {
+      console.error("Missing SUPABASE_ANON_KEY environment variable");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error: Missing anon key." }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Client with caller's token to verify admin
-    const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!, {
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
