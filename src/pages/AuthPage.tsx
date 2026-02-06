@@ -10,6 +10,7 @@ import logoAfm from '@/assets/logo-afm.png';
 import { motion } from 'framer-motion';
 import { Loader2, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import AuthLanguageSwitcher from '@/components/auth/AuthLanguageSwitcher';
 
 export default function AuthPage() {
   const { t } = useLanguage();
@@ -42,7 +43,8 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <AuthLanguageSwitcher />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

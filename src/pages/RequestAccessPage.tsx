@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { Loader2, ArrowLeft, CheckCircle2, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import AuthLanguageSwitcher from '@/components/auth/AuthLanguageSwitcher';
 
 export default function RequestAccessPage() {
   const { t } = useLanguage();
@@ -55,7 +56,8 @@ export default function RequestAccessPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+        <AuthLanguageSwitcher />
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -81,7 +83,8 @@ export default function RequestAccessPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <AuthLanguageSwitcher />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
