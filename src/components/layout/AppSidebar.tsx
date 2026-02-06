@@ -11,6 +11,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
+  UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -23,6 +24,7 @@ const navItems = [
   { key: 'nav.sync' as const, icon: RefreshCw, path: '/sync' },
   { key: 'nav.reports' as const, icon: FileText, path: '/reports' },
   { key: 'nav.audit' as const, icon: Shield, path: '/audit' },
+  { key: 'nav.profile' as const, icon: UserCircle, path: '/profile' },
 ];
 
 export default function AppSidebar() {

@@ -17,14 +17,51 @@ import SyncMonitorPage from "@/pages/SyncMonitorPage";
 import ReportsPage from "@/pages/ReportsPage";
 import AuditPage from "@/pages/AuditPage";
 import ClientDetailPage from "@/pages/ClientDetailPage";
+import ProfilePage from "@/pages/ProfilePage";
+import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import NotFound from "./pages/NotFound";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading, adminExists } = useAuth();
+  const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(null);
+  const [checkingFpc, setCheckingFpc] = useState(false);
 
-  if (loading) {
+  const checkForcePasswordChange = useCallback(async () => {
+    if (!user) {
+      setForcePasswordChange(false);
+      return;
+    }
+    setCheckingFpc(true);
+    const { data } = await supabase
+      .from('user_settings')
+      .select('force_password_change, temp_password_expires_at')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (data?.force_password_change) {
+      // Check if temp password expired
+      if (data.temp_password_expires_at && new Date(data.temp_password_expires_at) < new Date()) {
+        // Expired - sign out user
+        await supabase.auth.signOut();
+        setForcePasswordChange(false);
+      } else {
+        setForcePasswordChange(true);
+      }
+    } else {
+      setForcePasswordChange(false);
+    }
+    setCheckingFpc(false);
+  }, [user]);
+
+  useEffect(() => {
+    checkForcePasswordChange();
+  }, [checkForcePasswordChange]);
+
+  if (loading || (user && forcePasswordChange === null) || checkingFpc) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -57,6 +94,15 @@ function AppRoutes() {
     );
   }
 
+  // Force password change
+  if (forcePasswordChange) {
+    return (
+      <ForcePasswordChangePage
+        onPasswordChanged={() => setForcePasswordChange(false)}
+      />
+    );
+  }
+
   // Authenticated
   return (
     <Routes>
@@ -69,6 +115,7 @@ function AppRoutes() {
         <Route path="/sync" element={<SyncMonitorPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/audit" element={<AuditPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />

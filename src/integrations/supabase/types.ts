@@ -781,24 +781,30 @@ export type Database = {
       user_settings: {
         Row: {
           created_at: string
+          force_password_change: boolean
           id: string
           language: string
+          temp_password_expires_at: string | null
           theme: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          force_password_change?: boolean
           id?: string
           language?: string
+          temp_password_expires_at?: string | null
           theme?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          force_password_change?: boolean
           id?: string
           language?: string
+          temp_password_expires_at?: string | null
           theme?: string
           updated_at?: string
           user_id?: string
