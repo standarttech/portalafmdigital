@@ -11,7 +11,6 @@ interface AuthContextType {
   loading: boolean;
   adminExists: boolean | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   setupAdmin: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   refreshRole: () => void;
@@ -28,20 +27,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAdminExists = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('agency_users')
-        .select('id')
-        .eq('agency_role', 'AgencyAdmin')
-        .limit(1);
+      // Use the SECURITY DEFINER RPC function — works for anon/unauthenticated users
+      const { data, error } = await supabase.rpc('no_admin_exists');
       
       if (error) {
-        // If RLS blocks, assume admin doesn't exist for bootstrap
-        setAdminExists(false);
+        console.error('Error checking admin exists:', error);
+        // Fallback: assume admin exists to prevent showing setup page inappropriately
+        setAdminExists(true);
         return;
       }
-      setAdminExists(data && data.length > 0);
+      
+      // no_admin_exists returns TRUE when no admin → adminExists = false
+      // no_admin_exists returns FALSE when admin exists → adminExists = true
+      setAdminExists(!data);
     } catch {
-      setAdminExists(false);
+      // Fallback: assume admin exists to prevent showing setup page inappropriately
+      setAdminExists(true);
     }
   }, []);
 
@@ -56,18 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data) {
         setAgencyRole(data.agency_role as AgencyRole);
       } else {
-        // Check if they're a client user
-        const { data: clientData } = await supabase
-          .from('client_users')
-          .select('role')
-          .eq('user_id', userId)
-          .limit(1);
-        
-        if (clientData && clientData.length > 0) {
-          setAgencyRole(null); // Client role handled differently
-        } else {
-          setAgencyRole(null);
-        }
+        setAgencyRole(null);
       }
     } catch {
       setAgencyRole(null);
@@ -110,20 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    return { error: null };
-  };
-
-  const signUp = async (email: string, password: string, displayName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { display_name: displayName },
-      },
-    });
     if (error) return { error: error.message };
     return { error: null };
   };
@@ -217,7 +193,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         adminExists,
         signIn,
-        signUp,
         signOut,
         setupAdmin,
         refreshRole,
