@@ -342,6 +342,10 @@ export const translations = {
   'clients.sheetUrlSaved': { ru: 'URL таблицы сохранён', en: 'Sheet URL saved' },
   'clients.rowsSynced': { ru: 'строк синхронизировано', en: 'rows synced' },
   'clients.connections': { ru: 'Подключения', en: 'Connections' },
+  'clients.autoSync': { ru: 'Автоматическая синхронизация', en: 'Auto Sync' },
+  'clients.autoSyncDesc': { ru: 'Данные будут подтягиваться каждый час автоматически', en: 'Data will be fetched every hour automatically' },
+  'clients.autoSyncEnabled': { ru: 'Автосинхронизация включена', en: 'Auto sync enabled' },
+  'clients.autoSyncDisabled': { ru: 'Автосинхронизация выключена', en: 'Auto sync disabled' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;
