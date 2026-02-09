@@ -6,7 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import logoAfm from '@/assets/logo-afm.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
-  ChevronLeft, ChevronRight, UserCircle, LogOut, Menu, X,
+  ChevronLeft, ChevronRight, UserCircle, LogOut, Menu, X, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ const navItems: NavItem[] = [
   { key: 'nav.sync', icon: RefreshCw, path: '/sync', section: 'main' },
   { key: 'nav.users', icon: Users, path: '/users', section: 'admin', adminOnly: true },
   { key: 'nav.audit', icon: Shield, path: '/audit', section: 'admin', adminOnly: true },
+  { key: 'nav.glossary', icon: BookOpen, path: '/glossary', section: 'user' },
   { key: 'nav.profile', icon: UserCircle, path: '/profile', section: 'user' },
 ];
 

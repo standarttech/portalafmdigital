@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SidebarStateProvider } from "@/contexts/SidebarContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import MainLayout from "@/components/layout/MainLayout";
 import AuthPage from "@/pages/AuthPage";
 import AdminSetupPage from "@/pages/AdminSetup";
@@ -19,6 +20,7 @@ import ReportsPage from "@/pages/ReportsPage";
 import AuditPage from "@/pages/AuditPage";
 import ClientDetailPage from "@/pages/ClientDetailPage";
 import ProfilePage from "@/pages/ProfilePage";
+import GlossaryPage from "@/pages/GlossaryPage";
 import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect, useCallback } from "react";
@@ -111,6 +113,7 @@ function AppRoutes() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/glossary" element={<GlossaryPage />} />
       </Route>
       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
@@ -123,19 +126,21 @@ function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LanguageProvider>
-      <AuthProvider>
-        <SidebarStateProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </TooltipProvider>
-        </SidebarStateProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <SidebarStateProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </TooltipProvider>
+          </SidebarStateProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
