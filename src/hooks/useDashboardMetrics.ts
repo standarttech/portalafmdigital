@@ -1,0 +1,242 @@
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { subDays, format, differenceInDays } from 'date-fns';
+import type { DashboardFilters, DateRange } from '@/components/dashboard/dashboardData';
+
+export interface KpiData {
+  spend: number;
+  leads: number;
+  clicks: number;
+  impressions: number;
+  cpl: number;
+  ctr: number;
+  activeClients: number;
+  activeCampaigns: number;
+  prevSpend: number;
+  prevLeads: number;
+  prevClicks: number;
+  prevImpressions: number;
+  prevCpl: number;
+  prevCtr: number;
+}
+
+export interface ChartDataPoint {
+  date: string;
+  spend: number;
+  leads: number;
+  cpl: number;
+}
+
+export interface PlatformDataPoint {
+  name: string;
+  key: string;
+  spend: number;
+  leads: number;
+  color: string;
+}
+
+export interface ClientMetric {
+  id: string;
+  name: string;
+  spend: number;
+  leads: number;
+  cpl: number;
+  ctr: number;
+  deltaCpl: number;
+  status: 'active' | 'inactive' | 'paused';
+}
+
+function getDateRange(range: DateRange, custom?: { from: Date; to: Date }): { from: string; to: string; days: number } {
+  const now = new Date();
+  let from: Date;
+  let to = now;
+
+  switch (range) {
+    case 'today': from = now; break;
+    case '7d': from = subDays(now, 7); break;
+    case '14d': from = subDays(now, 14); break;
+    case '30d': from = subDays(now, 30); break;
+    case '90d': from = subDays(now, 90); break;
+    case 'custom':
+      if (custom) { from = custom.from; to = custom.to; }
+      else { from = subDays(now, 30); }
+      break;
+    default: from = subDays(now, 30);
+  }
+
+  const days = Math.max(differenceInDays(to, from), 1);
+  return { from: format(from, 'yyyy-MM-dd'), to: format(to, 'yyyy-MM-dd'), days };
+}
+
+export function useDashboardMetrics(
+  filters: DashboardFilters & { customDateRange?: { from: Date; to: Date } }
+) {
+  const [kpis, setKpis] = useState<KpiData | null>(null);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [platformData, setPlatformData] = useState<PlatformDataPoint[]>([]);
+  const [clientsData, setClientsData] = useState<ClientMetric[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasRealData, setHasRealData] = useState(false);
+
+  const range = useMemo(
+    () => getDateRange(filters.dateRange, filters.customDateRange),
+    [filters.dateRange, filters.customDateRange]
+  );
+
+  const prevRange = useMemo(() => {
+    const days = range.days;
+    const prevTo = subDays(new Date(range.from), 1);
+    const prevFrom = subDays(prevTo, days);
+    return { from: format(prevFrom, 'yyyy-MM-dd'), to: format(prevTo, 'yyyy-MM-dd') };
+  }, [range]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Check if any real data exists
+      const { count } = await supabase
+        .from('daily_metrics')
+        .select('id', { count: 'exact', head: true });
+
+      const realDataExists = (count || 0) > 0;
+      setHasRealData(realDataExists);
+
+      if (!realDataExists) {
+        setLoading(false);
+        return;
+      }
+
+      // Build platform filter
+      let platformFilter: string | null = null;
+      if (filters.platform !== 'all') {
+        // We need to join through campaigns -> ad_accounts -> platform_connections
+        // For simplicity, filter by platform_connections for the client
+        platformFilter = filters.platform;
+      }
+
+      // Fetch current period metrics
+      let query = supabase
+        .from('daily_metrics')
+        .select('spend, leads, link_clicks, impressions, date, client_id, campaign_id')
+        .gte('date', range.from)
+        .lte('date', range.to);
+
+      const { data: currentMetrics } = await query;
+
+      // Fetch previous period
+      let prevQuery = supabase
+        .from('daily_metrics')
+        .select('spend, leads, link_clicks, impressions')
+        .gte('date', prevRange.from)
+        .lte('date', prevRange.to);
+
+      const { data: prevMetrics } = await prevQuery;
+
+      // Aggregate current
+      const cur = (currentMetrics || []).reduce(
+        (acc, r) => ({
+          spend: acc.spend + Number(r.spend),
+          leads: acc.leads + r.leads,
+          clicks: acc.clicks + r.link_clicks,
+          impressions: acc.impressions + r.impressions,
+        }),
+        { spend: 0, leads: 0, clicks: 0, impressions: 0 }
+      );
+
+      const prev = (prevMetrics || []).reduce(
+        (acc, r) => ({
+          spend: acc.spend + Number(r.spend),
+          leads: acc.leads + r.leads,
+          clicks: acc.clicks + r.link_clicks,
+          impressions: acc.impressions + r.impressions,
+        }),
+        { spend: 0, leads: 0, clicks: 0, impressions: 0 }
+      );
+
+      // Counts
+      const { count: clientCount } = await supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      const { count: campaignCount } = await supabase
+        .from('campaigns')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      setKpis({
+        spend: cur.spend,
+        leads: cur.leads,
+        clicks: cur.clicks,
+        impressions: cur.impressions,
+        cpl: cur.leads > 0 ? cur.spend / cur.leads : 0,
+        ctr: cur.impressions > 0 ? (cur.clicks / cur.impressions) * 100 : 0,
+        activeClients: clientCount || 0,
+        activeCampaigns: campaignCount || 0,
+        prevSpend: prev.spend,
+        prevLeads: prev.leads,
+        prevClicks: prev.clicks,
+        prevImpressions: prev.impressions,
+        prevCpl: prev.leads > 0 ? prev.spend / prev.leads : 0,
+        prevCtr: prev.impressions > 0 ? (prev.clicks / prev.impressions) * 100 : 0,
+      });
+
+      // Chart data: group by date
+      const byDate: Record<string, { spend: number; leads: number }> = {};
+      (currentMetrics || []).forEach((r) => {
+        if (!byDate[r.date]) byDate[r.date] = { spend: 0, leads: 0 };
+        byDate[r.date].spend += Number(r.spend);
+        byDate[r.date].leads += r.leads;
+      });
+      const chart = Object.entries(byDate)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, vals]) => ({
+          date: date.slice(5), // MM-DD
+          spend: Math.round(vals.spend),
+          leads: vals.leads,
+          cpl: vals.leads > 0 ? Math.round((vals.spend / vals.leads) * 100) / 100 : 0,
+        }));
+      setChartData(chart);
+
+      // Client metrics
+      const byClient: Record<string, { spend: number; leads: number; clicks: number; impressions: number }> = {};
+      (currentMetrics || []).forEach((r) => {
+        if (!byClient[r.client_id]) byClient[r.client_id] = { spend: 0, leads: 0, clicks: 0, impressions: 0 };
+        byClient[r.client_id].spend += Number(r.spend);
+        byClient[r.client_id].leads += r.leads;
+        byClient[r.client_id].clicks += r.link_clicks;
+        byClient[r.client_id].impressions += r.impressions;
+      });
+
+      const clientIds = Object.keys(byClient);
+      if (clientIds.length > 0) {
+        const { data: clientNames } = await supabase
+          .from('clients')
+          .select('id, name, status')
+          .in('id', clientIds);
+
+        const clientMetrics: ClientMetric[] = (clientNames || []).map((c) => {
+          const m = byClient[c.id] || { spend: 0, leads: 0, clicks: 0, impressions: 0 };
+          return {
+            id: c.id,
+            name: c.name,
+            spend: m.spend,
+            leads: m.leads,
+            cpl: m.leads > 0 ? m.spend / m.leads : 0,
+            ctr: m.impressions > 0 ? (m.clicks / m.impressions) * 100 : 0,
+            deltaCpl: 0, // Would need prev period per-client for real delta
+            status: c.status as 'active' | 'inactive' | 'paused',
+          };
+        });
+        setClientsData(clientMetrics);
+      }
+    } catch (err) {
+      console.error('Dashboard metrics error:', err);
+    }
+    setLoading(false);
+  }, [range, prevRange, filters.platform]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  return { kpis, chartData, platformData, clientsData, loading, hasRealData };
+}

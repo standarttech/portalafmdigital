@@ -1,22 +1,22 @@
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
-import { Building2, Plus, Search } from 'lucide-react';
+import { Building2, Plus, Search, MoreHorizontal, Pencil, Trash2, Power } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useEffect, useCallback } from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface Client {
@@ -25,10 +25,8 @@ interface Client {
   status: string;
   currency: string;
   timezone: string;
+  notes: string | null;
   created_at: string;
-  spend: number;
-  leads: number;
-  cpl: number;
 }
 
 const statusStyles: Record<string, string> = {
@@ -39,15 +37,6 @@ const statusStyles: Record<string, string> = {
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
-
-const demoClients: Client[] = [
-  { id: 'demo-1', name: 'TechStart Inc.', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-01-15', spend: 42500, leads: 890, cpl: 47.75 },
-  { id: 'demo-2', name: 'FashionBrand Pro', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-02-01', spend: 31200, leads: 520, cpl: 60.00 },
-  { id: 'demo-3', name: 'HealthPlus Medical', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-01-20', spend: 28900, leads: 410, cpl: 70.49 },
-  { id: 'demo-4', name: 'AutoDeal Motors', status: 'paused', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2024-11-10', spend: 8900, leads: 140, cpl: 63.57 },
-  { id: 'demo-5', name: 'EduLearn Academy', status: 'active', currency: 'USD', timezone: 'Europe/Moscow', created_at: '2025-03-05', spend: 12300, leads: 290, cpl: 42.41 },
-];
-
 const timezones = ['Europe/Moscow', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'Asia/Dubai', 'Asia/Tokyo'];
 
 export default function ClientsPage() {
@@ -59,52 +48,89 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create client dialog
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newTimezone, setNewTimezone] = useState('Europe/Moscow');
-  const [newCurrency, setNewCurrency] = useState('USD');
-  const [newNotes, setNewNotes] = useState('');
-  const [creating, setCreating] = useState(false);
+  // Create/Edit dialog
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formTimezone, setFormTimezone] = useState('Europe/Moscow');
+  const [formCurrency, setFormCurrency] = useState('USD');
+  const [formNotes, setFormNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const isAdmin = agencyRole === 'AgencyAdmin';
 
   const fetchClients = useCallback(async () => {
     const { data, error } = await supabase
       .from('clients')
-      .select('id, name, status, currency, timezone, created_at')
+      .select('id, name, status, currency, timezone, notes, created_at')
       .order('name');
-    
+
     if (error || !data || data.length === 0) {
-      setClients(demoClients);
+      setClients([]);
     } else {
-      setClients(data.map(c => ({ ...c, spend: 0, leads: 0, cpl: 0 })));
+      setClients(data);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
-  const handleCreateClient = async () => {
-    if (!newName.trim()) {
-      toast.error(t('auth.allFieldsRequired'));
-      return;
+  const openCreate = () => {
+    setEditingClient(null);
+    setFormName('');
+    setFormTimezone('Europe/Moscow');
+    setFormCurrency('USD');
+    setFormNotes('');
+    setDialogOpen(true);
+  };
+
+  const openEdit = (client: Client) => {
+    setEditingClient(client);
+    setFormName(client.name);
+    setFormTimezone(client.timezone);
+    setFormCurrency(client.currency);
+    setFormNotes(client.notes || '');
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formName.trim()) { toast.error(t('auth.allFieldsRequired')); return; }
+    setSaving(true);
+    if (editingClient) {
+      const { error } = await supabase.from('clients').update({
+        name: formName.trim(),
+        timezone: formTimezone,
+        currency: formCurrency,
+        notes: formNotes.trim() || null,
+      }).eq('id', editingClient.id);
+      if (error) { toast.error(error.message); setSaving(false); return; }
+      toast.success(t('clients.clientUpdated'));
+    } else {
+      const { error } = await supabase.from('clients').insert({
+        name: formName.trim(),
+        timezone: formTimezone,
+        currency: formCurrency,
+        notes: formNotes.trim() || null,
+        status: 'active',
+      });
+      if (error) { toast.error(t('clients.clientCreateError')); setSaving(false); return; }
+      toast.success(t('clients.clientCreated'));
     }
-    setCreating(true);
-    const { error } = await supabase.from('clients').insert({
-      name: newName.trim(),
-      timezone: newTimezone,
-      currency: newCurrency,
-      notes: newNotes.trim() || null,
-      status: 'active',
-    });
-    setCreating(false);
-    if (error) {
-      toast.error(t('clients.clientCreateError'));
-      return;
-    }
-    toast.success(t('clients.clientCreated'));
-    setCreateOpen(false);
-    setNewName('');
-    setNewNotes('');
+    setSaving(false);
+    setDialogOpen(false);
+    fetchClients();
+  };
+
+  const handleStatusChange = async (client: Client, newStatus: string) => {
+    await supabase.from('clients').update({ status: newStatus as any }).eq('id', client.id);
+    toast.success(t('clients.statusChanged'));
+    fetchClients();
+  };
+
+  const handleDelete = async (client: Client) => {
+    const { error } = await supabase.from('clients').delete().eq('id', client.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(t('clients.clientDeleted'));
     fetchClients();
   };
 
@@ -113,7 +139,6 @@ export default function ClientsPage() {
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
   const statusButtons = ['all', 'active', 'paused', 'inactive'] as const;
-  const canAddClients = agencyRole === 'AgencyAdmin';
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -122,57 +147,11 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-bold text-foreground">{t('clients.title')}</h1>
           <p className="text-muted-foreground text-sm mt-1">{filtered.length} {t('clients.title').toLowerCase()}</p>
         </div>
-        {canAddClients && (
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                {t('clients.addClient')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t('clients.createClient')}</DialogTitle>
-                <DialogDescription>{t('clients.createClientDesc')}</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label>{t('common.name')} *</Label>
-                  <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Client name" />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('common.timezone')}</Label>
-                  <Select value={newTimezone} onValueChange={setNewTimezone}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {timezones.map(tz => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('common.currency')}</Label>
-                  <Select value={newCurrency} onValueChange={setNewCurrency}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="RUB">RUB</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('clients.notes')}</Label>
-                  <Input value={newNotes} onChange={(e) => setNewNotes(e.target.value)} placeholder="Optional notes" />
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
-                <Button onClick={handleCreateClient} disabled={creating}>
-                  {creating ? t('common.creating') : t('common.create')}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        {isAdmin && (
+          <Button className="gap-2" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            {t('clients.addClient')}
+          </Button>
         )}
       </motion.div>
 
@@ -200,17 +179,16 @@ export default function ClientsPage() {
                   <TableRow>
                     <TableHead className="min-w-[200px]">{t('clients.clientName')}</TableHead>
                     <TableHead>{t('common.status')}</TableHead>
-                    <TableHead className="text-right">{t('clients.spend')}</TableHead>
-                    <TableHead className="text-right">{t('clients.leads')}</TableHead>
-                    <TableHead className="text-right">{t('clients.cpl')}</TableHead>
                     <TableHead>{t('common.timezone')}</TableHead>
+                    <TableHead>{t('common.currency')}</TableHead>
+                    {isAdmin && <TableHead className="text-right">{t('common.actions')}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">{t('common.loading')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t('common.loading')}</TableCell></TableRow>
                   ) : filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">{t('common.noData')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t('common.noData')}</TableCell></TableRow>
                   ) : filtered.map((client) => (
                     <TableRow key={client.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate(`/clients/${client.id}`)}>
                       <TableCell>
@@ -224,10 +202,38 @@ export default function ClientsPage() {
                       <TableCell>
                         <Badge variant="outline" className={statusStyles[client.status] || ''}>{t(`common.${client.status}` as TranslationKey)}</Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">{client.spend > 0 ? formatCurrency(client.spend) : '—'}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{client.leads > 0 ? formatNumber(client.leads) : '—'}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{client.cpl > 0 ? formatCurrency(client.cpl) : '—'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{client.timezone}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{client.currency}</TableCell>
+                      {isAdmin && (
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEdit(client)}>
+                                <Pencil className="h-4 w-4 mr-2" />{t('clients.editClient')}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleStatusChange(client, 'active')} disabled={client.status === 'active'}>
+                                <Power className="h-4 w-4 mr-2" />{t('common.active')}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(client, 'paused')} disabled={client.status === 'paused'}>
+                                <Power className="h-4 w-4 mr-2" />{t('common.paused')}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(client, 'inactive')} disabled={client.status === 'inactive'}>
+                                <Power className="h-4 w-4 mr-2" />{t('common.inactive')}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(client)}>
+                                <Trash2 className="h-4 w-4 mr-2" />{t('clients.deleteClient')}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -236,6 +242,52 @@ export default function ClientsPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingClient ? t('clients.editClient') : t('clients.createClient')}</DialogTitle>
+            <DialogDescription>{editingClient ? t('clients.editClientDesc') : t('clients.createClientDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{t('common.name')} *</Label>
+              <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Client name" />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('common.timezone')}</Label>
+              <Select value={formTimezone} onValueChange={setFormTimezone}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {timezones.map(tz => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('common.currency')}</Label>
+              <Select value={formCurrency} onValueChange={setFormCurrency}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="RUB">RUB</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('clients.notes')}</Label>
+              <Input value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Optional notes" />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? t('common.creating') : editingClient ? t('common.save') : t('common.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

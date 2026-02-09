@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
   BarChart3, FileText, Table2, Link2, ListTodo, Clock, Target, Plus, Loader2,
+  Sheet, RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -99,6 +100,104 @@ const statusStyles: Record<string, string> = {
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
+
+// Google Sheet Connection sub-component
+function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
+  const { t } = useLanguage();
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [savedUrl, setSavedUrl] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [lastResult, setLastResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (clientId.startsWith('demo-')) return;
+    supabase.from('clients').select('google_sheet_url').eq('id', clientId).single().then(({ data }) => {
+      if (data?.google_sheet_url) { setSheetUrl(data.google_sheet_url); setSavedUrl(data.google_sheet_url); }
+    });
+  }, [clientId]);
+
+  const handleSaveUrl = async () => {
+    if (clientId.startsWith('demo-')) return;
+    setSaving(true);
+    await supabase.from('clients').update({ google_sheet_url: sheetUrl || null } as any).eq('id', clientId);
+    setSavedUrl(sheetUrl);
+    setSaving(false);
+    toast.success(t('clients.sheetUrlSaved'));
+  };
+
+  const handleSync = async () => {
+    if (!savedUrl || clientId.startsWith('demo-')) return;
+    setSyncing(true);
+    setLastResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('sync-google-sheet', {
+        body: { client_id: clientId },
+      });
+      if (res.error) {
+        setLastResult(`Error: ${res.error.message}`);
+        toast.error(t('clients.sheetSyncError'));
+      } else {
+        const d = res.data as any;
+        setLastResult(`${d.rows_synced} ${t('clients.rowsSynced')}`);
+        toast.success(t('clients.sheetSynced'));
+      }
+    } catch (err: any) {
+      setLastResult(`Error: ${err.message}`);
+      toast.error(t('clients.sheetSyncError'));
+    }
+    setSyncing(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="glass-card max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sheet className="h-5 w-5 text-primary" />
+            Google Sheets
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">{t('clients.syncSheetDesc')}</p>
+          <div className="space-y-2">
+            <Label>{t('clients.googleSheetUrl')}</Label>
+            <div className="flex gap-2">
+              <Input
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                className="flex-1"
+              />
+              <Button onClick={handleSaveUrl} disabled={saving || sheetUrl === savedUrl} variant="outline" size="sm">
+                {t('common.save')}
+              </Button>
+            </div>
+          </div>
+          {savedUrl && (
+            <div className="flex items-center gap-3">
+              <Button onClick={handleSync} disabled={syncing} className="gap-2">
+                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {t('clients.syncSheet')}
+              </Button>
+              {lastResult && (
+                <span className={`text-sm ${lastResult.startsWith('Error') ? 'text-destructive' : 'text-success'}`}>
+                  {lastResult}
+                </span>
+              )}
+            </div>
+          )}
+          <div className="rounded-lg bg-secondary/30 p-4 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground text-sm mb-2">Expected format (first row = headers):</p>
+            <p>Date | Campaign | Spend | Impressions | Clicks | Leads</p>
+            <p>2026-02-01 | Campaign A | 1500 | 25000 | 890 | 42</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -562,11 +661,7 @@ export default function ClientDetailPage() {
           {/* CONNECTIONS TAB */}
           {isAgency && (
             <TabsContent value="connections" className="space-y-4">
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Link2 className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="font-medium text-foreground">Platform connections</p>
-                <p className="text-sm text-muted-foreground mt-1">Connect ad platforms from the Sync Monitor page</p>
-              </div>
+              <GoogleSheetConnection clientId={id!} isAdmin={isAdmin} />
             </TabsContent>
           )}
         </Tabs>

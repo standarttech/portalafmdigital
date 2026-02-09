@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, GitCompareArrows, Search, CalendarIcon } from 'lucide-react';
+import { ChevronDown, GitCompareArrows, Search, CalendarIcon, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { DateRange, Comparison, PlatformFilter } from './dashboardData';
@@ -57,11 +57,23 @@ export default function DashboardControls({
 
   const handleCustomSelect = (range: DayPickerRange | undefined) => {
     setPickerRange(range);
-    if (range?.from && range?.to && onCustomDateRangeChange) {
-      onCustomDateRangeChange({ from: range.from, to: range.to });
+    // Do NOT auto-close or auto-apply. Wait for Apply button.
+  };
+
+  const handleApply = () => {
+    if (pickerRange?.from && pickerRange?.to && onCustomDateRangeChange) {
+      onCustomDateRangeChange({ from: pickerRange.from, to: pickerRange.to });
       onDateRangeChange('custom');
-      setCalendarOpen(false);
     }
+    setCalendarOpen(false);
+  };
+
+  const handleCancel = () => {
+    // Reset picker to current applied range
+    setPickerRange(
+      customDateRange ? { from: customDateRange.from, to: customDateRange.to } : undefined
+    );
+    setCalendarOpen(false);
   };
 
   return (
@@ -113,6 +125,21 @@ export default function DashboardControls({
               disabled={(date) => date > new Date()}
               className={cn("p-3 pointer-events-auto")}
             />
+            <div className="flex items-center justify-end gap-2 p-3 pt-0 border-t border-border/30 mt-1">
+              <Button variant="ghost" size="sm" onClick={handleCancel} className="h-8 gap-1.5 text-xs">
+                <X className="h-3 w-3" />
+                {t('common.cancel')}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleApply}
+                disabled={!pickerRange?.from || !pickerRange?.to}
+                className="h-8 gap-1.5 text-xs"
+              >
+                <Check className="h-3 w-3" />
+                {t('dashboard.apply')}
+              </Button>
+            </div>
           </PopoverContent>
         </Popover>
       </div>
