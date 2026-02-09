@@ -1,16 +1,18 @@
+import { useState } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, GitCompareArrows, Search } from 'lucide-react';
+import { ChevronDown, GitCompareArrows, Search, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 import type { DateRange, Comparison, PlatformFilter } from './dashboardData';
 import type { TranslationKey } from '@/i18n/translations';
+import type { DateRange as DayPickerRange } from 'react-day-picker';
 
 interface Props {
   dateRange: DateRange;
@@ -21,6 +23,8 @@ interface Props {
   onPlatformChange: (p: PlatformFilter) => void;
   search?: string;
   onSearchChange?: (s: string) => void;
+  customDateRange?: { from: Date; to: Date };
+  onCustomDateRangeChange?: (range: { from: Date; to: Date }) => void;
 }
 
 const dateRangeOptions: { value: DateRange; key: TranslationKey }[] = [
@@ -43,8 +47,22 @@ export default function DashboardControls({
   comparison, onComparisonChange,
   platform, onPlatformChange,
   search, onSearchChange,
+  customDateRange, onCustomDateRangeChange,
 }: Props) {
   const { t } = useLanguage();
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [pickerRange, setPickerRange] = useState<DayPickerRange | undefined>(
+    customDateRange ? { from: customDateRange.from, to: customDateRange.to } : undefined
+  );
+
+  const handleCustomSelect = (range: DayPickerRange | undefined) => {
+    setPickerRange(range);
+    if (range?.from && range?.to && onCustomDateRangeChange) {
+      onCustomDateRangeChange({ from: range.from, to: range.to });
+      onDateRangeChange('custom');
+      setCalendarOpen(false);
+    }
+  };
 
   return (
     <div className="sticky top-0 z-20 -mx-4 lg:-mx-6 px-4 lg:px-6 py-3 bg-background/80 backdrop-blur-lg border-b border-border/50 flex flex-wrap items-center gap-3">
@@ -66,6 +84,37 @@ export default function DashboardControls({
             {t(opt.key)}
           </Button>
         ))}
+
+        {/* Custom Range */}
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'h-7 px-2.5 text-xs font-medium rounded-md transition-all gap-1',
+                dateRange === 'custom'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <CalendarIcon className="h-3 w-3" />
+              {dateRange === 'custom' && customDateRange
+                ? `${format(customDateRange.from, 'MMM d')} – ${format(customDateRange.to, 'MMM d')}`
+                : t('dashboard.customRange')}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              selected={pickerRange}
+              onSelect={handleCustomSelect}
+              numberOfMonths={2}
+              disabled={(date) => date > new Date()}
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Comparison */}

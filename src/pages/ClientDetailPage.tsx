@@ -4,26 +4,19 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft,
-  Building2,
-  DollarSign,
-  MousePointerClick,
-  Users,
-  Eye,
-  TrendingUp,
-  BarChart3,
-  FileText,
-  Table2,
-  Link2,
-  ListTodo,
-  Clock,
-  Target,
+  ArrowLeft, Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
+  BarChart3, FileText, Table2, Link2, ListTodo, Clock, Target, Plus, Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -82,38 +75,54 @@ const demoPlatformData = [
 ];
 
 interface ClientData {
-  id: string;
-  name: string;
-  status: string;
-  currency: string;
-  timezone: string;
-  notes: string | null;
+  id: string; name: string; status: string; currency: string; timezone: string; notes: string | null;
+}
+interface Campaign {
+  id: string; campaign_name: string; status: string; platform_campaign_id: string;
+}
+interface Task {
+  id: string; title: string; description: string | null; status: string; due_date: string | null; created_at: string;
+}
+interface ClientTarget {
+  target_cpl: number | null; target_ctr: number | null; target_leads: number | null; target_roas: number | null;
 }
 
 const statusStyles: Record<string, string> = {
   active: 'bg-success/15 text-success border-success/20',
   paused: 'bg-warning/15 text-warning border-warning/20',
   inactive: 'bg-muted text-muted-foreground border-border',
+  archived: 'bg-muted text-muted-foreground border-border',
+  pending: 'bg-warning/15 text-warning border-warning/20',
+  in_progress: 'bg-info/15 text-info border-info/20',
+  completed: 'bg-success/15 text-success border-success/20',
 };
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-};
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0 },
-};
+const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
+const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, formatCurrency, formatNumber } = useLanguage();
-  const { agencyRole } = useAuth();
+  const { user, agencyRole } = useAuth();
   const [client, setClient] = useState<ClientData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [targets, setTargets] = useState<ClientTarget | null>(null);
+  const [savingTargets, setSavingTargets] = useState(false);
+  const [targetCpl, setTargetCpl] = useState('');
+  const [targetCtr, setTargetCtr] = useState('');
+  const [targetLeads, setTargetLeads] = useState('');
+
+  // Task creation
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [creatingTask, setCreatingTask] = useState(false);
 
   const isAgency = agencyRole === 'AgencyAdmin' || agencyRole === 'MediaBuyer';
+  const isAdmin = agencyRole === 'AgencyAdmin';
 
   const spendData = useMemo(() => generateDemoSpendData(), []);
   const dailyData = useMemo(() => generateDailyTableData(), []);
@@ -121,73 +130,111 @@ export default function ClientDetailPage() {
   const totals = useMemo(() => {
     return dailyData.reduce(
       (acc, row) => ({
-        spend: acc.spend + row.spend,
-        reach: acc.reach + row.reach,
-        impressions: acc.impressions + row.impressions,
-        clicks: acc.clicks + row.clicks,
-        leads: acc.leads + row.leads,
-        qualLeads: acc.qualLeads + row.qualLeads,
+        spend: acc.spend + row.spend, reach: acc.reach + row.reach,
+        impressions: acc.impressions + row.impressions, clicks: acc.clicks + row.clicks,
+        leads: acc.leads + row.leads, qualLeads: acc.qualLeads + row.qualLeads,
       }),
       { spend: 0, reach: 0, impressions: 0, clicks: 0, leads: 0, qualLeads: 0 }
     );
   }, [dailyData]);
 
-  const totalCpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
-  const totalCpm = totals.impressions > 0 ? totals.spend / (totals.impressions / 1000) : 0;
-  const totalCtr = totals.reach > 0 ? (totals.clicks / totals.reach) * 100 : 0;
   const totalCpl = totals.leads > 0 ? totals.spend / totals.leads : 0;
-  const totalLeadCv = totals.clicks > 0 ? (totals.leads / totals.clicks) * 100 : 0;
+  const totalCtr = totals.reach > 0 ? (totals.clicks / totals.reach) * 100 : 0;
 
   const fetchClient = useCallback(async () => {
     if (!id) return;
-
     if (id.startsWith('demo-')) {
       const demoNames: Record<string, string> = {
-        'demo-1': 'TechStart Inc.',
-        'demo-2': 'FashionBrand Pro',
-        'demo-3': 'HealthPlus Medical',
-        'demo-4': 'AutoDeal Motors',
-        'demo-5': 'EduLearn Academy',
+        'demo-1': 'TechStart Inc.', 'demo-2': 'FashionBrand Pro',
+        'demo-3': 'HealthPlus Medical', 'demo-4': 'AutoDeal Motors', 'demo-5': 'EduLearn Academy',
       };
-      setClient({
-        id,
-        name: demoNames[id] || 'Demo Client',
-        status: id === 'demo-4' ? 'paused' : 'active',
-        currency: 'USD',
-        timezone: 'Europe/Moscow',
-        notes: null,
-      });
+      setClient({ id, name: demoNames[id] || 'Demo Client', status: id === 'demo-4' ? 'paused' : 'active', currency: 'USD', timezone: 'Europe/Moscow', notes: null });
       setLoading(false);
       return;
     }
-
-    const { data, error } = await supabase
-      .from('clients')
-      .select('id, name, status, currency, timezone, notes')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) {
-      navigate('/clients');
-      return;
-    }
-
+    const { data, error } = await supabase.from('clients').select('id, name, status, currency, timezone, notes').eq('id', id).single();
+    if (error || !data) { navigate('/clients'); return; }
     setClient(data);
     setLoading(false);
   }, [id, navigate]);
 
+  const fetchCampaigns = useCallback(async () => {
+    if (!id || id.startsWith('demo-')) return;
+    const { data } = await supabase.from('campaigns').select('id, campaign_name, status, platform_campaign_id').eq('client_id', id).order('campaign_name');
+    if (data) setCampaigns(data);
+  }, [id]);
+
+  const fetchTasks = useCallback(async () => {
+    if (!id || id.startsWith('demo-')) return;
+    const { data } = await supabase.from('tasks').select('id, title, description, status, due_date, created_at').eq('client_id', id).order('created_at', { ascending: false });
+    if (data) setTasks(data);
+  }, [id]);
+
+  const fetchTargets = useCallback(async () => {
+    if (!id || id.startsWith('demo-')) return;
+    const { data } = await supabase.from('client_targets').select('target_cpl, target_ctr, target_leads, target_roas').eq('client_id', id).maybeSingle();
+    if (data) {
+      setTargets(data);
+      setTargetCpl(data.target_cpl?.toString() || '');
+      setTargetCtr(data.target_ctr?.toString() || '');
+      setTargetLeads(data.target_leads?.toString() || '');
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchClient();
-  }, [fetchClient]);
+    fetchCampaigns();
+    fetchTasks();
+    fetchTargets();
+  }, [fetchClient, fetchCampaigns, fetchTasks, fetchTargets]);
+
+  const handleSaveTargets = async () => {
+    if (!id || id.startsWith('demo-')) return;
+    setSavingTargets(true);
+    const payload = {
+      client_id: id,
+      target_cpl: targetCpl ? parseFloat(targetCpl) : null,
+      target_ctr: targetCtr ? parseFloat(targetCtr) : null,
+      target_leads: targetLeads ? parseInt(targetLeads) : null,
+    };
+    if (targets) {
+      await supabase.from('client_targets').update(payload).eq('client_id', id);
+    } else {
+      await supabase.from('client_targets').insert(payload);
+    }
+    setSavingTargets(false);
+    toast.success(t('targets.saved'));
+    fetchTargets();
+  };
+
+  const handleCreateTask = async () => {
+    if (!id || !newTaskTitle.trim() || id.startsWith('demo-')) return;
+    setCreatingTask(true);
+    const { error } = await supabase.from('tasks').insert({
+      client_id: id,
+      title: newTaskTitle.trim(),
+      description: newTaskDesc.trim() || null,
+      created_by: user?.id,
+    });
+    setCreatingTask(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(t('tasks.taskCreated'));
+    setTaskDialogOpen(false);
+    setNewTaskTitle('');
+    setNewTaskDesc('');
+    fetchTasks();
+  };
+
+  const handleToggleTaskStatus = async (task: Task) => {
+    const nextStatus = task.status === 'completed' ? 'pending' : task.status === 'pending' ? 'in_progress' : 'completed';
+    await supabase.from('tasks').update({ status: nextStatus }).eq('id', task.id);
+    toast.success(t('tasks.taskUpdated'));
+    fetchTasks();
+  };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
-
   if (!client) return null;
 
   const kpis = [
@@ -213,9 +260,7 @@ export default function ClientDetailPage() {
           <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground truncate">{client.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <Badge variant="outline" className={statusStyles[client.status] || ''}>
-                {t(`common.${client.status}` as any)}
-              </Badge>
+              <Badge variant="outline" className={statusStyles[client.status] || ''}>{t(`common.${client.status}` as any)}</Badge>
               <span className="text-xs text-muted-foreground">{client.timezone} · {client.currency}</span>
             </div>
           </div>
@@ -239,42 +284,20 @@ export default function ClientDetailPage() {
       <motion.div variants={item}>
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="flex-wrap">
-            <TabsTrigger value="overview" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="daily" className="gap-2">
-              <Table2 className="h-4 w-4" />
-              Daily
-            </TabsTrigger>
-            <TabsTrigger value="campaigns" className="gap-2">
-              <Target className="h-4 w-4" />
-              Campaigns
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-2">
-              <ListTodo className="h-4 w-4" />
-              Tasks
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-2">
-              <FileText className="h-4 w-4" />
-              {t('nav.reports')}
-            </TabsTrigger>
-            {isAgency && (
-              <TabsTrigger value="connections" className="gap-2">
-                <Link2 className="h-4 w-4" />
-                Connections
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="overview" className="gap-2"><BarChart3 className="h-4 w-4" />Overview</TabsTrigger>
+            <TabsTrigger value="daily" className="gap-2"><Table2 className="h-4 w-4" />Daily</TabsTrigger>
+            <TabsTrigger value="campaigns" className="gap-2"><Target className="h-4 w-4" />{t('campaigns.title')}</TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-2"><ListTodo className="h-4 w-4" />{t('tasks.title')}</TabsTrigger>
+            {isAdmin && <TabsTrigger value="targets" className="gap-2"><TrendingUp className="h-4 w-4" />{t('targets.title')}</TabsTrigger>}
+            <TabsTrigger value="reports" className="gap-2"><FileText className="h-4 w-4" />{t('nav.reports')}</TabsTrigger>
+            {isAgency && <TabsTrigger value="connections" className="gap-2"><Link2 className="h-4 w-4" />Connections</TabsTrigger>}
           </TabsList>
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Performance chart */}
               <Card className="glass-card lg:col-span-2">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">{t('dashboard.performance')}</CardTitle>
-                </CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.performance')}</CardTitle></CardHeader>
                 <CardContent>
                   <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -292,15 +315,7 @@ export default function ClientDetailPage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
                         <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
                         <YAxis tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(225, 30%, 9%)',
-                            border: '1px solid hsl(225, 20%, 14%)',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            color: 'hsl(40, 20%, 90%)',
-                          }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }} />
                         <Area type="monotone" dataKey="spend" stroke="hsl(42, 87%, 55%)" fill="url(#clientSpendGrad)" strokeWidth={2} name="Spend ($)" />
                         <Area type="monotone" dataKey="leads" stroke="hsl(160, 84%, 39%)" fill="url(#clientLeadsGrad)" strokeWidth={2} name="Leads" />
                       </AreaChart>
@@ -308,30 +323,16 @@ export default function ClientDetailPage() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Platform breakdown */}
               <Card className="glass-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">{t('dashboard.spendByPlatform')}</CardTitle>
-                </CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.spendByPlatform')}</CardTitle></CardHeader>
                 <CardContent>
                   <div className="h-[180px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie data={demoPlatformData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="spend">
-                          {demoPlatformData.map((entry, i) => (
-                            <Cell key={i} fill={entry.color} />
-                          ))}
+                          {demoPlatformData.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(225, 30%, 9%)',
-                            border: '1px solid hsl(225, 20%, 14%)',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            color: 'hsl(40, 20%, 90%)',
-                          }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -349,8 +350,6 @@ export default function ClientDetailPage() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Data freshness */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
               <Clock className="h-3.5 w-3.5" />
               <span>{t('dashboard.lastUpdated')}: {new Date().toLocaleDateString()}</span>
@@ -367,17 +366,11 @@ export default function ClientDetailPage() {
                   <table className="spreadsheet-table">
                     <thead>
                       <tr>
-                        <th>Date</th>
-                        <th>UTM</th>
-                        <th className="text-right">Spend ($)</th>
-                        <th className="text-right">Reach</th>
-                        <th className="text-right">Clicks</th>
-                        <th className="text-right">CPC ($)</th>
-                        <th className="text-right">CPM ($)</th>
-                        <th className="text-right">CTR (%)</th>
-                        <th className="text-right">Lead CV (%)</th>
-                        <th className="text-right">Leads</th>
-                        <th className="text-right">CPL ($)</th>
+                        <th>Date</th><th>UTM</th><th className="text-right">Spend ($)</th>
+                        <th className="text-right">Reach</th><th className="text-right">Clicks</th>
+                        <th className="text-right">CPC ($)</th><th className="text-right">CPM ($)</th>
+                        <th className="text-right">CTR (%)</th><th className="text-right">Lead CV (%)</th>
+                        <th className="text-right">Leads</th><th className="text-right">CPL ($)</th>
                         <th className="text-right">Qual Leads</th>
                       </tr>
                     </thead>
@@ -398,17 +391,15 @@ export default function ClientDetailPage() {
                           <td className="text-right text-success font-medium">{row.qualLeads}</td>
                         </tr>
                       ))}
-                      {/* Totals Row */}
                       <tr className="totals-row">
-                        <td className="text-foreground font-bold">TOTAL</td>
-                        <td></td>
+                        <td className="text-foreground font-bold">TOTAL</td><td></td>
                         <td className="text-right text-foreground">{formatCurrency(totals.spend)}</td>
                         <td className="text-right text-foreground">{formatNumber(totals.reach)}</td>
                         <td className="text-right text-foreground">{formatNumber(totals.clicks)}</td>
-                        <td className="text-right text-foreground">{formatCurrency(totalCpc)}</td>
-                        <td className="text-right text-foreground">{formatCurrency(totalCpm)}</td>
+                        <td className="text-right text-foreground">{formatCurrency(totals.clicks > 0 ? totals.spend / totals.clicks : 0)}</td>
+                        <td className="text-right text-foreground">{formatCurrency(totals.impressions > 0 ? totals.spend / (totals.impressions / 1000) : 0)}</td>
                         <td className="text-right text-foreground">{totalCtr.toFixed(2)}%</td>
-                        <td className="text-right text-foreground">{totalLeadCv.toFixed(2)}%</td>
+                        <td className="text-right text-foreground">{totals.clicks > 0 ? ((totals.leads / totals.clicks) * 100).toFixed(2) : '0'}%</td>
                         <td className="text-right text-foreground font-bold">{totals.leads}</td>
                         <td className="text-right text-foreground">{formatCurrency(totalCpl)}</td>
                         <td className="text-right text-success font-bold">{totals.qualLeads}</td>
@@ -422,39 +413,164 @@ export default function ClientDetailPage() {
 
           {/* CAMPAIGNS TAB */}
           <TabsContent value="campaigns" className="space-y-4">
-            <EmptyTabState icon={Target} title="Campaigns" description="Campaign data will appear here once ad accounts are connected." />
+            {campaigns.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Target className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="font-medium text-foreground">{t('campaigns.noCampaigns')}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('campaigns.noCampaignsDesc')}</p>
+              </div>
+            ) : (
+              <Card className="glass-card overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="spreadsheet-table">
+                      <thead>
+                        <tr>
+                          <th>Campaign</th>
+                          <th>{t('common.status')}</th>
+                          <th>Platform ID</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {campaigns.map(c => (
+                          <tr key={c.id}>
+                            <td className="text-foreground font-medium font-sans">{c.campaign_name}</td>
+                            <td>
+                              <Badge variant="outline" className={statusStyles[c.status] || ''}>{c.status}</Badge>
+                            </td>
+                            <td className="text-muted-foreground text-xs">{c.platform_campaign_id}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* TASKS TAB */}
           <TabsContent value="tasks" className="space-y-4">
-            <EmptyTabState icon={ListTodo} title="Tasks" description="Tasks for this client will appear here." />
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{t('tasks.title')}</h3>
+              {isAgency && (
+                <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-2"><Plus className="h-4 w-4" />{t('tasks.addTask')}</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>{t('tasks.addTask')}</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label>{t('common.title')} *</Label>
+                        <Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Task title" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{t('common.description')}</Label>
+                        <Input value={newTaskDesc} onChange={(e) => setNewTaskDesc(e.target.value)} placeholder="Optional description" />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
+                      <Button onClick={handleCreateTask} disabled={creatingTask}>
+                        {creatingTask ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        {t('common.create')}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+            {tasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <ListTodo className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="font-medium text-foreground">{t('tasks.noTasks')}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('tasks.noTasksDesc')}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {tasks.map(task => (
+                  <Card key={task.id} className="glass-card">
+                    <CardContent className="py-3 px-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => handleToggleTaskStatus(task)} className="flex-shrink-0">
+                          <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                            task.status === 'completed' ? 'bg-success border-success' : task.status === 'in_progress' ? 'border-info' : 'border-muted-foreground/30'
+                          }`}>
+                            {task.status === 'completed' && <span className="text-white text-xs">✓</span>}
+                          </div>
+                        </button>
+                        <div>
+                          <p className={`text-sm font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
+                          {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {task.due_date && <span className="text-xs text-muted-foreground">{task.due_date}</span>}
+                        <Badge variant="outline" className={statusStyles[task.status] || ''}>
+                          {task.status === 'pending' ? t('common.pending') : task.status === 'in_progress' ? t('common.inProgress') : t('common.completed')}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
+
+          {/* TARGETS TAB */}
+          {isAdmin && (
+            <TabsContent value="targets" className="space-y-4">
+              <Card className="glass-card max-w-lg">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    {t('targets.title')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>{t('targets.cpl')} ($)</Label>
+                    <Input type="number" step="0.01" value={targetCpl} onChange={(e) => setTargetCpl(e.target.value)} placeholder="e.g. 50.00" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('targets.ctr')} (%)</Label>
+                    <Input type="number" step="0.01" value={targetCtr} onChange={(e) => setTargetCtr(e.target.value)} placeholder="e.g. 1.50" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('targets.leads')}</Label>
+                    <Input type="number" value={targetLeads} onChange={(e) => setTargetLeads(e.target.value)} placeholder="e.g. 500" />
+                  </div>
+                  <Button onClick={handleSaveTargets} disabled={savingTargets}>
+                    {savingTargets ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {t('common.save')}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* REPORTS TAB */}
           <TabsContent value="reports" className="space-y-4">
-            <EmptyTabState icon={FileText} title={t('nav.reports')} description="Reports for this client will appear here once configured." />
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <FileText className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="font-medium text-foreground">Client reports coming soon</p>
+              <p className="text-sm text-muted-foreground mt-1">Generate reports from the Reports page</p>
+            </div>
           </TabsContent>
 
           {/* CONNECTIONS TAB */}
           {isAgency && (
             <TabsContent value="connections" className="space-y-4">
-              <EmptyTabState icon={Link2} title="Connections" description="Platform connections and sync status for this client." />
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Link2 className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="font-medium text-foreground">Platform connections</p>
+                <p className="text-sm text-muted-foreground mt-1">Connect ad platforms from the Sync Monitor page</p>
+              </div>
             </TabsContent>
           )}
         </Tabs>
       </motion.div>
     </motion.div>
-  );
-}
-
-function EmptyTabState({ icon: Icon, title, description }: { icon: any; title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-        <Icon className="h-7 w-7 text-primary" />
-      </div>
-      <h2 className="text-lg font-semibold text-foreground mb-2">{title}</h2>
-      <p className="text-muted-foreground text-sm max-w-md">{description}</p>
-    </div>
   );
 }

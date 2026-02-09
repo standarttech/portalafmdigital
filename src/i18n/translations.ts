@@ -31,6 +31,18 @@ export const translations = {
   'common.archived': { ru: 'Архивирован', en: 'Archived' },
   'common.confirm': { ru: 'Подтвердить', en: 'Confirm' },
   'common.close': { ru: 'Закрыть', en: 'Close' },
+  'common.create': { ru: 'Создать', en: 'Create' },
+  'common.creating': { ru: 'Создание...', en: 'Creating...' },
+  'common.timezone': { ru: 'Часовой пояс', en: 'Timezone' },
+  'common.currency': { ru: 'Валюта', en: 'Currency' },
+  'common.description': { ru: 'Описание', en: 'Description' },
+  'common.title': { ru: 'Название', en: 'Title' },
+  'common.date': { ru: 'Дата', en: 'Date' },
+  'common.type': { ru: 'Тип', en: 'Type' },
+  'common.user': { ru: 'Пользователь', en: 'User' },
+  'common.details': { ru: 'Подробности', en: 'Details' },
+  'common.completed': { ru: 'Завершён', en: 'Completed' },
+  'common.inProgress': { ru: 'В работе', en: 'In Progress' },
 
   // Auth
   'auth.login': { ru: 'Вход', en: 'Sign In' },
@@ -216,6 +228,11 @@ export const translations = {
   'clients.leads': { ru: 'Лиды', en: 'Leads' },
   'clients.cpl': { ru: 'CPL', en: 'CPL' },
   'clients.lastSync': { ru: 'Последняя синхронизация', en: 'Last Sync' },
+  'clients.createClient': { ru: 'Создать клиента', en: 'Create Client' },
+  'clients.createClientDesc': { ru: 'Заполните данные для нового клиента', en: 'Fill in the details for the new client' },
+  'clients.clientCreated': { ru: 'Клиент успешно создан', en: 'Client created successfully' },
+  'clients.clientCreateError': { ru: 'Ошибка при создании клиента', en: 'Error creating client' },
+  'clients.notes': { ru: 'Заметки', en: 'Notes' },
 
   // Reports
   'reports.subtitle': { ru: 'Создавайте, планируйте и отправляйте отчёты', en: 'Create, schedule, and send reports' },
@@ -260,6 +277,48 @@ export const translations = {
   'lang.ru': { ru: 'Русский', en: 'Russian' },
   'lang.en': { ru: 'English', en: 'English' },
   'lang.switch': { ru: 'Язык', en: 'Language' },
+
+  // Audit
+  'audit.title': { ru: 'Журнал аудита', en: 'Audit Log' },
+  'audit.subtitle': { ru: 'История действий пользователей в системе', en: 'History of user actions in the system' },
+  'audit.action': { ru: 'Действие', en: 'Action' },
+  'audit.entity': { ru: 'Объект', en: 'Entity' },
+  'audit.noLogs': { ru: 'Нет записей в журнале аудита', en: 'No audit log entries yet' },
+  'audit.noLogsDesc': { ru: 'Записи появятся при выполнении действий в системе', en: 'Entries will appear as actions are performed in the system' },
+
+  // Sync
+  'sync.title': { ru: 'Мониторинг синхронизации', en: 'Sync Monitor' },
+  'sync.subtitle': { ru: 'Статус подключений и синхронизации платформ', en: 'Platform connection and sync status' },
+  'sync.noConnections': { ru: 'Нет подключённых платформ', en: 'No connected platforms' },
+  'sync.noConnectionsDesc': { ru: 'Подключите рекламные платформы для синхронизации данных', en: 'Connect ad platforms to start syncing data' },
+  'sync.successful': { ru: 'Успешных', en: 'Successful' },
+  'sync.errors': { ru: 'Ошибки', en: 'Errors' },
+  'sync.running': { ru: 'Запущено', en: 'Running' },
+  'sync.idle': { ru: 'Ожидание', en: 'Idle' },
+  'sync.connections': { ru: 'Подключения', en: 'Connections' },
+
+  // Campaigns
+  'campaigns.title': { ru: 'Кампании', en: 'Campaigns' },
+  'campaigns.noCampaigns': { ru: 'Нет кампаний', en: 'No campaigns' },
+  'campaigns.noCampaignsDesc': { ru: 'Кампании появятся после синхронизации с рекламными платформами', en: 'Campaigns will appear after syncing with ad platforms' },
+
+  // Tasks
+  'tasks.title': { ru: 'Задачи', en: 'Tasks' },
+  'tasks.noTasks': { ru: 'Нет задач', en: 'No tasks' },
+  'tasks.noTasksDesc': { ru: 'Создайте задачу для отслеживания работы по клиенту', en: 'Create a task to track work for this client' },
+  'tasks.addTask': { ru: 'Добавить задачу', en: 'Add Task' },
+  'tasks.dueDate': { ru: 'Дата выполнения', en: 'Due Date' },
+  'tasks.taskCreated': { ru: 'Задача создана', en: 'Task created' },
+  'tasks.taskUpdated': { ru: 'Задача обновлена', en: 'Task updated' },
+
+  // Targets
+  'targets.title': { ru: 'Цели клиента', en: 'Client Targets' },
+  'targets.cpl': { ru: 'Целевой CPL', en: 'Target CPL' },
+  'targets.ctr': { ru: 'Целевой CTR', en: 'Target CTR' },
+  'targets.leads': { ru: 'Целевые лиды', en: 'Target Leads' },
+  'targets.roas': { ru: 'Целевой ROAS', en: 'Target ROAS' },
+  'targets.saved': { ru: 'Цели сохранены', en: 'Targets saved' },
+  'targets.noTargets': { ru: 'Цели не установлены', en: 'No targets set' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;
