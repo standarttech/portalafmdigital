@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -92,12 +93,20 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
   const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
+  const [autoSync, setAutoSync] = useState(false);
 
   useEffect(() => {
-    supabase.from('clients').select('google_sheet_url').eq('id', clientId).single().then(({ data }) => {
+    supabase.from('clients').select('google_sheet_url, auto_sync_enabled').eq('id', clientId).single().then(({ data }) => {
       if (data?.google_sheet_url) { setSheetUrl(data.google_sheet_url); setSavedUrl(data.google_sheet_url); }
+      if (data?.auto_sync_enabled) setAutoSync(data.auto_sync_enabled);
     });
   }, [clientId]);
+
+  const handleToggleAutoSync = async (enabled: boolean) => {
+    setAutoSync(enabled);
+    await supabase.from('clients').update({ auto_sync_enabled: enabled } as any).eq('id', clientId);
+    toast.success(enabled ? t('clients.autoSyncEnabled') : t('clients.autoSyncDisabled'));
+  };
 
   const handleSaveUrl = async () => {
     setSaving(true);
@@ -164,10 +173,19 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
               )}
             </div>
           )}
+          {savedUrl && (
+            <div className="flex items-center justify-between rounded-lg border border-border p-4">
+              <div>
+                <p className="text-sm font-medium">{t('clients.autoSync')}</p>
+                <p className="text-xs text-muted-foreground">{t('clients.autoSyncDesc')}</p>
+              </div>
+              <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} />
+            </div>
+          )}
           <div className="rounded-lg bg-secondary/30 p-4 text-xs text-muted-foreground space-y-1">
             <p className="font-medium text-foreground text-sm mb-2">Expected format (first row = headers):</p>
-            <p>Date | Campaign | Spend | Impressions | Clicks | Leads</p>
-            <p>2026-02-01 | Campaign A | 1500 | 25000 | 890 | 42</p>
+            <p>Date | UTM | Spend | Reach | Click | Leads</p>
+            <p>09.01.2026 | afm_digital | $104.83 | 3194 | 34 | 4</p>
           </div>
         </CardContent>
       </Card>

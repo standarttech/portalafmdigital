@@ -355,6 +355,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          auto_sync_enabled: boolean
           created_at: string
           currency: string
           google_sheet_url: string | null
@@ -367,6 +368,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_sync_enabled?: boolean
           created_at?: string
           currency?: string
           google_sheet_url?: string | null
@@ -379,6 +381,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_sync_enabled?: boolean
           created_at?: string
           currency?: string
           google_sheet_url?: string | null
