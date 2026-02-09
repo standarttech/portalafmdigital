@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Info } from 'lucide-react';
 import DashboardControls from '@/components/dashboard/DashboardControls';
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [comparison, setComparison] = useState<Comparison>('previous_period');
   const [platform, setPlatform] = useState<PlatformFilter>('all');
+  const [displayName, setDisplayName] = useState<string>('');
 
   const filters: DashboardFilters = useMemo(
     () => ({ dateRange, comparison, platform }),
@@ -39,7 +41,22 @@ export default function DashboardPage() {
   const isBuyer = agencyRole === 'MediaBuyer';
   const isAgencyMember = isAdmin || isBuyer;
 
-  const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Admin';
+  // Fetch display name from agency_users (synced with profile page)
+  const fetchDisplayName = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('agency_users')
+      .select('display_name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (data?.display_name) {
+      setDisplayName(data.display_name);
+    } else {
+      setDisplayName(user.user_metadata?.display_name || user.email?.split('@')[0] || 'Admin');
+    }
+  }, [user]);
+
+  useEffect(() => { fetchDisplayName(); }, [fetchDisplayName]);
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">

@@ -2,21 +2,17 @@ import { useLocation, Link } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebarState } from '@/contexts/SidebarContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import logoAfm from '@/assets/logo-afm.png';
 import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  RefreshCw,
-  FileText,
-  Shield,
-  ChevronLeft,
-  ChevronRight,
-  UserCircle,
+  LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
+  ChevronLeft, ChevronRight, UserCircle, LogOut, Menu, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import type { TranslationKey } from '@/i18n/translations';
+import { useState } from 'react';
 
 interface NavItem {
   key: TranslationKey;
@@ -36,19 +32,13 @@ const navItems: NavItem[] = [
   { key: 'nav.profile', icon: UserCircle, path: '/profile', section: 'user' },
 ];
 
-export default function AppSidebar() {
+function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { t } = useLanguage();
-  const { agencyRole } = useAuth();
+  const { agencyRole, signOut } = useAuth();
   const location = useLocation();
-  const { collapsed, toggle } = useSidebarState();
-
   const isAdmin = agencyRole === 'AgencyAdmin';
 
-  const filteredItems = navItems.filter((item) => {
-    if (item.adminOnly && !isAdmin) return false;
-    return true;
-  });
-
+  const filteredItems = navItems.filter((item) => !item.adminOnly || isAdmin);
   const mainItems = filteredItems.filter(i => i.section === 'main');
   const adminItems = filteredItems.filter(i => i.section === 'admin');
   const userItems = filteredItems.filter(i => i.section === 'user');
@@ -59,6 +49,7 @@ export default function AppSidebar() {
       <Link
         key={item.path}
         to={item.path}
+        onClick={onNavigate}
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
           isActive
@@ -74,12 +65,7 @@ export default function AppSidebar() {
   };
 
   return (
-    <aside
-      className={cn(
-        'fixed top-0 left-0 h-screen z-30 bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300',
-        collapsed ? 'w-16' : 'w-60'
-      )}
-    >
+    <>
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border gap-3 flex-shrink-0">
         <div className="h-8 w-8 flex-shrink-0 bg-primary/20 rounded-lg flex items-center justify-center overflow-hidden">
@@ -111,7 +97,60 @@ export default function AppSidebar() {
         </div>
       </nav>
 
-      {/* Collapse toggle */}
+      {/* Logout + Collapse */}
+      <div className="p-2 border-t border-sidebar-border flex-shrink-0 space-y-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => { signOut(); onNavigate?.(); }}
+          className={cn(
+            'w-full text-sidebar-muted hover:text-destructive hover:bg-destructive/10',
+            collapsed ? 'justify-center' : 'justify-start gap-3 px-3'
+          )}
+        >
+          <LogOut className="h-4 w-4" />
+          {!collapsed && <span className="text-sm">{t('auth.logout')}</span>}
+        </Button>
+      </div>
+    </>
+  );
+}
+
+export default function AppSidebar() {
+  const isMobile = useIsMobile();
+  const { collapsed, toggle } = useSidebarState();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Mobile: use Sheet drawer
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile trigger button — rendered in header area */}
+        <div className="fixed top-0 left-0 z-40 h-14 flex items-center px-3">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-foreground">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-60 p-0 bg-sidebar border-sidebar-border">
+              <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
+            </SheetContent>
+          </Sheet>
+        </div>
+      </>
+    );
+  }
+
+  // Desktop: fixed sidebar
+  return (
+    <aside
+      className={cn(
+        'fixed top-0 left-0 h-screen z-30 bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300',
+        collapsed ? 'w-16' : 'w-60'
+      )}
+    >
+      <SidebarContent collapsed={collapsed} />
       <div className="p-2 border-t border-sidebar-border flex-shrink-0">
         <Button
           variant="ghost"
