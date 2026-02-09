@@ -5,21 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
-import type { DashboardFilters } from './dashboardData';
-import { getClientPerformanceData } from './dashboardData';
 import type { ClientMetric } from '@/hooks/useDashboardMetrics';
 import { cn } from '@/lib/utils';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface Props {
-  filters: DashboardFilters;
-  realClientsData?: ClientMetric[];
-  hasRealData?: boolean;
+  clientsData: ClientMetric[];
 }
 
 type SortKey = 'name' | 'spend' | 'leads' | 'cpl' | 'ctr' | 'deltaCpl';
 
-export default function ClientsPerformanceTable({ filters, realClientsData, hasRealData }: Props) {
+export default function ClientsPerformanceTable({ clientsData }: Props) {
   const { t, formatCurrency, formatNumber } = useLanguage();
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>('cpl');
@@ -27,13 +23,8 @@ export default function ClientsPerformanceTable({ filters, realClientsData, hasR
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
 
-  const clients = useMemo(() => {
-    if (hasRealData && realClientsData && realClientsData.length > 0) return realClientsData;
-    return getClientPerformanceData(filters);
-  }, [filters, realClientsData, hasRealData]);
-
   const filtered = useMemo(() => {
-    let result = statusFilter === 'all' ? clients : clients.filter(c => c.status === statusFilter);
+    let result = statusFilter === 'all' ? clientsData : clientsData.filter(c => c.status === statusFilter);
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(c => c.name.toLowerCase().includes(q));
@@ -44,7 +35,7 @@ export default function ClientsPerformanceTable({ filters, realClientsData, hasR
       const cmp = typeof vA === 'string' ? (vA as string).localeCompare(vB as string) : (vA as number) - (vB as number);
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [clients, sortKey, sortDir, statusFilter, search]);
+  }, [clientsData, sortKey, sortDir, statusFilter, search]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');

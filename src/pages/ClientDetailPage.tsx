@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
   BarChart3, FileText, Table2, Link2, ListTodo, Clock, Target, Plus, Loader2,
-  Sheet, RefreshCw,
+  Sheet, RefreshCw, Settings2, GripVertical,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,65 +15,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-
-// Demo data generators
-const generateDemoSpendData = () => [
-  { date: '01', spend: 1200, leads: 24, clicks: 890 },
-  { date: '02', spend: 1450, leads: 31, clicks: 1020 },
-  { date: '03', spend: 980, leads: 18, clicks: 760 },
-  { date: '04', spend: 1680, leads: 38, clicks: 1340 },
-  { date: '05', spend: 1320, leads: 28, clicks: 980 },
-  { date: '06', spend: 1550, leads: 35, clicks: 1200 },
-  { date: '07', spend: 1780, leads: 42, clicks: 1450 },
-  { date: '08', spend: 1420, leads: 30, clicks: 1100 },
-  { date: '09', spend: 1650, leads: 37, clicks: 1280 },
-  { date: '10', spend: 1890, leads: 45, clicks: 1520 },
-  { date: '11', spend: 1350, leads: 27, clicks: 950 },
-  { date: '12', spend: 1720, leads: 40, clicks: 1380 },
-  { date: '13', spend: 1580, leads: 33, clicks: 1150 },
-  { date: '14', spend: 1950, leads: 48, clicks: 1600 },
-];
-
-const generateDailyTableData = () => {
-  const rows = [];
-  for (let i = 1; i <= 14; i++) {
-    const spend = 800 + Math.random() * 1500;
-    const impressions = 15000 + Math.random() * 35000;
-    const reach = impressions * (0.7 + Math.random() * 0.25);
-    const clicks = 300 + Math.random() * 1200;
-    const leads = Math.floor(5 + Math.random() * 45);
-    const qualLeads = Math.floor(leads * (0.3 + Math.random() * 0.4));
-    rows.push({
-      date: `2026-02-${String(i).padStart(2, '0')}`,
-      utm: `utm_camp_${i}`,
-      spend: Math.round(spend * 100) / 100,
-      reach: Math.round(reach),
-      impressions: Math.round(impressions),
-      clicks: Math.round(clicks),
-      cpc: Math.round((spend / clicks) * 100) / 100,
-      cpm: Math.round((spend / (impressions / 1000)) * 100) / 100,
-      ctr: Math.round((clicks / reach) * 10000) / 100,
-      leadFormCv: Math.round((leads / clicks) * 10000) / 100,
-      leads,
-      cpl: Math.round((spend / Math.max(leads, 1)) * 100) / 100,
-      qualLeads,
-    });
-  }
-  return rows;
-};
-
-const demoPlatformData = [
-  { name: 'Meta Ads', spend: 8500, leads: 180, color: 'hsl(42, 87%, 55%)' },
-  { name: 'Google Ads', spend: 5200, leads: 120, color: 'hsl(160, 84%, 39%)' },
-  { name: 'TikTok Ads', spend: 3100, leads: 65, color: 'hsl(217, 91%, 60%)' },
-];
 
 interface ClientData {
   id: string; name: string; status: string; currency: string; timezone: string; notes: string | null;
@@ -86,6 +35,14 @@ interface Task {
 }
 interface ClientTarget {
   target_cpl: number | null; target_ctr: number | null; target_leads: number | null; target_roas: number | null;
+}
+interface DailyRow {
+  date: string;
+  spend: number;
+  impressions: number;
+  link_clicks: number;
+  leads: number;
+  campaign_id: string;
 }
 
 const statusStyles: Record<string, string> = {
@@ -101,6 +58,32 @@ const statusStyles: Record<string, string> = {
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
+// All possible daily table columns
+interface ColumnDef {
+  key: string;
+  label: string;
+  right?: boolean;
+  format: (row: any, totals: any, formatCurrency: any, formatNumber: any) => string;
+}
+
+function getColumnDefs(t: any): ColumnDef[] {
+  return [
+    { key: 'date', label: 'Date', format: (r) => r.date },
+    { key: 'spend', label: t('dashboard.spend'), right: true, format: (r, _, fc) => fc(r.spend) },
+    { key: 'impressions', label: t('dashboard.totalImpressions'), right: true, format: (r, _, __, fn) => fn(r.impressions) },
+    { key: 'reach', label: 'Reach', right: true, format: (r, _, __, fn) => fn(r.reach) },
+    { key: 'clicks', label: t('dashboard.totalClicks'), right: true, format: (r, _, __, fn) => fn(r.clicks) },
+    { key: 'cpc', label: 'CPC', right: true, format: (r, _, fc) => fc(r.cpc) },
+    { key: 'cpm', label: 'CPM', right: true, format: (r, _, fc) => fc(r.cpm) },
+    { key: 'ctr', label: t('dashboard.ctr'), right: true, format: (r) => `${r.ctr.toFixed(2)}%` },
+    { key: 'leadFormCv', label: 'Lead CV', right: true, format: (r) => `${r.leadFormCv.toFixed(2)}%` },
+    { key: 'leads', label: t('dashboard.leads'), right: true, format: (r, _, __, fn) => fn(r.leads) },
+    { key: 'cpl', label: t('dashboard.cpl'), right: true, format: (r, _, fc) => fc(r.cpl) },
+  ];
+}
+
+const DEFAULT_VISIBLE_COLUMNS = ['date', 'spend', 'impressions', 'clicks', 'cpc', 'ctr', 'leads', 'cpl'];
+
 // Google Sheet Connection sub-component
 function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
@@ -111,14 +94,12 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   useEffect(() => {
-    if (clientId.startsWith('demo-')) return;
     supabase.from('clients').select('google_sheet_url').eq('id', clientId).single().then(({ data }) => {
       if (data?.google_sheet_url) { setSheetUrl(data.google_sheet_url); setSavedUrl(data.google_sheet_url); }
     });
   }, [clientId]);
 
   const handleSaveUrl = async () => {
-    if (clientId.startsWith('demo-')) return;
     setSaving(true);
     await supabase.from('clients').update({ google_sheet_url: sheetUrl || null } as any).eq('id', clientId);
     setSavedUrl(sheetUrl);
@@ -127,11 +108,10 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
   };
 
   const handleSync = async () => {
-    if (!savedUrl || clientId.startsWith('demo-')) return;
+    if (!savedUrl) return;
     setSyncing(true);
     setLastResult(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('sync-google-sheet', {
         body: { client_id: clientId },
       });
@@ -164,12 +144,8 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
           <div className="space-y-2">
             <Label>{t('clients.googleSheetUrl')}</Label>
             <div className="flex gap-2">
-              <Input
-                value={sheetUrl}
-                onChange={(e) => setSheetUrl(e.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/..."
-                className="flex-1"
-              />
+              <Input value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..." className="flex-1" />
               <Button onClick={handleSaveUrl} disabled={saving || sheetUrl === savedUrl} variant="outline" size="sm">
                 {t('common.save')}
               </Button>
@@ -213,6 +189,17 @@ export default function ClientDetailPage() {
   const [targetCpl, setTargetCpl] = useState('');
   const [targetCtr, setTargetCtr] = useState('');
   const [targetLeads, setTargetLeads] = useState('');
+  const [dailyMetrics, setDailyMetrics] = useState<DailyRow[]>([]);
+
+  // Column manager state
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`daily-cols-${id}`);
+    return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
+  });
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`daily-col-order-${id}`);
+    return saved ? JSON.parse(saved) : getColumnDefs(t).map(c => c.key);
+  });
 
   // Task creation
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -223,54 +210,92 @@ export default function ClientDetailPage() {
   const isAgency = agencyRole === 'AgencyAdmin' || agencyRole === 'MediaBuyer';
   const isAdmin = agencyRole === 'AgencyAdmin';
 
-  const spendData = useMemo(() => generateDemoSpendData(), []);
-  const dailyData = useMemo(() => generateDailyTableData(), []);
+  const allColumns = useMemo(() => getColumnDefs(t), [t]);
+
+  // Compute daily table rows from real data
+  const dailyTableData = useMemo(() => {
+    // Group by date
+    const byDate: Record<string, { spend: number; impressions: number; clicks: number; leads: number }> = {};
+    dailyMetrics.forEach(r => {
+      if (!byDate[r.date]) byDate[r.date] = { spend: 0, impressions: 0, clicks: 0, leads: 0 };
+      byDate[r.date].spend += Number(r.spend);
+      byDate[r.date].impressions += r.impressions;
+      byDate[r.date].clicks += r.link_clicks;
+      byDate[r.date].leads += r.leads;
+    });
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({
+        date,
+        spend: Math.round(v.spend * 100) / 100,
+        impressions: v.impressions,
+        reach: Math.round(v.impressions * 0.85),
+        clicks: v.clicks,
+        cpc: v.clicks > 0 ? Math.round((v.spend / v.clicks) * 100) / 100 : 0,
+        cpm: v.impressions > 0 ? Math.round((v.spend / (v.impressions / 1000)) * 100) / 100 : 0,
+        ctr: v.impressions > 0 ? Math.round((v.clicks / v.impressions) * 10000) / 100 : 0,
+        leadFormCv: v.clicks > 0 ? Math.round((v.leads / v.clicks) * 10000) / 100 : 0,
+        leads: v.leads,
+        cpl: v.leads > 0 ? Math.round((v.spend / v.leads) * 100) / 100 : 0,
+      }));
+  }, [dailyMetrics]);
 
   const totals = useMemo(() => {
-    return dailyData.reduce(
+    return dailyTableData.reduce(
       (acc, row) => ({
         spend: acc.spend + row.spend, reach: acc.reach + row.reach,
         impressions: acc.impressions + row.impressions, clicks: acc.clicks + row.clicks,
-        leads: acc.leads + row.leads, qualLeads: acc.qualLeads + row.qualLeads,
+        leads: acc.leads + row.leads,
       }),
-      { spend: 0, reach: 0, impressions: 0, clicks: 0, leads: 0, qualLeads: 0 }
+      { spend: 0, reach: 0, impressions: 0, clicks: 0, leads: 0 }
     );
-  }, [dailyData]);
+  }, [dailyTableData]);
 
   const totalCpl = totals.leads > 0 ? totals.spend / totals.leads : 0;
-  const totalCtr = totals.reach > 0 ? (totals.clicks / totals.reach) * 100 : 0;
+  const totalCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+
+  // Chart data from real metrics
+  const chartData = useMemo(() => {
+    return dailyTableData.map(r => ({
+      date: r.date.slice(5),
+      spend: r.spend,
+      leads: r.leads,
+      clicks: r.clicks,
+    }));
+  }, [dailyTableData]);
 
   const fetchClient = useCallback(async () => {
     if (!id) return;
-    if (id.startsWith('demo-')) {
-      const demoNames: Record<string, string> = {
-        'demo-1': 'TechStart Inc.', 'demo-2': 'FashionBrand Pro',
-        'demo-3': 'HealthPlus Medical', 'demo-4': 'AutoDeal Motors', 'demo-5': 'EduLearn Academy',
-      };
-      setClient({ id, name: demoNames[id] || 'Demo Client', status: id === 'demo-4' ? 'paused' : 'active', currency: 'USD', timezone: 'Europe/Moscow', notes: null });
-      setLoading(false);
-      return;
-    }
     const { data, error } = await supabase.from('clients').select('id, name, status, currency, timezone, notes').eq('id', id).single();
     if (error || !data) { navigate('/clients'); return; }
     setClient(data);
     setLoading(false);
   }, [id, navigate]);
 
+  const fetchDailyMetrics = useCallback(async () => {
+    if (!id) return;
+    const { data } = await supabase
+      .from('daily_metrics')
+      .select('date, spend, impressions, link_clicks, leads, campaign_id')
+      .eq('client_id', id)
+      .order('date', { ascending: true });
+    if (data) setDailyMetrics(data);
+  }, [id]);
+
   const fetchCampaigns = useCallback(async () => {
-    if (!id || id.startsWith('demo-')) return;
+    if (!id) return;
     const { data } = await supabase.from('campaigns').select('id, campaign_name, status, platform_campaign_id').eq('client_id', id).order('campaign_name');
     if (data) setCampaigns(data);
   }, [id]);
 
   const fetchTasks = useCallback(async () => {
-    if (!id || id.startsWith('demo-')) return;
+    if (!id) return;
     const { data } = await supabase.from('tasks').select('id, title, description, status, due_date, created_at').eq('client_id', id).order('created_at', { ascending: false });
     if (data) setTasks(data);
   }, [id]);
 
   const fetchTargets = useCallback(async () => {
-    if (!id || id.startsWith('demo-')) return;
+    if (!id) return;
     const { data } = await supabase.from('client_targets').select('target_cpl, target_ctr, target_leads, target_roas').eq('client_id', id).maybeSingle();
     if (data) {
       setTargets(data);
@@ -282,13 +307,22 @@ export default function ClientDetailPage() {
 
   useEffect(() => {
     fetchClient();
+    fetchDailyMetrics();
     fetchCampaigns();
     fetchTasks();
     fetchTargets();
-  }, [fetchClient, fetchCampaigns, fetchTasks, fetchTargets]);
+  }, [fetchClient, fetchDailyMetrics, fetchCampaigns, fetchTasks, fetchTargets]);
+
+  // Save column preferences
+  useEffect(() => {
+    if (id) {
+      localStorage.setItem(`daily-cols-${id}`, JSON.stringify(visibleColumns));
+      localStorage.setItem(`daily-col-order-${id}`, JSON.stringify(columnOrder));
+    }
+  }, [visibleColumns, columnOrder, id]);
 
   const handleSaveTargets = async () => {
-    if (!id || id.startsWith('demo-')) return;
+    if (!id) return;
     setSavingTargets(true);
     const payload = {
       client_id: id,
@@ -307,7 +341,7 @@ export default function ClientDetailPage() {
   };
 
   const handleCreateTask = async () => {
-    if (!id || !newTaskTitle.trim() || id.startsWith('demo-')) return;
+    if (!id || !newTaskTitle.trim()) return;
     setCreatingTask(true);
     const { error } = await supabase.from('tasks').insert({
       client_id: id,
@@ -330,6 +364,27 @@ export default function ClientDetailPage() {
     toast.success(t('tasks.taskUpdated'));
     fetchTasks();
   };
+
+  const toggleColumn = (key: string) => {
+    setVisibleColumns(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const moveColumn = (key: string, direction: 'up' | 'down') => {
+    setColumnOrder(prev => {
+      const idx = prev.indexOf(key);
+      if (idx === -1) return prev;
+      const newIdx = direction === 'up' ? Math.max(0, idx - 1) : Math.min(prev.length - 1, idx + 1);
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      return next;
+    });
+  };
+
+  const orderedVisibleColumns = useMemo(() => {
+    return columnOrder.filter(key => visibleColumns.includes(key)).map(key => allColumns.find(c => c.key === key)!).filter(Boolean);
+  }, [columnOrder, visibleColumns, allColumns]);
 
   if (loading) {
     return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -399,110 +454,136 @@ export default function ClientDetailPage() {
                 <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.performance')}</CardTitle></CardHeader>
                 <CardContent>
                   <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={spendData}>
-                        <defs>
-                          <linearGradient id="clientSpendGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="clientLeadsGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
-                        <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                        <YAxis tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }} />
-                        <Area type="monotone" dataKey="spend" stroke="hsl(42, 87%, 55%)" fill="url(#clientSpendGrad)" strokeWidth={2} name="Spend ($)" />
-                        <Area type="monotone" dataKey="leads" stroke="hsl(160, 84%, 39%)" fill="url(#clientLeadsGrad)" strokeWidth={2} name="Leads" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    {chartData.length === 0 ? (
+                      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('common.noData')}</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
+                          <defs>
+                            <linearGradient id="clientSpendGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="clientLeadsGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
+                          <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                          <YAxis tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                          <Tooltip contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }} />
+                          <Area type="monotone" dataKey="spend" stroke="hsl(42, 87%, 55%)" fill="url(#clientSpendGrad)" strokeWidth={2} name="Spend ($)" />
+                          <Area type="monotone" dataKey="leads" stroke="hsl(160, 84%, 39%)" fill="url(#clientLeadsGrad)" strokeWidth={2} name="Leads" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </CardContent>
               </Card>
               <Card className="glass-card">
                 <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.spendByPlatform')}</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="h-[180px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={demoPlatformData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="spend">
-                          {demoPlatformData.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
-                        </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="space-y-2 mt-2">
-                    {demoPlatformData.map(p => (
-                      <div key={p.name} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
-                          <span className="text-muted-foreground">{p.name}</span>
-                        </div>
-                        <span className="font-mono font-medium">{formatCurrency(p.spend)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <div className="flex items-center justify-center h-[180px] text-muted-foreground text-sm">{t('common.noData')}</div>
                 </CardContent>
               </Card>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
               <Clock className="h-3.5 w-3.5" />
               <span>{t('dashboard.lastUpdated')}: {new Date().toLocaleDateString()}</span>
-              <span className="text-muted-foreground/40">·</span>
-              <span className="text-muted-foreground/60">{t('dashboard.dataDelayNote')}</span>
             </div>
           </TabsContent>
 
           {/* DAILY TABLE TAB */}
           <TabsContent value="daily" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Daily Report</h3>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Settings2 className="h-4 w-4" />
+                    Columns
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="end">
+                  <p className="text-sm font-semibold mb-2">Manage Columns</p>
+                  <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                    {columnOrder.map((key) => {
+                      const col = allColumns.find(c => c.key === key);
+                      if (!col) return null;
+                      return (
+                        <div key={key} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-secondary/50">
+                          <Checkbox
+                            checked={visibleColumns.includes(key)}
+                            onCheckedChange={() => toggleColumn(key)}
+                            id={`col-${key}`}
+                          />
+                          <label htmlFor={`col-${key}`} className="flex-1 text-xs cursor-pointer">{col.label}</label>
+                          <div className="flex gap-0.5">
+                            <button onClick={() => moveColumn(key, 'up')} className="text-muted-foreground hover:text-foreground p-0.5">
+                              <span className="text-[10px]">▲</span>
+                            </button>
+                            <button onClick={() => moveColumn(key, 'down')} className="text-muted-foreground hover:text-foreground p-0.5">
+                              <span className="text-[10px]">▼</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Button variant="ghost" size="sm" className="w-full mt-2 text-xs"
+                    onClick={() => { setVisibleColumns(DEFAULT_VISIBLE_COLUMNS); setColumnOrder(allColumns.map(c => c.key)); }}>
+                    Reset to default
+                  </Button>
+                </PopoverContent>
+              </Popover>
+            </div>
             <Card className="glass-card overflow-hidden">
               <CardContent className="p-0">
                 <div className="overflow-x-auto max-h-[600px]">
                   <table className="spreadsheet-table">
                     <thead>
                       <tr>
-                        <th>Date</th><th>UTM</th><th className="text-right">Spend ($)</th>
-                        <th className="text-right">Reach</th><th className="text-right">Clicks</th>
-                        <th className="text-right">CPC ($)</th><th className="text-right">CPM ($)</th>
-                        <th className="text-right">CTR (%)</th><th className="text-right">Lead CV (%)</th>
-                        <th className="text-right">Leads</th><th className="text-right">CPL ($)</th>
-                        <th className="text-right">Qual Leads</th>
+                        {orderedVisibleColumns.map(col => (
+                          <th key={col.key} className={col.right ? 'text-right' : ''}>{col.label}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {dailyData.map((row) => (
-                        <tr key={row.date}>
-                          <td className="text-foreground font-medium whitespace-nowrap">{row.date}</td>
-                          <td className="text-muted-foreground text-xs">{row.utm}</td>
-                          <td className="text-right text-foreground">{formatCurrency(row.spend)}</td>
-                          <td className="text-right text-muted-foreground">{formatNumber(row.reach)}</td>
-                          <td className="text-right text-muted-foreground">{formatNumber(row.clicks)}</td>
-                          <td className="text-right text-muted-foreground">{formatCurrency(row.cpc)}</td>
-                          <td className="text-right text-muted-foreground">{formatCurrency(row.cpm)}</td>
-                          <td className="text-right text-muted-foreground">{row.ctr.toFixed(2)}%</td>
-                          <td className="text-right text-muted-foreground">{row.leadFormCv.toFixed(2)}%</td>
-                          <td className="text-right text-foreground font-medium">{row.leads}</td>
-                          <td className="text-right text-foreground">{formatCurrency(row.cpl)}</td>
-                          <td className="text-right text-success font-medium">{row.qualLeads}</td>
-                        </tr>
-                      ))}
-                      <tr className="totals-row">
-                        <td className="text-foreground font-bold">TOTAL</td><td></td>
-                        <td className="text-right text-foreground">{formatCurrency(totals.spend)}</td>
-                        <td className="text-right text-foreground">{formatNumber(totals.reach)}</td>
-                        <td className="text-right text-foreground">{formatNumber(totals.clicks)}</td>
-                        <td className="text-right text-foreground">{formatCurrency(totals.clicks > 0 ? totals.spend / totals.clicks : 0)}</td>
-                        <td className="text-right text-foreground">{formatCurrency(totals.impressions > 0 ? totals.spend / (totals.impressions / 1000) : 0)}</td>
-                        <td className="text-right text-foreground">{totalCtr.toFixed(2)}%</td>
-                        <td className="text-right text-foreground">{totals.clicks > 0 ? ((totals.leads / totals.clicks) * 100).toFixed(2) : '0'}%</td>
-                        <td className="text-right text-foreground font-bold">{totals.leads}</td>
-                        <td className="text-right text-foreground">{formatCurrency(totalCpl)}</td>
-                        <td className="text-right text-success font-bold">{totals.qualLeads}</td>
-                      </tr>
+                      {dailyTableData.length === 0 ? (
+                        <tr><td colSpan={orderedVisibleColumns.length} className="text-center py-6 text-muted-foreground">{t('common.noData')}</td></tr>
+                      ) : (
+                        <>
+                          {dailyTableData.map((row) => (
+                            <tr key={row.date}>
+                              {orderedVisibleColumns.map(col => (
+                                <td key={col.key} className={col.right ? 'text-right' : col.key === 'date' ? 'text-foreground font-medium whitespace-nowrap' : 'text-muted-foreground'}>
+                                  {col.format(row, totals, formatCurrency, formatNumber)}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                          <tr className="totals-row">
+                            {orderedVisibleColumns.map(col => {
+                              if (col.key === 'date') return <td key={col.key} className="text-foreground font-bold">TOTAL</td>;
+                              const totalRow = {
+                                spend: totals.spend,
+                                impressions: totals.impressions,
+                                reach: totals.reach,
+                                clicks: totals.clicks,
+                                leads: totals.leads,
+                                cpc: totals.clicks > 0 ? totals.spend / totals.clicks : 0,
+                                cpm: totals.impressions > 0 ? totals.spend / (totals.impressions / 1000) : 0,
+                                ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0,
+                                leadFormCv: totals.clicks > 0 ? (totals.leads / totals.clicks) * 100 : 0,
+                                cpl: totalCpl,
+                                date: 'TOTAL',
+                              };
+                              return <td key={col.key} className={`${col.right ? 'text-right' : ''} text-foreground font-bold`}>{col.format(totalRow, totals, formatCurrency, formatNumber)}</td>;
+                            })}
+                          </tr>
+                        </>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -523,20 +604,12 @@ export default function ClientDetailPage() {
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <table className="spreadsheet-table">
-                      <thead>
-                        <tr>
-                          <th>Campaign</th>
-                          <th>{t('common.status')}</th>
-                          <th>Platform ID</th>
-                        </tr>
-                      </thead>
+                      <thead><tr><th>Campaign</th><th>{t('common.status')}</th><th>Platform ID</th></tr></thead>
                       <tbody>
                         {campaigns.map(c => (
                           <tr key={c.id}>
                             <td className="text-foreground font-medium font-sans">{c.campaign_name}</td>
-                            <td>
-                              <Badge variant="outline" className={statusStyles[c.status] || ''}>{c.status}</Badge>
-                            </td>
+                            <td><Badge variant="outline" className={statusStyles[c.status] || ''}>{c.status}</Badge></td>
                             <td className="text-muted-foreground text-xs">{c.platform_campaign_id}</td>
                           </tr>
                         ))}
