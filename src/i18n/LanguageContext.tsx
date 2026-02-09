@@ -9,7 +9,10 @@ interface LanguageContextType {
   formatNumber: (value: number) => string;
 }
 
-// Default fallback so the hook never throws during HMR / mount race
+const localeMap: Record<Language, string> = {
+  en: 'en-US', ru: 'ru-RU', it: 'it-IT', es: 'es-ES', ar: 'ar-SA', fr: 'fr-FR',
+};
+
 const defaultValue: LanguageContextType = {
   language: 'en',
   setLanguage: () => {},
@@ -25,23 +28,26 @@ const defaultValue: LanguageContextType = {
 const LanguageContext = createContext<LanguageContextType>(defaultValue);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem('app-language');
+    return (saved && ['en', 'ru', 'it', 'es', 'ar', 'fr'].includes(saved)) ? saved as Language : 'en';
+  });
+
+  const handleSetLanguage = useCallback((lang: Language) => {
+    setLanguage(lang);
+    localStorage.setItem('app-language', lang);
+    // Set dir for Arabic
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  }, []);
 
   const t = useCallback((key: TranslationKey): string => {
     const entry = translations[key];
     if (!entry) return key;
-    return entry[language] || key;
+    return entry[language] || entry.en || key;
   }, [language]);
 
   const formatCurrency = useCallback((value: number): string => {
-    if (language === 'ru') {
-      return new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-      }).format(value);
-    }
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(localeMap[language], {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
@@ -49,14 +55,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [language]);
 
   const formatNumber = useCallback((value: number): string => {
-    if (language === 'ru') {
-      return new Intl.NumberFormat('ru-RU').format(value);
-    }
-    return new Intl.NumberFormat('en-US').format(value);
+    return new Intl.NumberFormat(localeMap[language]).format(value);
   }, [language]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, formatCurrency, formatNumber }}>
+    <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t, formatCurrency, formatNumber }}>
       {children}
     </LanguageContext.Provider>
   );
