@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { DashboardFilters } from './dashboardData';
 import { getChartData } from './dashboardData';
+import type { ChartDataPoint } from '@/hooks/useDashboardMetrics';
 import { cn } from '@/lib/utils';
 
 interface Props {
   filters: DashboardFilters;
+  realChartData?: ChartDataPoint[];
+  hasRealData?: boolean;
   className?: string;
 }
 
@@ -18,12 +21,15 @@ const metrics = [
   { key: 'cpl', labelKey: 'dashboard.cpl' as const, color: 'hsl(217, 91%, 60%)', gradientId: 'cplGrad' },
 ];
 
-export default function PerformanceChart({ filters, className }: Props) {
+export default function PerformanceChart({ filters, realChartData, hasRealData, className }: Props) {
   const { t, formatCurrency, formatNumber } = useLanguage();
   const [visible, setVisible] = useState({ spend: true, leads: true, cpl: true });
   const [scaleMode, setScaleMode] = useState<'absolute' | 'normalized'>('absolute');
 
-  const rawData = useMemo(() => getChartData(filters), [filters]);
+  const rawData = useMemo(() => {
+    if (hasRealData && realChartData && realChartData.length > 0) return realChartData;
+    return getChartData(filters);
+  }, [filters, realChartData, hasRealData]);
 
   const data = useMemo(() => {
     if (scaleMode === 'normalized' && rawData.length > 0) {
@@ -80,20 +86,12 @@ export default function PerformanceChart({ filters, className }: Props) {
               </button>
             ))}
             <div className="flex bg-secondary/50 rounded-md p-0.5 ml-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setScaleMode('absolute')}
-                className={cn('h-6 px-2 text-[10px] rounded-sm', scaleMode === 'absolute' && 'bg-primary text-primary-foreground')}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setScaleMode('absolute')}
+                className={cn('h-6 px-2 text-[10px] rounded-sm', scaleMode === 'absolute' && 'bg-primary text-primary-foreground')}>
                 {t('dashboard.absolute')}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setScaleMode('normalized')}
-                className={cn('h-6 px-2 text-[10px] rounded-sm', scaleMode === 'normalized' && 'bg-primary text-primary-foreground')}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setScaleMode('normalized')}
+                className={cn('h-6 px-2 text-[10px] rounded-sm', scaleMode === 'normalized' && 'bg-primary text-primary-foreground')}>
                 {t('dashboard.normalized')}
               </Button>
             </div>
@@ -116,15 +114,9 @@ export default function PerformanceChart({ filters, className }: Props) {
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
               <YAxis tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
               <Tooltip content={<CustomTooltip />} />
-              {visible.spend && (
-                <Area type="monotone" dataKey="spend" stroke={metrics[0].color} fill={`url(#${metrics[0].gradientId})`} strokeWidth={2} />
-              )}
-              {visible.leads && (
-                <Area type="monotone" dataKey="leads" stroke={metrics[1].color} fill={`url(#${metrics[1].gradientId})`} strokeWidth={2} />
-              )}
-              {visible.cpl && (
-                <Area type="monotone" dataKey="cpl" stroke={metrics[2].color} fill={`url(#${metrics[2].gradientId})`} strokeWidth={2} />
-              )}
+              {visible.spend && <Area type="monotone" dataKey="spend" stroke={metrics[0].color} fill={`url(#${metrics[0].gradientId})`} strokeWidth={2} />}
+              {visible.leads && <Area type="monotone" dataKey="leads" stroke={metrics[1].color} fill={`url(#${metrics[1].gradientId})`} strokeWidth={2} />}
+              {visible.cpl && <Area type="monotone" dataKey="cpl" stroke={metrics[2].color} fill={`url(#${metrics[2].gradientId})`} strokeWidth={2} />}
             </AreaChart>
           </ResponsiveContainer>
         </div>

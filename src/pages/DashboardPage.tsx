@@ -11,6 +11,7 @@ import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import PlatformBreakdown from '@/components/dashboard/PlatformBreakdown';
 import ClientsPerformanceTable from '@/components/dashboard/ClientsPerformanceTable';
 import DataStatusPanel from '@/components/dashboard/DataStatusPanel';
+import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import type { DateRange, Comparison, PlatformFilter, DashboardFilters } from '@/components/dashboard/dashboardData';
 
 const container = {
@@ -31,17 +32,22 @@ export default function DashboardPage() {
   const [comparison, setComparison] = useState<Comparison>('previous_period');
   const [platform, setPlatform] = useState<PlatformFilter>('all');
   const [displayName, setDisplayName] = useState<string>('');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
 
   const filters: DashboardFilters = useMemo(
     () => ({ dateRange, comparison, platform }),
     [dateRange, comparison, platform]
   );
 
+  const { kpis, chartData, clientsData, loading: metricsLoading, hasRealData } = useDashboardMetrics({
+    ...filters,
+    customDateRange,
+  });
+
   const isAdmin = agencyRole === 'AgencyAdmin';
   const isBuyer = agencyRole === 'MediaBuyer';
   const isAgencyMember = isAdmin || isBuyer;
 
-  // Fetch display name from agency_users (synced with profile page)
   const fetchDisplayName = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
@@ -60,7 +66,6 @@ export default function DashboardPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      {/* Global Controls */}
       <DashboardControls
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
@@ -68,9 +73,10 @@ export default function DashboardPage() {
         onComparisonChange={setComparison}
         platform={platform}
         onPlatformChange={setPlatform}
+        customDateRange={customDateRange}
+        onCustomDateRangeChange={setCustomDateRange}
       />
 
-      {/* Welcome */}
       <motion.div variants={item} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
@@ -83,36 +89,31 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* KPI Cards — grouped */}
       <motion.div variants={item}>
-        <KpiSection filters={filters} />
+        <KpiSection filters={filters} realData={kpis} hasRealData={hasRealData} />
       </motion.div>
 
-      {/* Attention Required — agency members only */}
       {isAgencyMember && (
         <motion.div variants={item}>
           <AttentionRequired filters={filters} />
         </motion.div>
       )}
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <motion.div variants={item} className="lg:col-span-2">
-          <PerformanceChart filters={filters} />
+          <PerformanceChart filters={filters} realChartData={chartData} hasRealData={hasRealData} />
         </motion.div>
         <motion.div variants={item}>
           <PlatformBreakdown filters={filters} onPlatformChange={setPlatform} />
         </motion.div>
       </div>
 
-      {/* Clients Performance Table — agency members only */}
       {isAgencyMember && (
         <motion.div variants={item}>
-          <ClientsPerformanceTable filters={filters} />
+          <ClientsPerformanceTable filters={filters} realClientsData={clientsData} hasRealData={hasRealData} />
         </motion.div>
       )}
 
-      {/* Data Status */}
       <motion.div variants={item}>
         <DataStatusPanel isAdmin={isAdmin} />
       </motion.div>

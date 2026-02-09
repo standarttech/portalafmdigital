@@ -319,6 +319,29 @@ export const translations = {
   'targets.roas': { ru: 'Целевой ROAS', en: 'Target ROAS' },
   'targets.saved': { ru: 'Цели сохранены', en: 'Targets saved' },
   'targets.noTargets': { ru: 'Цели не установлены', en: 'No targets set' },
+
+  // Dashboard Apply
+  'dashboard.apply': { ru: 'Применить', en: 'Apply' },
+
+  // Client Management
+  'clients.editClient': { ru: 'Редактировать клиента', en: 'Edit Client' },
+  'clients.editClientDesc': { ru: 'Измените данные клиента', en: 'Edit client details' },
+  'clients.deleteClient': { ru: 'Удалить клиента', en: 'Delete Client' },
+  'clients.confirmDelete': { ru: 'Вы уверены, что хотите удалить этого клиента? Это действие необратимо.', en: 'Are you sure you want to delete this client? This action cannot be undone.' },
+  'clients.clientUpdated': { ru: 'Клиент обновлён', en: 'Client updated' },
+  'clients.clientDeleted': { ru: 'Клиент удалён', en: 'Client deleted' },
+  'clients.statusChanged': { ru: 'Статус изменён', en: 'Status changed' },
+  'clients.changeStatus': { ru: 'Изменить статус', en: 'Change Status' },
+
+  // Google Sheets
+  'clients.googleSheetUrl': { ru: 'URL Google Таблицы', en: 'Google Sheet URL' },
+  'clients.syncSheet': { ru: 'Синхронизировать', en: 'Sync Now' },
+  'clients.syncSheetDesc': { ru: 'Вставьте ссылку на Google Таблицу (должна быть доступна по ссылке)', en: 'Paste the Google Sheet URL (must be publicly accessible)' },
+  'clients.sheetSynced': { ru: 'Данные синхронизированы', en: 'Data synced' },
+  'clients.sheetSyncError': { ru: 'Ошибка синхронизации', en: 'Sync error' },
+  'clients.sheetUrlSaved': { ru: 'URL таблицы сохранён', en: 'Sheet URL saved' },
+  'clients.rowsSynced': { ru: 'строк синхронизировано', en: 'rows synced' },
+  'clients.connections': { ru: 'Подключения', en: 'Connections' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;
