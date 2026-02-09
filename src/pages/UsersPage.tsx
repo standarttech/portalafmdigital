@@ -243,19 +243,20 @@ export default function UsersPage() {
     setClientsDialogOpen(true);
   };
 
-  const handleAssignClient = async () => {
-    if (!clientsDialogUser || !assignClientId) return;
-    await supabase.from('client_users').insert({ client_id: assignClientId, user_id: clientsDialogUser.user_id, role: 'viewer' });
-    const { data } = await supabase.from('client_users').select('id, client_id, user_id, role').eq('user_id', clientsDialogUser.user_id);
-    setUserClientAssigns(data || []);
-    setAssignClientId('');
-    toast.success(t('common.save'));
-  };
-
-  const handleUnassignClient = async (assignId: string) => {
-    await supabase.from('client_users').delete().eq('id', assignId);
-    setUserClientAssigns(prev => prev.filter(a => a.id !== assignId));
-    toast.success(t('common.delete'));
+  const handleToggleClientAssignment = async (clientId: string, isAssigned: boolean) => {
+    if (!clientsDialogUser) return;
+    setSavingAssignments(true);
+    if (isAssigned) {
+      // Remove assignment
+      await supabase.from('client_users').delete().eq('user_id', clientsDialogUser.user_id).eq('client_id', clientId);
+      setUserClientAssigns(prev => prev.filter(a => a.client_id !== clientId));
+    } else {
+      // Add assignment
+      await supabase.from('client_users').insert({ client_id: clientId, user_id: clientsDialogUser.user_id, role: 'viewer' });
+      const { data } = await supabase.from('client_users').select('id, client_id, user_id, role').eq('user_id', clientsDialogUser.user_id);
+      setUserClientAssigns(data || []);
+    }
+    setSavingAssignments(false);
   };
 
   // Edit display name
@@ -587,26 +588,26 @@ export default function UsersPage() {
       <Dialog open={clientsDialogOpen} onOpenChange={setClientsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{t('users.assignedClients')}: {clientsDialogUser?.display_name}</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
-            {userClientAssigns.length === 0 ? (
+          <div className="space-y-1 py-2 max-h-[400px] overflow-y-auto">
+            {clients.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('common.noData')}</p>
-            ) : userClientAssigns.map(a => {
-              const cl = clients.find(c => c.id === a.client_id);
+            ) : clients.map(c => {
+              const isAssigned = userClientAssigns.some(a => a.client_id === c.id);
               return (
-                <div key={a.id} className="flex items-center justify-between bg-secondary/30 rounded-lg p-3">
-                  <span className="text-sm font-medium">{cl?.name || a.client_id.slice(0, 8)}</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleUnassignClient(a.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
+                <label key={c.id} className="flex items-center gap-3 cursor-pointer rounded-lg px-3 py-2.5 hover:bg-secondary/50 transition-colors">
+                  <Checkbox
+                    checked={isAssigned}
+                    onCheckedChange={() => handleToggleClientAssignment(c.id, isAssigned)}
+                    disabled={savingAssignments}
+                  />
+                  <span className={`text-sm ${isAssigned ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>{c.name}</span>
+                </label>
               );
             })}
-            <div className="flex gap-2 pt-2">
-              <Select value={assignClientId} onValueChange={setAssignClientId}>
-                <SelectTrigger className="flex-1"><SelectValue placeholder={t('users.selectClient')} /></SelectTrigger>
-                <SelectContent>{clients.filter(c => !userClientAssigns.some(a => a.client_id === c.id)).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-              </Select>
-              <Button onClick={handleAssignClient} disabled={!assignClientId}>{t('common.add')}</Button>
-            </div>
           </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">{t('common.close')}</Button></DialogClose>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
