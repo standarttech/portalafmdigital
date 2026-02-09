@@ -122,44 +122,21 @@ serve(async (req) => {
         user_metadata: { display_name: full_name || email.split("@")[0] },
       });
 
+      let resolvedUserId: string | null = newUser?.user?.id || null;
+
       if (createError) {
         console.error("Error creating user:", createError);
         // If user already exists, try to update password
         if (createError.message?.includes("already been registered") || createError.message?.includes("already exists")) {
-          // List users to find existing user
           const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
           const existingUser = listData?.users?.find(
             (u) => u.email?.toLowerCase() === email.toLowerCase().trim()
           );
           if (existingUser) {
+            resolvedUserId = existingUser.id;
             await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
               password: tempPassword,
             });
-
-            // Update user settings for force password change
-            const { data: existingSettings } = await supabaseAdmin
-              .from("user_settings")
-              .select("id")
-              .eq("user_id", existingUser.id)
-              .maybeSingle();
-
-            if (existingSettings) {
-              await supabaseAdmin
-                .from("user_settings")
-                .update({
-                  force_password_change: true,
-                  temp_password_expires_at: tempPasswordExpiresAt,
-                })
-                .eq("user_id", existingUser.id);
-            } else {
-              await supabaseAdmin.from("user_settings").insert({
-                user_id: existingUser.id,
-                force_password_change: true,
-                temp_password_expires_at: tempPasswordExpiresAt,
-                language: "ru",
-                theme: "dark",
-              });
-            }
           } else {
             return new Response(JSON.stringify({ error: createError.message }), {
               status: 400,
@@ -174,47 +151,68 @@ serve(async (req) => {
         }
       }
 
-      const userId = newUser?.user?.id;
-
-      if (userId) {
-        // Create agency_users or client_users record
+      if (resolvedUserId) {
+        // Create agency_users or client_users record (upsert-style: check if exists first)
         if (role === "Client" && client_id) {
-          await supabaseAdmin.from("client_users").insert({
-            user_id: userId,
-            client_id: client_id,
-            role: "Client",
-          });
+          const { data: existingCU } = await supabaseAdmin.from("client_users").select("id").eq("user_id", resolvedUserId).eq("client_id", client_id).maybeSingle();
+          if (!existingCU) {
+            await supabaseAdmin.from("client_users").insert({
+              user_id: resolvedUserId,
+              client_id: client_id,
+              role: "Client",
+            });
+          }
         } else {
-          await supabaseAdmin.from("agency_users").insert({
-            user_id: userId,
-            agency_role: role || "MediaBuyer",
-            display_name: full_name || email.split("@")[0],
+          const { data: existingAU } = await supabaseAdmin.from("agency_users").select("id").eq("user_id", resolvedUserId).maybeSingle();
+          if (!existingAU) {
+            await supabaseAdmin.from("agency_users").insert({
+              user_id: resolvedUserId,
+              agency_role: role || "MediaBuyer",
+              display_name: full_name || email.split("@")[0],
+            });
+          } else {
+            // Update role if changed
+            await supabaseAdmin.from("agency_users").update({
+              agency_role: role || "MediaBuyer",
+              display_name: full_name || email.split("@")[0],
+            }).eq("user_id", resolvedUserId);
+          }
+        }
+
+        // Create or update permissions
+        const perms = permissions || {};
+        const { data: existingPerms } = await supabaseAdmin.from("user_permissions").select("id").eq("user_id", resolvedUserId).maybeSingle();
+        if (!existingPerms) {
+          await supabaseAdmin.from("user_permissions").insert({
+            user_id: resolvedUserId,
+            can_add_clients: perms.can_add_clients || false,
+            can_edit_clients: perms.can_edit_clients || false,
+            can_assign_clients_to_users: perms.can_assign_clients_to_users || false,
+            can_connect_integrations: perms.can_connect_integrations || false,
+            can_run_manual_sync: perms.can_run_manual_sync || false,
+            can_edit_metrics_override: perms.can_edit_metrics_override || false,
+            can_manage_tasks: perms.can_manage_tasks || false,
+            can_publish_reports: perms.can_publish_reports || false,
+            can_view_audit_log: perms.can_view_audit_log || false,
           });
         }
 
-        // Create permissions
-        const perms = permissions || {};
-        await supabaseAdmin.from("user_permissions").insert({
-          user_id: userId,
-          can_add_clients: perms.can_add_clients || false,
-          can_edit_clients: perms.can_edit_clients || false,
-          can_assign_clients_to_users: perms.can_assign_clients_to_users || false,
-          can_connect_integrations: perms.can_connect_integrations || false,
-          can_run_manual_sync: perms.can_run_manual_sync || false,
-          can_edit_metrics_override: perms.can_edit_metrics_override || false,
-          can_manage_tasks: perms.can_manage_tasks || false,
-          can_publish_reports: perms.can_publish_reports || false,
-          can_view_audit_log: perms.can_view_audit_log || false,
-        });
-
-        // Create user settings with force_password_change
-        await supabaseAdmin.from("user_settings").insert({
-          user_id: userId,
-          force_password_change: true,
-          temp_password_expires_at: tempPasswordExpiresAt,
-          language: "ru",
-          theme: "dark",
-        });
+        // Create or update user settings with force_password_change
+        const { data: existingSettings } = await supabaseAdmin.from("user_settings").select("id").eq("user_id", resolvedUserId).maybeSingle();
+        if (existingSettings) {
+          await supabaseAdmin.from("user_settings").update({
+            force_password_change: true,
+            temp_password_expires_at: tempPasswordExpiresAt,
+          }).eq("user_id", resolvedUserId);
+        } else {
+          await supabaseAdmin.from("user_settings").insert({
+            user_id: resolvedUserId,
+            force_password_change: true,
+            temp_password_expires_at: tempPasswordExpiresAt,
+            language: "ru",
+            theme: "dark",
+          });
+        }
       }
 
       // Update access request if provided
