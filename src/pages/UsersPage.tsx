@@ -106,7 +106,7 @@ export default function UsersPage() {
   const [clientsDialogOpen, setClientsDialogOpen] = useState(false);
   const [clientsDialogUser, setClientsDialogUser] = useState<AgencyUser | null>(null);
   const [userClientAssigns, setUserClientAssigns] = useState<ClientUser[]>([]);
-  const [assignClientId, setAssignClientId] = useState('');
+  const [savingAssignments, setSavingAssignments] = useState(false);
 
   // Edit name dialog
   const [editNameOpen, setEditNameOpen] = useState(false);
