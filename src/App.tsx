@@ -22,6 +22,7 @@ import ClientDetailPage from "@/pages/ClientDetailPage";
 import ProfilePage from "@/pages/ProfilePage";
 import GlossaryPage from "@/pages/GlossaryPage";
 import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
+import MfaChallengePage from "@/pages/MfaChallengePage";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,9 +30,11 @@ import { supabase } from "@/integrations/supabase/client";
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { user, loading, adminExists } = useAuth();
+  const { user, loading, adminExists, signOut } = useAuth();
   const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(null);
   const [checkingFpc, setCheckingFpc] = useState(false);
+  const [mfaPending, setMfaPending] = useState(false);
+  const [checkingMfa, setCheckingMfa] = useState(false);
 
   const checkForcePasswordChange = useCallback(async () => {
     if (!user) {
@@ -58,11 +61,37 @@ function AppRoutes() {
     setCheckingFpc(false);
   }, [user]);
 
+  // Check MFA assurance level after login
+  const checkMfa = useCallback(async () => {
+    if (!user) {
+      setMfaPending(false);
+      return;
+    }
+    setCheckingMfa(true);
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (!error && data) {
+        // If user has MFA enrolled (nextLevel=aal2) but hasn't verified yet (currentLevel=aal1)
+        if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
+          setMfaPending(true);
+        } else {
+          setMfaPending(false);
+        }
+      } else {
+        setMfaPending(false);
+      }
+    } catch {
+      setMfaPending(false);
+    }
+    setCheckingMfa(false);
+  }, [user]);
+
   useEffect(() => {
     checkForcePasswordChange();
-  }, [checkForcePasswordChange]);
+    checkMfa();
+  }, [checkForcePasswordChange, checkMfa]);
 
-  if (loading || (user && forcePasswordChange === null) || checkingFpc) {
+  if (loading || (user && forcePasswordChange === null) || checkingFpc || checkingMfa) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -90,6 +119,16 @@ function AppRoutes() {
         <Route path="/invite" element={<InvitePage />} />
         <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
+    );
+  }
+
+  // MFA challenge gate
+  if (mfaPending) {
+    return (
+      <MfaChallengePage
+        onVerified={() => setMfaPending(false)}
+        onCancel={() => { signOut(); setMfaPending(false); }}
+      />
     );
   }
 
