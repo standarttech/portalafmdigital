@@ -1,10 +1,8 @@
 import { useMemo } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { DollarSign, TrendingUp, Users, MousePointerClick, BarChart3, Building2, Zap } from 'lucide-react';
-import type { DashboardFilters } from './dashboardData';
-import { getScaledValue, getChanges } from './dashboardData';
-import type { TranslationKey } from '@/i18n/translations';
 import type { KpiData } from '@/hooks/useDashboardMetrics';
+import type { TranslationKey } from '@/i18n/translations';
 import { motion } from 'framer-motion';
 import { LucideIcon } from 'lucide-react';
 
@@ -27,9 +25,7 @@ interface KpiGroup {
 }
 
 interface Props {
-  filters: DashboardFilters;
-  realData?: KpiData | null;
-  hasRealData?: boolean;
+  data: KpiData | null;
 }
 
 function pctChange(cur: number, prev: number): { value: string; positive: boolean } {
@@ -41,77 +37,48 @@ function pctChange(cur: number, prev: number): { value: string; positive: boolea
   };
 }
 
-export default function KpiSection({ filters, realData, hasRealData }: Props) {
+export default function KpiSection({ data }: Props) {
   const { t, formatCurrency, formatNumber } = useLanguage();
-  const changes = useMemo(() => getChanges(filters.comparison), [filters.comparison]);
 
   const sections: KpiGroup[] = useMemo(() => {
-    if (hasRealData && realData) {
-      const spendChange = pctChange(realData.spend, realData.prevSpend);
-      const leadsChange = pctChange(realData.leads, realData.prevLeads);
-      const clicksChange = pctChange(realData.clicks, realData.prevClicks);
-      const cplChange = pctChange(realData.cpl, realData.prevCpl);
-      // For CPL, lower is better, so flip positive
-      cplChange.positive = !cplChange.positive || realData.cpl === 0;
-      const ctrChange = pctChange(realData.ctr, realData.prevCtr);
+    const d = data || {
+      spend: 0, leads: 0, clicks: 0, impressions: 0, cpl: 0, ctr: 0,
+      activeClients: 0, activeCampaigns: 0,
+      prevSpend: 0, prevLeads: 0, prevClicks: 0, prevImpressions: 0, prevCpl: 0, prevCtr: 0,
+    };
 
-      return [
-        {
-          titleKey: 'dashboard.financial',
-          cards: [
-            { label: t('dashboard.totalSpend'), displayValue: formatCurrency(realData.spend), icon: DollarSign, change: spendChange.value, positive: !spendChange.positive },
-            { label: t('dashboard.costPerLead'), displayValue: formatCurrency(realData.cpl), icon: TrendingUp, change: cplChange.value, positive: cplChange.positive },
-          ],
-        },
-        {
-          titleKey: 'dashboard.performanceSection',
-          cards: [
-            { label: t('dashboard.totalLeads'), displayValue: formatNumber(realData.leads), icon: Users, change: leadsChange.value, positive: leadsChange.positive },
-            { label: t('dashboard.totalClicks'), displayValue: formatNumber(realData.clicks), icon: MousePointerClick, change: clicksChange.value, positive: clicksChange.positive },
-            { label: t('dashboard.ctr'), displayValue: `${realData.ctr.toFixed(2)}%`, icon: BarChart3, change: ctrChange.value, positive: ctrChange.positive },
-          ],
-        },
-        {
-          titleKey: 'dashboard.operations',
-          cards: [
-            { label: t('dashboard.activeClients'), displayValue: String(realData.activeClients), icon: Building2, change: '', positive: true },
-            { label: t('dashboard.activeCampaigns'), displayValue: String(realData.activeCampaigns), icon: Zap, change: '', positive: true },
-          ],
-        },
-      ];
-    }
-
-    // Fallback to demo data
-    const spend = getScaledValue(233900, filters);
-    const leads = Math.round(getScaledValue(4821, filters));
-    const clicks = Math.round(getScaledValue(142350, filters));
-    const cpl = leads > 0 ? spend / leads : 0;
+    const spendChange = pctChange(d.spend, d.prevSpend);
+    const leadsChange = pctChange(d.leads, d.prevLeads);
+    const clicksChange = pctChange(d.clicks, d.prevClicks);
+    const cplChange = pctChange(d.cpl, d.prevCpl);
+    cplChange.positive = !cplChange.positive || d.cpl === 0;
+    const ctrChange = pctChange(d.ctr, d.prevCtr);
 
     return [
       {
         titleKey: 'dashboard.financial',
         cards: [
-          { label: t('dashboard.totalSpend'), displayValue: formatCurrency(spend), icon: DollarSign, change: changes.spend.value, positive: changes.spend.positive },
-          { label: t('dashboard.costPerLead'), displayValue: formatCurrency(cpl), icon: TrendingUp, change: changes.cpl.value, positive: changes.cpl.positive },
+          { label: t('dashboard.totalSpend'), displayValue: formatCurrency(d.spend), icon: DollarSign, change: spendChange.value, positive: !spendChange.positive },
+          { label: t('dashboard.costPerLead'), displayValue: formatCurrency(d.cpl), icon: TrendingUp, change: cplChange.value, positive: cplChange.positive },
         ],
       },
       {
         titleKey: 'dashboard.performanceSection',
         cards: [
-          { label: t('dashboard.totalLeads'), displayValue: formatNumber(leads), icon: Users, change: changes.leads.value, positive: changes.leads.positive },
-          { label: t('dashboard.totalClicks'), displayValue: formatNumber(clicks), icon: MousePointerClick, change: changes.clicks.value, positive: changes.clicks.positive },
-          { label: t('dashboard.ctr'), displayValue: '1.14%', icon: BarChart3, change: changes.ctr.value, positive: changes.ctr.positive },
+          { label: t('dashboard.totalLeads'), displayValue: formatNumber(d.leads), icon: Users, change: leadsChange.value, positive: leadsChange.positive },
+          { label: t('dashboard.totalClicks'), displayValue: formatNumber(d.clicks), icon: MousePointerClick, change: clicksChange.value, positive: clicksChange.positive },
+          { label: t('dashboard.ctr'), displayValue: `${d.ctr.toFixed(2)}%`, icon: BarChart3, change: ctrChange.value, positive: ctrChange.positive },
         ],
       },
       {
         titleKey: 'dashboard.operations',
         cards: [
-          { label: t('dashboard.activeClients'), displayValue: '12', icon: Building2, change: changes.clients.value, positive: changes.clients.positive },
-          { label: t('dashboard.activeCampaigns'), displayValue: '47', icon: Zap, change: changes.campaigns.value, positive: changes.campaigns.positive },
+          { label: t('dashboard.activeClients'), displayValue: String(d.activeClients), icon: Building2, change: '', positive: true },
+          { label: t('dashboard.activeCampaigns'), displayValue: String(d.activeCampaigns), icon: Zap, change: '', positive: true },
         ],
       },
     ];
-  }, [filters, t, formatCurrency, formatNumber, changes, realData, hasRealData]);
+  }, [data, t, formatCurrency, formatNumber]);
 
   return (
     <div className="space-y-4">

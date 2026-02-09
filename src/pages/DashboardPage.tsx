@@ -39,7 +39,7 @@ export default function DashboardPage() {
     [dateRange, comparison, platform]
   );
 
-  const { kpis, chartData, clientsData, loading: metricsLoading, hasRealData } = useDashboardMetrics({
+  const { kpis, chartData, platformData, clientsData, loading: metricsLoading } = useDashboardMetrics({
     ...filters,
     customDateRange,
   });
@@ -90,27 +90,27 @@ export default function DashboardPage() {
       </motion.div>
 
       <motion.div variants={item}>
-        <KpiSection filters={filters} realData={kpis} hasRealData={hasRealData} />
+        <KpiSection data={kpis} />
       </motion.div>
 
       {isAgencyMember && (
         <motion.div variants={item}>
-          <AttentionRequired filters={filters} />
+          <AttentionRequired />
         </motion.div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <motion.div variants={item} className="lg:col-span-2">
-          <PerformanceChart filters={filters} realChartData={chartData} hasRealData={hasRealData} />
+          <PerformanceChart chartData={chartData} />
         </motion.div>
         <motion.div variants={item}>
-          <PlatformBreakdown filters={filters} onPlatformChange={setPlatform} />
+          <PlatformBreakdown platformData={platformData} onPlatformChange={setPlatform} />
         </motion.div>
       </div>
 
       {isAgencyMember && (
         <motion.div variants={item}>
-          <ClientsPerformanceTable filters={filters} realClientsData={clientsData} hasRealData={hasRealData} />
+          <ClientsPerformanceTable clientsData={clientsData} />
         </motion.div>
       )}
 
