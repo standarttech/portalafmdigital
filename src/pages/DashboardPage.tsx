@@ -78,13 +78,13 @@ export default function DashboardPage() {
       />
 
       <motion.div variants={item} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
             {t('dashboard.welcome')}, <span className="gradient-text">{displayName}</span>
           </h1>
-          <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-1">
-            <Info className="h-3.5 w-3.5" />
-            {t('dashboard.syncStatus')}
+          <p className="text-muted-foreground text-xs sm:text-sm flex items-center gap-1.5 mt-1">
+            <Info className="h-3.5 w-3.5 flex-shrink-0" />
+            <span className="truncate">{t('dashboard.syncStatus')}</span>
           </p>
         </div>
       </motion.div>

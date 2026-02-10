@@ -404,18 +404,18 @@ export default function ClientDetailPage() {
   ];
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 sm:space-y-6">
       {/* Header with client switcher */}
-      <motion.div variants={item} className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/clients')} className="flex-shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"><Building2 className="h-5 w-5 text-primary" /></div>
-          <div className="min-w-0">
+      <motion.div variants={item} className="flex items-start sm:items-center gap-2 sm:gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/clients')} className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10"><ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" /></Button>
+        <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0"><Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" /></div>
+          <div className="min-w-0 flex-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity">
-                  <h1 className="text-2xl font-bold text-foreground truncate">{client.name}</h1>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <button className="flex items-center gap-1 sm:gap-2 text-left hover:opacity-80 transition-opacity max-w-full">
+                  <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{client.name}</h1>
+                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto w-[250px]">
@@ -426,11 +426,11 @@ export default function ClientDetailPage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <div className="flex items-center gap-2 mt-0.5">
-              <Badge variant="outline" className={statusStyles[client.status] || ''}>{t(`common.${client.status}` as any)}</Badge>
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 flex-wrap">
+              <Badge variant="outline" className={`text-[10px] sm:text-xs ${statusStyles[client.status] || ''}`}>{t(`common.${client.status}` as any)}</Badge>
               {isAdmin ? (
                 <Select value={client.category} onValueChange={handleCategoryChange}>
-                  <SelectTrigger className="h-6 w-auto text-xs border-border/50 bg-secondary/50 px-2 py-0">
+                  <SelectTrigger className="h-5 sm:h-6 w-auto text-[10px] sm:text-xs border-border/50 bg-secondary/50 px-1.5 sm:px-2 py-0">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -440,39 +440,39 @@ export default function ClientDetailPage() {
                   </SelectContent>
                 </Select>
               ) : (
-                <Badge variant="outline" className="text-xs">{t(`clients.${category === 'info_product' ? 'infoProduct' : category === 'online_business' ? 'onlineBusiness' : category === 'local_business' ? 'localBusiness' : category === 'real_estate' ? 'realEstate' : category}` as TranslationKey)}</Badge>
+                <Badge variant="outline" className="text-[10px] sm:text-xs">{t(`clients.${category === 'info_product' ? 'infoProduct' : category === 'online_business' ? 'onlineBusiness' : category === 'local_business' ? 'localBusiness' : category === 'real_estate' ? 'realEstate' : category}` as TranslationKey)}</Badge>
               )}
-              <span className="text-xs text-muted-foreground">{client.timezone} · {client.currency}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">{client.timezone} · {client.currency}</span>
             </div>
           </div>
         </div>
       </motion.div>
 
       {/* Period selector */}
-      <motion.div variants={item} className="flex items-center gap-2 flex-wrap">
+      <motion.div variants={item} className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
         {periodOptions.map(p => (
-          <Button key={p.key} variant={period === p.key ? 'default' : 'outline'} size="sm" onClick={() => setPeriod(p.key)} className="text-xs">
+          <Button key={p.key} variant={period === p.key ? 'default' : 'outline'} size="sm" onClick={() => setPeriod(p.key)} className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0">
             {t(p.labelKey)}
           </Button>
         ))}
         {period === 'custom' && (
-          <div className="flex items-center gap-2">
-            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-7 sm:h-8 w-[120px] sm:w-[140px] text-[10px] sm:text-xs" />
             <span className="text-muted-foreground text-xs">→</span>
-            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-8 w-[140px] text-xs" />
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-7 sm:h-8 w-[120px] sm:w-[140px] text-[10px] sm:text-xs" />
           </div>
         )}
       </motion.div>
 
       {/* KPI Cards — category-specific */}
-      <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         {kpiCards.map(kpi => (
-          <div key={kpi.key} className="kpi-card py-4 px-4">
-            <div className="flex items-center gap-2 mb-2">
-              <kpi.icon className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted-foreground">{kpi.label}</span>
+          <div key={kpi.key} className="kpi-card py-3 px-3 sm:py-4 sm:px-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+              <kpi.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground truncate">{kpi.label}</span>
             </div>
-            <p className="text-lg font-bold text-foreground">{kpi.value}</p>
+            <p className="text-base sm:text-lg font-bold text-foreground truncate">{kpi.value}</p>
           </div>
         ))}
       </motion.div>
@@ -480,24 +480,24 @@ export default function ClientDetailPage() {
       {/* Tabs */}
       <motion.div variants={item}>
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="overview" className="gap-2"><BarChart3 className="h-4 w-4" />Overview</TabsTrigger>
-            <TabsTrigger value="daily" className="gap-2"><Table2 className="h-4 w-4" />Daily</TabsTrigger>
-            <TabsTrigger value="campaigns" className="gap-2"><Target className="h-4 w-4" />{t('campaigns.title')}</TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-2"><ListTodo className="h-4 w-4" />{t('tasks.title')}</TabsTrigger>
-            {isAdmin && <TabsTrigger value="targets" className="gap-2"><TrendingUp className="h-4 w-4" />{t('targets.title')}</TabsTrigger>}
-            <TabsTrigger value="reports" className="gap-2"><FileText className="h-4 w-4" />{t('nav.reports')}</TabsTrigger>
-            {isAgency && <TabsTrigger value="connections" className="gap-2"><Link2 className="h-4 w-4" />Connections</TabsTrigger>}
+          <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
+            <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">Overview</span><span className="sm:hidden">Overview</span></TabsTrigger>
+            <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Daily</TabsTrigger>
+            <TabsTrigger value="campaigns" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('campaigns.title')}</span><span className="sm:hidden">Camps</span></TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('tasks.title')}</span><span className="sm:hidden">Tasks</span></TabsTrigger>
+            {isAdmin && <TabsTrigger value="targets" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('targets.title')}</span><span className="sm:hidden">Targets</span></TabsTrigger>}
+            <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('nav.reports')}</span><span className="sm:hidden">Reports</span></TabsTrigger>
+            {isAgency && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">Connections</span><span className="sm:hidden">Conn</span></TabsTrigger>}
           </TabsList>
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
               <Card className="glass-card lg:col-span-2">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{t('dashboard.performance')}</CardTitle>
-                    <div className="flex items-center gap-2">
+                <CardHeader className="pb-2 px-3 sm:px-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <CardTitle className="text-sm sm:text-base">{t('dashboard.performance')}</CardTitle>
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                       {chartMetrics.map(m => (
                         <div key={m.key} className="flex items-center gap-1.5 text-xs">
                           <div className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
@@ -517,8 +517,8 @@ export default function ClientDetailPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
+                <CardContent className="px-2 sm:px-6">
+                  <div className="h-[220px] sm:h-[300px]">
                     {chartData.length === 0 ? (
                       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('common.noData')}</div>
                     ) : (
@@ -532,8 +532,8 @@ export default function ClientDetailPage() {
                             ))}
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
-                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                          <YAxis tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" interval="preserveStartEnd" />
+                          <YAxis tick={{ fontSize: 9, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" width={35} />
                           <Tooltip
                             contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }}
                             formatter={(value: number, name: string, props: any) => {
@@ -565,17 +565,17 @@ export default function ClientDetailPage() {
 
           {/* DAILY TABLE TAB */}
           <TabsContent value="daily" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Daily Report</h3>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <h3 className="text-base sm:text-lg font-semibold">Daily Report</h3>
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 {isAdmin && (
-                  <Button variant="outline" size="sm" onClick={handleSaveColumnsToDb} disabled={savingColumns} className="gap-2 text-xs">
-                    {savingColumns ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  <Button variant="outline" size="sm" onClick={handleSaveColumnsToDb} disabled={savingColumns} className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
+                    {savingColumns ? <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" /> : <Save className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
                     {t('common.save')}
                   </Button>
                 )}
                 <Popover>
-                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2"><Settings2 className="h-4 w-4" />{t('clients.manageColumns')}</Button></PopoverTrigger>
+                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8"><Settings2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('clients.manageColumns')}</span><span className="sm:hidden">Columns</span></Button></PopoverTrigger>
                   <PopoverContent className="w-72 p-3" align="end">
                     <p className="text-sm font-semibold mb-2">{t('clients.manageColumns')}</p>
                     <div className="space-y-0.5 max-h-[400px] overflow-y-auto">

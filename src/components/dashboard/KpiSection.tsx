@@ -87,22 +87,22 @@ export default function KpiSection({ data }: Props) {
           <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
             {t(section.titleKey)}
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             {section.cards.map((kpi) => (
               <motion.div key={kpi.label} variants={itemAnim} className="kpi-card">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <kpi.icon className="h-4 w-4 text-primary" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <kpi.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
                   </div>
                   {kpi.change && (
-                    <span className={`text-xs font-medium ${kpi.positive ? 'text-success' : 'text-destructive'}`}>
+                    <span className={`text-[10px] sm:text-xs font-medium ${kpi.positive ? 'text-success' : 'text-destructive'}`}>
                       {kpi.change}
                     </span>
                   )}
                 </div>
-                <p className="text-2xl font-bold text-foreground">{kpi.displayValue}</p>
-                <p className="text-xs text-muted-foreground mt-1">{kpi.label}</p>
-                <p className="text-[10px] text-muted-foreground/60 mt-0.5">{t('dashboard.vsPrevious')}</p>
+                <p className="text-lg sm:text-2xl font-bold text-foreground truncate">{kpi.displayValue}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">{kpi.label}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground/60 mt-0.5 hidden sm:block">{t('dashboard.vsPrevious')}</p>
               </motion.div>
             ))}
           </div>
