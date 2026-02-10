@@ -207,7 +207,7 @@ export default function UsersPage() {
 
   // Change role
   const handleChangeRole = async (u: AgencyUser, newRole: string) => {
-    await supabase.from('agency_users').update({ agency_role: newRole as 'AgencyAdmin' | 'MediaBuyer' }).eq('user_id', u.user_id);
+    await supabase.from('agency_users').update({ agency_role: newRole as any }).eq('user_id', u.user_id);
     toast.success(t('users.roleChanged')); fetchUsers();
   };
 
@@ -362,12 +362,13 @@ export default function UsersPage() {
                             <Select value={u.agency_role} onValueChange={(v) => handleChangeRole(u, v)} disabled={u.user_id === currentUser?.id}>
                               <SelectTrigger className="w-[140px] h-8">
                                 <Badge variant="outline" className={roleStyles[u.agency_role] || ''}>
-                                  {u.agency_role === 'AgencyAdmin' ? t('role.agencyAdmin') : t('role.mediaBuyer')}
+                                  {u.agency_role === 'AgencyAdmin' ? t('role.agencyAdmin') : u.agency_role === 'Client' ? t('role.client') : t('role.mediaBuyer')}
                                 </Badge>
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="AgencyAdmin">{t('role.agencyAdmin')}</SelectItem>
                                 <SelectItem value="MediaBuyer">{t('role.mediaBuyer')}</SelectItem>
+                                <SelectItem value="Client">{t('role.client')}</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>

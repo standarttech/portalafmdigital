@@ -1,12 +1,12 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
-import { Shield, Search, Clock, User } from 'lucide-react';
+import { Shield, Search, Clock, User, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useState, useEffect, useCallback } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -30,17 +30,63 @@ const actionStyles: Record<string, string> = {
   DELETE: 'bg-destructive/15 text-destructive border-destructive/20',
 };
 
-const entityLabels: Record<string, string> = {
-  clients: '👤 Client',
-  agency_users: '🔑 User',
-  campaigns: '📢 Campaign',
-  tasks: '✅ Task',
-  invitations: '💌 Invitation',
-  user_permissions: '🛡️ Permissions',
-  client_users: '🔗 Client Assignment',
-  reports: '📊 Report',
-  daily_metrics: '📈 Metrics',
+const entityIcons: Record<string, string> = {
+  clients: '👤', agency_users: '🔑', campaigns: '📢', tasks: '✅',
+  invitations: '💌', user_permissions: '🛡️', client_users: '🔗',
+  reports: '📊', access_requests: '📝',
 };
+
+const IMPORTANT_ENTITIES = ['clients', 'agency_users', 'campaigns', 'user_permissions', 'client_users', 'invitations', 'access_requests', 'reports'];
+
+function getHumanAction(entry: AuditEntry): string {
+  const d = entry.details;
+  const record = d?.new || d?.old;
+  const name = record?.name || record?.campaign_name || record?.title || record?.email || record?.display_name || '';
+  const entity = entry.entity_type || '';
+
+  if (entity === 'clients') {
+    if (entry.action === 'INSERT') return `Created client "${name}"`;
+    if (entry.action === 'UPDATE') return `Updated client "${name}"`;
+    if (entry.action === 'DELETE') return `Deleted client "${name}"`;
+  }
+  if (entity === 'agency_users') {
+    if (entry.action === 'INSERT') return `Added user "${name}"`;
+    if (entry.action === 'UPDATE') {
+      const oldRole = d?.old?.agency_role;
+      const newRole = d?.new?.agency_role;
+      if (oldRole && newRole && oldRole !== newRole) return `Changed role: ${name} → ${newRole}`;
+      return `Updated user "${name}"`;
+    }
+    if (entry.action === 'DELETE') return `Removed user "${name}"`;
+  }
+  if (entity === 'client_users') {
+    if (entry.action === 'INSERT') return `Assigned user to client`;
+    if (entry.action === 'DELETE') return `Unassigned user from client`;
+  }
+  if (entity === 'user_permissions') {
+    return entry.action === 'UPDATE' ? `Updated permissions` : `Set permissions`;
+  }
+  if (entity === 'campaigns') {
+    if (entry.action === 'INSERT') return `Created campaign "${name}"`;
+    if (entry.action === 'UPDATE') return `Updated campaign "${name}"`;
+  }
+  if (entity === 'invitations') {
+    if (entry.action === 'INSERT') return `Created invitation for ${record?.email || ''}`;
+    if (entry.action === 'UPDATE') return `Updated invitation for ${record?.email || ''}`;
+  }
+  if (entity === 'access_requests') {
+    if (entry.action === 'UPDATE') {
+      const status = record?.status;
+      return `${status === 'approved' ? 'Approved' : status === 'denied' ? 'Denied' : 'Updated'} access request from ${record?.email || name}`;
+    }
+    if (entry.action === 'INSERT') return `New access request from ${record?.email || name}`;
+  }
+  if (entity === 'reports') {
+    if (entry.action === 'INSERT') return `Created report "${name}"`;
+  }
+
+  return `${entry.action} ${entity}`;
+}
 
 export default function AuditPage() {
   const { t } = useLanguage();
@@ -48,8 +94,8 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [entityFilter, setEntityFilter] = useState('all');
-  const [actionFilter, setActionFilter] = useState('all');
   const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const fetchLogs = useCallback(async () => {
     const { data, error } = await supabase
@@ -59,9 +105,10 @@ export default function AuditPage() {
       .limit(200);
 
     if (!error && data) {
-      setLogs(data);
-      // Fetch user display names
-      const userIds = [...new Set(data.map(l => l.user_id).filter(Boolean))] as string[];
+      // Filter to important entities only + skip noisy daily_metrics
+      const filtered = data.filter(l => !l.entity_type || IMPORTANT_ENTITIES.includes(l.entity_type));
+      setLogs(filtered);
+      const userIds = [...new Set(filtered.map(l => l.user_id).filter(Boolean))] as string[];
       if (userIds.length > 0) {
         const { data: users } = await supabase
           .from('agency_users')
@@ -81,27 +128,45 @@ export default function AuditPage() {
 
   const filtered = logs.filter(l => {
     if (entityFilter !== 'all' && l.entity_type !== entityFilter) return false;
-    if (actionFilter !== 'all' && l.action !== actionFilter) return false;
     if (search) {
       const s = search.toLowerCase();
       const userName = l.user_id ? (userNames[l.user_id] || '').toLowerCase() : '';
-      return l.action.toLowerCase().includes(s) ||
-        (l.entity_type || '').toLowerCase().includes(s) ||
-        userName.includes(s) ||
-        JSON.stringify(l.details || {}).toLowerCase().includes(s);
+      const humanAction = getHumanAction(l).toLowerCase();
+      return humanAction.includes(s) || userName.includes(s);
     }
     return true;
   });
 
-  const formatDate = (iso: string) => new Date(iso).toLocaleString();
-
-  const getEntityDetail = (entry: AuditEntry) => {
-    if (!entry.details) return null;
-    const d = entry.details;
-    const record = d.new || d.old;
-    if (!record) return null;
-    return record.name || record.campaign_name || record.title || record.email || record.display_name || null;
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return d.toLocaleDateString();
   };
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Group by date
+  const groupedByDate = filtered.reduce<Record<string, AuditEntry[]>>((acc, entry) => {
+    const dateKey = new Date(entry.created_at).toLocaleDateString();
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(entry);
+    return acc;
+  }, {});
 
   const uniqueEntities = [...new Set(logs.map(l => l.entity_type).filter(Boolean))] as string[];
 
@@ -118,25 +183,14 @@ export default function AuditPage() {
           <Input placeholder={t('common.search') + '...'} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={entityFilter} onValueChange={setEntityFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder={t('audit.entity')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('common.all')}</SelectItem>
             {uniqueEntities.map(e => (
-              <SelectItem key={e} value={e}>{entityLabels[e] || e}</SelectItem>
+              <SelectItem key={e} value={e}>{entityIcons[e] || '📌'} {e.replace('_', ' ')}</SelectItem>
             ))}
-          </SelectContent>
-        </Select>
-        <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t('audit.action')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('common.all')}</SelectItem>
-            <SelectItem value="INSERT">{t('audit.INSERT')}</SelectItem>
-            <SelectItem value="UPDATE">{t('audit.UPDATE')}</SelectItem>
-            <SelectItem value="DELETE">{t('audit.DELETE')}</SelectItem>
           </SelectContent>
         </Select>
       </motion.div>
@@ -155,54 +209,53 @@ export default function AuditPage() {
             <p className="text-muted-foreground text-sm max-w-md">{t('audit.noLogsDesc')}</p>
           </div>
         ) : (
-          <Card className="glass-card overflow-hidden">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[160px]">{t('common.date')}</TableHead>
-                      <TableHead>{t('audit.action')}</TableHead>
-                      <TableHead>{t('audit.entity')}</TableHead>
-                      <TableHead>{t('common.details')}</TableHead>
-                      <TableHead>{t('common.user')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map(entry => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-3 w-3" />
-                            {formatDate(entry.created_at)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={`text-xs ${actionStyles[entry.action] || ''}`}>
-                            {t(`audit.${entry.action}` as TranslationKey) || entry.action}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          <span className="text-muted-foreground">
-                            {entry.entity_type ? (entityLabels[entry.entity_type] || entry.entity_type) : '—'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-foreground max-w-[200px] truncate">
-                          {getEntityDetail(entry) || (entry.entity_id ? `#${entry.entity_id.slice(0, 8)}` : '—')}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1.5">
-                            <User className="h-3 w-3" />
-                            {entry.user_id ? (userNames[entry.user_id] || entry.user_id.slice(0, 8) + '...') : '—'}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+          <div className="space-y-6">
+            {Object.entries(groupedByDate).map(([dateKey, entries]) => (
+              <div key={dateKey}>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-1">{dateKey}</p>
+                <div className="space-y-1.5">
+                  {entries.map(entry => {
+                    const isExpanded = expandedIds.has(entry.id);
+                    return (
+                      <Card key={entry.id} className="glass-card">
+                        <CardContent className="py-2.5 px-4">
+                          <button className="w-full flex items-start gap-3 text-left" onClick={() => toggleExpand(entry.id)}>
+                            <span className="text-base flex-shrink-0 mt-0.5">{entityIcons[entry.entity_type || ''] || '📌'}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground">{getHumanAction(entry)}</p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <Badge variant="outline" className={`text-[10px] py-0 ${actionStyles[entry.action] || ''}`}>
+                                  {t(`audit.${entry.action}` as TranslationKey) || entry.action}
+                                </Badge>
+                                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {entry.user_id ? (userNames[entry.user_id] || entry.user_id.slice(0, 8)) : 'System'}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDate(entry.created_at)}
+                                </span>
+                              </div>
+                            </div>
+                            {entry.details && (
+                              isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" /> : <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                            )}
+                          </button>
+                          {isExpanded && entry.details && (
+                            <div className="mt-3 pt-3 border-t border-border/30">
+                              <pre className="text-[11px] text-muted-foreground bg-secondary/30 rounded-md p-3 overflow-x-auto max-h-[200px]">
+                                {JSON.stringify(entry.details, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
         )}
       </motion.div>
     </motion.div>
