@@ -37,7 +37,8 @@ export default function PerformanceChart({ chartData, className }: Props) {
 
   const toggle = (k: string) => setVisible(p => ({ ...p, [k]: !p[k as keyof typeof p] }));
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const renderTooltip = (props: any) => {
+    const { active, payload, label } = props;
     if (!active || !payload) return null;
     const raw = chartData.find(d => d.date === label);
     if (!raw) return null;
@@ -95,7 +96,7 @@ export default function PerformanceChart({ chartData, className }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
                 <YAxis tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={renderTooltip} />
                 {visible.spend && <Area type="monotone" dataKey="spend" stroke={metrics[0].color} fill={`url(#${metrics[0].gradientId})`} strokeWidth={2} />}
                 {visible.leads && <Area type="monotone" dataKey="leads" stroke={metrics[1].color} fill={`url(#${metrics[1].gradientId})`} strokeWidth={2} />}
                 {visible.cpl && <Area type="monotone" dataKey="cpl" stroke={metrics[2].color} fill={`url(#${metrics[2].gradientId})`} strokeWidth={2} />}
