@@ -1231,6 +1231,27 @@ export type Database = {
       }
     }
     Functions: {
+      accept_invitation: {
+        Args: { _invitation_id: string }
+        Returns: undefined
+      }
+      get_invitation_by_token: {
+        Args: { _token: string }
+        Returns: {
+          email: string
+          expires_at: string
+          id: string
+          role: string
+          status: string
+        }[]
+      }
+      get_invitation_details: {
+        Args: { _invitation_id: string }
+        Returns: {
+          client_id: string
+          permissions: Json
+        }[]
+      }
       has_client_access: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
