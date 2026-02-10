@@ -6,7 +6,8 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
   BarChart3, FileText, Table2, Link2, ListTodo, Clock, Target, Plus, Loader2,
-  Sheet, RefreshCw, Settings2, ChevronDown,
+  Sheet, RefreshCw, Settings2, ChevronDown, ShoppingBag, ShoppingCart, CreditCard,
+  Save,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,12 +27,25 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { subDays, startOfMonth, endOfMonth, subMonths, format, startOfWeek, endOfWeek } from 'date-fns';
+import {
+  ALL_METRIC_COLUMNS, CATEGORY_DEFAULTS, CATEGORY_KPIS, CATEGORY_CHART_METRICS,
+  toClientCategory, computeDailyRow, formatMetricValue,
+  type ClientCategory,
+} from '@/components/dashboard/categoryMetrics';
+import type { TranslationKey } from '@/i18n/translations';
 
-interface ClientData { id: string; name: string; status: string; currency: string; timezone: string; notes: string | null; }
+interface ClientData {
+  id: string; name: string; status: string; currency: string; timezone: string;
+  notes: string | null; category: string; visible_columns: string[] | null;
+}
 interface Campaign { id: string; campaign_name: string; status: string; platform_campaign_id: string; }
 interface Task { id: string; title: string; description: string | null; status: string; due_date: string | null; created_at: string; }
 interface ClientTarget { target_cpl: number | null; target_ctr: number | null; target_leads: number | null; target_roas: number | null; }
-interface DailyRow { date: string; spend: number; impressions: number; link_clicks: number; leads: number; campaign_id: string; }
+interface DailyRow {
+  date: string; spend: number; impressions: number; link_clicks: number; leads: number;
+  add_to_cart: number | null; checkouts: number | null; purchases: number | null; revenue: number | null;
+  campaign_id: string;
+}
 interface ClientListItem { id: string; name: string; }
 
 const statusStyles: Record<string, string> = {
@@ -44,41 +58,26 @@ const statusStyles: Record<string, string> = {
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-interface ColumnDef { key: string; label: string; right?: boolean; format: (row: any, totals: any, fc: any, fn: any) => string; }
+const ICON_MAP: Record<string, any> = {
+  DollarSign, MousePointerClick, Users, Eye, TrendingUp, BarChart3,
+  ShoppingBag, ShoppingCart, CreditCard,
+};
 
-function getColumnDefs(t: any): ColumnDef[] {
-  return [
-    { key: 'date', label: 'Date', format: (r) => r.date },
-    { key: 'spend', label: t('dashboard.spend'), right: true, format: (r, _, fc) => fc(r.spend) },
-    { key: 'impressions', label: t('dashboard.totalImpressions'), right: true, format: (r, _, __, fn) => fn(r.impressions) },
-    { key: 'reach', label: 'Reach', right: true, format: (r, _, __, fn) => fn(r.reach) },
-    { key: 'clicks', label: t('dashboard.totalClicks'), right: true, format: (r, _, __, fn) => fn(r.clicks) },
-    { key: 'cpc', label: 'CPC', right: true, format: (r, _, fc) => fc(r.cpc) },
-    { key: 'cpm', label: 'CPM', right: true, format: (r, _, fc) => fc(r.cpm) },
-    { key: 'ctr', label: t('dashboard.ctr'), right: true, format: (r) => `${r.ctr.toFixed(2)}%` },
-    { key: 'leadFormCv', label: 'Lead CV', right: true, format: (r) => `${r.leadFormCv.toFixed(2)}%` },
-    { key: 'leads', label: t('dashboard.leads'), right: true, format: (r, _, __, fn) => fn(r.leads) },
-    { key: 'cpl', label: t('dashboard.cpl'), right: true, format: (r, _, fc) => fc(r.cpl) },
-  ];
-}
-
-const DEFAULT_VISIBLE_COLUMNS = ['date', 'spend', 'impressions', 'clicks', 'cpc', 'ctr', 'leads', 'cpl'];
-
-type PeriodKey = 'today' | 'yesterday' | 'week' | 'month' | 'last_month' | 'custom' | 'all';
+type PeriodKey = 'today' | 'yesterday' | 'last7' | 'last30' | 'last_month' | 'custom' | 'all';
 
 function getDateRange(period: PeriodKey): { from: string; to: string } | null {
   const today = new Date();
   switch (period) {
     case 'today': return { from: format(today, 'yyyy-MM-dd'), to: format(today, 'yyyy-MM-dd') };
     case 'yesterday': { const y = subDays(today, 1); return { from: format(y, 'yyyy-MM-dd'), to: format(y, 'yyyy-MM-dd') }; }
-    case 'week': return { from: format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'), to: format(endOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd') };
-    case 'month': return { from: format(startOfMonth(today), 'yyyy-MM-dd'), to: format(endOfMonth(today), 'yyyy-MM-dd') };
+    case 'last7': return { from: format(subDays(today, 7), 'yyyy-MM-dd'), to: format(today, 'yyyy-MM-dd') };
+    case 'last30': return { from: format(subDays(today, 30), 'yyyy-MM-dd'), to: format(today, 'yyyy-MM-dd') };
     case 'last_month': { const lm = subMonths(today, 1); return { from: format(startOfMonth(lm), 'yyyy-MM-dd'), to: format(endOfMonth(lm), 'yyyy-MM-dd') }; }
     default: return null;
   }
 }
 
-// Google Sheet Connection sub-component (kept as-is)
+// Google Sheet Connection sub-component
 function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
   const [sheetUrl, setSheetUrl] = useState('');
@@ -143,11 +142,6 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
               <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} />
             </div>
           )}
-          <div className="rounded-lg bg-secondary/30 p-4 text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground text-sm mb-2">Expected format (first row = headers):</p>
-            <p>Date | UTM | Spend | Reach | Click | Leads</p>
-            <p>09.01.2026 | afm_digital | $104.83 | 3194 | 34 | 4</p>
-          </div>
         </CardContent>
       </Card>
     </div>
@@ -170,31 +164,35 @@ export default function ClientDetailPage() {
   const [targetLeads, setTargetLeads] = useState('');
   const [dailyMetrics, setDailyMetrics] = useState<DailyRow[]>([]);
   const [allClients, setAllClients] = useState<ClientListItem[]>([]);
-
-  // Date period
   const [period, setPeriod] = useState<PeriodKey>('all');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
-
-  // Column manager
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
-    const saved = localStorage.getItem(`daily-cols-${id}`);
-    return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
-  });
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    const saved = localStorage.getItem(`daily-col-order-${id}`);
-    return saved ? JSON.parse(saved) : getColumnDefs(t).map(c => c.key);
-  });
-
-  // Task creation
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
+  const [savingColumns, setSavingColumns] = useState(false);
+
+  // Chart normalization — default ON
+  const [chartNormalized, setChartNormalized] = useState(true);
 
   const isAgency = agencyRole === 'AgencyAdmin' || agencyRole === 'MediaBuyer';
   const isAdmin = agencyRole === 'AgencyAdmin';
-  const allColumns = useMemo(() => getColumnDefs(t), [t]);
+
+  const category: ClientCategory = useMemo(() => toClientCategory(client?.category), [client?.category]);
+
+  // Visible columns: from DB (admin-saved) or category defaults
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  useEffect(() => {
+    if (client) {
+      const dbCols = client.visible_columns;
+      if (dbCols && Array.isArray(dbCols) && dbCols.length > 0) {
+        setVisibleColumns(dbCols);
+      } else {
+        setVisibleColumns(CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.other);
+      }
+    }
+  }, [client, category]);
 
   // Date filtering
   const dateRange = useMemo(() => {
@@ -208,48 +206,93 @@ export default function ClientDetailPage() {
     return dailyMetrics.filter(m => m.date >= dateRange.from && m.date <= dateRange.to);
   }, [dailyMetrics, dateRange]);
 
-  // Compute daily table rows
+  // Compute daily table rows with all metrics
   const dailyTableData = useMemo(() => {
-    const byDate: Record<string, { spend: number; impressions: number; clicks: number; leads: number }> = {};
+    const byDate: Record<string, { spend: number; impressions: number; clicks: number; leads: number; add_to_cart: number; checkouts: number; purchases: number; revenue: number }> = {};
     filteredMetrics.forEach(r => {
-      if (!byDate[r.date]) byDate[r.date] = { spend: 0, impressions: 0, clicks: 0, leads: 0 };
-      byDate[r.date].spend += Number(r.spend);
-      byDate[r.date].impressions += r.impressions;
-      byDate[r.date].clicks += r.link_clicks;
-      byDate[r.date].leads += r.leads;
+      if (!byDate[r.date]) byDate[r.date] = { spend: 0, impressions: 0, clicks: 0, leads: 0, add_to_cart: 0, checkouts: 0, purchases: 0, revenue: 0 };
+      const d = byDate[r.date];
+      d.spend += Number(r.spend);
+      d.impressions += r.impressions;
+      d.clicks += r.link_clicks;
+      d.leads += r.leads;
+      d.add_to_cart += r.add_to_cart || 0;
+      d.checkouts += r.checkouts || 0;
+      d.purchases += r.purchases || 0;
+      d.revenue += Number(r.revenue || 0);
     });
-    return Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, v]) => ({
-      date, spend: Math.round(v.spend * 100) / 100, impressions: v.impressions,
-      reach: Math.round(v.impressions * 0.85), clicks: v.clicks,
-      cpc: v.clicks > 0 ? Math.round((v.spend / v.clicks) * 100) / 100 : 0,
-      cpm: v.impressions > 0 ? Math.round((v.spend / (v.impressions / 1000)) * 100) / 100 : 0,
-      ctr: v.impressions > 0 ? Math.round((v.clicks / v.impressions) * 10000) / 100 : 0,
-      leadFormCv: v.clicks > 0 ? Math.round((v.leads / v.clicks) * 10000) / 100 : 0,
-      leads: v.leads, cpl: v.leads > 0 ? Math.round((v.spend / v.leads) * 100) / 100 : 0,
-    }));
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => computeDailyRow({ date, spend: v.spend, impressions: v.impressions, clicks: v.clicks, leads: v.leads, add_to_cart: v.add_to_cart, checkouts: v.checkouts, purchases: v.purchases, revenue: v.revenue }));
   }, [filteredMetrics]);
 
-  const totals = useMemo(() => dailyTableData.reduce((acc, row) => ({
-    spend: acc.spend + row.spend, reach: acc.reach + row.reach,
-    impressions: acc.impressions + row.impressions, clicks: acc.clicks + row.clicks, leads: acc.leads + row.leads,
-  }), { spend: 0, reach: 0, impressions: 0, clicks: 0, leads: 0 }), [dailyTableData]);
+  // Totals
+  const totals = useMemo(() => {
+    const t = dailyTableData.reduce((acc, r) => ({
+      spend: acc.spend + r.spend, impressions: acc.impressions + r.impressions, clicks: acc.clicks + r.clicks,
+      leads: acc.leads + r.leads, reach: acc.reach + r.reach, addToCart: acc.addToCart + r.addToCart,
+      checkouts: acc.checkouts + r.checkouts, purchases: acc.purchases + r.purchases, revenue: acc.revenue + r.revenue,
+    }), { spend: 0, impressions: 0, clicks: 0, leads: 0, reach: 0, addToCart: 0, checkouts: 0, purchases: 0, revenue: 0 });
+    return computeDailyRow({ date: 'TOTAL', spend: t.spend, impressions: t.impressions, clicks: t.clicks, leads: t.leads, add_to_cart: t.addToCart, checkouts: t.checkouts, purchases: t.purchases, revenue: t.revenue });
+  }, [dailyTableData]);
 
-  const totalCpl = totals.leads > 0 ? totals.spend / totals.leads : 0;
-  const totalCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+  // Chart data with normalization
+  const chartMetrics = CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other;
+  const chartData = useMemo(() => {
+    const raw = dailyTableData.map(r => {
+      const point: Record<string, any> = { date: r.date.slice(5) };
+      chartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; });
+      return point;
+    });
+    if (chartNormalized && raw.length > 0) {
+      const first = raw[0];
+      return raw.map(d => {
+        const norm: Record<string, any> = { date: d.date };
+        chartMetrics.forEach(m => {
+          const base = first[m.key] as number;
+          norm[m.key] = base > 0 ? Math.round((d[m.key] as number) / base * 100) : 0;
+        });
+        return norm;
+      });
+    }
+    return raw;
+  }, [dailyTableData, chartNormalized, chartMetrics]);
 
-  const chartData = useMemo(() => dailyTableData.map(r => ({ date: r.date.slice(5), spend: r.spend, leads: r.leads, clicks: r.clicks })), [dailyTableData]);
+  // KPI data
+  const kpiKeys = CATEGORY_KPIS[category] || CATEGORY_KPIS.other;
+  const kpiCards = useMemo(() => {
+    return kpiKeys.map(key => {
+      const col = ALL_METRIC_COLUMNS.find(c => c.key === key);
+      if (!col) return null;
+      const val = (totals as any)[key] || 0;
+      const iconName = {
+        spend: DollarSign, revenue: DollarSign, roas: TrendingUp,
+        leads: Users, purchases: ShoppingBag, addToCart: ShoppingCart,
+        checkouts: CreditCard, clicks: MousePointerClick, impressions: Eye,
+        cpl: TrendingUp, ctr: BarChart3, cpc: DollarSign, costPerPurchase: TrendingUp,
+      }[key] || BarChart3;
+      return { key, label: t(col.labelKey as TranslationKey), value: formatMetricValue(key, val, formatCurrency, formatNumber), icon: iconName };
+    }).filter(Boolean) as { key: string; label: string; value: string; icon: any }[];
+  }, [kpiKeys, totals, t, formatCurrency, formatNumber]);
 
+  // Data fetching
   const fetchClient = useCallback(async () => {
     if (!id) return;
-    const { data, error } = await supabase.from('clients').select('id, name, status, currency, timezone, notes').eq('id', id).single();
+    const { data, error } = await supabase.from('clients').select('id, name, status, currency, timezone, notes, category, visible_columns').eq('id', id).single();
     if (error || !data) { navigate('/clients'); return; }
-    setClient(data); setLoading(false);
+    setClient({
+      ...data,
+      visible_columns: data.visible_columns ? (Array.isArray(data.visible_columns) ? data.visible_columns : JSON.parse(data.visible_columns as any)) : null,
+    } as ClientData);
+    setLoading(false);
   }, [id, navigate]);
 
   const fetchDailyMetrics = useCallback(async () => {
     if (!id) return;
-    const { data } = await supabase.from('daily_metrics').select('date, spend, impressions, link_clicks, leads, campaign_id').eq('client_id', id).order('date', { ascending: true });
-    if (data) setDailyMetrics(data);
+    const { data } = await supabase.from('daily_metrics')
+      .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
+      .eq('client_id', id).order('date', { ascending: true });
+    if (data) setDailyMetrics(data as DailyRow[]);
   }, [id]);
 
   const fetchCampaigns = useCallback(async () => {
@@ -266,18 +309,18 @@ export default function ClientDetailPage() {
 
   const fetchTargets = useCallback(async () => {
     if (!id) return;
-    const { data } = await supabase.from('client_targets').select('target_cpl, target_ctr, target_leads, target_roas').eq('client_id', id).maybeSingle();
+    const { data } = await supabase.from('client_targets').select('target_cpl, target_ctr, target_leads, target_roas').eq('id', id).maybeSingle();
     if (data) { setTargets(data); setTargetCpl(data.target_cpl?.toString() || ''); setTargetCtr(data.target_ctr?.toString() || ''); setTargetLeads(data.target_leads?.toString() || ''); }
   }, [id]);
 
+  const [allClientsLoaded, setAllClientsLoaded] = useState(false);
   const fetchAllClients = useCallback(async () => {
     const { data } = await supabase.from('clients').select('id, name').order('name');
     setAllClients(data || []);
+    setAllClientsLoaded(true);
   }, []);
 
   useEffect(() => { fetchClient(); fetchDailyMetrics(); fetchCampaigns(); fetchTasks(); fetchTargets(); fetchAllClients(); }, [fetchClient, fetchDailyMetrics, fetchCampaigns, fetchTasks, fetchTargets, fetchAllClients]);
-
-  useEffect(() => { if (id) { localStorage.setItem(`daily-cols-${id}`, JSON.stringify(visibleColumns)); localStorage.setItem(`daily-col-order-${id}`, JSON.stringify(columnOrder)); } }, [visibleColumns, columnOrder, id]);
 
   const handleSaveTargets = async () => {
     if (!id) return;
@@ -304,38 +347,32 @@ export default function ClientDetailPage() {
   };
 
   const toggleColumn = (key: string) => setVisibleColumns(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
-  const moveColumn = (key: string, direction: 'up' | 'down') => {
-    setColumnOrder(prev => {
-      const idx = prev.indexOf(key); if (idx === -1) return prev;
-      const newIdx = direction === 'up' ? Math.max(0, idx - 1) : Math.min(prev.length - 1, idx + 1);
-      const next = [...prev]; [next[idx], next[newIdx]] = [next[newIdx], next[idx]]; return next;
-    });
+
+  // Admin save columns to DB (for all users)
+  const handleSaveColumnsToDb = async () => {
+    if (!id || !isAdmin) return;
+    setSavingColumns(true);
+    await supabase.from('clients').update({ visible_columns: visibleColumns as any } as any).eq('id', id);
+    setSavingColumns(false);
+    toast.success(t('clients.columnsSaved'));
   };
 
+  // Ordered visible column definitions
   const orderedVisibleColumns = useMemo(() =>
-    columnOrder.filter(key => visibleColumns.includes(key)).map(key => allColumns.find(c => c.key === key)!).filter(Boolean),
-    [columnOrder, visibleColumns, allColumns]);
+    visibleColumns.map(key => ALL_METRIC_COLUMNS.find(c => c.key === key)).filter(Boolean) as typeof ALL_METRIC_COLUMNS,
+    [visibleColumns]);
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   if (!client) return null;
 
-  const kpis = [
-    { label: t('dashboard.totalSpend'), value: formatCurrency(totals.spend), icon: DollarSign },
-    { label: t('dashboard.totalLeads'), value: formatNumber(totals.leads), icon: Users },
-    { label: t('dashboard.totalClicks'), value: formatNumber(totals.clicks), icon: MousePointerClick },
-    { label: t('dashboard.totalImpressions'), value: formatNumber(totals.impressions), icon: Eye },
-    { label: t('dashboard.costPerLead'), value: formatCurrency(totalCpl), icon: TrendingUp },
-    { label: t('dashboard.ctr'), value: `${totalCtr.toFixed(2)}%`, icon: BarChart3 },
-  ];
-
-  const periodOptions: { key: PeriodKey; label: string }[] = [
-    { key: 'all', label: t('common.all') },
-    { key: 'today', label: t('common.today') },
-    { key: 'yesterday', label: t('common.yesterday') },
-    { key: 'week', label: t('common.week') },
-    { key: 'month', label: t('common.month') },
-    { key: 'last_month', label: t('dashboard.vsPreviousMonth') },
-    { key: 'custom', label: t('common.custom') },
+  const periodOptions: { key: PeriodKey; labelKey: TranslationKey }[] = [
+    { key: 'all', labelKey: 'common.all' },
+    { key: 'today', labelKey: 'common.today' },
+    { key: 'yesterday', labelKey: 'common.yesterday' },
+    { key: 'last7', labelKey: 'dashboard.last7days' },
+    { key: 'last30', labelKey: 'dashboard.last30days' },
+    { key: 'last_month', labelKey: 'dashboard.lastMonth' },
+    { key: 'custom', labelKey: 'common.custom' },
   ];
 
   return (
@@ -346,7 +383,6 @@ export default function ClientDetailPage() {
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"><Building2 className="h-5 w-5 text-primary" /></div>
           <div className="min-w-0">
-            {/* Client switcher dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity">
@@ -364,6 +400,7 @@ export default function ClientDetailPage() {
             </DropdownMenu>
             <div className="flex items-center gap-2 mt-0.5">
               <Badge variant="outline" className={statusStyles[client.status] || ''}>{t(`common.${client.status}` as any)}</Badge>
+              <Badge variant="outline" className="text-xs">{t(`clients.${category === 'info_product' ? 'infoProduct' : category === 'online_business' ? 'onlineBusiness' : category === 'local_business' ? 'localBusiness' : category === 'real_estate' ? 'realEstate' : category}` as TranslationKey)}</Badge>
               <span className="text-xs text-muted-foreground">{client.timezone} · {client.currency}</span>
             </div>
           </div>
@@ -374,7 +411,7 @@ export default function ClientDetailPage() {
       <motion.div variants={item} className="flex items-center gap-2 flex-wrap">
         {periodOptions.map(p => (
           <Button key={p.key} variant={period === p.key ? 'default' : 'outline'} size="sm" onClick={() => setPeriod(p.key)} className="text-xs">
-            {p.label}
+            {t(p.labelKey)}
           </Button>
         ))}
         {period === 'custom' && (
@@ -386,10 +423,10 @@ export default function ClientDetailPage() {
         )}
       </motion.div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards — category-specific */}
       <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpis.map(kpi => (
-          <div key={kpi.label} className="kpi-card py-4 px-4">
+        {kpiCards.map(kpi => (
+          <div key={kpi.key} className="kpi-card py-4 px-4">
             <div className="flex items-center gap-2 mb-2">
               <kpi.icon className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">{kpi.label}</span>
@@ -416,7 +453,29 @@ export default function ClientDetailPage() {
           <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <Card className="glass-card lg:col-span-2">
-                <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.performance')}</CardTitle></CardHeader>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{t('dashboard.performance')}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {chartMetrics.map(m => (
+                        <div key={m.key} className="flex items-center gap-1.5 text-xs">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
+                          {t(ALL_METRIC_COLUMNS.find(c => c.key === m.key)?.labelKey as TranslationKey || 'common.noData')}
+                        </div>
+                      ))}
+                      <div className="flex bg-secondary/50 rounded-md p-0.5 ml-2">
+                        <Button variant="ghost" size="sm" onClick={() => setChartNormalized(false)}
+                          className={`h-6 px-2 text-[10px] rounded-sm ${!chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
+                          {t('dashboard.absolute')}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setChartNormalized(true)}
+                          className={`h-6 px-2 text-[10px] rounded-sm ${chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
+                          {t('dashboard.normalized')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
                 <CardContent>
                   <div className="h-[300px]">
                     {chartData.length === 0 ? (
@@ -425,19 +484,19 @@ export default function ClientDetailPage() {
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData}>
                           <defs>
-                            <linearGradient id="clientSpendGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0.3} /><stop offset="95%" stopColor="hsl(42, 87%, 55%)" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="clientLeadsGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} /><stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
-                            </linearGradient>
+                            {chartMetrics.map(m => (
+                              <linearGradient key={m.gradientId} id={m.gradientId} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={m.color} stopOpacity={0.3} /><stop offset="95%" stopColor={m.color} stopOpacity={0} />
+                              </linearGradient>
+                            ))}
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
-                          <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                          <YAxis tick={{ fontSize: 12, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                          <YAxis tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
                           <Tooltip contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }} />
-                          <Area type="monotone" dataKey="spend" stroke="hsl(42, 87%, 55%)" fill="url(#clientSpendGrad)" strokeWidth={2} name="Spend ($)" />
-                          <Area type="monotone" dataKey="leads" stroke="hsl(160, 84%, 39%)" fill="url(#clientLeadsGrad)" strokeWidth={2} name="Leads" />
+                          {chartMetrics.map(m => (
+                            <Area key={m.key} type="monotone" dataKey={m.key} stroke={m.color} fill={`url(#${m.gradientId})`} strokeWidth={2} />
+                          ))}
                         </AreaChart>
                       </ResponsiveContainer>
                     )}
@@ -458,36 +517,39 @@ export default function ClientDetailPage() {
           <TabsContent value="daily" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Daily Report</h3>
-              <Popover>
-                <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2"><Settings2 className="h-4 w-4" />Columns</Button></PopoverTrigger>
-                <PopoverContent className="w-64 p-3" align="end">
-                  <p className="text-sm font-semibold mb-2">Manage Columns</p>
-                  <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                    {columnOrder.map(key => {
-                      const col = allColumns.find(c => c.key === key);
-                      if (!col) return null;
-                      return (
-                        <div key={key} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-secondary/50">
-                          <Checkbox checked={visibleColumns.includes(key)} onCheckedChange={() => toggleColumn(key)} id={`col-${key}`} />
-                          <label htmlFor={`col-${key}`} className="flex-1 text-xs cursor-pointer">{col.label}</label>
-                          <div className="flex gap-0.5">
-                            <button onClick={() => moveColumn(key, 'up')} className="text-muted-foreground hover:text-foreground p-0.5"><span className="text-[10px]">▲</span></button>
-                            <button onClick={() => moveColumn(key, 'down')} className="text-muted-foreground hover:text-foreground p-0.5"><span className="text-[10px]">▼</span></button>
-                          </div>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={handleSaveColumnsToDb} disabled={savingColumns} className="gap-2 text-xs">
+                    {savingColumns ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    {t('common.save')}
+                  </Button>
+                )}
+                <Popover>
+                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2"><Settings2 className="h-4 w-4" />{t('clients.manageColumns')}</Button></PopoverTrigger>
+                  <PopoverContent className="w-72 p-3" align="end">
+                    <p className="text-sm font-semibold mb-2">{t('clients.manageColumns')}</p>
+                    <div className="space-y-0.5 max-h-[400px] overflow-y-auto">
+                      {ALL_METRIC_COLUMNS.map(col => (
+                        <div key={col.key} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-secondary/50">
+                          <Checkbox checked={visibleColumns.includes(col.key)} onCheckedChange={() => toggleColumn(col.key)} id={`col-${col.key}`} />
+                          <label htmlFor={`col-${col.key}`} className="flex-1 text-xs cursor-pointer">{t(col.labelKey as TranslationKey)}</label>
+                          <Badge variant="outline" className="text-[9px] px-1">{col.group}</Badge>
                         </div>
-                      );
-                    })}
-                  </div>
-                  <Button variant="ghost" size="sm" className="w-full mt-2 text-xs"
-                    onClick={() => { setVisibleColumns(DEFAULT_VISIBLE_COLUMNS); setColumnOrder(allColumns.map(c => c.key)); }}>Reset to default</Button>
-                </PopoverContent>
-              </Popover>
+                      ))}
+                    </div>
+                    <Button variant="ghost" size="sm" className="w-full mt-2 text-xs"
+                      onClick={() => setVisibleColumns(CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.other)}>
+                      Reset to {t(`clients.${category === 'info_product' ? 'infoProduct' : category === 'online_business' ? 'onlineBusiness' : category === 'local_business' ? 'localBusiness' : category === 'real_estate' ? 'realEstate' : category}` as TranslationKey)} defaults
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
             <Card className="glass-card overflow-hidden">
               <CardContent className="p-0">
                 <div className="overflow-x-auto max-h-[600px]">
                   <table className="spreadsheet-table">
-                    <thead><tr>{orderedVisibleColumns.map(col => <th key={col.key} className={col.right ? 'text-right' : ''}>{col.label}</th>)}</tr></thead>
+                    <thead><tr>{orderedVisibleColumns.map(col => <th key={col.key} className={col.right ? 'text-right' : ''}>{t(col.labelKey as TranslationKey)}</th>)}</tr></thead>
                     <tbody>
                       {dailyTableData.length === 0 ? (
                         <tr><td colSpan={orderedVisibleColumns.length} className="text-center py-6 text-muted-foreground">{t('common.noData')}</td></tr>
@@ -496,18 +558,15 @@ export default function ClientDetailPage() {
                           {dailyTableData.map(row => (
                             <tr key={row.date}>{orderedVisibleColumns.map(col => (
                               <td key={col.key} className={col.right ? 'text-right' : col.key === 'date' ? 'text-foreground font-medium whitespace-nowrap' : 'text-muted-foreground'}>
-                                {col.format(row, totals, formatCurrency, formatNumber)}
+                                {col.key === 'date' ? row.date : formatMetricValue(col.key, (row as any)[col.key] || 0, formatCurrency, formatNumber)}
                               </td>
                             ))}</tr>
                           ))}
-                          <tr className="totals-row">{orderedVisibleColumns.map(col => {
-                            if (col.key === 'date') return <td key={col.key} className="text-foreground font-bold">TOTAL</td>;
-                            const totalRow = { spend: totals.spend, impressions: totals.impressions, reach: totals.reach, clicks: totals.clicks, leads: totals.leads,
-                              cpc: totals.clicks > 0 ? totals.spend / totals.clicks : 0, cpm: totals.impressions > 0 ? totals.spend / (totals.impressions / 1000) : 0,
-                              ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0, leadFormCv: totals.clicks > 0 ? (totals.leads / totals.clicks) * 100 : 0,
-                              cpl: totalCpl, date: 'TOTAL' };
-                            return <td key={col.key} className={`${col.right ? 'text-right' : ''} text-foreground font-bold`}>{col.format(totalRow, totals, formatCurrency, formatNumber)}</td>;
-                          })}</tr>
+                          <tr className="totals-row">{orderedVisibleColumns.map(col => (
+                            <td key={col.key} className={`${col.right ? 'text-right' : ''} text-foreground font-bold`}>
+                              {col.key === 'date' ? 'TOTAL' : formatMetricValue(col.key, (totals as any)[col.key] || 0, formatCurrency, formatNumber)}
+                            </td>
+                          ))}</tr>
                         </>
                       )}
                     </tbody>
@@ -594,7 +653,7 @@ export default function ClientDetailPage() {
             </TabsContent>
           )}
 
-          {/* REPORTS TAB - placeholder link */}
+          {/* REPORTS TAB */}
           <TabsContent value="reports" className="space-y-4">
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <FileText className="h-10 w-10 text-muted-foreground mb-3" />

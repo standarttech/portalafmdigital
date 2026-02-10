@@ -29,50 +29,9 @@ interface Client {
   category: string;
 }
 
-export const CLIENT_CATEGORIES = [
-  { value: 'ecom', label: 'E-Commerce' },
-  { value: 'info_product', label: 'Info Product' },
-  { value: 'online_business', label: 'Online Business' },
-  { value: 'other', label: 'Other' },
-] as const;
+import { CATEGORY_OPTIONS, CATEGORY_DEFAULTS } from '@/components/dashboard/categoryMetrics';
 
-export type ClientCategory = typeof CLIENT_CATEGORIES[number]['value'];
-
-// Default metric columns per category
-export const CATEGORY_DEFAULT_COLUMNS: Record<string, string[]> = {
-  ecom: ['date', 'spend', 'impressions', 'clicks', 'cpc', 'cpm', 'ctr', 'add_to_cart', 'cart_rate', 'cp_cart', 'checkouts', 'purchases', 'purchase_rate', 'cpp', 'revenue', 'profit', 'roas'],
-  info_product: ['date', 'spend', 'impressions', 'clicks', 'cpc', 'cpm', 'ctr', 'registrations', 'webinar_visits', 'leads', 'cpl', 'sales', 'revenue', 'roas'],
-  online_business: ['date', 'spend', 'impressions', 'clicks', 'cpc', 'cpm', 'ctr', 'leads', 'cpl', 'lead_cv'],
-  other: ['date', 'spend', 'impressions', 'clicks', 'cpc', 'cpm', 'ctr', 'leads', 'cpl'],
-};
-
-// All possible metric columns with labels
-export const ALL_METRIC_COLUMNS = [
-  { key: 'date', label: 'Date' },
-  { key: 'spend', label: 'Spend' },
-  { key: 'impressions', label: 'Impressions' },
-  { key: 'reach', label: 'Reach' },
-  { key: 'clicks', label: 'Clicks' },
-  { key: 'cpc', label: 'CPC' },
-  { key: 'cpm', label: 'CPM' },
-  { key: 'ctr', label: 'CTR' },
-  { key: 'leads', label: 'Leads' },
-  { key: 'cpl', label: 'CPL' },
-  { key: 'lead_cv', label: 'Lead CV %' },
-  { key: 'add_to_cart', label: 'Add to Cart' },
-  { key: 'cart_rate', label: 'Cart Rate %' },
-  { key: 'cp_cart', label: 'CP Cart' },
-  { key: 'checkouts', label: 'Checkouts' },
-  { key: 'purchases', label: 'Purchases' },
-  { key: 'purchase_rate', label: 'Purchase Rate %' },
-  { key: 'cpp', label: 'CPP' },
-  { key: 'revenue', label: 'Revenue' },
-  { key: 'profit', label: 'Profit' },
-  { key: 'roas', label: 'ROAS' },
-  { key: 'registrations', label: 'Registrations' },
-  { key: 'webinar_visits', label: 'Webinar Visits' },
-  { key: 'sales', label: 'Sales' },
-] as const;
+export const CLIENT_CATEGORIES = CATEGORY_OPTIONS.map(o => ({ value: o.value, label: o.labelKey }));
 
 const statusStyles: Record<string, string> = {
   active: 'bg-success/15 text-success border-success/20',
@@ -84,6 +43,9 @@ const categoryStyles: Record<string, string> = {
   ecom: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
   info_product: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
   online_business: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  local_business: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
+  real_estate: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20',
+  saas: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
   other: 'bg-muted text-muted-foreground border-border',
 };
 
@@ -151,7 +113,7 @@ export default function ClientsPage() {
   const handleSave = async () => {
     if (!formName.trim()) { toast.error(t('auth.allFieldsRequired')); return; }
     setSaving(true);
-    const defaultCols = CATEGORY_DEFAULT_COLUMNS[formCategory] || CATEGORY_DEFAULT_COLUMNS.other;
+    const defaultCols = CATEGORY_DEFAULTS[formCategory as keyof typeof CATEGORY_DEFAULTS] || CATEGORY_DEFAULTS.other;
     if (editingClient) {
       const { error } = await supabase.from('clients').update({
         name: formName.trim(),
@@ -198,7 +160,10 @@ export default function ClientsPage() {
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
   const statusButtons = ['all', 'active', 'paused', 'inactive'] as const;
-  const getCategoryLabel = (cat: string) => CLIENT_CATEGORIES.find(c => c.value === cat)?.label || cat;
+  const getCategoryLabel = (cat: string) => {
+    const found = CLIENT_CATEGORIES.find(c => c.value === cat);
+    return found ? t(found.label as TranslationKey) : cat;
+  };
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -326,7 +291,7 @@ export default function ClientsPage() {
               <Select value={formCategory} onValueChange={setFormCategory}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {CLIENT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  {CLIENT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{t(c.label as TranslationKey)}</SelectItem>)}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
