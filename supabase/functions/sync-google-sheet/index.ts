@@ -127,6 +127,10 @@ async function syncClient(supabase: any, clientId: string) {
     const revenue = cleanNumber(findColumn(row, "revenue", "доход", "выручка", "amount", "сумма"));
     // Purchases
     const purchases = Math.round(cleanNumber(findColumn(row, "purchases", "покупки", "purchase")));
+    // Add to Cart
+    const addToCart = Math.round(cleanNumber(findColumn(row, "addtocart", "add_to_cart", "add to cart", "корзина", "добавления в корзину", "atc", "добавлениевкорзину")));
+    // Checkouts
+    const checkouts = Math.round(cleanNumber(findColumn(row, "checkouts", "checkout", "чекаут", "оформление", "оформления", "initiatedcheckout", "initiated_checkout", "initiated checkout")));
 
     if (!dateStr) continue;
     // Skip rows with no meaningful data
@@ -164,7 +168,7 @@ async function syncClient(supabase: any, clientId: string) {
       .from("daily_metrics").select("id")
       .eq("client_id", clientId).eq("campaign_id", campaignId).eq("date", normalizedDate).limit(1);
 
-    const metricData = { spend, impressions, link_clicks: clicks, leads, revenue, purchases };
+    const metricData = { spend, impressions, link_clicks: clicks, leads, revenue, purchases, add_to_cart: addToCart, checkouts };
 
     if (existingMetric && existingMetric.length > 0) {
       await supabase.from("daily_metrics").update(metricData).eq("id", existingMetric[0].id);
