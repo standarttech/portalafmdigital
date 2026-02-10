@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import {
   ArrowLeft, Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
   BarChart3, FileText, Table2, Link2, ListTodo, Clock, Target, Plus, Loader2,
   Sheet, RefreshCw, Settings2, ChevronDown, ShoppingBag, ShoppingCart, CreditCard,
-  Save,
+  Save, GripVertical,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import {
 } from 'recharts';
 import { subDays, startOfMonth, endOfMonth, subMonths, format, startOfWeek, endOfWeek } from 'date-fns';
 import {
-  ALL_METRIC_COLUMNS, CATEGORY_DEFAULTS, CATEGORY_KPIS, CATEGORY_CHART_METRICS,
+  ALL_METRIC_COLUMNS, CATEGORY_DEFAULTS, CATEGORY_KPIS, CATEGORY_CHART_METRICS, CATEGORY_OPTIONS,
   toClientCategory, computeDailyRow, formatMetricValue,
   type ClientCategory,
 } from '@/components/dashboard/categoryMetrics';
@@ -357,6 +357,33 @@ export default function ClientDetailPage() {
     toast.success(t('clients.columnsSaved'));
   };
 
+  // --- Category change ---
+  const handleCategoryChange = async (newCat: string) => {
+    if (!id || !isAdmin) return;
+    await supabase.from('clients').update({ category: newCat, visible_columns: null } as any).eq('id', id);
+    toast.success(t('clients.columnsSaved'));
+    fetchClient();
+  };
+
+  // --- Drag & Drop columns ---
+  const dragColRef = useRef<number | null>(null);
+  const dragOverColRef = useRef<number | null>(null);
+
+  const handleColDragStart = (idx: number) => { dragColRef.current = idx; };
+  const handleColDragEnter = (idx: number) => { dragOverColRef.current = idx; };
+  const handleColDragEnd = () => {
+    if (dragColRef.current === null || dragOverColRef.current === null) return;
+    const from = dragColRef.current;
+    const to = dragOverColRef.current;
+    if (from === to) { dragColRef.current = null; dragOverColRef.current = null; return; }
+    const updated = [...visibleColumns];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
+    setVisibleColumns(updated);
+    dragColRef.current = null;
+    dragOverColRef.current = null;
+  };
+
   // Ordered visible column definitions
   const orderedVisibleColumns = useMemo(() =>
     visibleColumns.map(key => ALL_METRIC_COLUMNS.find(c => c.key === key)).filter(Boolean) as typeof ALL_METRIC_COLUMNS,
@@ -400,7 +427,20 @@ export default function ClientDetailPage() {
             </DropdownMenu>
             <div className="flex items-center gap-2 mt-0.5">
               <Badge variant="outline" className={statusStyles[client.status] || ''}>{t(`common.${client.status}` as any)}</Badge>
-              <Badge variant="outline" className="text-xs">{t(`clients.${category === 'info_product' ? 'infoProduct' : category === 'online_business' ? 'onlineBusiness' : category === 'local_business' ? 'localBusiness' : category === 'real_estate' ? 'realEstate' : category}` as TranslationKey)}</Badge>
+              {isAdmin ? (
+                <Select value={client.category} onValueChange={handleCategoryChange}>
+                  <SelectTrigger className="h-6 w-auto text-xs border-border/50 bg-secondary/50 px-2 py-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORY_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey as TranslationKey)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge variant="outline" className="text-xs">{t(`clients.${category === 'info_product' ? 'infoProduct' : category === 'online_business' ? 'onlineBusiness' : category === 'local_business' ? 'localBusiness' : category === 'real_estate' ? 'realEstate' : category}` as TranslationKey)}</Badge>
+              )}
               <span className="text-xs text-muted-foreground">{client.timezone} · {client.currency}</span>
             </div>
           </div>
@@ -549,7 +589,19 @@ export default function ClientDetailPage() {
               <CardContent className="p-0">
                 <div className="overflow-x-auto max-h-[600px]">
                   <table className="spreadsheet-table">
-                    <thead><tr>{orderedVisibleColumns.map(col => <th key={col.key} className={col.right ? 'text-right' : ''}>{t(col.labelKey as TranslationKey)}</th>)}</tr></thead>
+                    <thead><tr>{orderedVisibleColumns.map((col, idx) => (
+                      <th key={col.key} className={`${col.right ? 'text-right' : ''} cursor-grab select-none`}
+                        draggable
+                        onDragStart={() => handleColDragStart(idx)}
+                        onDragEnter={() => handleColDragEnter(idx)}
+                        onDragEnd={handleColDragEnd}
+                        onDragOver={(e) => e.preventDefault()}>
+                        <span className="inline-flex items-center gap-1">
+                          <GripVertical className="h-3 w-3 text-muted-foreground/40" />
+                          {t(col.labelKey as TranslationKey)}
+                        </span>
+                      </th>
+                    ))}</tr></thead>
                     <tbody>
                       {dailyTableData.length === 0 ? (
                         <tr><td colSpan={orderedVisibleColumns.length} className="text-center py-6 text-muted-foreground">{t('common.noData')}</td></tr>
