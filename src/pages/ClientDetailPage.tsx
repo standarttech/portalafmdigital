@@ -9,6 +9,8 @@ import {
   Sheet, RefreshCw, Settings2, ChevronDown, ShoppingBag, ShoppingCart, CreditCard,
   Save, GripVertical,
 } from 'lucide-react';
+import ConversionFunnel from '@/components/client/ConversionFunnel';
+import ClientComments from '@/components/client/ClientComments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -553,11 +555,21 @@ export default function ClientDetailPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="glass-card">
-                <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.spendByPlatform')}</CardTitle></CardHeader>
-                <CardContent><div className="flex items-center justify-center h-[180px] text-muted-foreground text-sm">{t('common.noData')}</div></CardContent>
-              </Card>
+              <div className="space-y-4">
+                <ConversionFunnel
+                  impressions={totals.impressions}
+                  clicks={totals.clicks}
+                  leads={totals.leads}
+                  purchases={totals.purchases}
+                />
+                <Card className="glass-card">
+                  <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.spendByPlatform')}</CardTitle></CardHeader>
+                  <CardContent><div className="flex items-center justify-center h-[180px] text-muted-foreground text-sm">{t('common.noData')}</div></CardContent>
+                </Card>
+              </div>
             </div>
+            {/* Comments */}
+            <ClientComments clientId={id!} />
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
               <Clock className="h-3.5 w-3.5" /><span>{t('dashboard.lastUpdated')}: {new Date().toLocaleDateString()}</span>
             </div>

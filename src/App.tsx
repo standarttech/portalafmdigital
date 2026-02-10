@@ -13,6 +13,8 @@ import AdminSetupPage from "@/pages/AdminSetup";
 import RequestAccessPage from "@/pages/RequestAccessPage";
 import InvitePage from "@/pages/InvitePage";
 import DashboardPage from "@/pages/DashboardPage";
+import BudgetPlannerPage from "@/pages/BudgetPlannerPage";
+import CalendarPage from "@/pages/CalendarPage";
 import ClientsPage from "@/pages/ClientsPage";
 import UsersPage from "@/pages/UsersPage";
 import SyncMonitorPage from "@/pages/SyncMonitorPage";
@@ -153,6 +155,8 @@ function AppRoutes() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/decomposition" element={<DecompositionPage />} />
+        <Route path="/budget" element={<BudgetPlannerPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
       </Route>
