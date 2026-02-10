@@ -24,6 +24,7 @@ import ClientDetailPage from "@/pages/ClientDetailPage";
 import ProfilePage from "@/pages/ProfilePage";
 import GlossaryPage from "@/pages/GlossaryPage";
 import DecompositionPage from "@/pages/DecompositionPage";
+import ChatPage from "@/pages/ChatPage";
 import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import MfaChallengePage from "@/pages/MfaChallengePage";
 import NotFound from "./pages/NotFound";
@@ -157,6 +158,7 @@ function AppRoutes() {
         <Route path="/decomposition" element={<DecompositionPage />} />
         <Route path="/budget" element={<BudgetPlannerPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/chat" element={<ChatPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
       </Route>

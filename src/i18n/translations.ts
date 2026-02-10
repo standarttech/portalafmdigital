@@ -462,6 +462,25 @@ export const translations = {
   // Calendar
   'calendar.title': t('Activity Calendar', 'Календарь активности', 'Calendario attività', 'Calendario de actividades', 'تقويم النشاط', "Calendrier d'activités"),
   'calendar.subtitle': t('Tasks, annotations and campaign events', 'Задачи, аннотации и события кампаний', 'Attività, annotazioni ed eventi delle campagne', 'Tareas, anotaciones y eventos de campaña', 'المهام والتعليقات التوضيحية وأحداث الحملات', 'Tâches, annotations et événements de campagne'),
+
+  // Chat
+  'nav.chat': t('Chat', 'Чат', 'Chat', 'Chat', 'الدردشة', 'Chat'),
+  'chat.title': t('Messages', 'Сообщения', 'Messaggi', 'Mensajes', 'الرسائل', 'Messages'),
+  'chat.subtitle': t('Team and client communication', 'Командное и клиентское общение', 'Comunicazione team e clienti', 'Comunicación de equipo y clientes', 'تواصل الفريق والعملاء', 'Communication équipe et clients'),
+  'chat.createRoom': t('Create Room', 'Создать чат', 'Crea stanza', 'Crear sala', 'إنشاء غرفة', 'Créer un salon'),
+  'chat.rooms': t('Rooms', 'Чаты', 'Stanze', 'Salas', 'الغرف', 'Salons'),
+  'chat.noRooms': t('No rooms yet', 'Нет чатов', 'Nessuna stanza', 'Sin salas', 'لا توجد غرف', 'Aucun salon'),
+  'chat.selectRoom': t('Select a room to start chatting', 'Выберите чат', 'Seleziona una stanza', 'Selecciona una sala', 'اختر غرفة', 'Sélectionnez un salon'),
+  'chat.noMessages': t('No messages yet', 'Нет сообщений', 'Nessun messaggio', 'Sin mensajes', 'لا توجد رسائل', 'Aucun message'),
+  'chat.messagePlaceholder': t('Type a message...', 'Написать сообщение...', 'Scrivi un messaggio...', 'Escribe un mensaje...', 'اكتب رسالة...', 'Écrire un message...'),
+  'chat.roomCreated': t('Room created', 'Чат создан', 'Stanza creata', 'Sala creada', 'تم إنشاء الغرفة', 'Salon créé'),
+  'chat.roomNamePlaceholder': t('Room name', 'Название чата', 'Nome stanza', 'Nombre de sala', 'اسم الغرفة', 'Nom du salon'),
+  'chat.typeTeam': t('Team', 'Команда', 'Team', 'Equipo', 'فريق', 'Équipe'),
+  'chat.typeClient': t('Client', 'Клиент', 'Cliente', 'Cliente', 'عميل', 'Client'),
+  'chat.typeCustom': t('Custom', 'Кастомный', 'Personalizzato', 'Personalizado', 'مخصص', 'Personnalisé'),
+  'chat.selectClient': t('Select client', 'Выберите клиента', 'Seleziona cliente', 'Seleccionar cliente', 'اختر عميل', 'Sélectionner un client'),
+  'chat.members': t('Members', 'Участники', 'Membri', 'Miembros', 'الأعضاء', 'Membres'),
+  'chat.manageMembers': t('Manage Members', 'Управление участниками', 'Gestisci membri', 'Gestionar miembros', 'إدارة الأعضاء', 'Gérer les membres'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;

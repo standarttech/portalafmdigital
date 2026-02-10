@@ -557,10 +557,15 @@ export default function ClientDetailPage() {
               </Card>
               <div className="space-y-4">
                 <ConversionFunnel
-                  impressions={totals.impressions}
-                  clicks={totals.clicks}
-                  leads={totals.leads}
-                  purchases={totals.purchases}
+                  category={category}
+                  metrics={{
+                    impressions: totals.impressions,
+                    clicks: totals.clicks,
+                    leads: totals.leads,
+                    addToCart: totals.addToCart,
+                    checkouts: totals.checkouts,
+                    purchases: totals.purchases,
+                  }}
                 />
                 <Card className="glass-card">
                   <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.spendByPlatform')}</CardTitle></CardHeader>
