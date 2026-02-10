@@ -60,18 +60,18 @@ export default function ClientsPerformanceTable({ clientsData }: Props) {
 
   return (
     <Card className="glass-card">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="text-base font-semibold">{t('dashboard.clientsPerformance')}</CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
+      <CardHeader className="pb-2 px-3 sm:px-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <CardTitle className="text-sm sm:text-base font-semibold">{t('dashboard.clientsPerformance')}</CardTitle>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder={t('common.search') + '...'} className="h-7 w-36 pl-8 text-xs bg-secondary/50 border-border/50" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={t('common.search') + '...'} className="h-7 w-full sm:w-36 pl-8 text-xs bg-secondary/50 border-border/50" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <div className="flex items-center gap-0.5 bg-secondary/50 rounded-md p-0.5">
+            <div className="flex items-center gap-0.5 bg-secondary/50 rounded-md p-0.5 overflow-x-auto scrollbar-none">
               {statusButtons.map(s => (
                 <Button key={s} variant="ghost" size="sm" onClick={() => setStatusFilter(s)}
-                  className={cn('h-6 px-2 text-[10px] rounded-sm', statusFilter === s && 'bg-primary text-primary-foreground')}>
+                  className={cn('h-6 px-2 text-[10px] rounded-sm flex-shrink-0', statusFilter === s && 'bg-primary text-primary-foreground')}>
                   {s === 'all' ? t('dashboard.allStatuses') : t(`common.${s}` as TranslationKey)}
                 </Button>
               ))}

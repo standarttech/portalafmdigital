@@ -27,14 +27,14 @@ export default function AppHeader() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 lg:px-6">
-      <div className="flex items-center gap-3">
-        <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+    <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-3 sm:px-4 lg:px-6">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <span className="text-[10px] sm:text-xs text-muted-foreground font-mono uppercase tracking-wider truncate">
           {agencyRole === 'AgencyAdmin' ? t('role.agencyAdmin') : agencyRole === 'MediaBuyer' ? t('role.mediaBuyer') : ''}
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         {/* Theme Toggle */}
         <Button variant="ghost" size="sm" onClick={toggleTheme} className="gap-1.5 text-muted-foreground">
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -65,9 +65,9 @@ export default function AppHeader() {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+            <Button variant="ghost" size="sm" className="gap-1 sm:gap-1.5 text-muted-foreground px-1.5 sm:px-3">
               <User className="h-4 w-4" />
-              <span className="text-xs font-medium max-w-[120px] truncate">
+              <span className="text-xs font-medium max-w-[80px] sm:max-w-[120px] truncate hidden sm:inline">
                 {user?.email}
               </span>
               <ChevronDown className="h-3 w-3" />

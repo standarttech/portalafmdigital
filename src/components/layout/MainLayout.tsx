@@ -17,7 +17,7 @@ export default function MainLayout() {
         isMobile ? 'ml-0' : collapsed ? 'ml-16' : 'ml-60'
       )}>
         <AppHeader />
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto">
           <Outlet />
         </main>
       </div>

@@ -77,9 +77,9 @@ export default function DashboardControls({
   };
 
   return (
-    <div className="sticky top-0 z-20 -mx-4 lg:-mx-6 px-4 lg:px-6 py-3 bg-background/80 backdrop-blur-lg border-b border-border/50 flex flex-wrap items-center gap-3">
+    <div className="sticky top-0 z-20 -mx-4 lg:-mx-6 px-4 lg:px-6 py-3 bg-background/80 backdrop-blur-lg border-b border-border/50 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-3">
       {/* Date Range */}
-      <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5">
+      <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5 overflow-x-auto max-w-full scrollbar-none">
         {dateRangeOptions.map((opt) => (
           <Button
             key={opt.value}
@@ -179,7 +179,7 @@ export default function DashboardControls({
       )}
 
       {/* Platform Filter */}
-      <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5 ml-auto">
+      <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5 overflow-x-auto max-w-full scrollbar-none sm:ml-auto">
         {platformOptions.map((opt) => (
           <Button
             key={opt.value}
