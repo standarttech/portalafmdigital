@@ -441,6 +441,27 @@ export const translations = {
   // Nav
   'nav.decomposition': t('Decomposition', 'Декомпозиция', 'Decomposizione', 'Descomposición', 'التحليل', 'Décomposition'),
   'nav.tools': t('Tools', 'Инструменты', 'Strumenti', 'Herramientas', 'الأدوات', 'Outils'),
+  'nav.budget': t('Budget Planner', 'Бюджетирование', 'Pianificatore budget', 'Planificador de presupuesto', 'مخطط الميزانية', 'Planificateur de budget'),
+  'nav.calendar': t('Calendar', 'Календарь', 'Calendario', 'Calendario', 'التقويم', 'Calendrier'),
+
+  // Funnel
+  'funnel.title': t('Conversion Funnel', 'Воронка конверсий', 'Funnel di conversione', 'Embudo de conversión', 'قمع التحويل', 'Entonnoir de conversion'),
+
+  // Comments
+  'comments.title': t('Comments', 'Комментарии', 'Commenti', 'Comentarios', 'التعليقات', 'Commentaires'),
+  'comments.placeholder': t('Write a comment...', 'Написать комментарий...', 'Scrivi un commento...', 'Escribe un comentario...', 'اكتب تعليقًا...', 'Écrire un commentaire...'),
+  'comments.noComments': t('No comments yet', 'Комментариев пока нет', 'Nessun commento ancora', 'Sin comentarios aún', 'لا توجد تعليقات بعد', 'Pas encore de commentaires'),
+
+  // Budget
+  'budget.title': t('Budget Planner', 'Планировщик бюджета', 'Pianificatore budget', 'Planificador de presupuesto', 'مخطط الميزانية', 'Planificateur de budget'),
+  'budget.subtitle': t('Plan and track monthly budgets vs actual performance', 'Планируйте и отслеживайте бюджеты по месяцам', 'Pianifica e monitora i budget mensili', 'Planifica y rastrea presupuestos mensuales', 'خطط وتتبع الميزانيات الشهرية', 'Planifiez et suivez les budgets mensuels'),
+  'budget.addPlan': t('Add Budget Plan', 'Добавить бюджет', 'Aggiungi piano budget', 'Añadir plan de presupuesto', 'إضافة خطة الميزانية', 'Ajouter un plan de budget'),
+  'budget.plannedSpend': t('Planned Spend', 'План расходов', 'Spesa pianificata', 'Gasto planificado', 'الإنفاق المخطط', 'Dépenses prévues'),
+  'budget.plannedLeads': t('Planned Leads', 'План лидов', 'Lead pianificati', 'Leads planificados', 'العملاء المخططون', 'Leads prévus'),
+
+  // Calendar
+  'calendar.title': t('Activity Calendar', 'Календарь активности', 'Calendario attività', 'Calendario de actividades', 'تقويم النشاط', "Calendrier d'activités"),
+  'calendar.subtitle': t('Tasks, annotations and campaign events', 'Задачи, аннотации и события кампаний', 'Attività, annotazioni ed eventi delle campagne', 'Tareas, anotaciones y eventos de campaña', 'المهام والتعليقات التوضيحية وأحداث الحملات', 'Tâches, annotations et événements de campagne'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;

@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Languages, LogOut, User, ChevronDown, Sun, Moon } from 'lucide-react';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,8 @@ export default function AppHeader() {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
+        {/* Notification Center */}
+        <NotificationCenter />
         {/* Theme Toggle */}
         <Button variant="ghost" size="sm" onClick={toggleTheme} className="gap-1.5 text-muted-foreground">
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
