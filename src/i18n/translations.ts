@@ -385,6 +385,30 @@ export const translations = {
   'glossary.searchPlaceholder': t('Search terms...', 'Поиск терминов...', 'Cerca termini...', 'Buscar términos...', 'البحث عن المصطلحات...', 'Rechercher des termes...'),
   'glossary.origin': t('Origin', 'Происхождение', 'Origine', 'Origen', 'الأصل', 'Origine'),
   'glossary.noResults': t('No terms found', 'Термины не найдены', 'Nessun termine trovato', 'No se encontraron términos', 'لم يتم العثور على مصطلحات', 'Aucun terme trouvé'),
+
+  // Decomposition
+  'decomposition.title': t('Decomposition', 'Декомпозиция', 'Decomposizione', 'Descomposición', 'التحليل', 'Décomposition'),
+  'decomposition.subtitle': t('Plan and project campaign performance with funnel analysis', 'Планируйте и прогнозируйте эффективность кампаний с анализом воронки', "Pianifica e proietta le performance della campagna con l'analisi dell'imbuto", 'Planifica y proyecta el rendimiento de la campaña con análisis de embudo', 'خطط وتوقع أداء الحملة مع تحليل القمع', "Planifiez et projetez les performances de campagne avec l'analyse d'entonnoir"),
+  'decomposition.budget': t('Budget', 'Бюджет', 'Budget', 'Presupuesto', 'الميزانية', 'Budget'),
+  'decomposition.avgCheck': t('Avg. Check', 'Ср. чек', 'Scontrino medio', 'Ticket medio', 'متوسط الفاتورة', 'Panier moyen'),
+  'decomposition.step': t('Funnel Step', 'Этап воронки', "Fase dell'imbuto", 'Paso del embudo', 'خطوة القمع', "Étape de l'entonnoir"),
+  'decomposition.convRate': t('Conv. Rate', 'Конверсия', 'Tasso di conv.', 'Tasa de conv.', 'معدل التحويل', 'Taux de conv.'),
+  'decomposition.volume': t('Volume', 'Объём', 'Volume', 'Volumen', 'الحجم', 'Volume'),
+  'decomposition.costPer': t('Cost Per', 'Стоимость', 'Costo per', 'Costo por', 'التكلفة لكل', 'Coût par'),
+  'decomposition.projectedRevenue': t('Projected Revenue', 'Прогноз выручки', 'Entrate previste', 'Ingresos proyectados', 'الإيرادات المتوقعة', 'Revenus projetés'),
+  'decomposition.projectedProfit': t('Projected Profit', 'Прогноз прибыли', 'Profitto previsto', 'Ganancia proyectada', 'الربح المتوقع', 'Bénéfice projeté'),
+
+  // Client categories
+  'clients.category': t('Category', 'Категория', 'Categoria', 'Categoría', 'الفئة', 'Catégorie'),
+  'clients.ecom': t('E-Commerce', 'E-Commerce', 'E-Commerce', 'E-Commerce', 'التجارة الإلكترونية', 'E-Commerce'),
+  'clients.infoProduct': t('Info Product', 'Инфопродукт', 'Infoprodotto', 'Infoproducto', 'منتج معلوماتي', 'Infoproduit'),
+  'clients.onlineBusiness': t('Online Business', 'Онлайн бизнес', 'Business online', 'Negocio online', 'أعمال عبر الإنترنت', 'Business en ligne'),
+  'clients.other': t('Other', 'Другое', 'Altro', 'Otro', 'أخرى', 'Autre'),
+  'clients.manageColumns': t('Manage Columns', 'Управление колонками', 'Gestisci colonne', 'Gestionar columnas', 'إدارة الأعمدة', 'Gérer les colonnes'),
+
+  // Nav
+  'nav.decomposition': t('Decomposition', 'Декомпозиция', 'Decomposizione', 'Descomposición', 'التحليل', 'Décomposition'),
+  'nav.tools': t('Tools', 'Инструменты', 'Strumenti', 'Herramientas', 'الأدوات', 'Outils'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;

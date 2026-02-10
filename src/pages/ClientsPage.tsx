@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
@@ -27,12 +26,65 @@ interface Client {
   timezone: string;
   notes: string | null;
   created_at: string;
+  category: string;
 }
+
+export const CLIENT_CATEGORIES = [
+  { value: 'ecom', label: 'E-Commerce' },
+  { value: 'info_product', label: 'Info Product' },
+  { value: 'online_business', label: 'Online Business' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export type ClientCategory = typeof CLIENT_CATEGORIES[number]['value'];
+
+// Default metric columns per category
+export const CATEGORY_DEFAULT_COLUMNS: Record<string, string[]> = {
+  ecom: ['date', 'spend', 'impressions', 'clicks', 'cpc', 'cpm', 'ctr', 'add_to_cart', 'cart_rate', 'cp_cart', 'checkouts', 'purchases', 'purchase_rate', 'cpp', 'revenue', 'profit', 'roas'],
+  info_product: ['date', 'spend', 'impressions', 'clicks', 'cpc', 'cpm', 'ctr', 'registrations', 'webinar_visits', 'leads', 'cpl', 'sales', 'revenue', 'roas'],
+  online_business: ['date', 'spend', 'impressions', 'clicks', 'cpc', 'cpm', 'ctr', 'leads', 'cpl', 'lead_cv'],
+  other: ['date', 'spend', 'impressions', 'clicks', 'cpc', 'cpm', 'ctr', 'leads', 'cpl'],
+};
+
+// All possible metric columns with labels
+export const ALL_METRIC_COLUMNS = [
+  { key: 'date', label: 'Date' },
+  { key: 'spend', label: 'Spend' },
+  { key: 'impressions', label: 'Impressions' },
+  { key: 'reach', label: 'Reach' },
+  { key: 'clicks', label: 'Clicks' },
+  { key: 'cpc', label: 'CPC' },
+  { key: 'cpm', label: 'CPM' },
+  { key: 'ctr', label: 'CTR' },
+  { key: 'leads', label: 'Leads' },
+  { key: 'cpl', label: 'CPL' },
+  { key: 'lead_cv', label: 'Lead CV %' },
+  { key: 'add_to_cart', label: 'Add to Cart' },
+  { key: 'cart_rate', label: 'Cart Rate %' },
+  { key: 'cp_cart', label: 'CP Cart' },
+  { key: 'checkouts', label: 'Checkouts' },
+  { key: 'purchases', label: 'Purchases' },
+  { key: 'purchase_rate', label: 'Purchase Rate %' },
+  { key: 'cpp', label: 'CPP' },
+  { key: 'revenue', label: 'Revenue' },
+  { key: 'profit', label: 'Profit' },
+  { key: 'roas', label: 'ROAS' },
+  { key: 'registrations', label: 'Registrations' },
+  { key: 'webinar_visits', label: 'Webinar Visits' },
+  { key: 'sales', label: 'Sales' },
+] as const;
 
 const statusStyles: Record<string, string> = {
   active: 'bg-success/15 text-success border-success/20',
   paused: 'bg-warning/15 text-warning border-warning/20',
   inactive: 'bg-muted text-muted-foreground border-border',
+};
+
+const categoryStyles: Record<string, string> = {
+  ecom: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+  info_product: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
+  online_business: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  other: 'bg-muted text-muted-foreground border-border',
 };
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
@@ -55,6 +107,7 @@ export default function ClientsPage() {
   const [formTimezone, setFormTimezone] = useState('Europe/Moscow');
   const [formCurrency, setFormCurrency] = useState('USD');
   const [formNotes, setFormNotes] = useState('');
+  const [formCategory, setFormCategory] = useState<string>('other');
   const [saving, setSaving] = useState(false);
 
   const isAdmin = agencyRole === 'AgencyAdmin';
@@ -62,13 +115,13 @@ export default function ClientsPage() {
   const fetchClients = useCallback(async () => {
     const { data, error } = await supabase
       .from('clients')
-      .select('id, name, status, currency, timezone, notes, created_at')
+      .select('id, name, status, currency, timezone, notes, created_at, category')
       .order('name');
 
     if (error || !data || data.length === 0) {
       setClients([]);
     } else {
-      setClients(data);
+      setClients(data as Client[]);
     }
     setLoading(false);
   }, []);
@@ -81,6 +134,7 @@ export default function ClientsPage() {
     setFormTimezone('Europe/Moscow');
     setFormCurrency('USD');
     setFormNotes('');
+    setFormCategory('other');
     setDialogOpen(true);
   };
 
@@ -90,19 +144,22 @@ export default function ClientsPage() {
     setFormTimezone(client.timezone);
     setFormCurrency(client.currency);
     setFormNotes(client.notes || '');
+    setFormCategory(client.category || 'other');
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!formName.trim()) { toast.error(t('auth.allFieldsRequired')); return; }
     setSaving(true);
+    const defaultCols = CATEGORY_DEFAULT_COLUMNS[formCategory] || CATEGORY_DEFAULT_COLUMNS.other;
     if (editingClient) {
       const { error } = await supabase.from('clients').update({
         name: formName.trim(),
         timezone: formTimezone,
         currency: formCurrency,
         notes: formNotes.trim() || null,
-      }).eq('id', editingClient.id);
+        category: formCategory,
+      } as any).eq('id', editingClient.id);
       if (error) { toast.error(error.message); setSaving(false); return; }
       toast.success(t('clients.clientUpdated'));
     } else {
@@ -112,7 +169,9 @@ export default function ClientsPage() {
         currency: formCurrency,
         notes: formNotes.trim() || null,
         status: 'active',
-      });
+        category: formCategory,
+        visible_columns: defaultCols,
+      } as any);
       if (error) { toast.error(t('clients.clientCreateError')); setSaving(false); return; }
       toast.success(t('clients.clientCreated'));
     }
@@ -139,6 +198,7 @@ export default function ClientsPage() {
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
   const statusButtons = ['all', 'active', 'paused', 'inactive'] as const;
+  const getCategoryLabel = (cat: string) => CLIENT_CATEGORIES.find(c => c.value === cat)?.label || cat;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -178,6 +238,7 @@ export default function ClientsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[200px]">{t('clients.clientName')}</TableHead>
+                    <TableHead>{t('common.type')}</TableHead>
                     <TableHead>{t('common.status')}</TableHead>
                     <TableHead>{t('common.timezone')}</TableHead>
                     <TableHead>{t('common.currency')}</TableHead>
@@ -186,9 +247,9 @@ export default function ClientsPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t('common.loading')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">{t('common.loading')}</TableCell></TableRow>
                   ) : filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t('common.noData')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">{t('common.noData')}</TableCell></TableRow>
                   ) : filtered.map((client) => (
                     <TableRow key={client.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate(`/clients/${client.id}`)}>
                       <TableCell>
@@ -198,6 +259,11 @@ export default function ClientsPage() {
                           </div>
                           <span className="font-medium text-foreground">{client.name}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={categoryStyles[client.category] || categoryStyles.other}>
+                          {getCategoryLabel(client.category)}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={statusStyles[client.status] || ''}>{t(`common.${client.status}` as TranslationKey)}</Badge>
@@ -254,6 +320,21 @@ export default function ClientsPage() {
             <div className="space-y-2">
               <Label>{t('common.name')} *</Label>
               <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Client name" />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('common.type')}</Label>
+              <Select value={formCategory} onValueChange={setFormCategory}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CLIENT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {formCategory === 'ecom' && 'Tracks: Add to Cart, Purchases, Revenue, ROAS, etc.'}
+                {formCategory === 'info_product' && 'Tracks: Registrations, Webinar Visits, Sales, etc.'}
+                {formCategory === 'online_business' && 'Tracks: Leads, CPL, Lead Conversion, etc.'}
+                {formCategory === 'other' && 'Basic metrics. Customize columns after creation.'}
+              </p>
             </div>
             <div className="space-y-2">
               <Label>{t('common.timezone')}</Label>

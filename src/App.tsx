@@ -21,6 +21,7 @@ import AuditPage from "@/pages/AuditPage";
 import ClientDetailPage from "@/pages/ClientDetailPage";
 import ProfilePage from "@/pages/ProfilePage";
 import GlossaryPage from "@/pages/GlossaryPage";
+import DecompositionPage from "@/pages/DecompositionPage";
 import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import MfaChallengePage from "@/pages/MfaChallengePage";
 import NotFound from "./pages/NotFound";
@@ -151,6 +152,7 @@ function AppRoutes() {
         <Route path="/sync" element={<SyncMonitorPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/audit" element={<AuditPage />} />
+        <Route path="/decomposition" element={<DecompositionPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
       </Route>

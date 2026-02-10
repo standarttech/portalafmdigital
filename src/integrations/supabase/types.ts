@@ -356,6 +356,7 @@ export type Database = {
       clients: {
         Row: {
           auto_sync_enabled: boolean
+          category: string
           created_at: string
           currency: string
           google_sheet_url: string | null
@@ -366,9 +367,11 @@ export type Database = {
           status: Database["public"]["Enums"]["client_status"]
           timezone: string
           updated_at: string
+          visible_columns: Json | null
         }
         Insert: {
           auto_sync_enabled?: boolean
+          category?: string
           created_at?: string
           currency?: string
           google_sheet_url?: string | null
@@ -379,9 +382,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["client_status"]
           timezone?: string
           updated_at?: string
+          visible_columns?: Json | null
         }
         Update: {
           auto_sync_enabled?: boolean
+          category?: string
           created_at?: string
           currency?: string
           google_sheet_url?: string | null
@@ -392,6 +397,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["client_status"]
           timezone?: string
           updated_at?: string
+          visible_columns?: Json | null
         }
         Relationships: []
       }
@@ -1017,7 +1023,7 @@ export type Database = {
       no_admin_exists: { Args: never; Returns: boolean }
     }
     Enums: {
-      agency_role: "AgencyAdmin" | "MediaBuyer"
+      agency_role: "AgencyAdmin" | "MediaBuyer" | "Client"
       campaign_status: "active" | "paused" | "archived"
       client_role: "Client"
       client_status: "active" | "inactive" | "paused"
@@ -1152,7 +1158,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      agency_role: ["AgencyAdmin", "MediaBuyer"],
+      agency_role: ["AgencyAdmin", "MediaBuyer", "Client"],
       campaign_status: ["active", "paused", "archived"],
       client_role: ["Client"],
       client_status: ["active", "inactive", "paused"],
