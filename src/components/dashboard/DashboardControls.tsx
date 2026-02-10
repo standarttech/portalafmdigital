@@ -29,9 +29,9 @@ interface Props {
 
 const dateRangeOptions: { value: DateRange; key: TranslationKey }[] = [
   { value: 'today', key: 'dashboard.today' },
-  { value: '7d', key: 'dashboard.7days' },
+  { value: '7d', key: 'dashboard.last7days' },
   { value: '14d', key: 'dashboard.14days' },
-  { value: '30d', key: 'dashboard.30days' },
+  { value: '30d', key: 'dashboard.last30days' },
   { value: '90d', key: 'dashboard.90days' },
 ];
 
