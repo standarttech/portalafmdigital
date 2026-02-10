@@ -241,7 +241,7 @@ export default function ClientDetailPage() {
   const chartData = useMemo(() => {
     const raw = dailyTableData.map(r => {
       const point: Record<string, any> = { date: r.date.slice(5) };
-      chartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; });
+      chartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; point[`_raw_${m.key}`] = (r as any)[m.key] || 0; });
       return point;
     });
     if (chartNormalized && raw.length > 0) {
@@ -251,6 +251,7 @@ export default function ClientDetailPage() {
         chartMetrics.forEach(m => {
           const base = first[m.key] as number;
           norm[m.key] = base > 0 ? Math.round((d[m.key] as number) / base * 100) : 0;
+          norm[`_raw_${m.key}`] = d[`_raw_${m.key}`];
         });
         return norm;
       });
@@ -533,7 +534,18 @@ export default function ClientDetailPage() {
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
                           <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
                           <YAxis tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                          <Tooltip contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }}
+                            formatter={(value: number, name: string, props: any) => {
+                              const rawKey = `_raw_${name}`;
+                              const rawVal = props.payload?.[rawKey];
+                              if (chartNormalized && rawVal !== undefined) {
+                                const formatted = typeof rawVal === 'number' ? (rawVal % 1 === 0 ? rawVal.toLocaleString() : rawVal.toFixed(2)) : rawVal;
+                                return [`${formatted} (${value}%)`, name];
+                              }
+                              return [typeof value === 'number' ? (value % 1 === 0 ? value.toLocaleString() : value.toFixed(2)) : value, name];
+                            }}
+                          />
                           {chartMetrics.map(m => (
                             <Area key={m.key} type="monotone" dataKey={m.key} stroke={m.color} fill={`url(#${m.gradientId})`} strokeWidth={2} />
                           ))}
