@@ -65,13 +65,20 @@ export default function InvitePage() {
 
     if (!invitation) return;
 
-    if (password.length < 6) {
-      toast.error(t('auth.passwordTooShort'));
+    const trimmedName = displayName.trim();
+
+    if (!trimmedName) {
+      toast.error(t('auth.allFieldsRequired'));
       return;
     }
 
-    if (!displayName.trim()) {
-      toast.error(t('auth.allFieldsRequired'));
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      toast.error('Name must be 2-100 characters');
+      return;
+    }
+
+    if (password.length < 8 || password.length > 128) {
+      toast.error(t('auth.passwordTooShort'));
       return;
     }
 
@@ -246,9 +253,10 @@ export default function InvitePage() {
                   type="text"
                   placeholder={t('auth.fullNamePlaceholder')}
                   value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
-                />
+                   onChange={(e) => setDisplayName(e.target.value)}
+                   required
+                   maxLength={100}
+                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">{t('common.password')}</Label>
@@ -259,8 +267,9 @@ export default function InvitePage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
-                />
+                   minLength={8}
+                   maxLength={128}
+                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (

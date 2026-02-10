@@ -24,13 +24,26 @@ export default function RequestAccessPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!fullName.trim() || !email.trim()) {
+    const trimmedName = fullName.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName || !trimmedEmail) {
       toast.error(t('auth.allFieldsRequired'));
       return;
     }
 
-    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      toast.error('Name must be 2-100 characters');
+      return;
+    }
+
+    if (!trimmedEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) || trimmedEmail.length > 255) {
       toast.error(t('auth.invalidEmail'));
+      return;
+    }
+
+    if (message.length > 1000) {
+      toast.error('Message must be less than 1000 characters');
       return;
     }
 
@@ -118,9 +131,10 @@ export default function RequestAccessPage() {
                   type="text"
                   placeholder={t('auth.fullNamePlaceholder')}
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
+                   onChange={(e) => setFullName(e.target.value)}
+                   required
+                   maxLength={100}
+                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">{t('common.email')}</Label>
@@ -140,7 +154,8 @@ export default function RequestAccessPage() {
                   placeholder={t('auth.messagePlaceholder')}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  rows={3}
+                   rows={3}
+                   maxLength={1000}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
