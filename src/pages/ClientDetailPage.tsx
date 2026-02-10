@@ -539,11 +539,9 @@ export default function ClientDetailPage() {
                             formatter={(value: number, name: string, props: any) => {
                               const rawKey = `_raw_${name}`;
                               const rawVal = props.payload?.[rawKey];
-                              if (chartNormalized && rawVal !== undefined) {
-                                const formatted = typeof rawVal === 'number' ? (rawVal % 1 === 0 ? rawVal.toLocaleString() : rawVal.toFixed(2)) : rawVal;
-                                return [`${formatted} (${value}%)`, name];
-                              }
-                              return [typeof value === 'number' ? (value % 1 === 0 ? value.toLocaleString() : value.toFixed(2)) : value, name];
+                              const displayVal = chartNormalized && rawVal !== undefined ? rawVal : value;
+                              const formatted = typeof displayVal === 'number' ? (displayVal % 1 === 0 ? displayVal.toLocaleString() : displayVal.toFixed(2)) : displayVal;
+                              return [formatted, name];
                             }}
                           />
                           {chartMetrics.map(m => (
