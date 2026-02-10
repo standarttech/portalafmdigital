@@ -29,7 +29,7 @@ export default function AttentionRequired() {
 
       // Check sync errors
       const { data: syncErrors } = await supabase
-        .from('platform_connections')
+        .from('platform_connections_safe')
         .select('id, sync_status, sync_error, account_name, client_id')
         .eq('sync_status', 'error');
 

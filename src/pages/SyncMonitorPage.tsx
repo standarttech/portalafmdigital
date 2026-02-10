@@ -62,7 +62,7 @@ export default function SyncMonitorPage() {
 
   const fetchConnections = useCallback(async () => {
     const { data, error } = await supabase
-      .from('platform_connections')
+      .from('platform_connections_safe')
       .select('id, platform, account_name, sync_status, last_sync_at, sync_error, is_active, client_id')
       .order('last_sync_at', { ascending: false });
     
