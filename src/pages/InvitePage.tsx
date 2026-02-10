@@ -43,26 +43,17 @@ export default function InvitePage() {
 
     const fetchInvitation = async () => {
       const { data, error } = await supabase
-        .from('invitations')
-        .select('id, email, role, token, status, expires_at')
-        .eq('token', token)
-        .eq('status', 'pending')
-        .maybeSingle();
+        .rpc('get_invitation_by_token', { _token: token });
 
-      if (error || !data) {
+      const invite = Array.isArray(data) ? data[0] : data;
+
+      if (error || !invite) {
         setInviteError(t('invite.invalidOrExpired'));
         setLoadingInvite(false);
         return;
       }
 
-      // Check if expired
-      if (new Date(data.expires_at) < new Date()) {
-        setInviteError(t('invite.expired'));
-        setLoadingInvite(false);
-        return;
-      }
-
-      setInvitation(data);
+      setInvitation({ ...invite, token: token! });
       setLoadingInvite(false);
     };
 
@@ -126,19 +117,18 @@ export default function InvitePage() {
       return;
     }
 
+    // Fetch invitation details via secure RPC
+    const { data: detailsData } = await supabase
+      .rpc('get_invitation_details', { _invitation_id: invitation.id });
+
+    const details = Array.isArray(detailsData) ? detailsData[0] : detailsData;
+
     // Create agency_users or client_users record
     if (invitation.role === 'Client') {
-      // Client user — linked to specific client
-      const { data: inviteData } = await supabase
-        .from('invitations')
-        .select('client_id')
-        .eq('id', invitation.id)
-        .single();
-
-      if (inviteData?.client_id) {
+      if (details?.client_id) {
         await supabase.from('client_users').insert({
           user_id: signUpData.user.id,
-          client_id: inviteData.client_id,
+          client_id: details.client_id,
           role: 'Client',
         });
       }
@@ -151,13 +141,7 @@ export default function InvitePage() {
       });
 
       // Create permissions from invitation
-      const { data: invitePerms } = await supabase
-        .from('invitations')
-        .select('permissions')
-        .eq('id', invitation.id)
-        .single();
-
-      const perms = (invitePerms?.permissions as Record<string, boolean>) || {};
+      const perms = (details?.permissions as Record<string, boolean>) || {};
       await supabase.from('user_permissions').insert({
         user_id: signUpData.user.id,
         can_add_clients: perms.can_add_clients || false,
@@ -172,11 +156,8 @@ export default function InvitePage() {
       });
     }
 
-    // Mark invitation as accepted
-    await supabase
-      .from('invitations')
-      .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-      .eq('id', invitation.id);
+    // Mark invitation as accepted via secure RPC
+    await supabase.rpc('accept_invitation', { _invitation_id: invitation.id });
 
     // Create default user settings
     await supabase.from('user_settings').insert({
