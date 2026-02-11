@@ -13,6 +13,7 @@ import AdminSetupPage from "@/pages/AdminSetup";
 import RequestAccessPage from "@/pages/RequestAccessPage";
 import InvitePage from "@/pages/InvitePage";
 import DashboardPage from "@/pages/DashboardPage";
+import ClientDashboardPage from "@/pages/ClientDashboardPage";
 import BudgetPlannerPage from "@/pages/BudgetPlannerPage";
 import CalendarPage from "@/pages/CalendarPage";
 import ClientsPage from "@/pages/ClientsPage";
@@ -34,7 +35,7 @@ import { supabase } from "@/integrations/supabase/client";
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { user, loading, adminExists, signOut } = useAuth();
+  const { user, loading, adminExists, signOut, agencyRole } = useAuth();
   const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(null);
   const [checkingFpc, setCheckingFpc] = useState(false);
   const [mfaPending, setMfaPending] = useState(false);
@@ -141,6 +142,24 @@ function AppRoutes() {
       <ForcePasswordChangePage
         onPasswordChanged={() => setForcePasswordChange(false)}
       />
+    );
+  }
+
+  const isClient = agencyRole === 'Client';
+
+  if (isClient) {
+    return (
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<ClientDashboardPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/glossary" element={<GlossaryPage />} />
+        </Route>
+        <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
     );
   }
 

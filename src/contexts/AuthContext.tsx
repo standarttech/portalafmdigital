@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | null;
+type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | 'Client' | null;
 
 interface AuthContextType {
   user: User | null;

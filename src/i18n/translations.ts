@@ -481,6 +481,8 @@ export const translations = {
   'chat.selectClient': t('Select client', 'Выберите клиента', 'Seleziona cliente', 'Seleccionar cliente', 'اختر عميل', 'Sélectionner un client'),
   'chat.members': t('Members', 'Участники', 'Membri', 'Miembros', 'الأعضاء', 'Membres'),
   'chat.manageMembers': t('Manage Members', 'Управление участниками', 'Gestisci membri', 'Gestionar miembros', 'إدارة الأعضاء', 'Gérer les membres'),
+  'chat.support': t('Support', 'Поддержка', 'Supporto', 'Soporte', 'الدعم', 'Support'),
+  'chat.supportSubtitle': t('Write to us and we will help you', 'Напишите нам и мы вам поможем', 'Scrivici e ti aiuteremo', 'Escríbenos y te ayudaremos', 'اكتب لنا وسنساعدك', 'Écrivez-nous et nous vous aiderons'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
