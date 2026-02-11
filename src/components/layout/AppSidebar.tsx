@@ -43,7 +43,14 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
   const location = useLocation();
   const isAdmin = agencyRole === 'AgencyAdmin';
 
-  const filteredItems = navItems.filter((item) => !item.adminOnly || isAdmin);
+  const isClient = agencyRole === 'Client';
+
+  // Client users only see: dashboard, chat, glossary, profile
+  const clientAllowedPaths = ['/dashboard', '/chat', '/glossary', '/profile'];
+  const filteredItems = navItems.filter((item) => {
+    if (isClient) return clientAllowedPaths.includes(item.path);
+    return !item.adminOnly || isAdmin;
+  });
   const mainItems = filteredItems.filter(i => i.section === 'main');
   const adminItems = filteredItems.filter(i => i.section === 'admin');
   const userItems = filteredItems.filter(i => i.section === 'user');

@@ -26,6 +26,7 @@ interface KpiGroup {
 
 interface Props {
   data: KpiData | null;
+  hideOperations?: boolean;
 }
 
 function pctChange(cur: number, prev: number): { value: string; positive: boolean } {
@@ -37,7 +38,7 @@ function pctChange(cur: number, prev: number): { value: string; positive: boolea
   };
 }
 
-export default function KpiSection({ data }: Props) {
+export default function KpiSection({ data, hideOperations }: Props) {
   const { t, formatCurrency, formatNumber } = useLanguage();
 
   const sections: KpiGroup[] = useMemo(() => {
@@ -80,9 +81,11 @@ export default function KpiSection({ data }: Props) {
     ];
   }, [data, t, formatCurrency, formatNumber]);
 
+  const visibleSections = hideOperations ? sections.filter(s => s.titleKey !== 'dashboard.operations') : sections;
+
   return (
     <div className="space-y-4">
-      {sections.map((section) => (
+      {visibleSections.map((section) => (
         <div key={section.titleKey}>
           <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
             {t(section.titleKey)}
