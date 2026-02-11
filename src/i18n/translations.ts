@@ -487,6 +487,7 @@ export const translations = {
   'chat.manageMembers': t('Manage Members', 'Управление участниками', 'Gestisci membri', 'Gestionar miembros', 'إدارة الأعضاء', 'Gérer les membres'),
   'chat.support': t('Support', 'Поддержка', 'Supporto', 'Soporte', 'الدعم', 'Support'),
   'chat.supportSubtitle': t('Write to us and we will help you', 'Напишите нам и мы вам поможем', 'Scrivici e ti aiuteremo', 'Escríbenos y te ayudaremos', 'اكتب لنا وسنساعدك', 'Écrivez-nous et nous vous aiderons'),
+  'chat.startConversation': t('Send a message to start the conversation', 'Отправьте сообщение, чтобы начать общение', 'Invia un messaggio per avviare la conversazione', 'Envía un mensaje para iniciar la conversación', 'أرسل رسالة لبدء المحادثة', 'Envoyez un message pour démarrer la conversation'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;

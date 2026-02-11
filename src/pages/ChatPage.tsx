@@ -3,7 +3,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  MessageSquare, Send, Plus, Trash2, Loader2, Users, Building2, Hash, Settings, Crown, Shield,
+  MessageSquare, Send, Plus, Trash2, Loader2, Users, Building2, Hash, Settings, Crown, Shield, Headphones,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
@@ -28,6 +28,7 @@ interface ChatRoom {
   last_message?: string;
   last_message_at?: string;
   unread?: number;
+  client_name?: string;
 }
 
 interface ChatMessage {
@@ -70,7 +71,6 @@ export default function ChatPage() {
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
-  // Create room state
   const [createOpen, setCreateOpen] = useState(false);
   const [roomName, setRoomName] = useState('');
   const [roomType, setRoomType] = useState('custom');
@@ -78,7 +78,6 @@ export default function ChatPage() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
 
-  // Manage members state
   const [manageOpen, setManageOpen] = useState(false);
   const [roomMembers, setRoomMembers] = useState<string[]>([]);
   const [savingMembers, setSavingMembers] = useState(false);
@@ -88,18 +87,13 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [mobileShowMessages, setMobileShowMessages] = useState(false);
 
-  // For Client users: find or create their support room
+  // Client: ensure support room exists, then show it
   const ensureClientSupportRoom = useCallback(async () => {
     if (!user || !isClient) return;
-    // Get client assignments
-    const { data: assignments } = await supabase
-      .from('client_users')
-      .select('client_id')
-      .eq('user_id', user.id);
+    const { data: assignments } = await supabase.from('client_users').select('client_id').eq('user_id', user.id);
     const assignedClientIds = assignments?.map(a => a.client_id) || [];
     if (assignedClientIds.length === 0) { setLoadingRooms(false); return; }
 
-    // Find existing support rooms for these clients
     const { data: existingRooms } = await supabase
       .from('chat_rooms')
       .select('*')
@@ -112,7 +106,7 @@ export default function ChatPage() {
       setSelectedRoom(existingRooms[0].id);
       setMobileShowMessages(true);
     } else {
-      // Create support room for first assigned client
+      // Auto-create support room
       const { data: clientData } = await supabase.from('clients').select('name').eq('id', assignedClientIds[0]).maybeSingle();
       const roomNameStr = `Support: ${clientData?.name || 'Client'}`;
       const { data: newRoom } = await supabase.from('chat_rooms').insert({
@@ -122,7 +116,6 @@ export default function ChatPage() {
         created_by: user.id,
       }).select().single();
       if (newRoom) {
-        // Add client as member
         await supabase.from('chat_members').insert({ room_id: newRoom.id, user_id: user.id, can_write: true });
         setRooms([newRoom as ChatRoom]);
         setSelectedRoom(newRoom.id);
@@ -132,18 +125,30 @@ export default function ChatPage() {
     setLoadingRooms(false);
   }, [user, isClient]);
 
-  // Fetch rooms (for agency members)
+  // Agency: fetch rooms + enrich support rooms with client names
   const fetchRooms = useCallback(async () => {
-    if (isClient) return; // Client uses ensureClientSupportRoom
-    const { data } = await supabase
-      .from('chat_rooms')
-      .select('*')
-      .order('updated_at', { ascending: false });
-    if (data) setRooms(data as ChatRoom[]);
+    if (isClient) return;
+    const { data } = await supabase.from('chat_rooms').select('*').order('updated_at', { ascending: false });
+    if (!data) { setLoadingRooms(false); return; }
+
+    // Enrich support rooms with client names
+    const supportRooms = data.filter(r => r.type === 'support' && r.client_id);
+    const clientIdsToFetch = [...new Set(supportRooms.map(r => r.client_id!))];
+    let clientNameMap: Record<string, string> = {};
+    if (clientIdsToFetch.length > 0) {
+      const { data: cls } = await supabase.from('clients').select('id, name').in('id', clientIdsToFetch);
+      if (cls) clientNameMap = Object.fromEntries(cls.map(c => [c.id, c.name]));
+    }
+
+    const enriched: ChatRoom[] = data.map(r => ({
+      ...r as ChatRoom,
+      client_name: r.client_id ? clientNameMap[r.client_id] || undefined : undefined,
+    }));
+
+    setRooms(enriched);
     setLoadingRooms(false);
   }, [isClient]);
 
-  // Fetch all users & clients (for admin)
   const fetchUsersAndClients = useCallback(async () => {
     const [{ data: users }, { data: cls }] = await Promise.all([
       supabase.from('agency_users').select('user_id, display_name, agency_role'),
@@ -153,22 +158,12 @@ export default function ChatPage() {
     if (cls) setClients(cls as Client[]);
   }, []);
 
-  // Fetch messages for selected room
   const fetchMessages = useCallback(async (roomId: string) => {
     setLoadingMessages(true);
-    const { data } = await supabase
-      .from('chat_messages')
-      .select('id, room_id, user_id, content, created_at')
-      .eq('room_id', roomId)
-      .order('created_at', { ascending: true })
-      .limit(200);
-
+    const { data } = await supabase.from('chat_messages').select('id, room_id, user_id, content, created_at').eq('room_id', roomId).order('created_at', { ascending: true }).limit(200);
     if (data) {
       const userIds = [...new Set(data.map(m => m.user_id))];
-      const { data: users } = await supabase
-        .from('agency_users')
-        .select('user_id, display_name, agency_role')
-        .in('user_id', userIds);
+      const { data: users } = await supabase.from('agency_users').select('user_id, display_name, agency_role').in('user_id', userIds);
       const nameMap = new Map(users?.map(u => [u.user_id, { name: u.display_name || 'User', role: u.agency_role }]) || []);
       setMessages(data.map(m => ({
         ...m,
@@ -180,19 +175,13 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    if (isClient) {
-      ensureClientSupportRoom();
-    } else {
-      fetchRooms();
-      fetchUsersAndClients();
-    }
+    if (isClient) { ensureClientSupportRoom(); }
+    else { fetchRooms(); fetchUsersAndClients(); }
   }, [fetchRooms, fetchUsersAndClients, ensureClientSupportRoom, isClient]);
 
-  useEffect(() => {
-    if (selectedRoom) fetchMessages(selectedRoom);
-  }, [selectedRoom, fetchMessages]);
+  useEffect(() => { if (selectedRoom) fetchMessages(selectedRoom); }, [selectedRoom, fetchMessages]);
 
-  // Realtime subscription
+  // Realtime
   useEffect(() => {
     if (!selectedRoom) return;
     const channel = supabase
@@ -200,36 +189,22 @@ export default function ChatPage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${selectedRoom}` },
         async (payload) => {
           const newMsg = payload.new as any;
-          // Get user info
           const { data: u } = await supabase.from('agency_users').select('display_name, agency_role').eq('user_id', newMsg.user_id).maybeSingle();
-          setMessages(prev => [...prev, {
-            ...newMsg,
-            display_name: u?.display_name || 'User',
-            role: u?.agency_role || 'Client',
-          }]);
+          setMessages(prev => [...prev, { ...newMsg, display_name: u?.display_name || 'User', role: u?.agency_role || 'Client' }]);
         }
-      )
-      .subscribe();
+      ).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [selectedRoom]);
 
-  // Auto scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || !user || !selectedRoom) return;
     setSending(true);
-    const { error } = await supabase.from('chat_messages').insert({
-      room_id: selectedRoom,
-      user_id: user.id,
-      content: newMessage.trim(),
-    });
+    const { error } = await supabase.from('chat_messages').insert({ room_id: selectedRoom, user_id: user.id, content: newMessage.trim() });
     setSending(false);
     if (error) { toast.error(error.message); return; }
     setNewMessage('');
-    // Update room's updated_at
     await supabase.from('chat_rooms').update({ updated_at: new Date().toISOString() } as any).eq('id', selectedRoom);
   };
 
@@ -237,40 +212,26 @@ export default function ChatPage() {
     if (!roomName.trim() || !user) return;
     setCreating(true);
     const { data: room, error } = await supabase.from('chat_rooms').insert({
-      name: roomName.trim(),
-      type: roomType,
+      name: roomName.trim(), type: roomType,
       client_id: roomType === 'client' ? roomClientId || null : null,
       created_by: user.id,
     }).select().single();
     if (error) { toast.error(error.message); setCreating(false); return; }
-
-    // Add members
     const membersToAdd = [...new Set([...selectedMembers, user.id])];
     if (membersToAdd.length > 0) {
-      await supabase.from('chat_members').insert(
-        membersToAdd.map(uid => ({ room_id: room.id, user_id: uid, can_write: true }))
-      );
+      await supabase.from('chat_members').insert(membersToAdd.map(uid => ({ room_id: room.id, user_id: uid, can_write: true })));
     }
-
-    setCreating(false);
-    setCreateOpen(false);
-    setRoomName('');
-    setSelectedMembers([]);
-    setRoomType('custom');
-    setRoomClientId('');
+    setCreating(false); setCreateOpen(false); setRoomName(''); setSelectedMembers([]); setRoomType('custom'); setRoomClientId('');
     toast.success(t('chat.roomCreated' as TranslationKey));
-    fetchRooms();
-    setSelectedRoom(room.id);
+    fetchRooms(); setSelectedRoom(room.id);
   };
 
   const handleDeleteRoom = async (roomId: string) => {
     await supabase.from('chat_rooms').delete().eq('id', roomId);
     if (selectedRoom === roomId) { setSelectedRoom(null); setMessages([]); }
-    fetchRooms();
-    toast.success(t('common.delete'));
+    fetchRooms(); toast.success(t('common.delete'));
   };
 
-  // Manage members
   const openManageMembers = async (roomId: string) => {
     const { data } = await supabase.from('chat_members').select('user_id').eq('room_id', roomId);
     setRoomMembers(data?.map(m => m.user_id) || []);
@@ -280,24 +241,15 @@ export default function ChatPage() {
   const saveMembers = async () => {
     if (!selectedRoom) return;
     setSavingMembers(true);
-    // Remove all, re-add
     await supabase.from('chat_members').delete().eq('room_id', selectedRoom);
     if (roomMembers.length > 0) {
-      await supabase.from('chat_members').insert(
-        roomMembers.map(uid => ({ room_id: selectedRoom, user_id: uid, can_write: true }))
-      );
+      await supabase.from('chat_members').insert(roomMembers.map(uid => ({ room_id: selectedRoom, user_id: uid, can_write: true })));
     }
-    setSavingMembers(false);
-    setManageOpen(false);
-    toast.success(t('common.save'));
+    setSavingMembers(false); setManageOpen(false); toast.success(t('common.save'));
   };
 
-  const toggleMember = (uid: string) => {
-    setSelectedMembers(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
-  };
-  const toggleRoomMember = (uid: string) => {
-    setRoomMembers(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
-  };
+  const toggleMember = (uid: string) => setSelectedMembers(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
+  const toggleRoomMember = (uid: string) => setRoomMembers(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
 
   const timeAgo = (iso: string) => {
     const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -308,14 +260,61 @@ export default function ChatPage() {
   };
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
-  const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : Hash;
+
+  // Separate support rooms from regular rooms for admin view
+  const supportRooms = rooms.filter(r => r.type === 'support');
+  const regularRooms = rooms.filter(r => r.type !== 'support');
+
+  const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : type === 'support' ? Headphones : Hash;
+
+  const renderRoomItem = (room: ChatRoom) => {
+    const RoomIcon = roomTypeIcon(room.type);
+    const isActive = selectedRoom === room.id;
+    return (
+      <button
+        key={room.id}
+        onClick={() => { setSelectedRoom(room.id); setMobileShowMessages(true); }}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${isActive ? 'bg-primary/15 text-primary' : 'hover:bg-secondary/50 text-foreground'}`}
+      >
+        <div className="h-9 w-9 rounded-lg bg-secondary/50 flex items-center justify-center flex-shrink-0">
+          <RoomIcon className={`h-4 w-4 ${room.type === 'support' ? 'text-emerald-500' : 'text-muted-foreground'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium truncate">
+              {room.type === 'support' && room.client_name
+                ? room.client_name
+                : room.name}
+            </span>
+            {room.type === 'support' && (
+              <Badge variant="outline" className="text-[9px] px-1 flex-shrink-0 border-emerald-500/30 text-emerald-500">
+                {t('chat.support' as TranslationKey)}
+              </Badge>
+            )}
+            {room.type !== 'support' && (
+              <Badge variant="outline" className="text-[9px] px-1 flex-shrink-0">
+                {room.type === 'team' ? t('chat.typeTeam' as TranslationKey) :
+                 room.type === 'client' ? t('chat.typeClient' as TranslationKey) :
+                 t('chat.typeCustom' as TranslationKey)}
+              </Badge>
+            )}
+          </div>
+          <span className="text-[10px] text-muted-foreground">{timeAgo(room.created_at)}</span>
+        </div>
+      </button>
+    );
+  };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[calc(100vh-7rem)] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">{isClient ? t('chat.support' as TranslationKey) : t('chat.title' as TranslationKey)}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">{isClient ? t('chat.supportSubtitle' as TranslationKey) : t('chat.subtitle' as TranslationKey)}</p>
+          <h1 className="text-xl sm:text-2xl font-bold">
+            {isClient ? t('chat.support' as TranslationKey) : t('chat.title' as TranslationKey)}
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {isClient ? t('chat.supportSubtitle' as TranslationKey) : t('chat.subtitle' as TranslationKey)}
+          </p>
         </div>
         {isAdmin && (
           <Button onClick={() => setCreateOpen(true)} size="sm" className="gap-1.5">
@@ -325,48 +324,52 @@ export default function ChatPage() {
       </div>
 
       <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
-        {/* Room list - hidden for Client users */}
-        {!isClient && <div className={`${mobileShowMessages ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 flex-shrink-0 border border-border rounded-lg bg-card overflow-hidden`}>
-          <div className="p-3 border-b border-border">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('chat.rooms' as TranslationKey)}</p>
+        {/* Room list - show for clients too so they see support */}
+        {isClient ? (
+          /* Client: simplified view - just show the support room header and go straight to messages */
+          <div className={`${mobileShowMessages ? 'hidden md:flex' : 'flex'} flex-col flex-1 border border-border rounded-lg bg-card overflow-hidden`}>
+            {/* Client always has messages open */}
           </div>
-          <ScrollArea className="flex-1">
-            {loadingRooms ? (
-              <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-            ) : rooms.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-8">{t('chat.noRooms' as TranslationKey)}</p>
-            ) : (
-              <div className="p-1">
-                {rooms.map(room => {
-                  const RoomIcon = roomTypeIcon(room.type);
-                  const isActive = selectedRoom === room.id;
-                  return (
-                    <button
-                      key={room.id}
-                      onClick={() => { setSelectedRoom(room.id); setMobileShowMessages(true); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${isActive ? 'bg-primary/15 text-primary' : 'hover:bg-secondary/50 text-foreground'}`}
-                    >
-                      <div className="h-9 w-9 rounded-lg bg-secondary/50 flex items-center justify-center flex-shrink-0">
-                        <RoomIcon className="h-4 w-4 text-muted-foreground" />
+        ) : null}
+
+        {/* Room list for agency members */}
+        {!isClient && (
+          <div className={`${mobileShowMessages ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-72 lg:w-80 flex-shrink-0 border border-border rounded-lg bg-card overflow-hidden`}>
+            <ScrollArea className="flex-1">
+              {loadingRooms ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : rooms.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-8">{t('chat.noRooms' as TranslationKey)}</p>
+              ) : (
+                <div className="p-1">
+                  {/* Support section */}
+                  {supportRooms.length > 0 && (
+                    <>
+                      <div className="px-3 pt-3 pb-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                          <Headphones className="h-3 w-3" />
+                          {t('chat.support' as TranslationKey)} ({supportRooms.length})
+                        </p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">{room.name}</span>
-                          <Badge variant="outline" className="text-[9px] px-1 flex-shrink-0">
-                            {room.type === 'team' ? t('chat.typeTeam' as TranslationKey) :
-                             room.type === 'client' ? t('chat.typeClient' as TranslationKey) :
-                             t('chat.typeCustom' as TranslationKey)}
-                          </Badge>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{timeAgo(room.created_at)}</span>
+                      {supportRooms.map(renderRoomItem)}
+                    </>
+                  )}
+                  {/* Regular rooms */}
+                  {regularRooms.length > 0 && (
+                    <>
+                      <div className="px-3 pt-3 pb-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {t('chat.rooms' as TranslationKey)}
+                        </p>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-        </div>}
+                      {regularRooms.map(renderRoomItem)}
+                    </>
+                  )}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        )}
 
         {/* Message area */}
         <div className={`${!isClient && !mobileShowMessages ? 'hidden md:flex' : 'flex'} flex-col flex-1 border border-border rounded-lg bg-card overflow-hidden`}>
@@ -374,7 +377,7 @@ export default function ChatPage() {
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">{t('chat.selectRoom' as TranslationKey)}</p>
+                <p className="text-sm">{isClient ? t('chat.supportSubtitle' as TranslationKey) : t('chat.selectRoom' as TranslationKey)}</p>
               </div>
             </div>
           ) : (
@@ -382,17 +385,28 @@ export default function ChatPage() {
               {/* Room header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <button className="md:hidden text-muted-foreground" onClick={() => setMobileShowMessages(false)}>←</button>
-                  <h3 className="font-semibold text-sm">{selectedRoomData?.name}</h3>
+                  {!isClient && <button className="md:hidden text-muted-foreground" onClick={() => setMobileShowMessages(false)}>←</button>}
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      {selectedRoomData?.type === 'support' && selectedRoomData?.client_name
+                        ? `${t('chat.support' as TranslationKey)}: ${selectedRoomData.client_name}`
+                        : selectedRoomData?.name}
+                    </h3>
+                    {isClient && (
+                      <p className="text-[10px] text-muted-foreground">{t('chat.supportSubtitle' as TranslationKey)}</p>
+                    )}
+                  </div>
                 </div>
                 {isAdmin && (
                   <div className="flex gap-1">
                     <Button variant="ghost" size="sm" onClick={() => openManageMembers(selectedRoom)} className="h-8 w-8 p-0">
                       <Settings className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteRoom(selectedRoom)} className="h-8 w-8 p-0 text-destructive/60 hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {selectedRoomData?.type !== 'support' && (
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteRoom(selectedRoom)} className="h-8 w-8 p-0 text-destructive/60 hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -402,7 +416,12 @@ export default function ChatPage() {
                 {loadingMessages ? (
                   <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
                 ) : messages.length === 0 ? (
-                  <p className="text-center text-sm text-muted-foreground py-8">{t('chat.noMessages' as TranslationKey)}</p>
+                  <div className="text-center py-8">
+                    <Headphones className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">
+                      {isClient ? t('chat.startConversation' as TranslationKey) : t('chat.noMessages' as TranslationKey)}
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {messages.map((msg, idx) => {
@@ -460,9 +479,7 @@ export default function ChatPage() {
       {/* Create Room Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('chat.createRoom' as TranslationKey)}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{t('chat.createRoom' as TranslationKey)}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>{t('common.name')}</Label>
@@ -481,7 +498,7 @@ export default function ChatPage() {
             </div>
             {roomType === 'client' && (
               <div>
-                <Label>{t('nav.clients')}</Label>
+                <Label>{t('nav.clients' as TranslationKey)}</Label>
                 <Select value={roomClientId} onValueChange={setRoomClientId}>
                   <SelectTrigger><SelectValue placeholder={t('chat.selectClient' as TranslationKey)} /></SelectTrigger>
                   <SelectContent>
@@ -497,15 +514,9 @@ export default function ChatPage() {
                   const RIcon = ROLE_ICON[u.agency_role] || Building2;
                   return (
                     <div key={u.user_id} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-secondary/50">
-                      <Checkbox
-                        checked={selectedMembers.includes(u.user_id)}
-                        onCheckedChange={() => toggleMember(u.user_id)}
-                        id={`member-${u.user_id}`}
-                      />
+                      <Checkbox checked={selectedMembers.includes(u.user_id)} onCheckedChange={() => toggleMember(u.user_id)} id={`member-${u.user_id}`} />
                       <RIcon className={`h-3.5 w-3.5 ${ROLE_COLOR[u.agency_role] || ''}`} />
-                      <label htmlFor={`member-${u.user_id}`} className="flex-1 text-sm cursor-pointer">
-                        {u.display_name || 'User'}
-                      </label>
+                      <label htmlFor={`member-${u.user_id}`} className="flex-1 text-sm cursor-pointer">{u.display_name || 'User'}</label>
                       <Badge variant="outline" className="text-[9px]">{u.agency_role}</Badge>
                     </div>
                   );
@@ -526,23 +537,15 @@ export default function ChatPage() {
       {/* Manage Members Dialog */}
       <Dialog open={manageOpen} onOpenChange={setManageOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('chat.manageMembers' as TranslationKey)}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{t('chat.manageMembers' as TranslationKey)}</DialogTitle></DialogHeader>
           <ScrollArea className="h-[300px] border border-border rounded-md p-2">
             {allUsers.map(u => {
               const RIcon = ROLE_ICON[u.agency_role] || Building2;
               return (
                 <div key={u.user_id} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-secondary/50">
-                  <Checkbox
-                    checked={roomMembers.includes(u.user_id)}
-                    onCheckedChange={() => toggleRoomMember(u.user_id)}
-                    id={`rm-${u.user_id}`}
-                  />
+                  <Checkbox checked={roomMembers.includes(u.user_id)} onCheckedChange={() => toggleRoomMember(u.user_id)} id={`rm-${u.user_id}`} />
                   <RIcon className={`h-3.5 w-3.5 ${ROLE_COLOR[u.agency_role] || ''}`} />
-                  <label htmlFor={`rm-${u.user_id}`} className="flex-1 text-sm cursor-pointer">
-                    {u.display_name || 'User'}
-                  </label>
+                  <label htmlFor={`rm-${u.user_id}`} className="flex-1 text-sm cursor-pointer">{u.display_name || 'User'}</label>
                   <Badge variant="outline" className="text-[9px]">{u.agency_role}</Badge>
                 </div>
               );
