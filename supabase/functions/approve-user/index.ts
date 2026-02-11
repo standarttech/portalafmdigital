@@ -153,7 +153,22 @@ serve(async (req) => {
       }
 
       if (resolvedUserId) {
-        // Create agency_users or client_users record (upsert-style: check if exists first)
+        // Always create agency_users record for visibility in admin panel
+        const { data: existingAU } = await supabaseAdmin.from("agency_users").select("id").eq("user_id", resolvedUserId).maybeSingle();
+        if (!existingAU) {
+          await supabaseAdmin.from("agency_users").insert({
+            user_id: resolvedUserId,
+            agency_role: role || "MediaBuyer",
+            display_name: full_name || email.split("@")[0],
+          });
+        } else {
+          await supabaseAdmin.from("agency_users").update({
+            agency_role: role || "MediaBuyer",
+            display_name: full_name || email.split("@")[0],
+          }).eq("user_id", resolvedUserId);
+        }
+
+        // Additionally create client_users record for Client role
         if (role === "Client" && client_id) {
           const { data: existingCU } = await supabaseAdmin.from("client_users").select("id").eq("user_id", resolvedUserId).eq("client_id", client_id).maybeSingle();
           if (!existingCU) {
@@ -162,21 +177,6 @@ serve(async (req) => {
               client_id: client_id,
               role: "Client",
             });
-          }
-        } else {
-          const { data: existingAU } = await supabaseAdmin.from("agency_users").select("id").eq("user_id", resolvedUserId).maybeSingle();
-          if (!existingAU) {
-            await supabaseAdmin.from("agency_users").insert({
-              user_id: resolvedUserId,
-              agency_role: role || "MediaBuyer",
-              display_name: full_name || email.split("@")[0],
-            });
-          } else {
-            // Update role if changed
-            await supabaseAdmin.from("agency_users").update({
-              agency_role: role || "MediaBuyer",
-              display_name: full_name || email.split("@")[0],
-            }).eq("user_id", resolvedUserId);
           }
         }
 
