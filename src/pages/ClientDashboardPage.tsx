@@ -7,9 +7,12 @@ import { Info } from 'lucide-react';
 import DashboardControls from '@/components/dashboard/DashboardControls';
 import KpiSection from '@/components/dashboard/KpiSection';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
-import type { DateRange, Comparison, PlatformFilter, DashboardFilters } from '@/components/dashboard/dashboardData';
+import type { DateRange, Comparison, PlatformFilter } from '@/components/dashboard/dashboardData';
 import type { KpiData, ChartDataPoint } from '@/hooks/useDashboardMetrics';
 import { subDays, format, differenceInDays } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const container = {
   hidden: { opacity: 0 },
@@ -40,8 +43,18 @@ function getDateRange(range: DateRange, custom?: { from: Date; to: Date }) {
   return { from: format(from, 'yyyy-MM-dd'), to: format(to, 'yyyy-MM-dd'), days };
 }
 
+interface DailyRow {
+  date: string;
+  spend: number;
+  impressions: number;
+  link_clicks: number;
+  leads: number;
+  cpl: number;
+  ctr: number;
+}
+
 export default function ClientDashboardPage() {
-  const { t } = useLanguage();
+  const { t, formatCurrency, formatNumber } = useLanguage();
   const { user } = useAuth();
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [comparison, setComparison] = useState<Comparison>('previous_period');
@@ -51,6 +64,7 @@ export default function ClientDashboardPage() {
   const [clientName, setClientName] = useState('');
   const [kpis, setKpis] = useState<KpiData | null>(null);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [dailyRows, setDailyRows] = useState<DailyRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const range = useMemo(() => getDateRange(dateRange, customDateRange), [dateRange, customDateRange]);
@@ -61,14 +75,10 @@ export default function ClientDashboardPage() {
     return { from: format(prevFrom, 'yyyy-MM-dd'), to: format(prevTo, 'yyyy-MM-dd') };
   }, [range]);
 
-  // Fetch assigned client IDs
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from('client_users')
-        .select('client_id')
-        .eq('user_id', user.id);
+      const { data } = await supabase.from('client_users').select('client_id').eq('user_id', user.id);
       const ids = data?.map(d => d.client_id) || [];
       setClientIds(ids);
       if (ids.length > 0) {
@@ -78,26 +88,23 @@ export default function ClientDashboardPage() {
     })();
   }, [user]);
 
-  // Fetch metrics scoped to client
   const fetchData = useCallback(async () => {
     if (clientIds.length === 0) { setLoading(false); return; }
     setLoading(true);
     try {
-      let query = supabase
+      const { data: currentMetrics } = await supabase
         .from('daily_metrics')
         .select('spend, leads, link_clicks, impressions, date')
         .in('client_id', clientIds)
         .gte('date', range.from)
         .lte('date', range.to);
-      const { data: currentMetrics } = await query;
 
-      let prevQuery = supabase
+      const { data: prevMetrics } = await supabase
         .from('daily_metrics')
         .select('spend, leads, link_clicks, impressions')
         .in('client_id', clientIds)
         .gte('date', prevRange.from)
         .lte('date', prevRange.to);
-      const { data: prevMetrics } = await prevQuery;
 
       const cur = (currentMetrics || []).reduce(
         (acc, r) => ({ spend: acc.spend + Number(r.spend), leads: acc.leads + r.leads, clicks: acc.clicks + r.link_clicks, impressions: acc.impressions + r.impressions }),
@@ -118,13 +125,29 @@ export default function ClientDashboardPage() {
         prevCtr: prev.impressions > 0 ? (prev.clicks / prev.impressions) * 100 : 0,
       });
 
-      // Chart data
-      const byDate: Record<string, { spend: number; leads: number }> = {};
+      // Build daily table rows
+      const byDate: Record<string, { spend: number; leads: number; impressions: number; clicks: number }> = {};
       (currentMetrics || []).forEach(r => {
-        if (!byDate[r.date]) byDate[r.date] = { spend: 0, leads: 0 };
+        if (!byDate[r.date]) byDate[r.date] = { spend: 0, leads: 0, impressions: 0, clicks: 0 };
         byDate[r.date].spend += Number(r.spend);
         byDate[r.date].leads += r.leads;
+        byDate[r.date].impressions += r.impressions;
+        byDate[r.date].clicks += r.link_clicks;
       });
+
+      const rows: DailyRow[] = Object.entries(byDate)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([date, v]) => ({
+          date,
+          spend: v.spend,
+          impressions: v.impressions,
+          link_clicks: v.clicks,
+          leads: v.leads,
+          cpl: v.leads > 0 ? v.spend / v.leads : 0,
+          ctr: v.impressions > 0 ? (v.clicks / v.impressions) * 100 : 0,
+        }));
+      setDailyRows(rows);
+
       setChartData(Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, v]) => ({
         date: date.slice(5),
         spend: Math.round(v.spend),
@@ -138,6 +161,21 @@ export default function ClientDashboardPage() {
   }, [clientIds, range, prevRange]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Totals for the daily table
+  const totals = useMemo(() => {
+    const t = dailyRows.reduce((acc, r) => ({
+      spend: acc.spend + r.spend,
+      impressions: acc.impressions + r.impressions,
+      clicks: acc.clicks + r.link_clicks,
+      leads: acc.leads + r.leads,
+    }), { spend: 0, impressions: 0, clicks: 0, leads: 0 });
+    return {
+      ...t,
+      cpl: t.leads > 0 ? t.spend / t.leads : 0,
+      ctr: t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0,
+    };
+  }, [dailyRows]);
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -166,6 +204,63 @@ export default function ClientDashboardPage() {
 
       <motion.div variants={item}>
         <PerformanceChart chartData={chartData} />
+      </motion.div>
+
+      {/* Daily metrics table */}
+      <motion.div variants={item}>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">{t('metric.date')} — {t('dashboard.performanceSection')}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-4 space-y-2">
+                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+              </div>
+            ) : dailyRows.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-8">{t('common.noData')}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs sticky left-0 bg-card z-10">{t('metric.date')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('metric.spend')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('metric.impressions')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('metric.clicks')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('metric.leads')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('metric.cpl')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('metric.ctr')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Totals row */}
+                    <TableRow className="bg-secondary/30 font-semibold border-b-2 border-border">
+                      <TableCell className="text-xs sticky left-0 bg-secondary/30 z-10">Total</TableCell>
+                      <TableCell className="text-xs text-right">{formatCurrency(totals.spend)}</TableCell>
+                      <TableCell className="text-xs text-right">{formatNumber(totals.impressions)}</TableCell>
+                      <TableCell className="text-xs text-right">{formatNumber(totals.clicks)}</TableCell>
+                      <TableCell className="text-xs text-right">{formatNumber(totals.leads)}</TableCell>
+                      <TableCell className="text-xs text-right">{formatCurrency(totals.cpl)}</TableCell>
+                      <TableCell className="text-xs text-right">{totals.ctr.toFixed(2)}%</TableCell>
+                    </TableRow>
+                    {dailyRows.map(row => (
+                      <TableRow key={row.date}>
+                        <TableCell className="text-xs sticky left-0 bg-card z-10">{row.date}</TableCell>
+                        <TableCell className="text-xs text-right">{formatCurrency(row.spend)}</TableCell>
+                        <TableCell className="text-xs text-right">{formatNumber(row.impressions)}</TableCell>
+                        <TableCell className="text-xs text-right">{formatNumber(row.link_clicks)}</TableCell>
+                        <TableCell className="text-xs text-right">{formatNumber(row.leads)}</TableCell>
+                        <TableCell className="text-xs text-right">{formatCurrency(row.cpl)}</TableCell>
+                        <TableCell className="text-xs text-right">{row.ctr.toFixed(2)}%</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </motion.div>
     </motion.div>
   );
