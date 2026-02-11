@@ -1,6 +1,6 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { motion } from 'framer-motion';
-import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2 } from 'lucide-react';
+import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -268,7 +268,12 @@ export default function UsersPage() {
   };
 
   const filteredUsers = users.filter(u =>
-    (u.display_name || '').toLowerCase().includes(search.toLowerCase()) || u.user_id.toLowerCase().includes(search.toLowerCase())
+    u.agency_role !== 'Client' &&
+    ((u.display_name || '').toLowerCase().includes(search.toLowerCase()) || u.user_id.toLowerCase().includes(search.toLowerCase()))
+  );
+  const clientUsers = users.filter(u =>
+    u.agency_role === 'Client' &&
+    ((u.display_name || '').toLowerCase().includes(search.toLowerCase()) || u.user_id.toLowerCase().includes(search.toLowerCase()))
   );
   const pendingRequests = requests.filter(r => r.status === 'pending');
 
@@ -320,6 +325,7 @@ export default function UsersPage() {
               {pendingRequests.length > 0 && <span className="ml-1 h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center px-1">{pendingRequests.length}</span>}
             </TabsTrigger>
             <TabsTrigger value="invitations" className="gap-2"><Mail className="h-4 w-4" />{t('users.tabInvitations')}</TabsTrigger>
+            <TabsTrigger value="clients" className="gap-2"><Building2 className="h-4 w-4" />{t('users.tabClients')}</TabsTrigger>
           </TabsList>
 
           {/* USERS TAB */}
@@ -505,6 +511,72 @@ export default function UsersPage() {
                               {inv.status === 'accepted' && (
                                 <Button variant="outline" size="sm" className="gap-1" onClick={() => handleResendTempPassword(inv.email)}>
                                   <RefreshCw className="h-3.5 w-3.5" />{t('users.resendTempPassword')}
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          {/* CLIENTS TAB */}
+          <TabsContent value="clients" className="space-y-4">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder={t('common.search') + '...'} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <Card className="glass-card overflow-hidden">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px]">{t('common.user')}</TableHead>
+                        <TableHead>{t('users.assignedClient')}</TableHead>
+                        <TableHead className="text-right">{t('common.actions')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loadingUsers ? (
+                        <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">{t('common.loading')}</TableCell></TableRow>
+                      ) : clientUsers.length === 0 ? (
+                        <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">{t('users.noClients')}</TableCell></TableRow>
+                      ) : clientUsers.map(u => (
+                        <TableRow key={u.id} className="hover:bg-accent/30">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <Building2 className="h-4 w-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{u.display_name || 'No name'}</p>
+                                <p className="text-xs text-muted-foreground font-mono">{u.user_id.slice(0, 8)}...</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => openClientAssignments(u)}>
+                              <Users className="h-3.5 w-3.5" />
+                              {t('users.manageClients')}
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 justify-end">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title={t('common.edit')}
+                                onClick={() => { setEditNameUser(u); setEditNameValue(u.display_name || ''); setEditNameOpen(true); }}>
+                                <Settings2 className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title={t('users.resendTempPassword')} onClick={() => handleResendTempPassword(u.user_id, true)}>
+                                <Key className="h-4 w-4" />
+                              </Button>
+                              {u.user_id !== currentUser?.id && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title={t('users.deleteUser')}
+                                  onClick={() => { setDeleteUser(u); setDeleteOpen(true); }}>
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
