@@ -12,7 +12,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import type { TranslationKey } from '@/i18n/translations';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NavItem {
   key: TranslationKey;
@@ -20,6 +21,7 @@ interface NavItem {
   path: string;
   adminOnly?: boolean;
   section?: 'main' | 'admin' | 'user';
+  badgeKey?: 'accessRequests' | 'unreadChats';
 }
 
 const navItems: NavItem[] = [
@@ -27,9 +29,9 @@ const navItems: NavItem[] = [
   { key: 'nav.clients', icon: Building2, path: '/clients', section: 'main' },
   { key: 'nav.reports', icon: FileText, path: '/reports', section: 'main' },
   { key: 'nav.calendar', icon: Calendar, path: '/calendar', section: 'main' },
-  { key: 'nav.chat', icon: MessageSquare, path: '/chat', section: 'main' },
+  { key: 'nav.chat', icon: MessageSquare, path: '/chat', section: 'main', badgeKey: 'unreadChats' },
   { key: 'nav.sync', icon: RefreshCw, path: '/sync', section: 'main' },
-  { key: 'nav.users', icon: Users, path: '/users', section: 'admin', adminOnly: true },
+  { key: 'nav.users', icon: Users, path: '/users', section: 'admin', adminOnly: true, badgeKey: 'accessRequests' },
   { key: 'nav.budget', icon: DollarSign, path: '/budget', section: 'admin', adminOnly: true },
   { key: 'nav.audit', icon: Shield, path: '/audit', section: 'admin', adminOnly: true },
   { key: 'nav.decomposition', icon: Calculator, path: '/decomposition', section: 'admin', adminOnly: true },
@@ -37,15 +39,38 @@ const navItems: NavItem[] = [
   { key: 'nav.profile', icon: UserCircle, path: '/profile', section: 'user' },
 ];
 
+function useSidebarBadges(isAdmin: boolean) {
+  const [badges, setBadges] = useState<Record<string, number>>({});
+
+  const fetchBadges = useCallback(async () => {
+    if (!isAdmin) return;
+    const [{ count: reqCount }, { count: unreadCount }] = await Promise.all([
+      supabase.from('access_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false).like('link', '/chat%'),
+    ]);
+    setBadges({
+      accessRequests: reqCount || 0,
+      unreadChats: unreadCount || 0,
+    });
+  }, [isAdmin]);
+
+  useEffect(() => {
+    fetchBadges();
+    const interval = setInterval(fetchBadges, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBadges]);
+
+  return badges;
+}
+
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { t } = useLanguage();
-  const { agencyRole, signOut } = useAuth();
+  const { user, agencyRole, signOut } = useAuth();
   const location = useLocation();
   const isAdmin = agencyRole === 'AgencyAdmin';
-
   const isClient = agencyRole === 'Client';
+  const badges = useSidebarBadges(isAdmin);
 
-  // Client users only see: dashboard, chat, glossary, profile
   const clientAllowedPaths = ['/dashboard', '/chat', '/glossary', '/profile'];
   const filteredItems = navItems.filter((item) => {
     if (isClient) return clientAllowedPaths.includes(item.path);
@@ -57,21 +82,36 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
 
   const renderNavItem = (item: NavItem) => {
     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+    const badgeCount = item.badgeKey ? (badges[item.badgeKey] || 0) : 0;
     return (
       <Link
         key={item.path}
         to={item.path}
         onClick={onNavigate}
         className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative',
           isActive
             ? 'bg-primary/15 text-primary'
             : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
         )}
         title={collapsed ? t(item.key) : undefined}
       >
-        <item.icon className={cn('h-4.5 w-4.5 flex-shrink-0', isActive && 'text-primary')} />
-        {!collapsed && <span>{t(item.key)}</span>}
+        <div className="relative flex-shrink-0">
+          <item.icon className={cn('h-4.5 w-4.5', isActive && 'text-primary')} />
+          {badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-0.5">
+              {badgeCount > 9 ? '9+' : badgeCount}
+            </span>
+          )}
+        </div>
+        {!collapsed && (
+          <span className="flex-1">{t(item.key)}</span>
+        )}
+        {!collapsed && badgeCount > 0 && (
+          <span className="h-5 min-w-[20px] rounded-full bg-destructive text-[10px] font-bold text-white flex items-center justify-center px-1">
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
       </Link>
     );
   };
@@ -133,11 +173,9 @@ export default function AppSidebar() {
   const { collapsed, toggle } = useSidebarState();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Mobile: use Sheet drawer
   if (isMobile) {
     return (
       <>
-        {/* Mobile trigger button — rendered in header area */}
         <div className="fixed top-0 left-0 z-40 h-14 flex items-center px-3">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
@@ -154,7 +192,6 @@ export default function AppSidebar() {
     );
   }
 
-  // Desktop: fixed sidebar
   return (
     <aside
       className={cn(
