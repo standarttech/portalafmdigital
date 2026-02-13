@@ -145,6 +145,29 @@ function AppRoutes() {
     );
   }
 
+  // If user has no role (removed from agency_users), block access
+  if (!agencyRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
+          <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+            <span className="text-destructive text-xl">✕</span>
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">Доступ запрещён</h2>
+          <p className="text-muted-foreground text-sm">
+            У вас нет доступа к платформе. Обратитесь к администратору.
+          </p>
+          <button
+            onClick={() => signOut()}
+            className="mt-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+          >
+            Выйти
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const isClient = agencyRole === 'Client';
 
   if (isClient) {
