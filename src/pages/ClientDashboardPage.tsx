@@ -120,9 +120,11 @@ export default function ClientDashboardPage() {
         cpl: cur.leads > 0 ? cur.spend / cur.leads : 0,
         ctr: cur.impressions > 0 ? (cur.clicks / cur.impressions) * 100 : 0,
         activeClients: 0, activeCampaigns: 0,
+        revenue: 0, purchases: 0, roas: 0,
         prevSpend: prev.spend, prevLeads: prev.leads, prevClicks: prev.clicks, prevImpressions: prev.impressions,
         prevCpl: prev.leads > 0 ? prev.spend / prev.leads : 0,
         prevCtr: prev.impressions > 0 ? (prev.clicks / prev.impressions) * 100 : 0,
+        prevRevenue: 0, prevPurchases: 0, prevRoas: 0,
       });
 
       // Build daily table rows

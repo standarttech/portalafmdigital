@@ -90,7 +90,7 @@ export default function DashboardPage() {
       </motion.div>
 
       <motion.div variants={item}>
-        <KpiSection data={kpis} />
+        <KpiSection data={kpis} showComparison={comparison !== undefined && dateRange !== '30d'} />
       </motion.div>
 
       {isAgencyMember && (

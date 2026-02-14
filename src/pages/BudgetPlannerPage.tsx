@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, DollarSign, Users, TrendingUp, Loader2, Calendar } from 'lucide-react';
+import { Plus, DollarSign, Users, TrendingUp, Loader2, Calendar, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, startOfMonth, subMonths, addMonths } from 'date-fns';
 import type { TranslationKey } from '@/i18n/translations';
@@ -112,6 +112,13 @@ export default function BudgetPlannerPage() {
     fetchData();
   };
 
+  const handleDelete = async (planId: string) => {
+    const { error } = await supabase.from('budget_plans').delete().eq('id', planId);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Deleted');
+    fetchData();
+  };
+
   const getVariance = (actual: number, planned: number) => {
     if (planned === 0) return null;
     return ((actual - planned) / planned * 100).toFixed(0);
@@ -207,6 +214,7 @@ export default function BudgetPlannerPage() {
                       <th className="text-right">Δ Leads</th>
                       <th className="text-right">Plan CPL</th>
                       <th className="text-right">Fact CPL</th>
+                      <th className="text-right w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -230,6 +238,11 @@ export default function BudgetPlannerPage() {
                           </td>
                           <td className="text-right">{p.planned_cpl ? formatCurrency(p.planned_cpl) : '—'}</td>
                           <td className="text-right">{factCpl > 0 ? formatCurrency(factCpl) : '—'}</td>
+                          <td className="text-right">
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
                         </tr>
                       );
                     })}
