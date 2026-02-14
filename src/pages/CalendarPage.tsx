@@ -141,7 +141,13 @@ export default function CalendarPage() {
                       </span>
                       <div className="flex flex-wrap gap-0.5 mt-0.5">
                         {dayEvents.slice(0, 3).map(e => (
-                          <div key={e.id} className={cn('h-1.5 w-1.5 rounded-full', e.type === 'task' ? 'bg-blue-400' : e.type === 'annotation' ? 'bg-amber-400' : 'bg-green-400')} />
+                          <div key={e.id} className={cn(
+                            'h-1.5 w-1.5 rounded-full',
+                            e.type === 'task' && e.status === 'completed' ? 'bg-emerald-400' :
+                            e.type === 'task' && e.status === 'in_progress' ? 'bg-blue-400' :
+                            e.type === 'task' ? 'bg-amber-400' :
+                            e.type === 'annotation' ? 'bg-purple-400' : 'bg-green-400'
+                          )} />
                         ))}
                         {dayEvents.length > 3 && <span className="text-[8px] text-muted-foreground">+{dayEvents.length - 3}</span>}
                       </div>

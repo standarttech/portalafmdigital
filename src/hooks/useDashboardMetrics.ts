@@ -12,12 +12,18 @@ export interface KpiData {
   ctr: number;
   activeClients: number;
   activeCampaigns: number;
+  revenue: number;
+  purchases: number;
+  roas: number;
   prevSpend: number;
   prevLeads: number;
   prevClicks: number;
   prevImpressions: number;
   prevCpl: number;
   prevCtr: number;
+  prevRevenue: number;
+  prevPurchases: number;
+  prevRoas: number;
 }
 
 export interface ChartDataPoint {
@@ -117,7 +123,7 @@ export function useDashboardMetrics(
       // Fetch current period metrics
       let query = supabase
         .from('daily_metrics')
-        .select('spend, leads, link_clicks, impressions, date, client_id, campaign_id')
+        .select('spend, leads, link_clicks, impressions, date, client_id, campaign_id, revenue, purchases')
         .gte('date', range.from)
         .lte('date', range.to);
 
@@ -126,7 +132,7 @@ export function useDashboardMetrics(
       // Fetch previous period
       let prevQuery = supabase
         .from('daily_metrics')
-        .select('spend, leads, link_clicks, impressions')
+        .select('spend, leads, link_clicks, impressions, revenue, purchases')
         .gte('date', prevRange.from)
         .lte('date', prevRange.to);
 
@@ -139,8 +145,10 @@ export function useDashboardMetrics(
           leads: acc.leads + r.leads,
           clicks: acc.clicks + r.link_clicks,
           impressions: acc.impressions + r.impressions,
+          revenue: acc.revenue + Number(r.revenue || 0),
+          purchases: acc.purchases + (r.purchases || 0),
         }),
-        { spend: 0, leads: 0, clicks: 0, impressions: 0 }
+        { spend: 0, leads: 0, clicks: 0, impressions: 0, revenue: 0, purchases: 0 }
       );
 
       const prev = (prevMetrics || []).reduce(
@@ -149,8 +157,10 @@ export function useDashboardMetrics(
           leads: acc.leads + r.leads,
           clicks: acc.clicks + r.link_clicks,
           impressions: acc.impressions + r.impressions,
+          revenue: acc.revenue + Number(r.revenue || 0),
+          purchases: acc.purchases + (r.purchases || 0),
         }),
-        { spend: 0, leads: 0, clicks: 0, impressions: 0 }
+        { spend: 0, leads: 0, clicks: 0, impressions: 0, revenue: 0, purchases: 0 }
       );
 
       // Counts
@@ -173,12 +183,18 @@ export function useDashboardMetrics(
         ctr: cur.impressions > 0 ? (cur.clicks / cur.impressions) * 100 : 0,
         activeClients: clientCount || 0,
         activeCampaigns: campaignCount || 0,
+        revenue: cur.revenue,
+        purchases: cur.purchases,
+        roas: cur.spend > 0 ? cur.revenue / cur.spend : 0,
         prevSpend: prev.spend,
         prevLeads: prev.leads,
         prevClicks: prev.clicks,
         prevImpressions: prev.impressions,
         prevCpl: prev.leads > 0 ? prev.spend / prev.leads : 0,
         prevCtr: prev.impressions > 0 ? (prev.clicks / prev.impressions) * 100 : 0,
+        prevRevenue: prev.revenue,
+        prevPurchases: prev.purchases,
+        prevRoas: prev.spend > 0 ? prev.revenue / prev.spend : 0,
       });
 
       // Chart data: group by date
