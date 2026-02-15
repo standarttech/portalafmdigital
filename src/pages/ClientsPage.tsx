@@ -16,6 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
+import { useAdminApproval } from '@/hooks/useAdminApproval';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface Client {
@@ -73,7 +75,9 @@ export default function ClientsPage() {
   const [saving, setSaving] = useState(false);
 
   const isAdmin = agencyRole === 'AgencyAdmin';
-
+  const { requestApproval } = useAdminApproval();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const fetchClients = useCallback(async () => {
     const { data, error } = await supabase
       .from('clients')
@@ -149,9 +153,26 @@ export default function ClientsPage() {
   };
 
   const handleDelete = async (client: Client) => {
-    const { error } = await supabase.from('clients').delete().eq('id', client.id);
+    setClientToDelete(client);
+    setConfirmDeleteOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!clientToDelete) return;
+    // Request dual-admin approval for critical action
+    const canProceed = await requestApproval({
+      action_type: 'delete_client',
+      entity_type: 'client',
+      entity_id: clientToDelete.id,
+      entity_name: clientToDelete.name,
+    });
+    if (!canProceed) { setConfirmDeleteOpen(false); setClientToDelete(null); return; }
+    
+    const { error } = await supabase.from('clients').delete().eq('id', clientToDelete.id);
     if (error) { toast.error(error.message); return; }
     toast.success(t('clients.clientDeleted'));
+    setConfirmDeleteOpen(false);
+    setClientToDelete(null);
     fetchClients();
   };
 
@@ -334,6 +355,16 @@ export default function ClientsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title={`Удалить клиента "${clientToDelete?.name}"?`}
+        description="Это действие необратимо. Все данные клиента будут удалены. Если есть другие администраторы, потребуется их подтверждение."
+        confirmLabel="Удалить"
+        cancelLabel={t('common.cancel')}
+        onConfirm={executeDelete}
+      />
     </motion.div>
   );
 }

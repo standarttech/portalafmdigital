@@ -16,6 +16,7 @@ import {
   MessageSquare, Send, Plus, Trash2, Loader2, Users, Building2, Hash, Settings, Crown, Shield, Headphones,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface ChatRoom {
@@ -226,9 +227,17 @@ export default function ChatPage() {
     fetchRooms(); setSelectedRoom(room.id);
   };
 
+  const [confirmDeleteRoom, setConfirmDeleteRoom] = useState<string | null>(null);
+  
   const handleDeleteRoom = async (roomId: string) => {
-    await supabase.from('chat_rooms').delete().eq('id', roomId);
-    if (selectedRoom === roomId) { setSelectedRoom(null); setMessages([]); }
+    setConfirmDeleteRoom(roomId);
+  };
+  
+  const executeDeleteRoom = async () => {
+    if (!confirmDeleteRoom) return;
+    await supabase.from('chat_rooms').delete().eq('id', confirmDeleteRoom);
+    if (selectedRoom === confirmDeleteRoom) { setSelectedRoom(null); setMessages([]); }
+    setConfirmDeleteRoom(null);
     fetchRooms(); toast.success(t('common.delete'));
   };
 
@@ -262,8 +271,10 @@ export default function ChatPage() {
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
 
   // Separate support rooms from regular rooms for admin view
+  // Separate rooms into sections
   const supportRooms = rooms.filter(r => r.type === 'support');
-  const regularRooms = rooms.filter(r => r.type !== 'support');
+  const clientRooms = rooms.filter(r => r.type === 'client');
+  const teamRooms = rooms.filter(r => r.type === 'team' || r.type === 'custom');
 
   const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : type === 'support' ? Headphones : Hash;
 
@@ -342,29 +353,31 @@ export default function ChatPage() {
                 <p className="text-center text-sm text-muted-foreground py-8">{t('chat.noRooms' as TranslationKey)}</p>
               ) : (
                 <div className="p-1">
-                  {/* Support section */}
-                  {supportRooms.length > 0 && (
-                    <>
-                      <div className="px-3 pt-3 pb-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-                          <Headphones className="h-3 w-3" />
-                          {t('chat.support' as TranslationKey)} ({supportRooms.length})
-                        </p>
-                      </div>
-                      {supportRooms.map(renderRoomItem)}
-                    </>
-                  )}
-                  {/* Regular rooms */}
-                  {regularRooms.length > 0 && (
-                    <>
-                      <div className="px-3 pt-3 pb-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          {t('chat.rooms' as TranslationKey)}
-                        </p>
-                      </div>
-                      {regularRooms.map(renderRoomItem)}
-                    </>
-                  )}
+                   {/* Client rooms section (support + client) */}
+                   {(supportRooms.length > 0 || clientRooms.length > 0) && (
+                     <>
+                       <div className="px-3 pt-3 pb-1">
+                         <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                           <Building2 className="h-3 w-3" />
+                           Клиенты ({supportRooms.length + clientRooms.length})
+                         </p>
+                       </div>
+                       {supportRooms.map(renderRoomItem)}
+                       {clientRooms.map(renderRoomItem)}
+                     </>
+                   )}
+                   {/* Team rooms section */}
+                   {teamRooms.length > 0 && (
+                     <>
+                       <div className="px-3 pt-3 pb-1">
+                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                           <Users className="h-3 w-3" />
+                           Команда ({teamRooms.length})
+                         </p>
+                       </div>
+                       {teamRooms.map(renderRoomItem)}
+                     </>
+                   )}
                 </div>
               )}
             </ScrollArea>
@@ -560,6 +573,16 @@ export default function ChatPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <ConfirmDialog
+        open={!!confirmDeleteRoom}
+        onOpenChange={(open) => !open && setConfirmDeleteRoom(null)}
+        title="Удалить чат?"
+        description="Все сообщения в этом чате будут удалены. Это действие необратимо."
+        confirmLabel="Удалить"
+        cancelLabel="Отмена"
+        onConfirm={executeDeleteRoom}
+      />
     </motion.div>
   );
 }

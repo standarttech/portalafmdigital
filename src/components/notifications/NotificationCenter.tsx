@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Bell, Check, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -32,6 +33,7 @@ const typeColors: Record<string, string> = {
 
 export default function NotificationCenter() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -47,8 +49,6 @@ export default function NotificationCenter() {
   }, [user]);
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
-
-  // Refresh on open
   useEffect(() => { if (open) fetchNotifications(); }, [open, fetchNotifications]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -59,9 +59,15 @@ export default function NotificationCenter() {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
 
-  const markRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+  const handleNotificationClick = async (n: Notification) => {
+    if (!n.is_read) {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', n.id);
+      setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+    }
+    if (n.link) {
+      setOpen(false);
+      navigate(n.link);
+    }
   };
 
   const timeAgo = (iso: string) => {
@@ -105,7 +111,7 @@ export default function NotificationCenter() {
               return (
                 <div
                   key={n.id}
-                  onClick={() => !n.is_read && markRead(n.id)}
+                  onClick={() => handleNotificationClick(n)}
                   className={cn(
                     'flex gap-2.5 px-3 py-2.5 border-b border-border/50 cursor-pointer hover:bg-secondary/30 transition-colors',
                     !n.is_read && 'bg-primary/5'
@@ -118,6 +124,7 @@ export default function NotificationCenter() {
                       <span className="text-[9px] text-muted-foreground/60 flex-shrink-0">{timeAgo(n.created_at)}</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                    {n.link && <p className="text-[9px] text-primary/60 mt-0.5">Click to view →</p>}
                   </div>
                   {!n.is_read && <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
                 </div>
