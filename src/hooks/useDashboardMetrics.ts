@@ -104,7 +104,6 @@ export function useDashboardMetrics(
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Check if any real data exists
       const { count } = await supabase
         .from('daily_metrics')
         .select('id', { count: 'exact', head: true });
@@ -117,12 +116,35 @@ export function useDashboardMetrics(
         return;
       }
 
-      // Build platform filter
-      let platformFilter: string | null = null;
+      // If platform filter is active, get campaign IDs for that platform
+      let platformCampaignIds: string[] | null = null;
       if (filters.platform !== 'all') {
-        // We need to join through campaigns -> ad_accounts -> platform_connections
-        // For simplicity, filter by platform_connections for the client
-        platformFilter = filters.platform;
+        const { data: connections } = await supabase
+          .from('platform_connections')
+          .select('id')
+          .eq('platform', filters.platform);
+        
+        if (connections && connections.length > 0) {
+          const connectionIds = connections.map(c => c.id);
+          const { data: adAccounts } = await supabase
+            .from('ad_accounts')
+            .select('id')
+            .in('connection_id', connectionIds);
+          
+          if (adAccounts && adAccounts.length > 0) {
+            const adAccountIds = adAccounts.map(a => a.id);
+            const { data: campaigns } = await supabase
+              .from('campaigns')
+              .select('id')
+              .in('ad_account_id', adAccountIds);
+            
+            platformCampaignIds = campaigns?.map(c => c.id) || [];
+          } else {
+            platformCampaignIds = [];
+          }
+        } else {
+          platformCampaignIds = [];
+        }
       }
 
       // Fetch current period metrics
@@ -132,6 +154,23 @@ export function useDashboardMetrics(
         .gte('date', range.from)
         .lte('date', range.to);
 
+      if (platformCampaignIds !== null) {
+        if (platformCampaignIds.length === 0) {
+          // No campaigns for this platform — empty result
+          setKpis({
+            spend: 0, leads: 0, clicks: 0, impressions: 0, cpl: 0, ctr: 0,
+            activeClients: 0, activeCampaigns: 0, revenue: 0, purchases: 0, roas: 0,
+            prevSpend: 0, prevLeads: 0, prevClicks: 0, prevImpressions: 0, prevCpl: 0, prevCtr: 0,
+            prevRevenue: 0, prevPurchases: 0, prevRoas: 0,
+          });
+          setChartData([]);
+          setClientsData([]);
+          setLoading(false);
+          return;
+        }
+        query = query.in('campaign_id', platformCampaignIds);
+      }
+
       const { data: currentMetrics } = await query;
 
       // Fetch previous period
@@ -140,6 +179,10 @@ export function useDashboardMetrics(
         .select('spend, leads, link_clicks, impressions, revenue, purchases')
         .gte('date', prevRange.from)
         .lte('date', prevRange.to);
+
+      if (platformCampaignIds !== null && platformCampaignIds.length > 0) {
+        prevQuery = prevQuery.in('campaign_id', platformCampaignIds);
+      }
 
       const { data: prevMetrics } = await prevQuery;
 
@@ -212,12 +255,65 @@ export function useDashboardMetrics(
       const chart = Object.entries(byDate)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([date, vals]) => ({
-          date: date.slice(5), // MM-DD
+          date: date.slice(5),
           spend: Math.round(vals.spend),
           leads: vals.leads,
           cpl: vals.leads > 0 ? Math.round((vals.spend / vals.leads) * 100) / 100 : 0,
         }));
       setChartData(chart);
+
+      // Platform breakdown from real data
+      const { data: allConnections } = await supabase
+        .from('platform_connections')
+        .select('id, platform')
+        .eq('is_active', true);
+
+      const { data: allAdAccounts } = await supabase
+        .from('ad_accounts')
+        .select('id, connection_id');
+
+      const { data: allCampaigns } = await supabase
+        .from('campaigns')
+        .select('id, ad_account_id');
+
+      // Build campaign -> platform map
+      const connPlatformMap = new Map((allConnections || []).map(c => [c.id, c.platform]));
+      const adAccConnMap = new Map((allAdAccounts || []).map(a => [a.id, a.connection_id]));
+      const campAdAccMap = new Map((allCampaigns || []).map(c => [c.id, c.ad_account_id]));
+
+      const getCampaignPlatform = (campaignId: string): string | null => {
+        const adAccId = campAdAccMap.get(campaignId);
+        if (!adAccId) return null;
+        const connId = adAccConnMap.get(adAccId);
+        if (!connId) return null;
+        return connPlatformMap.get(connId) || null;
+      };
+
+      const platAgg: Record<string, { spend: number; leads: number }> = {
+        meta: { spend: 0, leads: 0 },
+        google: { spend: 0, leads: 0 },
+        tiktok: { spend: 0, leads: 0 },
+      };
+
+      (currentMetrics || []).forEach(r => {
+        const plat = getCampaignPlatform(r.campaign_id);
+        if (plat && platAgg[plat]) {
+          platAgg[plat].spend += Number(r.spend);
+          platAgg[plat].leads += r.leads;
+        }
+      });
+
+      const platformColors: Record<string, string> = {
+        meta: 'hsl(220, 80%, 55%)',
+        google: 'hsl(140, 60%, 45%)',
+        tiktok: 'hsl(340, 70%, 55%)',
+      };
+
+      setPlatformData([
+        { name: 'Meta Ads', key: 'meta', ...platAgg.meta, color: platformColors.meta },
+        { name: 'Google Ads', key: 'google', ...platAgg.google, color: platformColors.google },
+        { name: 'TikTok Ads', key: 'tiktok', ...platAgg.tiktok, color: platformColors.tiktok },
+      ]);
 
       // Client metrics
       const byClient: Record<string, { spend: number; leads: number; clicks: number; impressions: number; revenue: number; purchases: number }> = {};
@@ -257,6 +353,8 @@ export function useDashboardMetrics(
           };
         });
         setClientsData(clientMetrics);
+      } else {
+        setClientsData([]);
       }
     } catch (err) {
       console.error('Dashboard metrics error:', err);

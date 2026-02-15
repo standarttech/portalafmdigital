@@ -53,8 +53,8 @@ export default function AuthPage() {
       >
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
-            <div className="h-16 w-auto bg-primary/10 rounded-2xl p-3 flex items-center justify-center">
-              <img src={logoAfm} alt="AFM DIGITAL" className="h-10 w-auto invert dark:invert-0" />
+            <div className="h-24 w-auto bg-primary/10 rounded-2xl p-4 flex items-center justify-center">
+              <img src={logoAfm} alt="AFM DIGITAL" className="h-16 w-auto invert dark:invert-0" />
             </div>
           </div>
           <h1 className="text-2xl font-bold text-foreground">{t('auth.loginTitle')}</h1>

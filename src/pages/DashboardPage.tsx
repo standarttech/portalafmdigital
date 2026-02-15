@@ -93,9 +93,17 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
+      {/* 1. KPI: Spend, Impressions, Clicks, Active Clients */}
       <motion.div variants={item}>
         <KpiSection data={kpis} showComparison={compareEnabled && comparison !== 'none'} />
       </motion.div>
+
+      {/* 2. Category Breakdown */}
+      {isAgencyMember && clientsData.length > 0 && (
+        <motion.div variants={item}>
+          <CategoryBreakdown clients={clientsData} />
+        </motion.div>
+      )}
 
       {isAgencyMember && (
         <motion.div variants={item}>
@@ -115,12 +123,6 @@ export default function DashboardPage() {
       {isAgencyMember && (
         <motion.div variants={item}>
           <ClientsPerformanceTable clientsData={clientsData} />
-        </motion.div>
-      )}
-
-      {isAgencyMember && clientsData.length > 0 && (
-        <motion.div variants={item}>
-          <CategoryBreakdown clients={clientsData} />
         </motion.div>
       )}
 
