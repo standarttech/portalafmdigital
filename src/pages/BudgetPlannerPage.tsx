@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +40,10 @@ export default function BudgetPlannerPage() {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM-01'));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [comparison, setComparison] = useState<Comparison>('none');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [compareEnabled, setCompareEnabled] = useState(false);
 
   // Form
   const [formClient, setFormClient] = useState('');
@@ -145,7 +151,17 @@ export default function BudgetPlannerPage() {
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">{t('budget.subtitle' as TranslationKey)}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <DateRangePicker
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            comparison={comparison}
+            onComparisonChange={setComparison}
+            customDateRange={customDateRange}
+            onCustomDateRangeChange={setCustomDateRange}
+            compareEnabled={compareEnabled}
+            onCompareEnabledChange={setCompareEnabled}
+          />
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>

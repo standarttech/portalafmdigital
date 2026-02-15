@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { FileText, Plus, Clock, Calendar, Send, Download, Trash2, Loader2 } from 'lucide-react';
+import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +39,10 @@ export default function ReportsPage() {
   const { t, formatCurrency, formatNumber } = useLanguage();
   const { user } = useAuth();
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [comparison, setComparison] = useState<Comparison>('none');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [compareEnabled, setCompareEnabled] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedScope, setSelectedScope] = useState('client');
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -155,11 +161,22 @@ export default function ReportsPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      <motion.div variants={item} className="flex items-center justify-between">
+      <motion.div variants={item} className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t('nav.reports')}</h1>
           <p className="text-muted-foreground text-sm mt-1">{t('reports.subtitle')}</p>
         </div>
+        <div className="flex items-center gap-2">
+          <DateRangePicker
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            comparison={comparison}
+            onComparisonChange={setComparison}
+            customDateRange={customDateRange}
+            onCustomDateRangeChange={setCustomDateRange}
+            compareEnabled={compareEnabled}
+            onCompareEnabledChange={setCompareEnabled}
+          />
         <Dialog open={wizardOpen} onOpenChange={(o) => { setWizardOpen(o); if (!o) resetWizard(); }}>
           <DialogTrigger asChild><Button className="gap-2"><Plus className="h-4 w-4" />{t('reports.createReport')}</Button></DialogTrigger>
           <DialogContent className="sm:max-w-lg">
@@ -244,6 +261,7 @@ export default function ReportsPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </motion.div>
 
       <motion.div variants={item}>

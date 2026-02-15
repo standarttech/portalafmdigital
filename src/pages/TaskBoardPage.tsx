@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -60,6 +62,10 @@ export default function TaskBoardPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [saving, setSaving] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [comparison, setComparison] = useState<Comparison>('none');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [compareEnabled, setCompareEnabled] = useState(false);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -181,10 +187,22 @@ export default function TaskBoardPage() {
             {isRu ? 'Управление задачами команды' : 'Manage team tasks'}
           </p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => openNewDialog()}>
-          <Plus className="h-4 w-4" />
-          {isRu ? 'Новая задача' : 'New Task'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <DateRangePicker
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            comparison={comparison}
+            onComparisonChange={setComparison}
+            customDateRange={customDateRange}
+            onCustomDateRangeChange={setCustomDateRange}
+            compareEnabled={compareEnabled}
+            onCompareEnabledChange={setCompareEnabled}
+          />
+          <Button size="sm" className="gap-1.5" onClick={() => openNewDialog()}>
+            <Plus className="h-4 w-4" />
+            {isRu ? 'Новая задача' : 'New Task'}
+          </Button>
+        </div>
       </motion.div>
 
       {loading ? (

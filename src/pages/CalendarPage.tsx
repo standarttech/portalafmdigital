@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Target, ListTodo, MessageSquare } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
+import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface CalendarEvent {
@@ -32,11 +34,14 @@ const typeConfig: Record<string, { icon: typeof ListTodo; color: string }> = {
 export default function CalendarPage() {
   const { t } = useLanguage();
   const { agencyRole } = useAuth();
-  const isAgency = agencyRole === 'AgencyAdmin' || agencyRole === 'MediaBuyer';
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [comparison, setComparison] = useState<Comparison>('none');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [compareEnabled, setCompareEnabled] = useState(false);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -90,7 +95,7 @@ export default function CalendarPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      <motion.div variants={item} className="flex items-center justify-between">
+      <motion.div variants={item} className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
             <CalendarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
@@ -98,6 +103,16 @@ export default function CalendarPage() {
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">{t('calendar.subtitle' as TranslationKey)}</p>
         </div>
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          comparison={comparison}
+          onComparisonChange={setComparison}
+          customDateRange={customDateRange}
+          onCustomDateRangeChange={setCustomDateRange}
+          compareEnabled={compareEnabled}
+          onCompareEnabledChange={setCompareEnabled}
+        />
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

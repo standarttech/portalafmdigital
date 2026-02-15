@@ -58,18 +58,26 @@ function toCSVExportURL(url: string): string {
   return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
 }
 
-async function syncClient(supabase: any, clientId: string) {
+async function syncClient(supabase: any, clientId: string, platform: string = "google") {
   const { data: client, error: clientError } = await supabase
     .from("clients")
-    .select("id, name, google_sheet_url")
+    .select("id, name, google_sheet_url, meta_sheet_url, tiktok_sheet_url")
     .eq("id", clientId)
     .single();
 
   if (clientError || !client) throw new Error("Client not found");
-  if (!client.google_sheet_url) throw new Error("No Google Sheet URL configured");
+
+  // Pick the correct sheet URL based on platform
+  const sheetUrlMap: Record<string, string | null> = {
+    meta: client.meta_sheet_url,
+    google: client.google_sheet_url,
+    tiktok: client.tiktok_sheet_url,
+  };
+  const sheetUrl = sheetUrlMap[platform] || client.google_sheet_url;
+  if (!sheetUrl) throw new Error(`No Google Sheet URL configured for platform: ${platform}`);
 
   // Fetch CSV
-  const csvUrl = toCSVExportURL(client.google_sheet_url);
+  const csvUrl = toCSVExportURL(sheetUrl);
   const csvResponse = await fetch(csvUrl);
   if (!csvResponse.ok) throw new Error(`Failed to fetch sheet: ${csvResponse.status}`);
 
@@ -89,15 +97,17 @@ async function syncClient(supabase: any, clientId: string) {
   if (existingAccounts && existingAccounts.length > 0) {
     adAccountId = existingAccounts[0].id;
   } else {
+    // Look for existing connection for this specific platform
     let { data: existingConns } = await supabase
-      .from("platform_connections").select("id").eq("client_id", clientId).limit(1);
+      .from("platform_connections").select("id").eq("client_id", clientId).eq("platform", platform).limit(1);
     let connId: string;
     if (existingConns && existingConns.length > 0) {
       connId = existingConns[0].id;
     } else {
+      const platformNames: Record<string, string> = { meta: "Meta Ads", google: "Google Ads", tiktok: "TikTok Ads" };
       const { data: newConn } = await supabase
         .from("platform_connections")
-        .insert({ client_id: clientId, platform: "google", account_name: "Google Sheets Import", sync_status: "success", last_sync_at: new Date().toISOString() })
+        .insert({ client_id: clientId, platform, account_name: platformNames[platform] || "Sheets Import", sync_status: "success", last_sync_at: new Date().toISOString() })
         .select("id").single();
       connId = newConn!.id;
     }
@@ -178,11 +188,12 @@ async function syncClient(supabase: any, clientId: string) {
     synced++;
   }
 
-  // Update sync status
+  // Update sync status for this platform's connection
   await supabase
     .from("platform_connections")
     .update({ last_sync_at: new Date().toISOString(), sync_status: "success" })
-    .eq("client_id", clientId);
+    .eq("client_id", clientId)
+    .eq("platform", platform);
 
   return synced;
 }
@@ -203,21 +214,27 @@ Deno.serve(async (req) => {
     try { body = await req.json(); } catch {}
 
     if (body.cron === true) {
-      // Cron mode: sync all clients with auto_sync_enabled
+      // Cron mode: sync all clients with auto_sync_enabled for all platforms
       const { data: clients } = await supabase
         .from("clients")
-        .select("id")
-        .eq("auto_sync_enabled", true)
-        .not("google_sheet_url", "is", null);
+        .select("id, google_sheet_url, meta_sheet_url, tiktok_sheet_url")
+        .eq("auto_sync_enabled", true);
 
       let totalSynced = 0;
       const errors: string[] = [];
       for (const c of (clients || [])) {
-        try {
-          const count = await syncClient(supabase, c.id);
-          totalSynced += count;
-        } catch (e: any) {
-          errors.push(`${c.id}: ${e.message}`);
+        const platformsToSync: string[] = [];
+        if (c.meta_sheet_url) platformsToSync.push("meta");
+        if (c.google_sheet_url) platformsToSync.push("google");
+        if (c.tiktok_sheet_url) platformsToSync.push("tiktok");
+        
+        for (const plat of platformsToSync) {
+          try {
+            const count = await syncClient(supabase, c.id, plat);
+            totalSynced += count;
+          } catch (e: any) {
+            errors.push(`${c.id}/${plat}: ${e.message}`);
+          }
         }
       }
       return new Response(
@@ -241,14 +258,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { client_id } = body;
+    const { client_id, platform } = body;
     if (!client_id) {
       return new Response(JSON.stringify({ error: "client_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const synced = await syncClient(supabase, client_id);
+    const synced = await syncClient(supabase, client_id, platform || "google");
 
     return new Response(
       JSON.stringify({ success: true, rows_synced: synced }),
