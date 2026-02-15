@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import ConversionFunnel from '@/components/client/ConversionFunnel';
 import ClientComments from '@/components/client/ClientComments';
+import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,13 +29,14 @@ import { toast } from 'sonner';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { subDays, startOfMonth, endOfMonth, subMonths, format, startOfWeek, endOfWeek } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import {
   ALL_METRIC_COLUMNS, CATEGORY_DEFAULTS, CATEGORY_KPIS, CATEGORY_CHART_METRICS, CATEGORY_OPTIONS,
   toClientCategory, computeDailyRow, formatMetricValue,
   type ClientCategory,
 } from '@/components/dashboard/categoryMetrics';
 import type { TranslationKey } from '@/i18n/translations';
+import type { DateRange, Comparison, PlatformFilter } from '@/components/dashboard/dashboardData';
 
 interface ClientData {
   id: string; name: string; status: string; currency: string; timezone: string;
@@ -61,25 +63,6 @@ const statusStyles: Record<string, string> = {
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
-
-const ICON_MAP: Record<string, any> = {
-  DollarSign, MousePointerClick, Users, Eye, TrendingUp, BarChart3,
-  ShoppingBag, ShoppingCart, CreditCard,
-};
-
-type PeriodKey = 'today' | 'yesterday' | 'last7' | 'last30' | 'last_month' | 'custom' | 'all';
-
-function getDateRange(period: PeriodKey): { from: string; to: string } | null {
-  const today = new Date();
-  switch (period) {
-    case 'today': return { from: format(today, 'yyyy-MM-dd'), to: format(today, 'yyyy-MM-dd') };
-    case 'yesterday': { const y = subDays(today, 1); return { from: format(y, 'yyyy-MM-dd'), to: format(y, 'yyyy-MM-dd') }; }
-    case 'last7': return { from: format(subDays(today, 7), 'yyyy-MM-dd'), to: format(today, 'yyyy-MM-dd') };
-    case 'last30': return { from: format(subDays(today, 30), 'yyyy-MM-dd'), to: format(today, 'yyyy-MM-dd') };
-    case 'last_month': { const lm = subMonths(today, 1); return { from: format(startOfMonth(lm), 'yyyy-MM-dd'), to: format(endOfMonth(lm), 'yyyy-MM-dd') }; }
-    default: return null;
-  }
-}
 
 // Platform Sheet Connection sub-component
 function PlatformSheetRow({ clientId, platform, label, fieldName, isAdmin }: { clientId: string; platform: string; label: string; fieldName: string; isAdmin: boolean }) {
@@ -116,24 +99,24 @@ function PlatformSheetRow({ clientId, platform, label, fieldName, isAdmin }: { c
   };
 
   return (
-    <div className="rounded-lg border border-border/50 p-4 space-y-3">
+    <div className="rounded-lg border border-border/50 p-3 sm:p-4 space-y-2 sm:space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{label}</span>
         {savedUrl ? (
-          <Badge variant="outline" className="text-[10px] border-success/30 text-success">Connected</Badge>
+          <Badge variant="outline" className="text-[10px] border-success/30 text-success">{t('dashboard.connected')}</Badge>
         ) : (
-          <Badge variant="outline" className="text-[10px] border-border text-muted-foreground">Not connected</Badge>
+          <Badge variant="outline" className="text-[10px] border-border text-muted-foreground">{t('dashboard.notConnected')}</Badge>
         )}
       </div>
       <div className="flex gap-2">
         <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." className="flex-1 text-xs h-8" />
-        <Button onClick={handleSave} disabled={saving || url === savedUrl} variant="outline" size="sm" className="h-8 text-xs">{t('common.save')}</Button>
+        <Button onClick={handleSave} disabled={saving || url === savedUrl} variant="outline" size="sm" className="h-8 text-xs flex-shrink-0">{t('common.save')}</Button>
       </div>
       {savedUrl && (
         <div className="flex items-center gap-2">
           <Button onClick={handleSync} disabled={syncing} size="sm" variant="outline" className="gap-1.5 h-7 text-xs">
             {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-            Sync
+            {t('clients.syncSheet')}
           </Button>
           {lastResult && <span className={`text-xs ${lastResult.startsWith('Error') ? 'text-destructive' : 'text-success'}`}>{lastResult}</span>}
         </div>
@@ -161,7 +144,7 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
   return (
     <div className="space-y-6">
       <Card className="glass-card max-w-2xl">
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sheet className="h-5 w-5 text-primary" />Data Sources</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sheet className="h-5 w-5 text-primary" />{t('dashboard.dataSources')}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{t('clients.syncSheetDesc')}</p>
           
@@ -169,9 +152,9 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
           <PlatformSheetRow clientId={clientId} platform="google" label="Google Ads" fieldName="google_sheet_url" isAdmin={isAdmin} />
           <PlatformSheetRow clientId={clientId} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" isAdmin={isAdmin} />
 
-          <div className="flex items-center justify-between rounded-lg border border-border p-4">
-            <div><p className="text-sm font-medium">{t('clients.autoSync')}</p><p className="text-xs text-muted-foreground">{t('clients.autoSyncDesc')}</p></div>
-            <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} />
+          <div className="flex items-center justify-between rounded-lg border border-border p-3 sm:p-4">
+            <div className="min-w-0 flex-1 mr-3"><p className="text-sm font-medium">{t('clients.autoSync')}</p><p className="text-xs text-muted-foreground">{t('clients.autoSyncDesc')}</p></div>
+            <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} className="flex-shrink-0" />
           </div>
         </CardContent>
       </Card>
@@ -195,17 +178,20 @@ export default function ClientDetailPage() {
   const [targetLeads, setTargetLeads] = useState('');
   const [dailyMetrics, setDailyMetrics] = useState<DailyRow[]>([]);
   const [allClients, setAllClients] = useState<ClientListItem[]>([]);
-  const [period, setPeriod] = useState<PeriodKey>('all');
   const [platformFilter, setPlatformFilter] = useState<PlatformKey>('all');
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
   const [savingColumns, setSavingColumns] = useState(false);
 
-  // Chart normalization — default ON
+  // Unified DateRangePicker state
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [comparison, setComparison] = useState<Comparison>('none');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [compareEnabled, setCompareEnabled] = useState(false);
+
+  // Chart normalization
   const [chartNormalized, setChartNormalized] = useState(true);
 
   const isAgency = agencyRole === 'AgencyAdmin' || agencyRole === 'MediaBuyer';
@@ -213,7 +199,7 @@ export default function ClientDetailPage() {
 
   const category: ClientCategory = useMemo(() => toClientCategory(client?.category), [client?.category]);
 
-  // Visible columns: from DB (admin-saved) or category defaults
+  // Visible columns
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   useEffect(() => {
     if (client) {
@@ -226,19 +212,15 @@ export default function ClientDetailPage() {
     }
   }, [client, category]);
 
-  // Date filtering
-  const dateRange = useMemo(() => {
-    if (period === 'custom') return customFrom && customTo ? { from: customFrom, to: customTo } : null;
-    if (period === 'all') return null;
-    return getDateRange(period);
-  }, [period, customFrom, customTo]);
-
+  // Date filtering from DateRangePicker
   const filteredMetrics = useMemo(() => {
-    if (!dateRange) return dailyMetrics;
-    return dailyMetrics.filter(m => m.date >= dateRange.from && m.date <= dateRange.to);
-  }, [dailyMetrics, dateRange]);
+    if (!customDateRange) return dailyMetrics;
+    const from = format(customDateRange.from, 'yyyy-MM-dd');
+    const to = format(customDateRange.to, 'yyyy-MM-dd');
+    return dailyMetrics.filter(m => m.date >= from && m.date <= to);
+  }, [dailyMetrics, customDateRange]);
 
-  // Compute daily table rows with all metrics
+  // Compute daily table rows
   const dailyTableData = useMemo(() => {
     const byDate: Record<string, { spend: number; impressions: number; clicks: number; leads: number; add_to_cart: number; checkouts: number; purchases: number; revenue: number }> = {};
     filteredMetrics.forEach(r => {
@@ -268,7 +250,7 @@ export default function ClientDetailPage() {
     return computeDailyRow({ date: 'TOTAL', spend: t.spend, impressions: t.impressions, clicks: t.clicks, leads: t.leads, add_to_cart: t.addToCart, checkouts: t.checkouts, purchases: t.purchases, revenue: t.revenue });
   }, [dailyTableData]);
 
-  // Chart data with normalization
+  // Chart data
   const chartMetrics = CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other;
   const chartData = useMemo(() => {
     const raw = dailyTableData.map(r => {
@@ -358,6 +340,11 @@ export default function ClientDetailPage() {
 
   useEffect(() => { fetchClient(); fetchDailyMetrics(); fetchCampaigns(); fetchTasks(); fetchTargets(); fetchAllClients(); }, [fetchClient, fetchDailyMetrics, fetchCampaigns, fetchTasks, fetchTargets, fetchAllClients]);
 
+  // Set default date range on mount
+  useEffect(() => {
+    setCustomDateRange({ from: subDays(new Date(), 29), to: new Date() });
+  }, []);
+
   const handleSaveTargets = async () => {
     if (!id) return;
     setSavingTargets(true);
@@ -384,7 +371,6 @@ export default function ClientDetailPage() {
 
   const toggleColumn = (key: string) => setVisibleColumns(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
 
-  // Admin save columns to DB (for all users)
   const handleSaveColumnsToDb = async () => {
     if (!id || !isAdmin) return;
     setSavingColumns(true);
@@ -393,7 +379,6 @@ export default function ClientDetailPage() {
     toast.success(t('clients.columnsSaved'));
   };
 
-  // --- Category change ---
   const handleCategoryChange = async (newCat: string) => {
     if (!id || !isAdmin) return;
     await supabase.from('clients').update({ category: newCat, visible_columns: null } as any).eq('id', id);
@@ -401,7 +386,7 @@ export default function ClientDetailPage() {
     fetchClient();
   };
 
-  // --- Drag & Drop columns ---
+  // Drag & Drop columns
   const dragColRef = useRef<number | null>(null);
   const dragOverColRef = useRef<number | null>(null);
 
@@ -420,23 +405,12 @@ export default function ClientDetailPage() {
     dragOverColRef.current = null;
   };
 
-  // Ordered visible column definitions
   const orderedVisibleColumns = useMemo(() =>
     visibleColumns.map(key => ALL_METRIC_COLUMNS.find(c => c.key === key)).filter(Boolean) as typeof ALL_METRIC_COLUMNS,
     [visibleColumns]);
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   if (!client) return null;
-
-  const periodOptions: { key: PeriodKey; labelKey: TranslationKey }[] = [
-    { key: 'all', labelKey: 'common.all' },
-    { key: 'today', labelKey: 'common.today' },
-    { key: 'yesterday', labelKey: 'common.yesterday' },
-    { key: 'last7', labelKey: 'dashboard.last7days' },
-    { key: 'last30', labelKey: 'dashboard.last30days' },
-    { key: 'last_month', labelKey: 'dashboard.lastMonth' },
-    { key: 'custom', labelKey: 'common.custom' },
-  ];
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 sm:space-y-6">
@@ -483,32 +457,28 @@ export default function ClientDetailPage() {
         </div>
       </motion.div>
 
-      {/* Platform + Period selector */}
+      {/* Unified DateRangePicker + Platform filter */}
       <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-        <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5">
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          comparison={comparison}
+          onComparisonChange={setComparison}
+          customDateRange={customDateRange}
+          onCustomDateRangeChange={setCustomDateRange}
+          compareEnabled={compareEnabled}
+          onCompareEnabledChange={setCompareEnabled}
+        />
+        <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5 sm:ml-auto">
           {(['all', 'meta', 'google', 'tiktok'] as PlatformKey[]).map(p => (
             <Button key={p} variant={platformFilter === p ? 'default' : 'ghost'} size="sm" onClick={() => setPlatformFilter(p)} className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0">
-              {p === 'all' ? 'All' : p === 'meta' ? 'Meta' : p === 'google' ? 'Google' : 'TikTok'}
+              {p === 'all' ? t('dashboard.allPlatforms') : p === 'meta' ? 'Meta' : p === 'google' ? 'Google' : 'TikTok'}
             </Button>
           ))}
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {periodOptions.map(p => (
-            <Button key={p.key} variant={period === p.key ? 'default' : 'outline'} size="sm" onClick={() => setPeriod(p.key)} className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0">
-              {t(p.labelKey)}
-            </Button>
-          ))}
-          {period === 'custom' && (
-            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-7 sm:h-8 w-[120px] sm:w-[140px] text-[10px] sm:text-xs" />
-              <span className="text-muted-foreground text-xs">→</span>
-              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-7 sm:h-8 w-[120px] sm:w-[140px] text-[10px] sm:text-xs" />
-            </div>
-          )}
         </div>
       </motion.div>
 
-      {/* KPI Cards — category-specific */}
+      {/* KPI Cards */}
       <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         {kpiCards.map(kpi => (
           <div key={kpi.key} className="kpi-card py-3 px-3 sm:py-4 sm:px-4">
@@ -525,13 +495,13 @@ export default function ClientDetailPage() {
       <motion.div variants={item}>
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
-            <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">Overview</span><span className="sm:hidden">Overview</span></TabsTrigger>
-            <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Daily</TabsTrigger>
+            <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('dashboard.overview')}</span></TabsTrigger>
+            <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{t('dashboard.daily')}</TabsTrigger>
             <TabsTrigger value="campaigns" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('campaigns.title')}</span><span className="sm:hidden">Camps</span></TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('tasks.title')}</span><span className="sm:hidden">Tasks</span></TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('tasks.title')}</span><span className="sm:hidden">{t('tasks.title')}</span></TabsTrigger>
             {isAdmin && <TabsTrigger value="targets" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('targets.title')}</span><span className="sm:hidden">Targets</span></TabsTrigger>}
-            <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('nav.reports')}</span><span className="sm:hidden">Reports</span></TabsTrigger>
-            {isAgency && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">Connections</span><span className="sm:hidden">Conn</span></TabsTrigger>}
+            <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('nav.reports')}</span><span className="sm:hidden">{t('nav.reports')}</span></TabsTrigger>
+            {isAgency && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('clients.connections')}</span><span className="sm:hidden">Conn</span></TabsTrigger>}
           </TabsList>
 
           {/* OVERVIEW TAB */}
@@ -619,7 +589,7 @@ export default function ClientDetailPage() {
                           <div key={p} className="flex items-center justify-between p-2 rounded-lg border border-border/50 bg-secondary/20">
                             <span className="text-xs font-medium">{p === 'meta' ? 'Meta Ads' : p === 'google' ? 'Google Ads' : 'TikTok Ads'}</span>
                             <Badge variant="outline" className={`text-[9px] ${hasSheet ? 'border-success/30 text-success' : 'border-border text-muted-foreground'}`}>
-                              {hasSheet ? 'Connected' : 'Not connected'}
+                              {hasSheet ? t('dashboard.connected') : t('dashboard.notConnected')}
                             </Badge>
                           </div>
                         );
@@ -629,7 +599,6 @@ export default function ClientDetailPage() {
                 </Card>
               </div>
             </div>
-            {/* Comments */}
             <ClientComments clientId={id!} />
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
               <Clock className="h-3.5 w-3.5" /><span>{t('dashboard.lastUpdated')}: {new Date().toLocaleDateString()}</span>
@@ -639,7 +608,7 @@ export default function ClientDetailPage() {
           {/* DAILY TABLE TAB */}
           <TabsContent value="daily" className="space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-              <h3 className="text-base sm:text-lg font-semibold">Daily Report</h3>
+              <h3 className="text-base sm:text-lg font-semibold">{t('dashboard.dailyReport')}</h3>
               <div className="flex items-center gap-1.5 sm:gap-2">
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={handleSaveColumnsToDb} disabled={savingColumns} className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
@@ -662,7 +631,7 @@ export default function ClientDetailPage() {
                     </div>
                     <Button variant="ghost" size="sm" className="w-full mt-2 text-xs"
                       onClick={() => setVisibleColumns(CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.other)}>
-                      Reset to {t(`clients.${category === 'info_product' ? 'infoProduct' : category === 'online_business' ? 'onlineBusiness' : category === 'local_business' ? 'localBusiness' : category === 'real_estate' ? 'realEstate' : category}` as TranslationKey)} defaults
+                      {t('dashboard.resetDefaults')}
                     </Button>
                   </PopoverContent>
                 </Popover>
@@ -719,7 +688,7 @@ export default function ClientDetailPage() {
               </div>
             ) : (
               <Card className="glass-card overflow-hidden"><CardContent className="p-0"><div className="overflow-x-auto"><table className="spreadsheet-table">
-                <thead><tr><th>Campaign</th><th>{t('common.status')}</th><th>Platform ID</th></tr></thead>
+                <thead><tr><th>{t('campaigns.title')}</th><th>{t('common.status')}</th><th>Platform ID</th></tr></thead>
                 <tbody>{campaigns.map(c => (
                   <tr key={c.id}><td className="text-foreground font-medium font-sans">{c.campaign_name}</td><td><Badge variant="outline" className={statusStyles[c.status] || ''}>{c.status}</Badge></td><td className="text-muted-foreground text-xs">{c.platform_campaign_id}</td></tr>
                 ))}</tbody>
@@ -737,8 +706,8 @@ export default function ClientDetailPage() {
                   <DialogContent>
                     <DialogHeader><DialogTitle>{t('tasks.addTask')}</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-2">
-                      <div className="space-y-2"><Label>{t('common.title')} *</Label><Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Task title" /></div>
-                      <div className="space-y-2"><Label>{t('common.description')}</Label><Input value={newTaskDesc} onChange={(e) => setNewTaskDesc(e.target.value)} placeholder="Optional description" /></div>
+                      <div className="space-y-2"><Label>{t('common.title')} *</Label><Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder={t('common.title')} /></div>
+                      <div className="space-y-2"><Label>{t('common.description')}</Label><Input value={newTaskDesc} onChange={(e) => setNewTaskDesc(e.target.value)} placeholder={t('common.description')} /></div>
                     </div>
                     <DialogFooter>
                       <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
@@ -754,17 +723,17 @@ export default function ClientDetailPage() {
               </div>
             ) : (
               <div className="space-y-2">{tasks.map(task => (
-                <Card key={task.id} className="glass-card"><CardContent className="py-3 px-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <Card key={task.id} className="glass-card"><CardContent className="py-3 px-3 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
                     <button onClick={() => handleToggleTaskStatus(task)} className="flex-shrink-0">
                       <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.status === 'completed' ? 'bg-success border-success' : task.status === 'in_progress' ? 'border-info' : 'border-muted-foreground/30'}`}>
                         {task.status === 'completed' && <span className="text-white text-xs">✓</span>}
                       </div>
                     </button>
-                    <div><p className={`text-sm font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
-                      {task.description && <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>}</div>
+                    <div className="min-w-0"><p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
+                      {task.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{task.description}</p>}</div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-8 sm:ml-0">
                     {task.due_date && <span className="text-xs text-muted-foreground">{task.due_date}</span>}
                     <Badge variant="outline" className={statusStyles[task.status] || ''}>{task.status === 'pending' ? t('common.pending') : task.status === 'in_progress' ? t('common.inProgress') : t('common.completed')}</Badge>
                   </div>
