@@ -17,6 +17,8 @@ interface Props {
   onComparisonChange: (c: Comparison) => void;
   customDateRange?: { from: Date; to: Date };
   onCustomDateRangeChange?: (range: { from: Date; to: Date }) => void;
+  compareEnabled?: boolean;
+  onCompareEnabledChange?: (enabled: boolean) => void;
 }
 
 type PresetKey = 'today' | 'yesterday' | '7d' | '14d' | '28d' | '30d' |
@@ -59,6 +61,7 @@ export default function DateRangePicker({
   dateRange, onDateRangeChange,
   comparison, onComparisonChange,
   customDateRange, onCustomDateRangeChange,
+  compareEnabled: externalCompareEnabled, onCompareEnabledChange,
 }: Props) {
   const { language } = useLanguage();
   const isRu = language === 'ru';
@@ -66,7 +69,7 @@ export default function DateRangePicker({
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>(
     dateRange === 'custom' ? 'custom' : (dateRange as PresetKey)
   );
-  const [compareEnabled, setCompareEnabled] = useState(true);
+  const [compareEnabled, setCompareEnabled] = useState(externalCompareEnabled ?? false);
   const [pickerRange, setPickerRange] = useState<DayPickerRange | undefined>(
     customDateRange ? { from: customDateRange.from, to: customDateRange.to } : undefined
   );
@@ -100,7 +103,9 @@ export default function DateRangePicker({
       }
     }
     if (compareEnabled) {
-      onComparisonChange(comparison);
+      onComparisonChange(comparison === 'none' ? 'previous_period' : comparison);
+    } else {
+      onComparisonChange('none');
     }
     setOpen(false);
   };
@@ -168,9 +173,13 @@ export default function DateRangePicker({
             {/* Compare + date display + actions */}
             <div className="px-4 pb-3 space-y-3">
               <div className="flex items-center gap-2">
-                <Checkbox
+              <Checkbox
                   checked={compareEnabled}
-                  onCheckedChange={(v) => setCompareEnabled(!!v)}
+                  onCheckedChange={(v) => {
+                    const val = !!v;
+                    setCompareEnabled(val);
+                    onCompareEnabledChange?.(val);
+                  }}
                   id="compare-check"
                 />
                 <label htmlFor="compare-check" className="text-xs cursor-pointer">

@@ -1,4 +1,5 @@
 import { useLanguage } from '@/i18n/LanguageContext';
+import AdminApprovalsPanel from '@/components/shared/AdminApprovalsPanel';
 import { motion } from 'framer-motion';
 import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -345,6 +346,7 @@ export default function UsersPage() {
             </TabsTrigger>
             <TabsTrigger value="invitations" className="gap-2"><Mail className="h-4 w-4" />{t('users.tabInvitations')}</TabsTrigger>
             <TabsTrigger value="clients" className="gap-2"><Building2 className="h-4 w-4" />{t('users.tabClients')}</TabsTrigger>
+            <TabsTrigger value="approvals" className="gap-2"><Shield className="h-4 w-4" />Подтверждения</TabsTrigger>
           </TabsList>
 
           {/* USERS TAB */}
@@ -608,6 +610,11 @@ export default function UsersPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* APPROVALS TAB */}
+          <TabsContent value="approvals">
+            <AdminApprovalsPanel />
+          </TabsContent>
         </Tabs>
       </motion.div>
 
@@ -702,6 +709,9 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
+
 
       {/* Edit Name Dialog */}
       <Dialog open={editNameOpen} onOpenChange={setEditNameOpen}>

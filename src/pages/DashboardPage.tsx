@@ -30,10 +30,11 @@ export default function DashboardPage() {
   const { user, agencyRole } = useAuth();
 
   const [dateRange, setDateRange] = useState<DateRange>('30d');
-  const [comparison, setComparison] = useState<Comparison>('previous_period');
+  const [comparison, setComparison] = useState<Comparison>('none');
   const [platform, setPlatform] = useState<PlatformFilter>('all');
   const [displayName, setDisplayName] = useState<string>('');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [compareEnabled, setCompareEnabled] = useState(false);
 
   const filters: DashboardFilters = useMemo(
     () => ({ dateRange, comparison, platform }),
@@ -76,6 +77,8 @@ export default function DashboardPage() {
         onPlatformChange={setPlatform}
         customDateRange={customDateRange}
         onCustomDateRangeChange={setCustomDateRange}
+        compareEnabled={compareEnabled}
+        onCompareEnabledChange={setCompareEnabled}
       />
 
       <motion.div variants={item} className="flex items-center justify-between">
@@ -91,7 +94,7 @@ export default function DashboardPage() {
       </motion.div>
 
       <motion.div variants={item}>
-        <KpiSection data={kpis} showComparison={comparison !== undefined && dateRange !== '30d'} />
+        <KpiSection data={kpis} showComparison={compareEnabled && comparison !== 'none'} />
       </motion.div>
 
       {isAgencyMember && (

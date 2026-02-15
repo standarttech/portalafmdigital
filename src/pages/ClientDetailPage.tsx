@@ -39,7 +39,9 @@ import type { TranslationKey } from '@/i18n/translations';
 interface ClientData {
   id: string; name: string; status: string; currency: string; timezone: string;
   notes: string | null; category: string; visible_columns: string[] | null;
+  google_sheet_url: string | null; meta_sheet_url: string | null; tiktok_sheet_url: string | null;
 }
+type PlatformKey = 'all' | 'meta' | 'google' | 'tiktok';
 interface Campaign { id: string; campaign_name: string; status: string; platform_campaign_id: string; }
 interface Task { id: string; title: string; description: string | null; status: string; due_date: string | null; created_at: string; }
 interface ClientTarget { target_cpl: number | null; target_ctr: number | null; target_leads: number | null; target_roas: number | null; }
@@ -167,6 +169,7 @@ export default function ClientDetailPage() {
   const [dailyMetrics, setDailyMetrics] = useState<DailyRow[]>([]);
   const [allClients, setAllClients] = useState<ClientListItem[]>([]);
   const [period, setPeriod] = useState<PeriodKey>('all');
+  const [platformFilter, setPlatformFilter] = useState<PlatformKey>('all');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -281,10 +284,13 @@ export default function ClientDetailPage() {
   // Data fetching
   const fetchClient = useCallback(async () => {
     if (!id) return;
-    const { data, error } = await supabase.from('clients').select('id, name, status, currency, timezone, notes, category, visible_columns').eq('id', id).single();
+    const { data, error } = await supabase.from('clients').select('id, name, status, currency, timezone, notes, category, visible_columns, google_sheet_url, meta_sheet_url, tiktok_sheet_url').eq('id', id).single();
     if (error || !data) { navigate('/clients'); return; }
     setClient({
       ...data,
+      google_sheet_url: (data as any).google_sheet_url || null,
+      meta_sheet_url: (data as any).meta_sheet_url || null,
+      tiktok_sheet_url: (data as any).tiktok_sheet_url || null,
       visible_columns: data.visible_columns ? (Array.isArray(data.visible_columns) ? data.visible_columns : JSON.parse(data.visible_columns as any)) : null,
     } as ClientData);
     setLoading(false);
@@ -450,20 +456,29 @@ export default function ClientDetailPage() {
         </div>
       </motion.div>
 
-      {/* Period selector */}
-      <motion.div variants={item} className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {periodOptions.map(p => (
-          <Button key={p.key} variant={period === p.key ? 'default' : 'outline'} size="sm" onClick={() => setPeriod(p.key)} className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0">
-            {t(p.labelKey)}
-          </Button>
-        ))}
-        {period === 'custom' && (
-          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-7 sm:h-8 w-[120px] sm:w-[140px] text-[10px] sm:text-xs" />
-            <span className="text-muted-foreground text-xs">→</span>
-            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-7 sm:h-8 w-[120px] sm:w-[140px] text-[10px] sm:text-xs" />
-          </div>
-        )}
+      {/* Platform + Period selector */}
+      <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5">
+          {(['all', 'meta', 'google', 'tiktok'] as PlatformKey[]).map(p => (
+            <Button key={p} variant={platformFilter === p ? 'default' : 'ghost'} size="sm" onClick={() => setPlatformFilter(p)} className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0">
+              {p === 'all' ? 'All' : p === 'meta' ? 'Meta' : p === 'google' ? 'Google' : 'TikTok'}
+            </Button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {periodOptions.map(p => (
+            <Button key={p.key} variant={period === p.key ? 'default' : 'outline'} size="sm" onClick={() => setPeriod(p.key)} className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0">
+              {t(p.labelKey)}
+            </Button>
+          ))}
+          {period === 'custom' && (
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-7 sm:h-8 w-[120px] sm:w-[140px] text-[10px] sm:text-xs" />
+              <span className="text-muted-foreground text-xs">→</span>
+              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-7 sm:h-8 w-[120px] sm:w-[140px] text-[10px] sm:text-xs" />
+            </div>
+          )}
+        </div>
       </motion.div>
 
       {/* KPI Cards — category-specific */}
@@ -569,7 +584,21 @@ export default function ClientDetailPage() {
                 />
                 <Card className="glass-card">
                   <CardHeader className="pb-2"><CardTitle className="text-base">{t('dashboard.spendByPlatform')}</CardTitle></CardHeader>
-                  <CardContent><div className="flex items-center justify-center h-[180px] text-muted-foreground text-sm">{t('common.noData')}</div></CardContent>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {(['meta', 'google', 'tiktok'] as const).map(p => {
+                        const hasSheet = p === 'meta' ? !!client.meta_sheet_url : p === 'google' ? !!client.google_sheet_url : !!client.tiktok_sheet_url;
+                        return (
+                          <div key={p} className="flex items-center justify-between p-2 rounded-lg border border-border/50 bg-secondary/20">
+                            <span className="text-xs font-medium">{p === 'meta' ? 'Meta Ads' : p === 'google' ? 'Google Ads' : 'TikTok Ads'}</span>
+                            <Badge variant="outline" className={`text-[9px] ${hasSheet ? 'border-success/30 text-success' : 'border-border text-muted-foreground'}`}>
+                              {hasSheet ? 'Connected' : 'Not connected'}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
                 </Card>
               </div>
             </div>
@@ -744,7 +773,9 @@ export default function ClientDetailPage() {
 
           {/* CONNECTIONS TAB */}
           {isAgency && (
-            <TabsContent value="connections"><GoogleSheetConnection clientId={id!} isAdmin={isAdmin} /></TabsContent>
+            <TabsContent value="connections">
+              <GoogleSheetConnection clientId={id!} isAdmin={isAdmin} />
+            </TabsContent>
           )}
         </Tabs>
       </motion.div>
