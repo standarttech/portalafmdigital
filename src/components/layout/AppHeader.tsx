@@ -28,20 +28,19 @@ export default function AppHeader() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-3 sm:px-4 lg:px-6">
+    <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-3 sm:px-4 lg:px-6 overflow-hidden">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <span className="text-[10px] sm:text-xs text-muted-foreground font-mono uppercase tracking-wider truncate">
           {agencyRole === 'AgencyAdmin' ? t('role.agencyAdmin') : agencyRole === 'MediaBuyer' ? t('role.mediaBuyer') : ''}
         </span>
       </div>
 
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center gap-0.5 sm:gap-2 flex-shrink-0">
         {/* Notification Center */}
         <NotificationCenter />
         {/* Theme Toggle */}
-        <Button variant="ghost" size="sm" onClick={toggleTheme} className="gap-1.5 text-muted-foreground">
+        <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8 text-muted-foreground">
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          <span className="text-xs font-medium hidden sm:inline">{theme === 'dark' ? t('theme.light') : t('theme.dark')}</span>
         </Button>
 
         {/* Language Switcher */}

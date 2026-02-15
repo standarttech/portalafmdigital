@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Users, ShoppingBag, TrendingUp, Eye, MousePointerClick } from 'lucide-react';
+import { DollarSign, Users, ShoppingBag, TrendingUp } from 'lucide-react';
 import { CATEGORY_OPTIONS } from '@/components/dashboard/categoryMetrics';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -66,7 +66,7 @@ export default function CategoryBreakdown({ clients }: Props) {
   return (
     <Card className="glass-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm sm:text-base">Показатели по категориям</CardTitle>
+        <CardTitle className="text-sm sm:text-base">{t('dashboard.categoryBreakdown')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {categories.map(cat => (
@@ -74,14 +74,14 @@ export default function CategoryBreakdown({ clients }: Props) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-[10px]">{t(cat.label as TranslationKey)}</Badge>
-                <span className="text-[10px] text-muted-foreground">{cat.clients.length} клиентов</span>
+                <span className="text-[10px] text-muted-foreground">{cat.clients.length} {t('dashboard.clients')}</span>
               </div>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               <div>
                 <div className="flex items-center gap-1 mb-0.5">
                   <DollarSign className="h-3 w-3 text-primary" />
-                  <span className="text-[9px] text-muted-foreground">Spend</span>
+                  <span className="text-[9px] text-muted-foreground">{t('dashboard.spend')}</span>
                 </div>
                 <p className="text-xs sm:text-sm font-semibold">{formatCurrency(cat.spend)}</p>
               </div>
@@ -89,7 +89,7 @@ export default function CategoryBreakdown({ clients }: Props) {
                 <div>
                   <div className="flex items-center gap-1 mb-0.5">
                     <Users className="h-3 w-3 text-primary" />
-                    <span className="text-[9px] text-muted-foreground">Leads</span>
+                    <span className="text-[9px] text-muted-foreground">{t('dashboard.leads')}</span>
                   </div>
                   <p className="text-xs sm:text-sm font-semibold">{formatNumber(cat.leads)}</p>
                 </div>
@@ -98,7 +98,7 @@ export default function CategoryBreakdown({ clients }: Props) {
                 <div>
                   <div className="flex items-center gap-1 mb-0.5">
                     <TrendingUp className="h-3 w-3 text-primary" />
-                    <span className="text-[9px] text-muted-foreground">CPL</span>
+                    <span className="text-[9px] text-muted-foreground">{t('dashboard.cpl')}</span>
                   </div>
                   <p className="text-xs sm:text-sm font-semibold">{formatCurrency(cat.cpl)}</p>
                 </div>
@@ -107,7 +107,7 @@ export default function CategoryBreakdown({ clients }: Props) {
                 <div>
                   <div className="flex items-center gap-1 mb-0.5">
                     <DollarSign className="h-3 w-3 text-success" />
-                    <span className="text-[9px] text-muted-foreground">Revenue</span>
+                    <span className="text-[9px] text-muted-foreground">{t('metric.revenue')}</span>
                   </div>
                   <p className="text-xs sm:text-sm font-semibold">{formatCurrency(cat.revenue)}</p>
                 </div>
@@ -116,7 +116,7 @@ export default function CategoryBreakdown({ clients }: Props) {
                 <div>
                   <div className="flex items-center gap-1 mb-0.5">
                     <ShoppingBag className="h-3 w-3 text-primary" />
-                    <span className="text-[9px] text-muted-foreground">Purchases</span>
+                    <span className="text-[9px] text-muted-foreground">{t('metric.purchases')}</span>
                   </div>
                   <p className="text-xs sm:text-sm font-semibold">{formatNumber(cat.purchases)}</p>
                 </div>
@@ -125,7 +125,7 @@ export default function CategoryBreakdown({ clients }: Props) {
                 <div>
                   <div className="flex items-center gap-1 mb-0.5">
                     <TrendingUp className="h-3 w-3 text-success" />
-                    <span className="text-[9px] text-muted-foreground">ROAS</span>
+                    <span className="text-[9px] text-muted-foreground">{t('metric.roas')}</span>
                   </div>
                   <p className="text-xs sm:text-sm font-semibold">{cat.roas.toFixed(2)}x</p>
                 </div>

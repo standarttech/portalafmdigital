@@ -489,6 +489,17 @@ export const translations = {
   'chat.support': t('Support', 'Поддержка', 'Supporto', 'Soporte', 'الدعم', 'Support'),
   'chat.supportSubtitle': t('Write to us and we will help you', 'Напишите нам и мы вам поможем', 'Scrivici e ti aiuteremo', 'Escríbenos y te ayudaremos', 'اكتب لنا وسنساعدك', 'Écrivez-nous et nous vous aiderons'),
   'chat.startConversation': t('Send a message to start the conversation', 'Отправьте сообщение, чтобы начать общение', 'Invia un messaggio per avviare la conversazione', 'Envía un mensaje para iniciar la conversación', 'أرسل رسالة لبدء المحادثة', 'Envoyez un message pour démarrer la conversation'),
+
+  // Category breakdown
+  'dashboard.categoryBreakdown': t('Category Breakdown', 'Показатели по категориям', 'Ripartizione per categoria', 'Desglose por categoría', 'تقسيم الفئات', 'Répartition par catégorie'),
+  'dashboard.clients': t('clients', 'клиентов', 'clienti', 'clientes', 'عملاء', 'clients'),
+  'dashboard.connected': t('Connected', 'Подключен', 'Connesso', 'Conectado', 'متصل', 'Connecté'),
+  'dashboard.notConnected': t('Not connected', 'Не подключен', 'Non connesso', 'No conectado', 'غير متصل', 'Non connecté'),
+  'dashboard.dataSources': t('Data Sources', 'Источники данных', 'Fonti dati', 'Fuentes de datos', 'مصادر البيانات', 'Sources de données'),
+  'dashboard.dailyReport': t('Daily Report', 'Ежедневный отчёт', 'Report giornaliero', 'Informe diario', 'التقرير اليومي', 'Rapport quotidien'),
+  'dashboard.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
+  'dashboard.daily': t('Daily', 'Ежедневно', 'Giornaliero', 'Diario', 'يومي', 'Quotidien'),
+  'dashboard.resetDefaults': t('Reset to defaults', 'Сбросить настройки', 'Ripristina predefiniti', 'Restablecer valores', 'إعادة تعيين', 'Réinitialiser'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
