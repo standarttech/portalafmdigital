@@ -99,6 +99,48 @@ export type Database = {
           },
         ]
       }
+      admin_approvals: {
+        Row: {
+          action_type: string
+          approved_by: string | null
+          created_at: string
+          entity_id: string
+          entity_name: string | null
+          entity_type: string
+          id: string
+          payload: Json | null
+          requested_by: string
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          action_type: string
+          approved_by?: string | null
+          created_at?: string
+          entity_id: string
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          payload?: Json | null
+          requested_by: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          action_type?: string
+          approved_by?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          payload?: Json | null
+          requested_by?: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       agency_users: {
         Row: {
           agency_role: Database["public"]["Enums"]["agency_role"]
@@ -546,9 +588,11 @@ export type Database = {
           google_sheet_url: string | null
           id: string
           logo_url: string | null
+          meta_sheet_url: string | null
           name: string
           notes: string | null
           status: Database["public"]["Enums"]["client_status"]
+          tiktok_sheet_url: string | null
           timezone: string
           updated_at: string
           visible_columns: Json | null
@@ -561,9 +605,11 @@ export type Database = {
           google_sheet_url?: string | null
           id?: string
           logo_url?: string | null
+          meta_sheet_url?: string | null
           name: string
           notes?: string | null
           status?: Database["public"]["Enums"]["client_status"]
+          tiktok_sheet_url?: string | null
           timezone?: string
           updated_at?: string
           visible_columns?: Json | null
@@ -576,9 +622,11 @@ export type Database = {
           google_sheet_url?: string | null
           id?: string
           logo_url?: string | null
+          meta_sheet_url?: string | null
           name?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["client_status"]
+          tiktok_sheet_url?: string | null
           timezone?: string
           updated_at?: string
           visible_columns?: Json | null

@@ -50,6 +50,11 @@ export interface ClientMetric {
   ctr: number;
   deltaCpl: number;
   status: 'active' | 'inactive' | 'paused';
+  category: string;
+  clicks: number;
+  impressions: number;
+  revenue: number;
+  purchases: number;
 }
 
 function getDateRange(range: DateRange, custom?: { from: Date; to: Date }): { from: string; to: string; days: number } {
@@ -215,24 +220,26 @@ export function useDashboardMetrics(
       setChartData(chart);
 
       // Client metrics
-      const byClient: Record<string, { spend: number; leads: number; clicks: number; impressions: number }> = {};
+      const byClient: Record<string, { spend: number; leads: number; clicks: number; impressions: number; revenue: number; purchases: number }> = {};
       (currentMetrics || []).forEach((r) => {
-        if (!byClient[r.client_id]) byClient[r.client_id] = { spend: 0, leads: 0, clicks: 0, impressions: 0 };
+        if (!byClient[r.client_id]) byClient[r.client_id] = { spend: 0, leads: 0, clicks: 0, impressions: 0, revenue: 0, purchases: 0 };
         byClient[r.client_id].spend += Number(r.spend);
         byClient[r.client_id].leads += r.leads;
         byClient[r.client_id].clicks += r.link_clicks;
         byClient[r.client_id].impressions += r.impressions;
+        byClient[r.client_id].revenue += Number(r.revenue || 0);
+        byClient[r.client_id].purchases += (r.purchases || 0);
       });
 
       const clientIds = Object.keys(byClient);
       if (clientIds.length > 0) {
         const { data: clientNames } = await supabase
           .from('clients')
-          .select('id, name, status')
+          .select('id, name, status, category')
           .in('id', clientIds);
 
         const clientMetrics: ClientMetric[] = (clientNames || []).map((c) => {
-          const m = byClient[c.id] || { spend: 0, leads: 0, clicks: 0, impressions: 0 };
+          const m = byClient[c.id] || { spend: 0, leads: 0, clicks: 0, impressions: 0, revenue: 0, purchases: 0 };
           return {
             id: c.id,
             name: c.name,
@@ -240,8 +247,13 @@ export function useDashboardMetrics(
             leads: m.leads,
             cpl: m.leads > 0 ? m.spend / m.leads : 0,
             ctr: m.impressions > 0 ? (m.clicks / m.impressions) * 100 : 0,
-            deltaCpl: 0, // Would need prev period per-client for real delta
+            deltaCpl: 0,
             status: c.status as 'active' | 'inactive' | 'paused',
+            category: (c as any).category || 'other',
+            clicks: m.clicks,
+            impressions: m.impressions,
+            revenue: m.revenue,
+            purchases: m.purchases,
           };
         });
         setClientsData(clientMetrics);

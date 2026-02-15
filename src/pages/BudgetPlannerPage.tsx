@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, DollarSign, Users, TrendingUp, Loader2, Calendar, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, startOfMonth, subMonths, addMonths } from 'date-fns';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import type { TranslationKey } from '@/i18n/translations';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
@@ -112,10 +113,18 @@ export default function BudgetPlannerPage() {
     fetchData();
   };
 
+  const [confirmDeletePlan, setConfirmDeletePlan] = useState<string | null>(null);
+
   const handleDelete = async (planId: string) => {
-    const { error } = await supabase.from('budget_plans').delete().eq('id', planId);
+    setConfirmDeletePlan(planId);
+  };
+  
+  const executeDeletePlan = async () => {
+    if (!confirmDeletePlan) return;
+    const { error } = await supabase.from('budget_plans').delete().eq('id', confirmDeletePlan);
     if (error) { toast.error(error.message); return; }
     toast.success('Deleted');
+    setConfirmDeletePlan(null);
     fetchData();
   };
 
@@ -253,6 +262,15 @@ export default function BudgetPlannerPage() {
           </CardContent>
         </Card>
       </motion.div>
+      <ConfirmDialog
+        open={!!confirmDeletePlan}
+        onOpenChange={(open) => !open && setConfirmDeletePlan(null)}
+        title="Удалить бюджетный план?"
+        description="Этот бюджетный план будет удалён. Это действие необратимо."
+        confirmLabel="Удалить"
+        cancelLabel="Отмена"
+        onConfirm={executeDeletePlan}
+      />
     </motion.div>
   );
 }

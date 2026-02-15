@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Info } from 'lucide-react';
+import CategoryBreakdown from '@/components/dashboard/CategoryBreakdown';
 import DashboardControls from '@/components/dashboard/DashboardControls';
 import KpiSection from '@/components/dashboard/KpiSection';
 import AttentionRequired from '@/components/dashboard/AttentionRequired';
@@ -111,6 +112,12 @@ export default function DashboardPage() {
       {isAgencyMember && (
         <motion.div variants={item}>
           <ClientsPerformanceTable clientsData={clientsData} />
+        </motion.div>
+      )}
+
+      {isAgencyMember && clientsData.length > 0 && (
+        <motion.div variants={item}>
+          <CategoryBreakdown clients={clientsData} />
         </motion.div>
       )}
 

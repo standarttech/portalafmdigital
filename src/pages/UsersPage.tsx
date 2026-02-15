@@ -15,6 +15,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminApproval } from '@/hooks/useAdminApproval';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -191,10 +192,19 @@ export default function UsersPage() {
     toast.success(t('invite.linkCopied'));
   };
 
-  // Delete user
+  const { requestApproval } = useAdminApproval();
+
+  // Delete user with dual-admin approval
   const handleDeleteUser = async () => {
     if (!deleteUser) return;
-    // Delete from agency_users, user_permissions, client_users
+    const canProceed = await requestApproval({
+      action_type: 'delete_user',
+      entity_type: 'user',
+      entity_id: deleteUser.user_id,
+      entity_name: deleteUser.display_name || 'User',
+    });
+    if (!canProceed) { setDeleteOpen(false); setDeleteUser(null); return; }
+    
     await Promise.all([
       supabase.from('agency_users').delete().eq('user_id', deleteUser.user_id),
       supabase.from('user_permissions').delete().eq('user_id', deleteUser.user_id),
@@ -205,8 +215,17 @@ export default function UsersPage() {
     setDeleteOpen(false); setDeleteUser(null); fetchUsers();
   };
 
-  // Change role
+  // Change role with dual-admin approval
   const handleChangeRole = async (u: AgencyUser, newRole: string) => {
+    const canProceed = await requestApproval({
+      action_type: 'change_role',
+      entity_type: 'user',
+      entity_id: u.user_id,
+      entity_name: u.display_name || 'User',
+      payload: { new_role: newRole, old_role: u.agency_role },
+    });
+    if (!canProceed) return;
+
     await supabase.from('agency_users').update({ agency_role: newRole as any }).eq('user_id', u.user_id);
     toast.success(t('users.roleChanged')); fetchUsers();
   };
