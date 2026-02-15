@@ -1,5 +1,5 @@
 export type DateRange = 'today' | '7d' | '14d' | '30d' | '90d' | 'custom';
-export type Comparison = 'previous_period' | 'previous_month';
+export type Comparison = 'none' | 'previous_period' | 'previous_month';
 export type PlatformFilter = 'all' | 'meta' | 'google' | 'tiktok';
 
 export interface DashboardFilters {

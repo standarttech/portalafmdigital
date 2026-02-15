@@ -17,6 +17,8 @@ interface Props {
   onSearchChange?: (s: string) => void;
   customDateRange?: { from: Date; to: Date };
   onCustomDateRangeChange?: (range: { from: Date; to: Date }) => void;
+  compareEnabled?: boolean;
+  onCompareEnabledChange?: (enabled: boolean) => void;
 }
 
 const platformOptions: { value: PlatformFilter; label: string }[] = [
@@ -32,6 +34,7 @@ export default function DashboardControls({
   platform, onPlatformChange,
   search, onSearchChange,
   customDateRange, onCustomDateRangeChange,
+  compareEnabled, onCompareEnabledChange,
 }: Props) {
   const { t } = useLanguage();
 
@@ -45,6 +48,8 @@ export default function DashboardControls({
         onComparisonChange={onComparisonChange}
         customDateRange={customDateRange}
         onCustomDateRangeChange={onCustomDateRangeChange}
+        compareEnabled={compareEnabled}
+        onCompareEnabledChange={onCompareEnabledChange}
       />
 
       {/* Search (optional) */}
