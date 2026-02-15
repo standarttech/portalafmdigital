@@ -81,19 +81,73 @@ function getDateRange(period: PeriodKey): { from: string; to: string } | null {
   }
 }
 
-// Google Sheet Connection sub-component
+// Platform Sheet Connection sub-component
+function PlatformSheetRow({ clientId, platform, label, fieldName, isAdmin }: { clientId: string; platform: string; label: string; fieldName: string; isAdmin: boolean }) {
+  const { t } = useLanguage();
+  const [url, setUrl] = useState('');
+  const [savedUrl, setSavedUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastResult, setLastResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from('clients').select(fieldName).eq('id', clientId).single().then(({ data }) => {
+      const val = (data as any)?.[fieldName] || '';
+      setUrl(val); setSavedUrl(val);
+    });
+  }, [clientId, fieldName]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await supabase.from('clients').update({ [fieldName]: url || null } as any).eq('id', clientId);
+    setSavedUrl(url); setSaving(false);
+    toast.success(t('clients.sheetUrlSaved'));
+  };
+
+  const handleSync = async () => {
+    if (!savedUrl) return;
+    setSyncing(true); setLastResult(null);
+    try {
+      const res = await supabase.functions.invoke('sync-google-sheet', { body: { client_id: clientId, platform } });
+      if (res.error) { setLastResult(`Error: ${res.error.message}`); }
+      else { const d = res.data as any; setLastResult(`${d.rows_synced || 0} ${t('clients.rowsSynced')}`); }
+    } catch (err: any) { setLastResult(`Error: ${err.message}`); }
+    setSyncing(false);
+  };
+
+  return (
+    <div className="rounded-lg border border-border/50 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">{label}</span>
+        {savedUrl ? (
+          <Badge variant="outline" className="text-[10px] border-success/30 text-success">Connected</Badge>
+        ) : (
+          <Badge variant="outline" className="text-[10px] border-border text-muted-foreground">Not connected</Badge>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." className="flex-1 text-xs h-8" />
+        <Button onClick={handleSave} disabled={saving || url === savedUrl} variant="outline" size="sm" className="h-8 text-xs">{t('common.save')}</Button>
+      </div>
+      {savedUrl && (
+        <div className="flex items-center gap-2">
+          <Button onClick={handleSync} disabled={syncing} size="sm" variant="outline" className="gap-1.5 h-7 text-xs">
+            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            Sync
+          </Button>
+          {lastResult && <span className={`text-xs ${lastResult.startsWith('Error') ? 'text-destructive' : 'text-success'}`}>{lastResult}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
-  const [sheetUrl, setSheetUrl] = useState('');
-  const [savedUrl, setSavedUrl] = useState('');
-  const [syncing, setSyncing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [lastResult, setLastResult] = useState<string | null>(null);
   const [autoSync, setAutoSync] = useState(false);
 
   useEffect(() => {
-    supabase.from('clients').select('google_sheet_url, auto_sync_enabled').eq('id', clientId).single().then(({ data }) => {
-      if (data?.google_sheet_url) { setSheetUrl(data.google_sheet_url); setSavedUrl(data.google_sheet_url); }
+    supabase.from('clients').select('auto_sync_enabled').eq('id', clientId).single().then(({ data }) => {
       if (data?.auto_sync_enabled) setAutoSync(data.auto_sync_enabled);
     });
   }, [clientId]);
@@ -103,49 +157,22 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
     await supabase.from('clients').update({ auto_sync_enabled: enabled } as any).eq('id', clientId);
     toast.success(enabled ? t('clients.autoSyncEnabled') : t('clients.autoSyncDisabled'));
   };
-  const handleSaveUrl = async () => {
-    setSaving(true);
-    await supabase.from('clients').update({ google_sheet_url: sheetUrl || null } as any).eq('id', clientId);
-    setSavedUrl(sheetUrl); setSaving(false); toast.success(t('clients.sheetUrlSaved'));
-  };
-  const handleSync = async () => {
-    if (!savedUrl) return;
-    setSyncing(true); setLastResult(null);
-    try {
-      const res = await supabase.functions.invoke('sync-google-sheet', { body: { client_id: clientId } });
-      if (res.error) { setLastResult(`Error: ${res.error.message}`); toast.error(t('clients.sheetSyncError')); }
-      else { const d = res.data as any; setLastResult(`${d.rows_synced} ${t('clients.rowsSynced')}`); toast.success(t('clients.sheetSynced')); }
-    } catch (err: any) { setLastResult(`Error: ${err.message}`); toast.error(t('clients.sheetSyncError')); }
-    setSyncing(false);
-  };
 
   return (
     <div className="space-y-6">
       <Card className="glass-card max-w-2xl">
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sheet className="h-5 w-5 text-primary" />Google Sheets</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sheet className="h-5 w-5 text-primary" />Data Sources</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{t('clients.syncSheetDesc')}</p>
-          <div className="space-y-2">
-            <Label>{t('clients.googleSheetUrl')}</Label>
-            <div className="flex gap-2">
-              <Input value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." className="flex-1" />
-              <Button onClick={handleSaveUrl} disabled={saving || sheetUrl === savedUrl} variant="outline" size="sm">{t('common.save')}</Button>
-            </div>
+          
+          <PlatformSheetRow clientId={clientId} platform="meta" label="Meta Ads" fieldName="meta_sheet_url" isAdmin={isAdmin} />
+          <PlatformSheetRow clientId={clientId} platform="google" label="Google Ads" fieldName="google_sheet_url" isAdmin={isAdmin} />
+          <PlatformSheetRow clientId={clientId} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" isAdmin={isAdmin} />
+
+          <div className="flex items-center justify-between rounded-lg border border-border p-4">
+            <div><p className="text-sm font-medium">{t('clients.autoSync')}</p><p className="text-xs text-muted-foreground">{t('clients.autoSyncDesc')}</p></div>
+            <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} />
           </div>
-          {savedUrl && (
-            <div className="flex items-center gap-3">
-              <Button onClick={handleSync} disabled={syncing} className="gap-2">
-                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}{t('clients.syncSheet')}
-              </Button>
-              {lastResult && <span className={`text-sm ${lastResult.startsWith('Error') ? 'text-destructive' : 'text-success'}`}>{lastResult}</span>}
-            </div>
-          )}
-          {savedUrl && (
-            <div className="flex items-center justify-between rounded-lg border border-border p-4">
-              <div><p className="text-sm font-medium">{t('clients.autoSync')}</p><p className="text-xs text-muted-foreground">{t('clients.autoSyncDesc')}</p></div>
-              <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} />
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
