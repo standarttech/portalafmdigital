@@ -28,7 +28,7 @@ export default function AppHeader() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-3 sm:px-4 lg:px-6 overflow-hidden">
+    <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between pl-14 sm:pl-4 lg:pl-6 pr-3 sm:pr-4 lg:pr-6 overflow-hidden">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <span className="text-[10px] sm:text-xs text-muted-foreground font-mono uppercase tracking-wider truncate">
           {agencyRole === 'AgencyAdmin' ? t('role.agencyAdmin') : agencyRole === 'MediaBuyer' ? t('role.mediaBuyer') : ''}

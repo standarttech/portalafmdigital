@@ -338,16 +338,18 @@ export default function UsersPage() {
 
       <motion.div variants={item}>
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="users" className="gap-2"><Users className="h-4 w-4" />{t('users.tabUsers')}</TabsTrigger>
-            <TabsTrigger value="requests" className="gap-2 relative">
-              <Clock className="h-4 w-4" />{t('users.tabRequests')}
-              {pendingRequests.length > 0 && <span className="ml-1 h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center px-1">{pendingRequests.length}</span>}
-            </TabsTrigger>
-            <TabsTrigger value="invitations" className="gap-2"><Mail className="h-4 w-4" />{t('users.tabInvitations')}</TabsTrigger>
-            <TabsTrigger value="clients" className="gap-2"><Building2 className="h-4 w-4" />{t('users.tabClients')}</TabsTrigger>
-            <TabsTrigger value="approvals" className="gap-2"><Shield className="h-4 w-4" />Подтверждения</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto scrollbar-none -mx-1 px-1">
+            <TabsList className="inline-flex w-auto min-w-full sm:min-w-0">
+              <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm"><Users className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabUsers')}</span><span className="sm:hidden">{t('users.tabUsers').slice(0, 5)}</span></TabsTrigger>
+              <TabsTrigger value="requests" className="gap-1.5 text-xs sm:text-sm relative">
+                <Clock className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabRequests')}</span><span className="sm:hidden">Req</span>
+                {pendingRequests.length > 0 && <span className="ml-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center px-0.5">{pendingRequests.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="invitations" className="gap-1.5 text-xs sm:text-sm"><Mail className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabInvitations')}</span><span className="sm:hidden">Inv</span></TabsTrigger>
+              <TabsTrigger value="clients" className="gap-1.5 text-xs sm:text-sm"><Building2 className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabClients')}</span><span className="sm:hidden">Cli</span></TabsTrigger>
+              <TabsTrigger value="approvals" className="gap-1.5 text-xs sm:text-sm"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Approvals</span><span className="sm:hidden">Appr</span></TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* USERS TAB */}
           <TabsContent value="users" className="space-y-4">
