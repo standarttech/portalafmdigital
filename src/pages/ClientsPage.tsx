@@ -217,17 +217,18 @@ export default function ClientsPage() {
       </motion.div>
 
       <motion.div variants={item}>
-        <Card className="glass-card overflow-hidden">
+        {/* Desktop table */}
+        <Card className="glass-card overflow-hidden hidden sm:block">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[200px]">{t('clients.clientName')}</TableHead>
+                    <TableHead className="min-w-[180px]">{t('clients.clientName')}</TableHead>
                     <TableHead>{t('common.type')}</TableHead>
                     <TableHead>{t('common.status')}</TableHead>
-                    <TableHead>{t('common.timezone')}</TableHead>
-                    <TableHead>{t('common.currency')}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t('common.timezone')}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t('common.currency')}</TableHead>
                     {isAdmin && <TableHead className="text-right">{t('common.actions')}</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -254,8 +255,8 @@ export default function ClientsPage() {
                       <TableCell>
                         <Badge variant="outline" className={statusStyles[client.status] || ''}>{t(`common.${client.status}` as TranslationKey)}</Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{client.timezone}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{client.currency}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground hidden lg:table-cell">{client.timezone}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground hidden lg:table-cell">{client.currency}</TableCell>
                       {isAdmin && (
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
@@ -293,6 +294,58 @@ export default function ClientsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Mobile card list */}
+        <div className="sm:hidden space-y-2">
+          {loading ? (
+            <p className="text-center py-8 text-muted-foreground">{t('common.loading')}</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground">{t('common.noData')}</p>
+          ) : filtered.map((client) => (
+            <Card key={client.id} className="glass-card cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => navigate(`/clients/${client.id}`)}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">{client.name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', categoryStyles[client.category] || categoryStyles.other)}>
+                          {getCategoryLabel(client.category)}
+                        </Badge>
+                        <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', statusStyles[client.status] || '')}>
+                          {t(`common.${client.status}` as TranslationKey)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(client)}>
+                            <Pencil className="h-4 w-4 mr-2" />{t('clients.editClient')}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(client)}>
+                            <Trash2 className="h-4 w-4 mr-2" />{t('clients.deleteClient')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </motion.div>
 
       {/* Create/Edit Dialog */}

@@ -173,6 +173,11 @@ export const translations = {
   'nav.reports': t('Reports', 'Отчёты', 'Report', 'Informes', 'التقارير', 'Rapports'),
   'nav.profile': t('Profile', 'Профиль', 'Profilo', 'Perfil', 'الملف الشخصي', 'Profil'),
   'nav.glossary': t('Glossary', 'Словарь', 'Glossario', 'Glosario', 'المسرد', 'Glossaire'),
+  'nav.analyticsSection': t('Analytics', 'Аналитика', 'Analisi', 'Analítica', 'التحليلات', 'Analytique'),
+  'nav.workspaceSection': t('Workspace', 'Рабочее пространство', 'Spazio di lavoro', 'Espacio de trabajo', 'مساحة العمل', 'Espace de travail'),
+  'nav.dataSection': t('Data', 'Данные', 'Dati', 'Datos', 'البيانات', 'Données'),
+  'nav.adminSection': t('Administration', 'Администрирование', 'Amministrazione', 'Administración', 'الإدارة', 'Administration'),
+  'nav.accountSection': t('Account', 'Аккаунт', 'Account', 'Cuenta', 'الحساب', 'Compte'),
 
   // Dashboard
   'dashboard.title': t('Dashboard', 'Панель управления', 'Dashboard', 'Panel de control', 'لوحة التحكم', 'Tableau de bord'),
