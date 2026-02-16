@@ -112,6 +112,59 @@
     --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
   }
+
+  .futuristic {
+    --background: 240 25% 4%;
+    --foreground: 210 40% 92%;
+
+    --card: 240 20% 8%;
+    --card-foreground: 210 40% 92%;
+
+    --popover: 240 20% 8%;
+    --popover-foreground: 210 40% 92%;
+
+    --primary: 42 87% 55%;
+    --primary-foreground: 240 25% 4%;
+
+    --secondary: 260 30% 15%;
+    --secondary-foreground: 210 40% 92%;
+
+    --muted: 260 20% 14%;
+    --muted-foreground: 230 15% 55%;
+
+    --accent: 260 30% 18%;
+    --accent-foreground: 210 40% 92%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 260 20% 16%;
+    --input: 260 20% 14%;
+    --ring: 42 87% 55%;
+
+    --sidebar-background: 240 30% 3%;
+    --sidebar-foreground: 210 40% 92%;
+    --sidebar-primary: 42 87% 55%;
+    --sidebar-primary-foreground: 240 25% 4%;
+    --sidebar-accent: 260 25% 12%;
+    --sidebar-accent-foreground: 210 40% 92%;
+    --sidebar-border: 260 20% 14%;
+    --sidebar-ring: 42 87% 55%;
+    --sidebar-muted: 230 15% 45%;
+
+    --chart-1: 42 87% 55%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 280 64% 60%;
+    --chart-5: 350 80% 60%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --warning: 43 96% 56%;
+    --warning-foreground: 0 0% 0%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+  }
 }
 
 @layer base {
@@ -172,5 +225,71 @@
 
   .spreadsheet-table .totals-row td {
     @apply font-bold bg-primary/5 border-t-2 border-primary/20;
+  }
+
+  /* Futuristic theme enhancements */
+  .futuristic .glass-card {
+    @apply bg-card/60 backdrop-blur-2xl border-border/30;
+    box-shadow: 0 0 20px hsla(260, 50%, 40%, 0.05), inset 0 1px 0 hsla(0, 0%, 100%, 0.03);
+  }
+
+  .futuristic .glass-card:hover {
+    box-shadow: 0 0 30px hsla(42, 87%, 55%, 0.08), 0 0 60px hsla(260, 50%, 40%, 0.04);
+    border-color: hsla(42, 87%, 55%, 0.15);
+  }
+
+  .futuristic .kpi-card {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .futuristic .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsla(42, 87%, 55%, 0.4), transparent);
+  }
+
+  .futuristic .kpi-card:hover {
+    box-shadow: 0 0 25px hsla(42, 87%, 55%, 0.1), 0 8px 32px hsla(260, 50%, 30%, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .futuristic button[data-variant="default"],
+  .futuristic .btn-primary {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .futuristic .gradient-text {
+    @apply bg-gradient-to-r from-primary via-amber-400 to-purple-400 bg-clip-text text-transparent;
+  }
+
+  /* Glow scrollbar for futuristic */
+  .futuristic ::-webkit-scrollbar {
+    width: 4px;
+  }
+  .futuristic ::-webkit-scrollbar-track {
+    background: hsla(260, 20%, 8%, 0.5);
+  }
+  .futuristic ::-webkit-scrollbar-thumb {
+    background: hsla(42, 87%, 55%, 0.3);
+    border-radius: 2px;
+  }
+  .futuristic ::-webkit-scrollbar-thumb:hover {
+    background: hsla(42, 87%, 55%, 0.5);
+  }
+
+  /* Animated border for futuristic cards */
+  @keyframes glow-border {
+    0%, 100% { border-color: hsla(42, 87%, 55%, 0.1); }
+    50% { border-color: hsla(42, 87%, 55%, 0.25); }
+  }
+
+  .futuristic .glow-border-animated {
+    animation: glow-border 3s ease-in-out infinite;
   }
 }
