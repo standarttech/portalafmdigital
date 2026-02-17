@@ -64,26 +64,44 @@ async function fetchSheetCSV(url: string): Promise<string> {
 
   const { id, gid } = parsed;
 
-  // Try export URL first (works when sheet is shared with "Anyone with link can view")
-  const exportUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
-  let response = await fetch(exportUrl);
+  // Strategy 1: gviz/tq endpoint — most reliable for "Anyone with link" sheets from server-side
+  const gvizUrl = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  let response = await fetch(gvizUrl, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+  });
 
-  if (response.status === 400 || response.status === 403 || response.status === 401) {
-    // Fallback: try pub URL (works when sheet is "Published to the web")
-    await response.text(); // consume body
+  if (!response.ok) {
+    await response.text(); // consume
+    // Strategy 2: export endpoint
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+    response = await fetch(exportUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+  }
+
+  if (!response.ok) {
+    await response.text(); // consume
+    // Strategy 3: pub endpoint (only if user published to web)
     const pubUrl = `https://docs.google.com/spreadsheets/d/${id}/pub?output=csv&gid=${gid}`;
-    response = await fetch(pubUrl);
+    response = await fetch(pubUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
   }
 
   if (!response.ok) {
     throw new Error(
       `Cannot access Google Sheet (HTTP ${response.status}). ` +
-      `Please make sure the sheet is shared: click Share → "Anyone with the link" → Viewer. ` +
-      `Or use File → Share → Publish to web.`
+      `Make sure: 1) Sheet is shared via Share → "Anyone with the link" → Viewer, ` +
+      `OR 2) Use File → Share → Publish to web → CSV.`
     );
   }
 
-  return await response.text();
+  const text = await response.text();
+  // gviz sometimes returns HTML error page — detect it
+  if (text.trim().startsWith("<!") || text.trim().startsWith("<html")) {
+    throw new Error(
+      "Google Sheet returned an HTML page instead of CSV data. " +
+      "Please make sure the sheet is publicly accessible (Share → Anyone with the link → Viewer)."
+    );
+  }
+
+  return text;
 }
 
 async function syncClient(supabase: any, clientId: string, platform: string = "google") {
