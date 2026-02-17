@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import logoAfm from '@/assets/logo-afm.png';
+import logoAfm from '@/assets/logo-afm-new.png';
 import { motion } from 'framer-motion';
 import { Loader2, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -53,9 +53,7 @@ export default function AuthPage() {
       >
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
-            <div className="h-24 w-auto bg-primary/10 rounded-2xl p-4 flex items-center justify-center">
-              <img src={logoAfm} alt="AFM DIGITAL" className="h-16 w-auto invert dark:invert-0" />
-            </div>
+            <img src={logoAfm} alt="AFM DIGITAL" className="h-14 w-auto" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">{t('auth.loginTitle')}</h1>
           <p className="text-muted-foreground mt-1">{t('auth.loginSubtitle')}</p>

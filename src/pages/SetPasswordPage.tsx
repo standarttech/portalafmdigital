@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import logoAfm from '@/assets/logo-afm.png';
+import logoAfm from '@/assets/logo-afm-new.png';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, KeyRound, Eye, EyeOff, Shield, CheckCircle2, QrCode } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
@@ -33,6 +33,8 @@ export default function SetPasswordPage() {
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaEnrolling, setMfaEnrolling] = useState(false);
 
+  const [passwordSaved, setPasswordSaved] = useState(false);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
@@ -54,7 +56,7 @@ export default function SetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) { toast.error(error.message); setIsLoading(false); return; }
 
-    // Clear needs_password_setup flag
+    // Clear needs_password_setup flag BEFORE any navigation
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('user_settings')
@@ -62,6 +64,8 @@ export default function SetPasswordPage() {
         .eq('user_id', user.id);
     }
 
+    // Mark locally so App.tsx doesn't re-intercept on USER_UPDATED event
+    setPasswordSaved(true);
     toast.success('Password set successfully!');
     setIsLoading(false);
     setStep('mfa-offer');
@@ -119,9 +123,7 @@ export default function SetPasswordPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
-            <div className="h-16 w-auto bg-primary/10 rounded-2xl p-3 flex items-center justify-center">
-              <img src={logoAfm} alt="AFM DIGITAL" className="h-10 w-auto invert dark:invert-0" />
-            </div>
+            <img src={logoAfm} alt="AFM DIGITAL" className="h-14 w-auto" />
           </div>
         </div>
 
