@@ -60,17 +60,10 @@ function buildApprovalEmail(params: {
               <tr>
                 <td style="padding:40px 40px 36px;">
 
-                  <!-- Icon + headline -->
+                  <!-- Headline -->
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td style="padding-bottom:28px;">
-                        <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
-                          <tr>
-                            <td width="48" height="48" style="width:48px;height:48px;background:#d4a84318;border:1px solid #d4a84340;border-radius:12px;text-align:center;vertical-align:middle;font-size:22px;color:#d4a843;">
-                              ✦
-                            </td>
-                          </tr>
-                        </table>
                         <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.4px;">
                           You're invited, ${displayName}
                         </h1>
@@ -357,18 +350,20 @@ serve(async (req) => {
           });
         }
 
-        // Upsert user_settings (no force_password_change needed)
+        // Upsert user_settings — mark needs_password_setup so the app intercepts after magic link
         const { data: existingSettings } = await supabaseAdmin.from("user_settings").select("id").eq("user_id", resolvedUserId).maybeSingle();
         if (!existingSettings) {
           await supabaseAdmin.from("user_settings").insert({
             user_id: resolvedUserId,
             force_password_change: false,
+            needs_password_setup: true,
             language: "ru",
             theme: "dark",
           });
         } else {
           await supabaseAdmin.from("user_settings").update({
             force_password_change: false,
+            needs_password_setup: true,
             temp_password_expires_at: null,
           }).eq("user_id", resolvedUserId);
         }
