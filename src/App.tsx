@@ -46,10 +46,14 @@ function AppRoutes() {
 
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState<boolean | null>(null);
 
-  const checkForcePasswordChange = useCallback(async () => {
+  const checkForcePasswordChange = useCallback(async (skipIfAlreadyChecked = false) => {
     if (!user) {
       setForcePasswordChange(false);
       setNeedsPasswordSetup(false);
+      return;
+    }
+    // Don't re-check if we already cleared needs_password_setup (prevents loop on USER_UPDATED)
+    if (skipIfAlreadyChecked && needsPasswordSetup === false) {
       return;
     }
     setCheckingFpc(true);
@@ -80,7 +84,7 @@ function AppRoutes() {
       setForcePasswordChange(false);
     }
     setCheckingFpc(false);
-  }, [user]);
+  }, [user, needsPasswordSetup]);
 
   // Check MFA assurance level after login
   const checkMfa = useCallback(async () => {
@@ -108,7 +112,7 @@ function AppRoutes() {
   }, [user]);
 
   useEffect(() => {
-    checkForcePasswordChange();
+    checkForcePasswordChange(false);
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
 
