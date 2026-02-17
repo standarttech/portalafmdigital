@@ -1284,6 +1284,7 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          bypass_dual_approval: boolean
           created_at: string
           force_password_change: boolean
           id: string
@@ -1294,6 +1295,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bypass_dual_approval?: boolean
           created_at?: string
           force_password_change?: boolean
           id?: string
@@ -1304,6 +1306,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bypass_dual_approval?: boolean
           created_at?: string
           force_password_change?: boolean
           id?: string
