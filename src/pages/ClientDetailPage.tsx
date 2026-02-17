@@ -7,7 +7,7 @@ import {
   ArrowLeft, Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
   BarChart3, FileText, Table2, Link2, ListTodo, Clock, Target, Plus, Loader2,
   Sheet, RefreshCw, Settings2, ChevronDown, ShoppingBag, ShoppingCart, CreditCard,
-  Save, GripVertical,
+  Save, GripVertical, Wallet,
 } from 'lucide-react';
 import ConversionFunnel from '@/components/client/ConversionFunnel';
 import ClientComments from '@/components/client/ClientComments';
@@ -45,7 +45,7 @@ interface ClientData {
   google_sheet_url: string | null; meta_sheet_url: string | null; tiktok_sheet_url: string | null;
 }
 type PlatformKey = 'all' | 'meta' | 'google' | 'tiktok';
-interface Campaign { id: string; campaign_name: string; status: string; platform_campaign_id: string; }
+interface Campaign { id: string; campaign_name: string; status: string; platform_campaign_id: string; platform?: string; }
 interface Task { id: string; title: string; description: string | null; status: string; due_date: string | null; created_at: string; }
 interface ClientTarget { target_cpl: number | null; target_ctr: number | null; target_leads: number | null; target_roas: number | null; }
 interface DailyRow {
@@ -53,6 +53,7 @@ interface DailyRow {
   add_to_cart: number | null; checkouts: number | null; purchases: number | null; revenue: number | null;
   campaign_id: string;
 }
+interface BudgetPlan { planned_spend: number; planned_leads: number; month: string; }
 interface ClientListItem { id: string; name: string; }
 
 const statusStyles: Record<string, string> = {
@@ -178,6 +179,8 @@ export default function ClientDetailPage() {
   const [targetCtr, setTargetCtr] = useState('');
   const [targetLeads, setTargetLeads] = useState('');
   const [dailyMetrics, setDailyMetrics] = useState<DailyRow[]>([]);
+  const [campaignPlatformMap, setCampaignPlatformMap] = useState<Record<string, string>>({});
+  const [budgetPlan, setBudgetPlan] = useState<BudgetPlan | null>(null);
   const [allClients, setAllClients] = useState<ClientListItem[]>([]);
   const [platformFilter, setPlatformFilter] = useState<PlatformKey>('all');
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -215,11 +218,19 @@ export default function ClientDetailPage() {
 
   // Date filtering from DateRangePicker
   const filteredMetrics = useMemo(() => {
-    if (!customDateRange) return dailyMetrics;
-    const from = format(customDateRange.from, 'yyyy-MM-dd');
-    const to = format(customDateRange.to, 'yyyy-MM-dd');
-    return dailyMetrics.filter(m => m.date >= from && m.date <= to);
-  }, [dailyMetrics, customDateRange]);
+    let metrics = dailyMetrics;
+    // Apply date filter
+    if (customDateRange) {
+      const from = format(customDateRange.from, 'yyyy-MM-dd');
+      const to = format(customDateRange.to, 'yyyy-MM-dd');
+      metrics = metrics.filter(m => m.date >= from && m.date <= to);
+    }
+    // Apply platform filter
+    if (platformFilter !== 'all' && Object.keys(campaignPlatformMap).length > 0) {
+      metrics = metrics.filter(m => campaignPlatformMap[m.campaign_id] === platformFilter);
+    }
+    return metrics;
+  }, [dailyMetrics, customDateRange, platformFilter, campaignPlatformMap]);
 
   // Compute daily table rows
   const dailyTableData = useMemo(() => {
@@ -250,6 +261,7 @@ export default function ClientDetailPage() {
     }), { spend: 0, impressions: 0, clicks: 0, leads: 0, reach: 0, addToCart: 0, checkouts: 0, purchases: 0, revenue: 0 });
     return computeDailyRow({ date: 'TOTAL', spend: t.spend, impressions: t.impressions, clicks: t.clicks, leads: t.leads, add_to_cart: t.addToCart, checkouts: t.checkouts, purchases: t.purchases, revenue: t.revenue });
   }, [dailyTableData]);
+
 
   // Chart data
   const chartMetrics = CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other;
@@ -316,8 +328,22 @@ export default function ClientDetailPage() {
 
   const fetchCampaigns = useCallback(async () => {
     if (!id) return;
-    const { data } = await supabase.from('campaigns').select('id, campaign_name, status, platform_campaign_id').eq('client_id', id).order('campaign_name');
-    if (data) setCampaigns(data);
+    // Fetch campaigns with their ad_account platform info to enable platform filtering
+    const { data } = await supabase
+      .from('campaigns')
+      .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
+      .eq('client_id', id)
+      .order('campaign_name');
+    if (data) {
+      setCampaigns(data as any);
+      // Build campaign_id -> platform map
+      const map: Record<string, string> = {};
+      (data as any[]).forEach((c: any) => {
+        const platform = c.ad_accounts?.platform_connections?.platform;
+        if (platform) map[c.id] = platform;
+      });
+      setCampaignPlatformMap(map);
+    }
   }, [id]);
 
   const fetchTasks = useCallback(async () => {
@@ -332,6 +358,19 @@ export default function ClientDetailPage() {
     if (data) { setTargets(data); setTargetCpl(data.target_cpl?.toString() || ''); setTargetCtr(data.target_ctr?.toString() || ''); setTargetLeads(data.target_leads?.toString() || ''); }
   }, [id]);
 
+  const fetchBudgetPlan = useCallback(async () => {
+    if (!id) return;
+    const currentMonth = format(new Date(), 'yyyy-MM');
+    const { data } = await supabase.from('budget_plans')
+      .select('planned_spend, planned_leads, month')
+      .eq('client_id', id)
+      .gte('month', `${currentMonth}-01`)
+      .order('month', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data) setBudgetPlan(data as BudgetPlan);
+  }, [id]);
+
   const [allClientsLoaded, setAllClientsLoaded] = useState(false);
   const fetchAllClients = useCallback(async () => {
     const { data } = await supabase.from('clients').select('id, name').order('name');
@@ -339,7 +378,7 @@ export default function ClientDetailPage() {
     setAllClientsLoaded(true);
   }, []);
 
-  useEffect(() => { fetchClient(); fetchDailyMetrics(); fetchCampaigns(); fetchTasks(); fetchTargets(); fetchAllClients(); }, [fetchClient, fetchDailyMetrics, fetchCampaigns, fetchTasks, fetchTargets, fetchAllClients]);
+  useEffect(() => { fetchClient(); fetchDailyMetrics(); fetchCampaigns(); fetchTasks(); fetchTargets(); fetchAllClients(); fetchBudgetPlan(); }, [fetchClient, fetchDailyMetrics, fetchCampaigns, fetchTasks, fetchTargets, fetchAllClients, fetchBudgetPlan]);
 
   // Set default date range on mount
   useEffect(() => {
@@ -499,6 +538,65 @@ export default function ClientDetailPage() {
           </div>
         ))}
       </motion.div>
+
+      {/* Budget Progress Bar */}
+      {budgetPlan && (
+        <motion.div variants={item}>
+          <Card className="glass-card overflow-hidden">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Wallet className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Monthly Budget</p>
+                    <p className="text-sm font-semibold text-foreground">{formatCurrency(budgetPlan.planned_spend)}</p>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{formatCurrency(totals.spend)}</span></span>
+                    <span className={`font-semibold ${totals.spend / budgetPlan.planned_spend > 0.9 ? 'text-destructive' : totals.spend / budgetPlan.planned_spend > 0.7 ? 'text-warning' : 'text-success'}`}>
+                      {Math.min(100, Math.round((totals.spend / budgetPlan.planned_spend) * 100))}%
+                    </span>
+                  </div>
+                  <div className="relative h-2.5 w-full bg-secondary rounded-full overflow-hidden">
+                    <motion.div
+                      className={`absolute left-0 top-0 h-full rounded-full ${
+                        totals.spend / budgetPlan.planned_spend > 0.9
+                          ? 'bg-destructive'
+                          : totals.spend / budgetPlan.planned_spend > 0.7
+                          ? 'bg-warning'
+                          : 'bg-primary'
+                      }`}
+                      initial={{ width: '0%' }}
+                      animate={{ width: `${Math.min(100, (totals.spend / budgetPlan.planned_spend) * 100)}%` }}
+                      transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>$0</span>
+                    <span className="text-muted-foreground/60">
+                      {formatCurrency(Math.max(0, budgetPlan.planned_spend - totals.spend))} remaining
+                    </span>
+                    <span>{formatCurrency(budgetPlan.planned_spend)}</span>
+                  </div>
+                </div>
+                {budgetPlan.planned_leads > 0 && (
+                  <div className="flex-shrink-0 text-right sm:text-left">
+                    <p className="text-xs text-muted-foreground">Lead Goal</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      <span className={totals.leads >= budgetPlan.planned_leads ? 'text-success' : 'text-foreground'}>{totals.leads}</span>
+                      <span className="text-muted-foreground"> / {budgetPlan.planned_leads}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Tabs */}
       <motion.div variants={item}>
