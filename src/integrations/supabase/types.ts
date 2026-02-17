@@ -797,6 +797,93 @@ export type Database = {
           },
         ]
       }
+      notification_broadcasts: {
+        Row: {
+          body: string
+          channels: string[]
+          created_at: string
+          created_by: string
+          id: string
+          recipients_filter: string
+          sent_at: string | null
+          subject: string
+        }
+        Insert: {
+          body: string
+          channels?: string[]
+          created_at?: string
+          created_by: string
+          id?: string
+          recipients_filter?: string
+          sent_at?: string | null
+          subject: string
+        }
+        Update: {
+          body?: string
+          channels?: string[]
+          created_at?: string
+          created_by?: string
+          id?: string
+          recipients_filter?: string
+          sent_at?: string | null
+          subject?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          alert_channels: string[]
+          approval_channels: string[]
+          chat_channels: string[]
+          created_at: string
+          email_enabled: boolean
+          id: string
+          report_channels: string[]
+          task_channels: string[]
+          telegram_chat_id: string | null
+          telegram_enabled: boolean
+          telegram_link_code: string | null
+          updated_at: string
+          user_id: string
+          webpush_enabled: boolean
+          webpush_subscription: Json | null
+        }
+        Insert: {
+          alert_channels?: string[]
+          approval_channels?: string[]
+          chat_channels?: string[]
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          report_channels?: string[]
+          task_channels?: string[]
+          telegram_chat_id?: string | null
+          telegram_enabled?: boolean
+          telegram_link_code?: string | null
+          updated_at?: string
+          user_id: string
+          webpush_enabled?: boolean
+          webpush_subscription?: Json | null
+        }
+        Update: {
+          alert_channels?: string[]
+          approval_channels?: string[]
+          chat_channels?: string[]
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          report_channels?: string[]
+          task_channels?: string[]
+          telegram_chat_id?: string | null
+          telegram_enabled?: boolean
+          telegram_link_code?: string | null
+          updated_at?: string
+          user_id?: string
+          webpush_enabled?: boolean
+          webpush_subscription?: Json | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string

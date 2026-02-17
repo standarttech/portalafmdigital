@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { User, Lock, Mail, Shield, Loader2, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
+import NotificationSettings from '@/components/profile/NotificationSettings';
 
 const container = {
   hidden: { opacity: 0 },
@@ -415,6 +416,11 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* Notification Settings */}
+      <motion.div variants={item}>
+        <NotificationSettings />
       </motion.div>
 
       {/* Sessions */}
