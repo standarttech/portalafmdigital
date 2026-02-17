@@ -46,14 +46,10 @@ function AppRoutes() {
 
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState<boolean | null>(null);
 
-  const checkForcePasswordChange = useCallback(async (skipIfAlreadyChecked = false) => {
+  const checkForcePasswordChange = useCallback(async () => {
     if (!user) {
       setForcePasswordChange(false);
       setNeedsPasswordSetup(false);
-      return;
-    }
-    // Don't re-check if we already cleared needs_password_setup (prevents loop on USER_UPDATED)
-    if (skipIfAlreadyChecked && needsPasswordSetup === false) {
       return;
     }
     setCheckingFpc(true);
@@ -64,7 +60,7 @@ function AppRoutes() {
       .maybeSingle();
 
     // needs_password_setup: new magic-link flow — redirect to /set-password
-    if ((data as any)?.needs_password_setup) {
+    if ((data as any)?.needs_password_setup === true) {
       setNeedsPasswordSetup(true);
       setForcePasswordChange(false);
       setCheckingFpc(false);
@@ -84,7 +80,7 @@ function AppRoutes() {
       setForcePasswordChange(false);
     }
     setCheckingFpc(false);
-  }, [user, needsPasswordSetup]);
+  }, [user]);
 
   // Check MFA assurance level after login
   const checkMfa = useCallback(async () => {
@@ -112,7 +108,7 @@ function AppRoutes() {
   }, [user]);
 
   useEffect(() => {
-    checkForcePasswordChange(false);
+    checkForcePasswordChange();
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
 
