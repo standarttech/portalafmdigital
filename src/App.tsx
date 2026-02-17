@@ -12,6 +12,7 @@ import AuthPage from "@/pages/AuthPage";
 import AdminSetupPage from "@/pages/AdminSetup";
 import RequestAccessPage from "@/pages/RequestAccessPage";
 import InvitePage from "@/pages/InvitePage";
+import SetPasswordPage from "@/pages/SetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ClientDashboardPage from "@/pages/ClientDashboardPage";
 import BudgetPlannerPage from "@/pages/BudgetPlannerPage";
@@ -124,6 +125,7 @@ function AppRoutes() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/request-access" element={<RequestAccessPage />} />
         <Route path="/invite" element={<InvitePage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
         <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     );
@@ -212,6 +214,7 @@ function AppRoutes() {
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
       <Route path="/request-access" element={<Navigate to="/dashboard" replace />} />
       <Route path="/invite" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/set-password" element={<SetPasswordPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

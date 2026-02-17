@@ -3,6 +3,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -130,104 +131,137 @@ export default function DateRangePicker({
   const currentPickerFrom = pickerRange?.from;
   const currentPickerTo = pickerRange?.to;
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 px-3 text-xs font-medium gap-1.5 border-border/50"
-        >
-          <CalendarIcon className="h-3.5 w-3.5" />
-          <span className="truncate max-w-[140px] sm:max-w-none">{displayLabel}</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={4}>
-        <div className={cn("flex", isMobile && "flex-col max-h-[80vh] overflow-y-auto")}>
-          {/* Presets sidebar */}
-          <div className={cn(
-            "border-border py-2 overflow-y-auto",
-            isMobile ? "w-full border-b flex flex-wrap gap-1 px-3 py-2" : "w-44 border-r max-h-[420px]"
-          )}>
-            {presets.map(preset => (
-              <button
-                key={preset.key}
-                onClick={() => handlePresetClick(preset)}
-                className={cn(
-                  'text-left text-xs transition-colors',
-                  isMobile
-                    ? cn('px-2.5 py-1.5 rounded-md', selectedPreset === preset.key ? 'text-primary font-semibold bg-primary/10' : 'text-foreground bg-secondary/50')
-                    : cn('w-full px-4 py-1.5', selectedPreset === preset.key ? 'text-primary font-semibold bg-primary/5' : 'text-foreground hover:bg-secondary/50')
-                )}
-              >
-                {isMobile ? (
-                  labels[preset.key]
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <span className={cn(
-                      'w-2.5 h-2.5 rounded-full border-2 flex-shrink-0',
-                      selectedPreset === preset.key
-                        ? 'border-primary bg-primary'
-                        : 'border-muted-foreground/40'
-                    )} />
-                    {labels[preset.key]}
-                  </span>
-                )}
-              </button>
-            ))}
+  const triggerButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-8 px-3 text-xs font-medium gap-1.5 border-border/50"
+    >
+      <CalendarIcon className="h-3.5 w-3.5" />
+      <span className="truncate max-w-[140px] sm:max-w-none">{displayLabel}</span>
+    </Button>
+  );
+
+  const pickerContent = (
+    <div className={cn("flex", isMobile ? "flex-col" : "")}>
+      {/* Presets */}
+      <div className={cn(
+        "border-border py-2",
+        isMobile
+          ? "w-full border-b flex flex-wrap gap-1.5 px-3 py-3"
+          : "w-44 border-r max-h-[420px] overflow-y-auto"
+      )}>
+        {presets.map(preset => (
+          <button
+            key={preset.key}
+            onClick={() => handlePresetClick(preset)}
+            className={cn(
+              'text-left text-xs transition-colors',
+              isMobile
+                ? cn('px-3 py-2 rounded-lg border', selectedPreset === preset.key
+                    ? 'text-primary font-semibold bg-primary/10 border-primary/30'
+                    : 'text-foreground bg-secondary/50 border-transparent')
+                : cn('w-full px-4 py-1.5', selectedPreset === preset.key
+                    ? 'text-primary font-semibold bg-primary/5'
+                    : 'text-foreground hover:bg-secondary/50')
+            )}
+          >
+            {isMobile ? (
+              labels[preset.key]
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className={cn(
+                  'w-2.5 h-2.5 rounded-full border-2 flex-shrink-0',
+                  selectedPreset === preset.key
+                    ? 'border-primary bg-primary'
+                    : 'border-muted-foreground/40'
+                )} />
+                {labels[preset.key]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Calendar area */}
+      <div className="flex flex-col">
+        <Calendar
+          mode="range"
+          selected={pickerRange}
+          onSelect={r => { setPickerRange(r); setSelectedPreset('custom'); }}
+          numberOfMonths={isMobile ? 1 : 2}
+          disabled={date => date > new Date()}
+          className={cn("p-3 pointer-events-auto")}
+          weekStartsOn={1}
+        />
+
+        {/* Compare + date display + actions */}
+        <div className="px-3 sm:px-4 pb-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={compareEnabled}
+              onCheckedChange={(v) => {
+                const val = !!v;
+                setCompareEnabled(val);
+                onCompareEnabledChange?.(val);
+              }}
+              id="compare-check"
+            />
+            <label htmlFor="compare-check" className="text-xs cursor-pointer">
+              {t('dashboard.vsPreviousPeriod')}
+            </label>
           </div>
 
-          {/* Calendar area */}
-          <div className="flex flex-col">
-            <Calendar
-              mode="range"
-              selected={pickerRange}
-              onSelect={r => { setPickerRange(r); setSelectedPreset('custom'); }}
-              numberOfMonths={isMobile ? 1 : 2}
-              disabled={date => date > new Date()}
-              className={cn("p-3 pointer-events-auto")}
-              weekStartsOn={1}
-            />
-
-            {/* Compare + date display + actions */}
-            <div className="px-3 sm:px-4 pb-3 space-y-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={compareEnabled}
-                  onCheckedChange={(v) => {
-                    const val = !!v;
-                    setCompareEnabled(val);
-                    onCompareEnabledChange?.(val);
-                  }}
-                  id="compare-check"
-                />
-                <label htmlFor="compare-check" className="text-xs cursor-pointer">
-                  {t('dashboard.vsPreviousPeriod')}
-                </label>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="px-2 py-1 bg-secondary/50 rounded text-foreground">
-                    {currentPickerFrom ? format(currentPickerFrom, 'dd.MM.yy') : '—'}
-                  </span>
-                  <span>–</span>
-                  <span className="px-2 py-1 bg-secondary/50 rounded text-foreground">
-                    {currentPickerTo ? format(currentPickerTo, 'dd.MM.yy') : '—'}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCancel} className="h-7 text-xs">
-                    {t('common.cancel')}
-                  </Button>
-                  <Button size="sm" onClick={handleApply} className="h-7 text-xs">
-                    {t('dashboard.apply')}
-                  </Button>
-                </div>
-              </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="px-2 py-1 bg-secondary/50 rounded text-foreground">
+                {currentPickerFrom ? format(currentPickerFrom, 'dd.MM.yy') : '—'}
+              </span>
+              <span>–</span>
+              <span className="px-2 py-1 bg-secondary/50 rounded text-foreground">
+                {currentPickerTo ? format(currentPickerTo, 'dd.MM.yy') : '—'}
+              </span>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" onClick={handleCancel} className={cn("h-9 text-xs", isMobile && "flex-1")}>
+                {t('common.cancel')}
+              </Button>
+              <Button size="sm" onClick={handleApply} className={cn("h-9 text-xs", isMobile && "flex-1")}>
+                {t('dashboard.apply')}
+              </Button>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          {triggerButton}
+        </SheetTrigger>
+        <SheetContent side="bottom" className="h-[90vh] overflow-y-auto rounded-t-2xl p-0">
+          <SheetHeader className="px-4 pt-4 pb-2">
+            <SheetTitle className="text-sm font-semibold flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4 text-primary" />
+              Select date range
+            </SheetTitle>
+          </SheetHeader>
+          {pickerContent}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        {triggerButton}
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={4}>
+        {pickerContent}
       </PopoverContent>
     </Popover>
   );

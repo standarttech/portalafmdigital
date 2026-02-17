@@ -17,7 +17,7 @@ function buildApprovalEmail(params: {
 }): string {
   const { name, email, inviteLink, role } = params;
   const displayName = name || email.split("@")[0];
-  const roleLabel = role === "Client" ? "Client" : "Media Buyer";
+  const roleLabel = role === "Client" ? "Client" : role === "AgencyAdmin" ? "Agency Admin" : "Media Buyer";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -64,9 +64,13 @@ function buildApprovalEmail(params: {
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td style="padding-bottom:28px;">
-                        <div style="width:48px;height:48px;background:#d4a84318;border:1px solid #d4a84340;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px;">
-                          <span style="font-size:22px;line-height:48px;display:block;text-align:center;">✦</span>
-                        </div>
+                        <table cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+                          <tr>
+                            <td width="48" height="48" style="width:48px;height:48px;background:#d4a84318;border:1px solid #d4a84340;border-radius:12px;text-align:center;vertical-align:middle;font-size:22px;color:#d4a843;">
+                              ✦
+                            </td>
+                          </tr>
+                        </table>
                         <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.4px;">
                           You're invited, ${displayName}
                         </h1>
@@ -397,7 +401,7 @@ serve(async (req) => {
             type: "magiclink",
             email: cleanEmail,
             options: {
-              redirectTo: `${appBaseUrl}/`,
+              redirectTo: `${appBaseUrl}/set-password`,
             },
           });
 
@@ -509,7 +513,7 @@ serve(async (req) => {
             type: "magiclink",
             email: targetEmail.toLowerCase().trim(),
             options: {
-              redirectTo: `${appBaseUrl}/`,
+              redirectTo: `${appBaseUrl}/set-password`,
             },
           });
 
