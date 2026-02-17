@@ -52,6 +52,13 @@ function AppRoutes() {
       setNeedsPasswordSetup(false);
       return;
     }
+    // If user just completed password setup (flag set in SetPasswordPage), skip re-check
+    if (sessionStorage.getItem('password_setup_done') === '1') {
+      setNeedsPasswordSetup(false);
+      setForcePasswordChange(false);
+      setCheckingFpc(false);
+      return;
+    }
     setCheckingFpc(true);
     const { data } = await supabase
       .from('user_settings')

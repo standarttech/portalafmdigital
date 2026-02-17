@@ -89,31 +89,34 @@ async function syncClient(supabase: any, clientId: string, platform: string = "g
   console.log("CSV headers:", Object.keys(rows[0]));
   console.log("First row values:", JSON.stringify(rows[0]));
 
-  // Get or create ad_account
+  // Get or create ad_account for this SPECIFIC platform connection
+  let { data: existingConns } = await supabase
+    .from("platform_connections").select("id").eq("client_id", clientId).eq("platform", platform).limit(1);
+  
+  let connId: string;
+  if (existingConns && existingConns.length > 0) {
+    connId = existingConns[0].id;
+  } else {
+    const platformNames: Record<string, string> = { meta: "Meta Ads", google: "Google Ads", tiktok: "TikTok Ads" };
+    const { data: newConn } = await supabase
+      .from("platform_connections")
+      .insert({ client_id: clientId, platform, account_name: platformNames[platform] || "Sheets Import", sync_status: "success", last_sync_at: new Date().toISOString() })
+      .select("id").single();
+    connId = newConn!.id;
+  }
+
+  // Get or create ad_account tied to this specific connection
   let { data: existingAccounts } = await supabase
-    .from("ad_accounts").select("id").eq("client_id", clientId).limit(1);
+    .from("ad_accounts").select("id").eq("client_id", clientId).eq("connection_id", connId).limit(1);
 
   let adAccountId: string;
   if (existingAccounts && existingAccounts.length > 0) {
     adAccountId = existingAccounts[0].id;
   } else {
-    // Look for existing connection for this specific platform
-    let { data: existingConns } = await supabase
-      .from("platform_connections").select("id").eq("client_id", clientId).eq("platform", platform).limit(1);
-    let connId: string;
-    if (existingConns && existingConns.length > 0) {
-      connId = existingConns[0].id;
-    } else {
-      const platformNames: Record<string, string> = { meta: "Meta Ads", google: "Google Ads", tiktok: "TikTok Ads" };
-      const { data: newConn } = await supabase
-        .from("platform_connections")
-        .insert({ client_id: clientId, platform, account_name: platformNames[platform] || "Sheets Import", sync_status: "success", last_sync_at: new Date().toISOString() })
-        .select("id").single();
-      connId = newConn!.id;
-    }
+    const platformNames: Record<string, string> = { meta: "Meta Ads", google: "Google Ads", tiktok: "TikTok Ads" };
     const { data: newAccount } = await supabase
       .from("ad_accounts")
-      .insert({ client_id: clientId, connection_id: connId, platform_account_id: `sheets-${clientId.substring(0, 8)}`, account_name: "Google Sheets Import" })
+      .insert({ client_id: clientId, connection_id: connId, platform_account_id: `sheets-${platform}-${clientId.substring(0, 8)}`, account_name: `${platformNames[platform] || "Sheets"} Import` })
       .select("id").single();
     adAccountId = newAccount!.id;
   }
