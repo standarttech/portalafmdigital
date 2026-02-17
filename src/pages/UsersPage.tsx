@@ -1,8 +1,7 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import AdminApprovalsPanel from '@/components/shared/AdminApprovalsPanel';
-import BroadcastPanel from '@/components/notifications/BroadcastPanel';
 import { motion } from 'framer-motion';
-import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2, Building2, Megaphone } from 'lucide-react';
+import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -349,7 +348,6 @@ export default function UsersPage() {
               <TabsTrigger value="invitations" className="gap-1.5 text-xs sm:text-sm"><Mail className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabInvitations')}</span><span className="sm:hidden">Inv</span></TabsTrigger>
               <TabsTrigger value="clients" className="gap-1.5 text-xs sm:text-sm"><Building2 className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabClients')}</span><span className="sm:hidden">Cli</span></TabsTrigger>
               <TabsTrigger value="approvals" className="gap-1.5 text-xs sm:text-sm"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Approvals</span><span className="sm:hidden">Appr</span></TabsTrigger>
-              <TabsTrigger value="broadcast" className="gap-1.5 text-xs sm:text-sm"><Megaphone className="h-4 w-4" /><span className="hidden sm:inline">{t('broadcast.title')}</span><span className="sm:hidden">Cast</span></TabsTrigger>
             </TabsList>
           </div>
 
@@ -618,11 +616,6 @@ export default function UsersPage() {
           {/* APPROVALS TAB */}
           <TabsContent value="approvals">
             <AdminApprovalsPanel />
-          </TabsContent>
-
-          {/* BROADCAST TAB */}
-          <TabsContent value="broadcast">
-            <BroadcastPanel />
           </TabsContent>
         </Tabs>
       </motion.div>

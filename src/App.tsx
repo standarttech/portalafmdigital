@@ -27,6 +27,7 @@ import GlossaryPage from "@/pages/GlossaryPage";
 import DecompositionPage from "@/pages/DecompositionPage";
 import ChatPage from "@/pages/ChatPage";
 import TaskBoardPage from "@/pages/TaskBoardPage";
+import BroadcastsPage from "@/pages/BroadcastsPage";
 import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import MfaChallengePage from "@/pages/MfaChallengePage";
 import NotFound from "./pages/NotFound";
@@ -200,6 +201,7 @@ function AppRoutes() {
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/decomposition" element={<DecompositionPage />} />
         <Route path="/budget" element={<BudgetPlannerPage />} />
+        <Route path="/broadcasts" element={<BroadcastsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/tasks" element={<TaskBoardPage />} />
         <Route path="/chat" element={<ChatPage />} />
