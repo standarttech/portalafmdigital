@@ -53,9 +53,10 @@ const navSections: NavSection[] = [
   },
   {
     id: 'data',
-    labelKey: 'nav.sync' as TranslationKey,
+    labelKey: 'nav.dataSection' as TranslationKey,
     items: [
       { key: 'nav.sync', icon: RefreshCw, path: '/sync' },
+      { key: 'nav.audit', icon: Shield, path: '/audit', adminOnly: true },
     ],
   },
   {
@@ -66,7 +67,6 @@ const navSections: NavSection[] = [
       { key: 'nav.users', icon: Users, path: '/users', adminOnly: true, badgeKey: 'accessRequests' },
       { key: 'nav.broadcasts' as TranslationKey, icon: Megaphone, path: '/broadcasts', adminOnly: true },
       { key: 'nav.budget', icon: DollarSign, path: '/budget', adminOnly: true },
-      { key: 'nav.audit', icon: Shield, path: '/audit', adminOnly: true },
       { key: 'nav.decomposition', icon: Calculator, path: '/decomposition', adminOnly: true },
     ],
   },

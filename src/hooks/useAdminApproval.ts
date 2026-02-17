@@ -19,6 +19,18 @@ export function useAdminApproval() {
     if (!user) return false;
     setLoading(true);
 
+    // Check if current user has bypass_dual_approval flag
+    const { data: settingsData } = await supabase
+      .from('user_settings')
+      .select('bypass_dual_approval')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if ((settingsData as any)?.bypass_dual_approval) {
+      setLoading(false);
+      return true;
+    }
+
     // Check how many admins exist
     const { count } = await supabase
       .from('agency_users')
