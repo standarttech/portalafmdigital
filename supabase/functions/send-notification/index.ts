@@ -95,7 +95,7 @@ serve(async (req) => {
           if (userData?.user?.email) {
             const resend = new Resend(resendApiKey);
             await resend.emails.send({
-              from: "AFM DIGITAL <no-reply@afmdigital.com>",
+              from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
               to: [userData.user.email],
               subject: `AFM DIGITAL — ${title}`,
               html: `
