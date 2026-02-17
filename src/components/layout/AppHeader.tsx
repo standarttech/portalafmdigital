@@ -27,9 +27,9 @@ const languageOptions: { code: Language; flag: string; label: string }[] = [
 export default function AppHeader() {
   const { language, setLanguage, t } = useLanguage();
   const { user, agencyRole, signOut } = useAuth();
-  const { theme, setTheme, isFuturistic } = useTheme();
-
-  const isDark = theme === 'dark' || theme === 'futuristic';
+  const { theme, setTheme, fxEnabled, toggleFx } = useTheme();
+  const isFuturistic = fxEnabled;
+  const isDark = theme === 'dark';
 
   return (
     <header className={cn(
@@ -49,7 +49,7 @@ export default function AppHeader() {
         <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
+        <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -73,7 +73,7 @@ export default function AppHeader() {
                     ? "text-primary bg-primary/10 hover:bg-primary/20"
                     : "text-muted-foreground hover:text-foreground"
                 )}
-                onClick={() => setTheme(isFuturistic ? (isDark ? 'dark' : 'light') : (isDark ? 'futuristic' : 'futuristic'))}
+                onClick={toggleFx}
               >
                 <Sparkles className={cn("h-4 w-4", isFuturistic && "animate-pulse")} />
               </Button>

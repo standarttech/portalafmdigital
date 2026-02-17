@@ -26,12 +26,14 @@ import { cn } from '@/lib/utils';
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
+const AGENCY_SENTINEL = '__agency__';
+
 interface Task {
   id: string;
   title: string;
   description: string | null;
   status: 'pending' | 'in_progress' | 'completed';
-  client_id: string;
+  client_id: string | null;
   assigned_to: string | null;
   due_date: string | null;
   created_at: string;
@@ -88,7 +90,7 @@ export default function TaskBoardPage() {
     setTasks((t || []).map(task => ({
       ...task,
       status: task.status as Task['status'],
-      client_name: clientMap.get(task.client_id),
+      client_name: task.client_id ? clientMap.get(task.client_id) : undefined,
       assignee_name: task.assigned_to ? userMap.get(task.assigned_to) : undefined,
     })));
     setClients(c || []);
@@ -109,7 +111,7 @@ export default function TaskBoardPage() {
     setEditingTask(task);
     setFormTitle(task.title);
     setFormDesc(task.description || '');
-    setFormClient(task.client_id);
+    setFormClient(task.client_id ?? AGENCY_SENTINEL);
     setFormAssignee(task.assigned_to || '');
     setFormDueDate(task.due_date || '');
     setFormStatus(task.status);
@@ -123,7 +125,7 @@ export default function TaskBoardPage() {
     const payload = {
       title: formTitle,
       description: formDesc || null,
-      client_id: formClient,
+      client_id: formClient === AGENCY_SENTINEL ? null : formClient,
       assigned_to: formAssignee || null,
       due_date: formDueDate || null,
       status: formStatus,
@@ -260,9 +262,11 @@ export default function TaskBoardPage() {
                           <p className="text-[11px] text-muted-foreground line-clamp-2">{task.description}</p>
                         )}
                         <div className="flex items-center gap-2 flex-wrap">
-                          {task.client_name && (
+                          {task.client_id === null ? (
+                            <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">{isRu ? '🏢 Агентство' : '🏢 Agency'}</Badge>
+                          ) : task.client_name ? (
                             <Badge variant="outline" className="text-[10px]">{task.client_name}</Badge>
-                          )}
+                          ) : null}
                           {task.due_date && (
                             <span className={cn(
                               'text-[10px] flex items-center gap-0.5',
@@ -312,10 +316,13 @@ export default function TaskBoardPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>{isRu ? 'Клиент' : 'Client'} *</Label>
+                <Label>{isRu ? 'Клиент / Агентство' : 'Client / Agency'} *</Label>
                 <Select value={formClient} onValueChange={setFormClient}>
                   <SelectTrigger><SelectValue placeholder={isRu ? 'Выбрать' : 'Select'} /></SelectTrigger>
-                  <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    <SelectItem value={AGENCY_SENTINEL}>🏢 {isRu ? 'Агентство' : 'Agency'}</SelectItem>
+                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
