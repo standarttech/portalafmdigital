@@ -388,7 +388,8 @@ serve(async (req) => {
       }
 
       // Generate a magic sign-in link (one-time, expires in 24h)
-      let inviteLink = `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/auth`;
+      const appBaseUrl = "https://app.afmdigital.com";
+      let inviteLink = `${appBaseUrl}/auth`;
 
       if (resendApiKey) {
         try {
@@ -396,7 +397,7 @@ serve(async (req) => {
             type: "magiclink",
             email: cleanEmail,
             options: {
-              redirectTo: `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/`,
+              redirectTo: `${appBaseUrl}/`,
             },
           });
 
@@ -501,13 +502,14 @@ serve(async (req) => {
 
       if (resendApiKey) {
         try {
-          let inviteLink = `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/auth`;
+          const appBaseUrl = "https://app.afmdigital.com";
+          let inviteLink = `${appBaseUrl}/auth`;
 
           const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: "magiclink",
             email: targetEmail.toLowerCase().trim(),
             options: {
-              redirectTo: `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/`,
+              redirectTo: `${appBaseUrl}/`,
             },
           });
 
