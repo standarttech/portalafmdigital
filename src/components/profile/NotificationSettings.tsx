@@ -139,24 +139,34 @@ export default function NotificationSettings() {
 
   const handleEnableWebPush = async () => {
     try {
+      // Check if the browser supports notifications at all
+      if (!('Notification' in window)) {
+        toast.error(t('notif.webpushNotSupported'));
+        return;
+      }
+
+      // Check for service worker + PushManager (not supported in iOS Safari < 16.4)
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         toast.error(t('notif.webpushNotSupported'));
         return;
       }
 
-      const registration = await navigator.serviceWorker.register('/sw.js');
       const permission = await Notification.requestPermission();
+      if (permission === 'denied') {
+        toast.error(t('notif.webpushDenied'));
+        return;
+      }
       if (permission !== 'granted') {
         toast.error(t('notif.webpushDenied'));
         return;
       }
 
-      // For now, store that web push is enabled without VAPID subscription
-      // Full VAPID implementation requires keys
+      await navigator.serviceWorker.register('/sw.js');
       updatePref('webpush_enabled', true);
       toast.success(t('notif.webpushEnabled'));
     } catch (e: any) {
-      toast.error(e.message);
+      console.error('Web push setup error:', e);
+      toast.error(t('notif.webpushNotSupported'));
     }
   };
 
