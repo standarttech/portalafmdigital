@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.sync-google-sheet]
 verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false
+
+[functions.telegram-bot]
+verify_jwt = false

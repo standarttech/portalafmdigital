@@ -505,6 +505,29 @@ export const translations = {
   'dashboard.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
   'dashboard.daily': t('Daily', 'Ежедневно', 'Giornaliero', 'Diario', 'يومي', 'Quotidien'),
   'dashboard.resetDefaults': t('Reset to defaults', 'Сбросить настройки', 'Ripristina predefiniti', 'Restablecer valores', 'إعادة تعيين', 'Réinitialiser'),
+
+  // Notification Settings
+  'notif.title': t('Notification Settings', 'Настройки уведомлений', 'Impostazioni notifiche', 'Configuración de notificaciones', 'إعدادات الإشعارات', 'Paramètres de notifications'),
+  'notif.subtitle': t('Choose how and where you receive notifications', 'Выберите, как и куда получать уведомления', 'Scegli come e dove ricevere le notifiche', 'Elige cómo y dónde recibir notificaciones', 'اختر كيف وأين تتلقى الإشعارات', 'Choisissez comment et où recevoir les notifications'),
+  'notif.channels': t('Connected Channels', 'Подключённые каналы', 'Canali collegati', 'Canales conectados', 'القنوات المتصلة', 'Canaux connectés'),
+  'notif.channelMatrix': t('Notification Types & Channels', 'Типы уведомлений и каналы', 'Tipi di notifica e canali', 'Tipos de notificación y canales', 'أنواع الإشعارات والقنوات', 'Types de notification et canaux'),
+  'notif.connected': t('Connected', 'Подключён', 'Collegato', 'Conectado', 'متصل', 'Connecté'),
+  'notif.notConnected': t('Not connected', 'Не подключён', 'Non collegato', 'No conectado', 'غير متصل', 'Non connecté'),
+  'notif.enabled': t('Enabled', 'Включено', 'Abilitato', 'Habilitado', 'مفعّل', 'Activé'),
+  'notif.enable': t('Enable', 'Включить', 'Abilita', 'Habilitar', 'تفعيل', 'Activer'),
+  'notif.unlink': t('Unlink', 'Отвязать', 'Scollega', 'Desvincular', 'إلغاء الربط', 'Délier'),
+  'notif.linkTelegram': t('Link Telegram', 'Привязать Telegram', 'Collega Telegram', 'Vincular Telegram', 'ربط Telegram', 'Lier Telegram'),
+  'notif.telegramInstructions': t('Send this command to the AFM DIGITAL bot in Telegram:', 'Отправьте эту команду боту AFM DIGITAL в Telegram:', 'Invia questo comando al bot AFM DIGITAL su Telegram:', 'Envía este comando al bot AFM DIGITAL en Telegram:', 'أرسل هذا الأمر إلى بوت AFM DIGITAL في Telegram:', 'Envoyez cette commande au bot AFM DIGITAL sur Telegram :'),
+  'notif.telegramUnlinked': t('Telegram unlinked', 'Telegram отвязан', 'Telegram scollegato', 'Telegram desvinculado', 'تم إلغاء ربط Telegram', 'Telegram délié'),
+  'notif.codeCopied': t('Code copied to clipboard', 'Код скопирован', 'Codice copiato', 'Código copiado', 'تم نسخ الرمز', 'Code copié'),
+  'notif.webpushNotSupported': t('Web Push is not supported in this browser', 'Web Push не поддерживается в этом браузере', 'Web Push non supportato in questo browser', 'Web Push no es compatible con este navegador', 'إشعارات الويب غير مدعومة في هذا المتصفح', 'Web Push non supporté dans ce navigateur'),
+  'notif.webpushDenied': t('Notification permission denied', 'Разрешение на уведомления отклонено', 'Permesso notifiche negato', 'Permiso de notificaciones denegado', 'تم رفض إذن الإشعارات', 'Permission de notification refusée'),
+  'notif.webpushEnabled': t('Web Push notifications enabled', 'Web Push уведомления включены', 'Notifiche Web Push abilitate', 'Notificaciones Web Push habilitadas', 'تم تفعيل إشعارات الويب', 'Notifications Web Push activées'),
+  'notif.typeAlert': t('Alerts', 'Алерты', 'Avvisi', 'Alertas', 'التنبيهات', 'Alertes'),
+  'notif.typeTask': t('Tasks', 'Задачи', 'Attività', 'Tareas', 'المهام', 'Tâches'),
+  'notif.typeChat': t('Chat', 'Чат', 'Chat', 'Chat', 'الدردشة', 'Chat'),
+  'notif.typeReport': t('Reports', 'Отчёты', 'Report', 'Informes', 'التقارير', 'Rapports'),
+  'notif.typeApproval': t('Approvals', 'Одобрения', 'Approvazioni', 'Aprobaciones', 'الموافقات', 'Approbations'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
