@@ -44,17 +44,30 @@ function AppRoutes() {
   const [mfaPending, setMfaPending] = useState(false);
   const [checkingMfa, setCheckingMfa] = useState(false);
 
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState<boolean | null>(null);
+
   const checkForcePasswordChange = useCallback(async () => {
     if (!user) {
       setForcePasswordChange(false);
+      setNeedsPasswordSetup(false);
       return;
     }
     setCheckingFpc(true);
     const { data } = await supabase
       .from('user_settings')
-      .select('force_password_change, temp_password_expires_at')
+      .select('force_password_change, temp_password_expires_at, needs_password_setup')
       .eq('user_id', user.id)
       .maybeSingle();
+
+    // needs_password_setup: new magic-link flow — redirect to /set-password
+    if ((data as any)?.needs_password_setup) {
+      setNeedsPasswordSetup(true);
+      setForcePasswordChange(false);
+      setCheckingFpc(false);
+      return;
+    }
+
+    setNeedsPasswordSetup(false);
 
     if (data?.force_password_change) {
       if (data.temp_password_expires_at && new Date(data.temp_password_expires_at) < new Date()) {
@@ -99,7 +112,7 @@ function AppRoutes() {
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
 
-  if (loading || (user && forcePasswordChange === null) || checkingFpc || checkingMfa) {
+  if (loading || (user && (forcePasswordChange === null || needsPasswordSetup === null)) || checkingFpc || checkingMfa) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -107,6 +120,15 @@ function AppRoutes() {
           <p className="text-muted-foreground text-sm">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  // Intercept authenticated user who needs to set their password (magic link flow)
+  if (user && needsPasswordSetup) {
+    return (
+      <Routes>
+        <Route path="*" element={<SetPasswordPage />} />
+      </Routes>
     );
   }
 

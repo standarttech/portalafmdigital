@@ -1289,6 +1289,7 @@ export type Database = {
           force_password_change: boolean
           id: string
           language: string
+          needs_password_setup: boolean
           temp_password_expires_at: string | null
           theme: string
           updated_at: string
@@ -1300,6 +1301,7 @@ export type Database = {
           force_password_change?: boolean
           id?: string
           language?: string
+          needs_password_setup?: boolean
           temp_password_expires_at?: string | null
           theme?: string
           updated_at?: string
@@ -1311,6 +1313,7 @@ export type Database = {
           force_password_change?: boolean
           id?: string
           language?: string
+          needs_password_setup?: boolean
           temp_password_expires_at?: string | null
           theme?: string
           updated_at?: string
