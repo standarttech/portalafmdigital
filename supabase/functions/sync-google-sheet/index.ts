@@ -34,7 +34,10 @@ function findColumn(row: Record<string, string>, ...names: string[]): string {
   for (const key of Object.keys(row)) {
     const norm = normalizeHeader(key);
     for (const n of names) {
-      if (norm === normalizeHeader(n)) return row[key];
+      const normName = normalizeHeader(n);
+      // Exact match OR column key STARTS WITH search name
+      // handles "Date February", "Date March" etc. from sheets with merged section headers
+      if (norm === normName || norm.startsWith(normName)) return row[key];
     }
   }
   return "";
