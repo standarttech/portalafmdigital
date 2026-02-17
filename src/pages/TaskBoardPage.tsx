@@ -139,14 +139,18 @@ export default function TaskBoardPage() {
       const { error } = await supabase.from('tasks').insert(payload);
       if (error) { toast.error(error.message); setSaving(false); return; }
 
-      // Create notification for assignee
+      // Send notification for assignee via send-notification (in-app + email)
       if (formAssignee) {
-        await supabase.from('notifications').insert({
-          user_id: formAssignee,
-          title: isRu ? 'Новая задача' : 'New task',
-          message: `${formTitle}${formDueDate ? ` · ${isRu ? 'до' : 'due'} ${format(new Date(formDueDate), 'dd.MM.yy')}` : ''}`,
-          type: 'task',
-          link: '/tasks',
+        const notifMessage = `${formTitle}${formDueDate ? ` · ${isRu ? 'до' : 'due'} ${format(new Date(formDueDate), 'dd.MM.yy')}` : ''}`;
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            user_id: formAssignee,
+            type: 'task',
+            title: isRu ? 'Новая задача назначена' : 'New task assigned',
+            message: notifMessage,
+            link: '/tasks',
+            force_channels: ['in_app', 'email'],
+          },
         });
       }
     }
