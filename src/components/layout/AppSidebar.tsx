@@ -7,7 +7,7 @@ import logoAfm from '@/assets/logo-afm.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
   ChevronLeft, ChevronRight, UserCircle, LogOut, Menu, BookOpen, Calculator, DollarSign, Calendar, MessageSquare, ClipboardList,
-  ChevronDown,
+  ChevronDown, Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,7 @@ const navSections: NavSection[] = [
     adminOnly: true,
     items: [
       { key: 'nav.users', icon: Users, path: '/users', adminOnly: true, badgeKey: 'accessRequests' },
+      { key: 'nav.broadcasts' as TranslationKey, icon: Megaphone, path: '/broadcasts', adminOnly: true },
       { key: 'nav.budget', icon: DollarSign, path: '/budget', adminOnly: true },
       { key: 'nav.audit', icon: Shield, path: '/audit', adminOnly: true },
       { key: 'nav.decomposition', icon: Calculator, path: '/decomposition', adminOnly: true },

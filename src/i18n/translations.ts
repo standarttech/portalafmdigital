@@ -546,6 +546,15 @@ export const translations = {
   'broadcast.sent': t('Notification sent to', 'Уведомление отправлено:', 'Notifica inviata a', 'Notificación enviada a', 'تم إرسال الإشعار إلى', 'Notification envoyée à'),
   'broadcast.fillAll': t('Please fill in all fields', 'Заполните все поля', 'Compila tutti i campi', 'Complete todos los campos', 'يرجى ملء جميع الحقول', 'Veuillez remplir tous les champs'),
   'broadcast.noRecipients': t('No recipients found', 'Получатели не найдены', 'Nessun destinatario trovato', 'No se encontraron destinatarios', 'لم يتم العثور على مستلمين', 'Aucun destinataire trouvé'),
+  'broadcast.totalSent': t('Total Sent', 'Всего отправлено', 'Totale inviati', 'Total enviados', 'إجمالي المرسل', 'Total envoyé'),
+  'broadcast.thisMonth': t('This Month', 'За месяц', 'Questo mese', 'Este mes', 'هذا الشهر', 'Ce mois'),
+  'broadcast.lastWeek': t('Last Week', 'За неделю', 'Ultima settimana', 'Última semana', 'الأسبوع الماضي', 'Semaine dernière'),
+  'broadcast.compose': t('Compose', 'Написать', 'Componi', 'Redactar', 'إنشاء', 'Rédiger'),
+  'broadcast.history': t('History', 'История', 'Cronologia', 'Historial', 'السجل', 'Historique'),
+  'broadcast.newBroadcast': t('New Broadcast', 'Новая рассылка', 'Nuova diffusione', 'Nueva difusión', 'بث جديد', 'Nouvelle diffusion'),
+  'broadcast.noHistory': t('No broadcasts sent yet', 'Рассылок пока нет', 'Nessuna diffusione ancora', 'No hay difusiones aún', 'لا توجد عمليات بث بعد', 'Aucune diffusion encore'),
+  'broadcast.sentLabel': t('Sent', 'Отправлено', 'Inviato', 'Enviado', 'مرسل', 'Envoyé'),
+  'nav.broadcasts': t('Broadcasts', 'Рассылки', 'Diffusioni', 'Difusiones', 'البث', 'Diffusions'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
