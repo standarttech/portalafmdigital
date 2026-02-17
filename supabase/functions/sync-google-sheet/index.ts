@@ -149,15 +149,39 @@ async function syncClient(supabase: any, clientId: string, platform: string = "g
     // Skip rows with no meaningful data
     if (spend === 0 && impressions === 0 && clicks === 0 && leads === 0) continue;
 
-    // Normalize date
-    let normalizedDate = dateStr;
-    const dateParts = dateStr.match(/(\d{1,4})[.\/-](\d{1,2})[.\/-](\d{1,4})/);
+    // Normalize date - handle multiple formats:
+    // YYYY-MM-DD, YYYY/MM/DD → already ISO, keep as is
+    // M/D/YYYY or MM/DD/YYYY (US slash format) → YYYY-MM-DD
+    // DD.MM.YYYY or D.M.YYYY (European dot format) → YYYY-MM-DD
+    // DD-MM-YYYY or D-M-YYYY (European dash format) → YYYY-MM-DD
+    let normalizedDate = dateStr.trim();
+
+    // Detect separator
+    const sepMatch = normalizedDate.match(/[.\/-]/);
+    const sep = sepMatch ? sepMatch[0] : null;
+    const dateParts = normalizedDate.match(/^(\d{1,4})[.\/-](\d{1,2})[.\/-](\d{1,4})$/);
+
     if (dateParts) {
       const [, a, b, c] = dateParts;
-      if (a.length === 4) normalizedDate = `${a}-${b.padStart(2, "0")}-${c.padStart(2, "0")}`;
-      else if (c.length === 4) normalizedDate = `${c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-      else normalizedDate = `20${c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+      if (a.length === 4) {
+        // YYYY-MM-DD or YYYY/MM/DD
+        normalizedDate = `${a}-${b.padStart(2, "0")}-${c.padStart(2, "0")}`;
+      } else if (c.length === 4) {
+        if (sep === "/") {
+          // M/D/YYYY (US format) — month first, then day
+          normalizedDate = `${c}-${a.padStart(2, "0")}-${b.padStart(2, "0")}`;
+        } else {
+          // DD.MM.YYYY or DD-MM-YYYY (European format) — day first, then month
+          normalizedDate = `${c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+        }
+      } else {
+        // Two-digit year like DD.MM.YY — assume 20xx, European
+        normalizedDate = `20${c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+      }
     }
+
+    // Validate resulting date is parseable
+    if (isNaN(Date.parse(normalizedDate))) continue;
 
     // Get or create campaign
     if (!campaignCache[campaignName]) {
