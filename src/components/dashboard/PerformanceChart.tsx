@@ -20,7 +20,7 @@ const metrics = [
 export default function PerformanceChart({ chartData, className }: Props) {
   const { t, formatCurrency, formatNumber } = useLanguage();
   const [visible, setVisible] = useState({ spend: true, leads: true, cpl: true });
-  const [scaleMode, setScaleMode] = useState<'absolute' | 'normalized'>('absolute');
+  const [scaleMode, setScaleMode] = useState<'absolute' | 'normalized'>('normalized');
 
   const data = useMemo(() => {
     if (scaleMode === 'normalized' && chartData.length > 0) {
