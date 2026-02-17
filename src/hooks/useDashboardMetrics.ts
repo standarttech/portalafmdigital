@@ -309,11 +309,13 @@ export function useDashboardMetrics(
         tiktok: 'hsl(340, 70%, 55%)',
       };
 
-      setPlatformData([
+      // Only include platforms that have actual data (spend > 0 or leads > 0)
+      const platformEntries = [
         { name: 'Meta Ads', key: 'meta', ...platAgg.meta, color: platformColors.meta },
         { name: 'Google Ads', key: 'google', ...platAgg.google, color: platformColors.google },
         { name: 'TikTok Ads', key: 'tiktok', ...platAgg.tiktok, color: platformColors.tiktok },
-      ]);
+      ].filter(p => p.spend > 0 || p.leads > 0);
+      setPlatformData(platformEntries);
 
       // Client metrics
       const byClient: Record<string, { spend: number; leads: number; clicks: number; impressions: number; revenue: number; purchases: number }> = {};

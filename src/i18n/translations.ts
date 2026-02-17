@@ -528,6 +528,24 @@ export const translations = {
   'notif.typeChat': t('Chat', 'Чат', 'Chat', 'Chat', 'الدردشة', 'Chat'),
   'notif.typeReport': t('Reports', 'Отчёты', 'Report', 'Informes', 'التقارير', 'Rapports'),
   'notif.typeApproval': t('Approvals', 'Одобрения', 'Approvazioni', 'Aprobaciones', 'الموافقات', 'Approbations'),
+
+  // Broadcast
+  'broadcast.title': t('Mass Notification', 'Массовая рассылка', 'Notifica di massa', 'Notificación masiva', 'إشعار جماعي', 'Notification de masse'),
+  'broadcast.subtitle': t('Send notifications to team or clients', 'Отправка уведомлений команде или клиентам', 'Invia notifiche al team o ai clienti', 'Enviar notificaciones al equipo o clientes', 'إرسال إشعارات للفريق أو العملاء', 'Envoyer des notifications à l\'équipe ou aux clients'),
+  'broadcast.recipients': t('Recipients', 'Получатели', 'Destinatari', 'Destinatarios', 'المستلمون', 'Destinataires'),
+  'broadcast.team': t('Team', 'Команда', 'Team', 'Equipo', 'الفريق', 'Équipe'),
+  'broadcast.clients': t('Clients', 'Клиенты', 'Clienti', 'Clientes', 'العملاء', 'Clients'),
+  'broadcast.everyone': t('Everyone', 'Все', 'Tutti', 'Todos', 'الجميع', 'Tout le monde'),
+  'broadcast.channels': t('Channels', 'Каналы', 'Canali', 'Canales', 'القنوات', 'Canaux'),
+  'broadcast.subject': t('Subject', 'Тема', 'Oggetto', 'Asunto', 'الموضوع', 'Sujet'),
+  'broadcast.subjectPlaceholder': t('Enter notification subject...', 'Введите тему уведомления...', 'Inserisci l\'oggetto...', 'Ingrese el asunto...', 'أدخل موضوع الإشعار...', 'Entrez le sujet...'),
+  'broadcast.message': t('Message', 'Сообщение', 'Messaggio', 'Mensaje', 'الرسالة', 'Message'),
+  'broadcast.messagePlaceholder': t('Enter notification message...', 'Введите текст уведомления...', 'Inserisci il messaggio...', 'Ingrese el mensaje...', 'أدخل نص الإشعار...', 'Entrez le message...'),
+  'broadcast.preview': t('Preview', 'Превью', 'Anteprima', 'Vista previa', 'معاينة', 'Aperçu'),
+  'broadcast.send': t('Send Notification', 'Отправить уведомление', 'Invia notifica', 'Enviar notificación', 'إرسال الإشعار', 'Envoyer la notification'),
+  'broadcast.sent': t('Notification sent to', 'Уведомление отправлено:', 'Notifica inviata a', 'Notificación enviada a', 'تم إرسال الإشعار إلى', 'Notification envoyée à'),
+  'broadcast.fillAll': t('Please fill in all fields', 'Заполните все поля', 'Compila tutti i campi', 'Complete todos los campos', 'يرجى ملء جميع الحقول', 'Veuillez remplir tous les champs'),
+  'broadcast.noRecipients': t('No recipients found', 'Получатели не найдены', 'Nessun destinatario trovato', 'No se encontraron destinatarios', 'لم يتم العثور على مستلمين', 'Aucun destinataire trouvé'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
