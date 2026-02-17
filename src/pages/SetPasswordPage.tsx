@@ -53,10 +53,8 @@ export default function SetPasswordPage() {
     if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
 
     setIsLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) { toast.error(error.message); setIsLoading(false); return; }
 
-    // Clear needs_password_setup flag BEFORE any navigation
+    // CRITICAL: Clear the flag FIRST — before updateUser triggers USER_UPDATED event
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('user_settings')
@@ -64,8 +62,20 @@ export default function SetPasswordPage() {
         .eq('user_id', user.id);
     }
 
-    // Mark locally so App.tsx doesn't re-intercept on USER_UPDATED event
-    setPasswordSaved(true);
+    // NOW update password — this triggers USER_UPDATED, but DB flag is already false
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      // Rollback flag on error
+      if (user) {
+        await supabase.from('user_settings')
+          .update({ needs_password_setup: true })
+          .eq('user_id', user.id);
+      }
+      toast.error(error.message);
+      setIsLoading(false);
+      return;
+    }
+
     toast.success('Password set successfully!');
     setIsLoading(false);
     setStep('mfa-offer');
