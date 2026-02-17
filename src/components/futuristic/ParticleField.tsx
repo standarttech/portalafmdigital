@@ -46,8 +46,11 @@ export default function ParticleField() {
     };
     window.addEventListener('mousemove', handleMouse);
 
+    let time = 0;
+
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      time += 0.01;
 
       particles.current.forEach((p, i) => {
         // Mouse interaction
@@ -60,10 +63,22 @@ export default function ParticleField() {
           p.vy -= (dy / dist) * force * 0.02;
         }
 
+        // Autonomous drift — gentle sine-based wandering
+        const driftAngle = time * 0.5 + i * 0.7;
+        p.vx += Math.sin(driftAngle) * 0.003;
+        p.vy += Math.cos(driftAngle * 0.8 + i) * 0.003;
+
+        // Keep minimum velocity so particles always move
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (speed < 0.15) {
+          p.vx += (Math.random() - 0.5) * 0.05;
+          p.vy += (Math.random() - 0.5) * 0.05;
+        }
+
         p.x += p.vx;
         p.y += p.vy;
-        p.vx *= 0.99;
-        p.vy *= 0.99;
+        p.vx *= 0.995;
+        p.vy *= 0.995;
 
         // Wrap
         if (p.x < 0) p.x = canvas.width;
@@ -71,21 +86,34 @@ export default function ParticleField() {
         if (p.y < 0) p.y = canvas.height;
         if (p.y > canvas.height) p.y = 0;
 
-        // Draw particle
+        // Pulsing brightness — each particle has its own phase
+        const pulse = 0.3 + 0.4 * Math.sin(time * 1.2 + i * 1.3);
+        const currentOpacity = p.opacity * (0.5 + pulse);
+
+        // Draw particle with glow
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${p.opacity})`;
+        ctx.arc(p.x, p.y, p.size * (0.9 + pulse * 0.3), 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${currentOpacity})`;
         ctx.fill();
+
+        // Soft glow layer
+        if (currentOpacity > 0.4) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${currentOpacity * 0.08})`;
+          ctx.fill();
+        }
 
         // Draw connections
         for (let j = i + 1; j < particles.current.length; j++) {
           const p2 = particles.current[j];
           const d = Math.sqrt((p.x - p2.x) ** 2 + (p.y - p2.y) ** 2);
           if (d < 120) {
+            const connPulse = 0.5 + 0.5 * Math.sin(time * 0.8 + i * 0.3 + j * 0.2);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(42, 80%, 55%, ${0.08 * (1 - d / 120)})`;
+            ctx.strokeStyle = `hsla(42, 80%, 55%, ${0.06 * connPulse * (1 - d / 120)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
