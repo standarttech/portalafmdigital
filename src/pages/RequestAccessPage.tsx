@@ -106,7 +106,7 @@ export default function RequestAccessPage() {
       >
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
-            <img src={logoAfm} alt="AFM DIGITAL" className="h-14 w-auto" />
+            <img src={logoAfm} alt="AFM DIGITAL" className="h-28 w-auto" />
           </div>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Mail className="h-5 w-5 text-primary" />

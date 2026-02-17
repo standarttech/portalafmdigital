@@ -3,7 +3,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebarState } from '@/contexts/SidebarContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import logoAfm from '@/assets/logo-afm.png';
+import logoAfm from '@/assets/logo-afm-new.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
   ChevronLeft, ChevronRight, UserCircle, LogOut, Menu, BookOpen, Calculator, DollarSign, Calendar, MessageSquare, ClipboardList,

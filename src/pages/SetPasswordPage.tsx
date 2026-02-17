@@ -54,7 +54,10 @@ export default function SetPasswordPage() {
 
     setIsLoading(true);
 
-    // CRITICAL: Clear the flag FIRST — before updateUser triggers USER_UPDATED event
+    // CRITICAL: Set session flag FIRST so App.tsx won't re-intercept on USER_UPDATED event
+    sessionStorage.setItem('password_setup_done', '1');
+
+    // Clear DB flag before updateUser triggers USER_UPDATED
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('user_settings')
@@ -62,10 +65,11 @@ export default function SetPasswordPage() {
         .eq('user_id', user.id);
     }
 
-    // NOW update password — this triggers USER_UPDATED, but DB flag is already false
+    // NOW update password
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      // Rollback flag on error
+      // Rollback both flags on error
+      sessionStorage.removeItem('password_setup_done');
       if (user) {
         await supabase.from('user_settings')
           .update({ needs_password_setup: true })
@@ -133,7 +137,7 @@ export default function SetPasswordPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-6">
-            <img src={logoAfm} alt="AFM DIGITAL" className="h-14 w-auto" />
+            <img src={logoAfm} alt="AFM DIGITAL" className="h-28 w-auto" />
           </div>
         </div>
 

@@ -36,6 +36,7 @@ export default function NotificationCenter() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'unread' | 'read'>('unread');
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -44,14 +45,18 @@ export default function NotificationCenter() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
     if (data) setNotifications(data as Notification[]);
   }, [user]);
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
   useEffect(() => { if (open) fetchNotifications(); }, [open, fetchNotifications]);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unread = notifications.filter(n => !n.is_read);
+  const read = notifications.filter(n => n.is_read);
+  const unreadCount = unread.length;
+
+  const displayed = tab === 'unread' ? unread : read;
 
   const markAllRead = async () => {
     if (!user) return;
@@ -91,22 +96,47 @@ export default function NotificationCenter() {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
+        {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
           <h4 className="text-sm font-semibold">Notifications</h4>
-          {unreadCount > 0 && (
+          {unreadCount > 0 && tab === 'unread' && (
             <button onClick={markAllRead} className="text-[10px] text-primary hover:underline flex items-center gap-1">
               <Check className="h-3 w-3" /> Mark all read
             </button>
           )}
         </div>
-        <div className="max-h-[350px] overflow-y-auto">
-          {notifications.length === 0 ? (
+
+        {/* Tabs */}
+        <div className="flex border-b border-border">
+          <button
+            onClick={() => setTab('unread')}
+            className={cn(
+              'flex-1 text-[11px] font-medium py-2 transition-colors',
+              tab === 'unread' ? 'text-primary border-b-2 border-primary -mb-px' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Unread {unreadCount > 0 && <span className="ml-1 px-1 rounded-full bg-destructive/10 text-destructive text-[9px]">{unreadCount}</span>}
+          </button>
+          <button
+            onClick={() => setTab('read')}
+            className={cn(
+              'flex-1 text-[11px] font-medium py-2 transition-colors',
+              tab === 'read' ? 'text-primary border-b-2 border-primary -mb-px' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Read
+          </button>
+        </div>
+
+        {/* List */}
+        <div className="max-h-[320px] overflow-y-auto">
+          {displayed.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-muted-foreground">
               <Bell className="h-8 w-8 mb-2 opacity-30" />
-              <p className="text-xs">No notifications</p>
+              <p className="text-xs">{tab === 'unread' ? 'No unread notifications' : 'No read notifications'}</p>
             </div>
           ) : (
-            notifications.map(n => {
+            displayed.map(n => {
               const Icon = typeIcons[n.type] || Info;
               return (
                 <div
