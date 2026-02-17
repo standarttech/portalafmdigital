@@ -135,7 +135,8 @@ export default function BroadcastsPage() {
         }
       }
 
-      userIds = userIds.filter(id => id !== user.id);
+      // Include the sender too for broadcast
+      userIds = [...new Set(userIds)];
 
       if (userIds.length === 0) {
         toast.error(t('broadcast.noRecipients'));
@@ -166,6 +167,7 @@ export default function BroadcastsPage() {
             type: 'alert',
             title: subject,
             message: body,
+            force_channels: channels,
           }),
         }
       );

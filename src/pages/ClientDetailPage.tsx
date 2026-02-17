@@ -18,7 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -379,10 +380,18 @@ export default function ClientDetailPage() {
     toast.success(t('clients.columnsSaved'));
   };
 
-  const handleCategoryChange = async (newCat: string) => {
-    if (!id || !isAdmin) return;
-    await supabase.from('clients').update({ category: newCat, visible_columns: null } as any).eq('id', id);
+  const [pendingCategory, setPendingCategory] = useState<string | null>(null);
+
+  const handleCategoryChange = (newCat: string) => {
+    if (!id || !isAdmin || newCat === client?.category) return;
+    setPendingCategory(newCat);
+  };
+
+  const confirmCategoryChange = async () => {
+    if (!id || !pendingCategory) return;
+    await supabase.from('clients').update({ category: pendingCategory, visible_columns: null } as any).eq('id', id);
     toast.success(t('clients.columnsSaved'));
+    setPendingCategory(null);
     fetchClient();
   };
 
@@ -775,6 +784,21 @@ export default function ClientDetailPage() {
           )}
         </Tabs>
       </motion.div>
+      {/* Category change confirmation */}
+      <AlertDialog open={!!pendingCategory} onOpenChange={(open) => !open && setPendingCategory(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('clients.changeCategoryTitle' as TranslationKey)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('clients.changeCategoryDesc' as TranslationKey)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel' as TranslationKey)}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCategoryChange}>{t('common.confirm' as TranslationKey)}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

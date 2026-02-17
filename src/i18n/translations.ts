@@ -418,8 +418,9 @@ export const translations = {
   'clients.other': t('Other', 'Другое', 'Altro', 'Otro', 'أخرى', 'Autre'),
   'clients.manageColumns': t('Manage Columns', 'Управление колонками', 'Gestisci colonne', 'Gestionar columnas', 'إدارة الأعمدة', 'Gérer les colonnes'),
   'clients.columnsSaved': t('Column settings saved', 'Настройки колонок сохранены', 'Impostazioni colonne salvate', 'Configuración de columnas guardada', 'تم حفظ إعدادات الأعمدة', 'Paramètres des colonnes enregistrés'),
+  'clients.changeCategoryTitle': t('Change Category?', 'Изменить категорию?', 'Cambiare categoria?', '¿Cambiar categoría?', 'تغيير الفئة؟', 'Changer de catégorie ?'),
+  'clients.changeCategoryDesc': t('Changing the category will reset the visible columns to the default preset for the new category. This action cannot be undone.', 'Изменение категории сбросит видимые колонки к стандартному набору новой категории. Это действие нельзя отменить.', 'Cambiare la categoria ripristinerà le colonne visibili al preset predefinito per la nuova categoria.', 'Cambiar la categoría restablecerá las columnas visibles al preset predeterminado para la nueva categoría.', 'سيؤدي تغيير الفئة إلى إعادة تعيين الأعمدة المرئية إلى الإعداد المسبق الافتراضي للفئة الجديدة.', 'Changer la catégorie réinitialisera les colonnes visibles au preset par défaut pour la nouvelle catégorie.'),
 
-  // Metric columns
   'metric.date': t('Date', 'Дата', 'Data', 'Fecha', 'التاريخ', 'Date'),
   'metric.spend': t('Spend', 'Расходы', 'Spesa', 'Gasto', 'الإنفاق', 'Dépenses'),
   'metric.impressions': t('Impressions', 'Показы', 'Impressioni', 'Impresiones', 'مرات الظهور', 'Impressions'),

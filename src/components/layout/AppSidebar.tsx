@@ -169,8 +169,8 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
     <>
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border gap-3 flex-shrink-0">
-        <div className="h-8 w-8 flex-shrink-0 bg-primary/20 rounded-lg flex items-center justify-center overflow-hidden">
-          <img src={logoAfm} alt="AFM" className="h-5 w-auto" />
+        <div className="h-9 w-9 flex-shrink-0 bg-primary/20 rounded-lg flex items-center justify-center overflow-hidden p-0.5">
+          <img src={logoAfm} alt="AFM" className="h-8 w-8 object-contain" />
         </div>
         {!collapsed && (
           <div className="flex flex-col">
@@ -181,14 +181,13 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-1">
+      <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-2">
         {filteredSections.map((section) => {
           const sectionActive = section.items.some(
             item => location.pathname === item.path || location.pathname.startsWith(item.path + '/')
           );
 
           if (collapsed) {
-            // In collapsed mode, just show icons without grouping
             return (
               <div key={section.id} className="space-y-0.5">
                 {section.items.map(renderNavItem)}
@@ -196,7 +195,6 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
             );
           }
 
-          // Single-item sections don't need collapsible
           if (section.items.length === 1) {
             return (
               <div key={section.id}>
@@ -207,11 +205,11 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
 
           return (
             <Collapsible key={section.id} defaultOpen={sectionActive || section.id === 'analytics'}>
-              <CollapsibleTrigger className="flex items-center w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted/60 hover:text-sidebar-muted transition-colors group">
+              <CollapsibleTrigger className="flex items-center w-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-sidebar-muted/70 hover:text-sidebar-foreground transition-colors group rounded-md hover:bg-sidebar-accent/30">
                 <span className="flex-1 text-left">{t(sectionLabels[section.id])}</span>
-                <ChevronDown className="h-3 w-3 transition-transform group-data-[state=closed]:-rotate-90" />
+                <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=closed]:-rotate-90 opacity-50 group-hover:opacity-100" />
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-0.5">
+              <CollapsibleContent className="space-y-0.5 mt-1 ml-1 border-l border-sidebar-border/40 pl-2">
                 {section.items.map(renderNavItem)}
               </CollapsibleContent>
             </Collapsible>
@@ -219,7 +217,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         })}
       </nav>
 
-      {/* Logout */}
+      {/* Logout - always at bottom */}
       <div className="p-2 border-t border-sidebar-border flex-shrink-0">
         <Button
           variant="ghost"

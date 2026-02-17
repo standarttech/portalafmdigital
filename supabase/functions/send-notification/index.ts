@@ -15,6 +15,8 @@ interface NotificationPayload {
   title: string;
   message: string;
   link?: string;
+  // For broadcasts: override channels instead of using user prefs
+  force_channels?: string[];
 }
 
 serve(async (req) => {
@@ -33,9 +35,8 @@ serve(async (req) => {
     });
 
     const payload: NotificationPayload = await req.json();
-    const { type, title, message, link } = payload;
+    const { type, title, message, link, force_channels } = payload;
 
-    // Resolve target user IDs
     const userIds: string[] = payload.user_ids || (payload.user_id ? [payload.user_id] : []);
 
     if (userIds.length === 0) {
@@ -58,17 +59,21 @@ serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
 
-      // Default channels based on type
-      const defaultChannels: Record<string, string[]> = {
-        alert: ["in_app", "email"],
-        task: ["in_app"],
-        chat: ["in_app"],
-        report: ["email"],
-        approval: ["in_app", "email"],
-        client_report: ["email"],
-      };
-
-      const channels: string[] = prefs?.[channelField] || defaultChannels[type] || ["in_app"];
+      // If force_channels provided (broadcast), use those. Otherwise use user prefs.
+      let channels: string[];
+      if (force_channels && force_channels.length > 0) {
+        channels = force_channels;
+      } else {
+        const defaultChannels: Record<string, string[]> = {
+          alert: ["in_app", "email"],
+          task: ["in_app"],
+          chat: ["in_app"],
+          report: ["email"],
+          approval: ["in_app", "email"],
+          client_report: ["email"],
+        };
+        channels = prefs?.[channelField] || defaultChannels[type] || ["in_app"];
+      }
 
       // 1. In-App notification
       if (channels.includes("in_app")) {
@@ -80,12 +85,12 @@ serve(async (req) => {
           link: link || null,
         });
         if (!error) deliveredChannels.push("in_app");
+        else console.error("in_app insert error:", error);
       }
 
       // 2. Email
-      if (channels.includes("email") && prefs?.email_enabled !== false && resendApiKey) {
+      if (channels.includes("email") && resendApiKey) {
         try {
-          // Get user email
           const { data: userData } = await supabase.auth.admin.getUserById(userId);
           if (userData?.user?.email) {
             const resend = new Resend(resendApiKey);
@@ -114,7 +119,7 @@ serve(async (req) => {
       }
 
       // 3. Telegram
-      if (channels.includes("telegram") && prefs?.telegram_enabled && prefs?.telegram_chat_id && telegramBotToken) {
+      if (channels.includes("telegram") && prefs?.telegram_chat_id && telegramBotToken) {
         try {
           const text = `*${title}*\n${message}${link ? `\n\n[Open in Portal](https://portalafmdigital.lovable.app${link})` : ""}`;
           const res = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
@@ -127,7 +132,12 @@ serve(async (req) => {
               disable_web_page_preview: true,
             }),
           });
-          if (res.ok) deliveredChannels.push("telegram");
+          const resData = await res.json();
+          if (res.ok) {
+            deliveredChannels.push("telegram");
+          } else {
+            console.error("Telegram API error:", JSON.stringify(resData));
+          }
         } catch (e) {
           console.error("Telegram send error:", e);
         }
@@ -135,13 +145,13 @@ serve(async (req) => {
 
       // 4. Web Push
       if (channels.includes("webpush") && prefs?.webpush_enabled && prefs?.webpush_subscription) {
-        // Web Push requires VAPID keys — will be implemented when keys are provided
-        // For now, log that it would have been sent
         console.log("Web push would be sent to user:", userId);
       }
 
       results[userId] = deliveredChannels;
     }
+
+    console.log("Notification results:", JSON.stringify(results));
 
     return new Response(JSON.stringify({ success: true, results }), {
       status: 200,
