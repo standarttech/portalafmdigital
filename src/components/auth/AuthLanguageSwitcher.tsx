@@ -18,9 +18,9 @@ const languages: { code: Language; label: string }[] = [
 
 export default function AuthLanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
-  const { theme, setTheme, isFuturistic } = useTheme();
-
-  const isDark = theme === 'dark' || theme === 'futuristic';
+  const { theme, setTheme, fxEnabled, toggleFx } = useTheme();
+  const isFuturistic = fxEnabled;
+  const isDark = theme === 'dark';
 
   return (
     <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5">
@@ -50,7 +50,7 @@ export default function AuthLanguageSwitcher() {
                 "h-8 w-8 transition-colors",
                 isFuturistic ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground"
               )}
-              onClick={() => setTheme(isFuturistic ? (isDark ? 'dark' : 'light') : 'futuristic')}
+              onClick={toggleFx}
             >
               <Sparkles className={cn("h-4 w-4", isFuturistic && "animate-pulse")} />
             </Button>

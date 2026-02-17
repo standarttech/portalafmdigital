@@ -1,48 +1,68 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-export type Theme = 'dark' | 'light' | 'futuristic';
+export type BaseTheme = 'dark' | 'light';
 
 interface ThemeContextType {
-  theme: Theme;
-  setTheme: (t: Theme) => void;
+  theme: BaseTheme;
+  setTheme: (t: BaseTheme) => void;
   toggleTheme: () => void;
-  isFuturistic: boolean;
+  fxEnabled: boolean;
+  setFxEnabled: (v: boolean) => void;
+  toggleFx: () => void;
+  isFuturistic: boolean; // kept for backward compat = fxEnabled
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'dark',
   setTheme: () => {},
   toggleTheme: () => {},
+  fxEnabled: false,
+  setFxEnabled: () => {},
+  toggleFx: () => {},
   isFuturistic: false,
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
+  const [theme, setThemeState] = useState<BaseTheme>(() => {
     const saved = localStorage.getItem('app-theme');
-    if (saved === 'light' || saved === 'dark' || saved === 'futuristic') return saved;
+    // migrate legacy 'futuristic' value
+    if (saved === 'dark' || saved === 'light') return saved;
+    if (saved === 'futuristic') return 'dark';
     return 'dark';
+  });
+
+  const [fxEnabled, setFxEnabledState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('app-fx');
+    if (saved === 'true') return true;
+    // migrate: if old theme was futuristic, enable fx
+    if (localStorage.getItem('app-theme') === 'futuristic') return true;
+    return false;
   });
 
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove('dark', 'futuristic');
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else if (theme === 'futuristic') {
-      root.classList.add('dark', 'futuristic');
-    }
+    if (theme === 'dark') root.classList.add('dark');
+    if (fxEnabled) root.classList.add('futuristic');
     localStorage.setItem('app-theme', theme);
-  }, [theme]);
+    localStorage.setItem('app-fx', String(fxEnabled));
+  }, [theme, fxEnabled]);
 
-  const setTheme = useCallback((t: Theme) => setThemeState(t), []);
-  const toggleTheme = useCallback(() => setThemeState(prev => {
-    if (prev === 'dark') return 'light';
-    if (prev === 'light') return 'dark';
-    return 'dark';
-  }), []);
+  const setTheme = useCallback((t: BaseTheme) => setThemeState(t), []);
+  const toggleTheme = useCallback(() => setThemeState(prev => prev === 'dark' ? 'light' : 'dark'), []);
+  const setFxEnabled = useCallback((v: boolean) => setFxEnabledState(v), []);
+  const toggleFx = useCallback(() => setFxEnabledState(prev => !prev), []);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, isFuturistic: theme === 'futuristic' }}>
+    <ThemeContext.Provider value={{
+      theme,
+      setTheme,
+      toggleTheme,
+      fxEnabled,
+      setFxEnabled,
+      toggleFx,
+      isFuturistic: fxEnabled,
+    }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -51,3 +71,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
+
+// Re-export Theme type for backward compat
+export type Theme = BaseTheme;
