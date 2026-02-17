@@ -49,13 +49,41 @@ function cleanNumber(val: string): number {
   return isNaN(num) ? 0 : num;
 }
 
-function toCSVExportURL(url: string): string {
+function extractSheetId(url: string): { id: string; gid: string } | null {
   const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  if (!match) return url;
+  if (!match) return null;
   const id = match[1];
-  const gidMatch = url.match(/gid=(\d+)/);
+  const gidMatch = url.match(/[?&]gid=(\d+)/);
   const gid = gidMatch ? gidMatch[1] : "0";
-  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  return { id, gid };
+}
+
+async function fetchSheetCSV(url: string): Promise<string> {
+  const parsed = extractSheetId(url);
+  if (!parsed) throw new Error("Invalid Google Sheets URL. Please paste a valid Google Sheets link.");
+
+  const { id, gid } = parsed;
+
+  // Try export URL first (works when sheet is shared with "Anyone with link can view")
+  const exportUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  let response = await fetch(exportUrl);
+
+  if (response.status === 400 || response.status === 403 || response.status === 401) {
+    // Fallback: try pub URL (works when sheet is "Published to the web")
+    await response.text(); // consume body
+    const pubUrl = `https://docs.google.com/spreadsheets/d/${id}/pub?output=csv&gid=${gid}`;
+    response = await fetch(pubUrl);
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Cannot access Google Sheet (HTTP ${response.status}). ` +
+      `Please make sure the sheet is shared: click Share → "Anyone with the link" → Viewer. ` +
+      `Or use File → Share → Publish to web.`
+    );
+  }
+
+  return await response.text();
 }
 
 async function syncClient(supabase: any, clientId: string, platform: string = "google") {
@@ -76,12 +104,8 @@ async function syncClient(supabase: any, clientId: string, platform: string = "g
   const sheetUrl = sheetUrlMap[platform] || client.google_sheet_url;
   if (!sheetUrl) throw new Error(`No Google Sheet URL configured for platform: ${platform}`);
 
-  // Fetch CSV
-  const csvUrl = toCSVExportURL(sheetUrl);
-  const csvResponse = await fetch(csvUrl);
-  if (!csvResponse.ok) throw new Error(`Failed to fetch sheet: ${csvResponse.status}`);
-
-  const csvText = await csvResponse.text();
+  // Fetch CSV — tries export URL first, falls back to pub URL
+  const csvText = await fetchSheetCSV(sheetUrl);
   const rows = parseCSV(csvText);
   if (rows.length === 0) return 0;
 
