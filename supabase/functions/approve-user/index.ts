@@ -243,7 +243,7 @@ serve(async (req) => {
           const loginUrl = `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/auth`;
 
           await resend.emails.send({
-            from: "AFM DIGITAL <no-reply@afmdigital.com>",
+            from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
             to: [email.toLowerCase().trim()],
             subject: "AFM DIGITAL Portal — Доступ одобрен / Access Approved",
             html: `
@@ -322,7 +322,7 @@ serve(async (req) => {
         try {
           const resend = new Resend(resendApiKey);
           await resend.emails.send({
-            from: "AFM DIGITAL <no-reply@afmdigital.com>",
+            from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
             to: [email.toLowerCase().trim()],
             subject: "AFM DIGITAL Portal — Заявка отклонена / Access Denied",
             html: `
@@ -402,7 +402,7 @@ serve(async (req) => {
           const loginUrl = `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/auth`;
 
           await resend.emails.send({
-            from: "AFM DIGITAL <no-reply@afmdigital.com>",
+            from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
             to: [targetEmail.toLowerCase().trim()],
             subject: "AFM DIGITAL Portal — Новый временный пароль / New Temporary Password",
             html: `
