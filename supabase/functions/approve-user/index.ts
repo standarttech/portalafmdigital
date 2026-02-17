@@ -8,11 +8,190 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function generateTempPassword(length = 16): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*";
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  return Array.from(array, (b) => chars[b % chars.length]).join("");
+// Beautiful HTML email template
+function buildApprovalEmail(params: {
+  name: string;
+  email: string;
+  inviteLink: string;
+  role: string;
+}): string {
+  const { name, email, inviteLink, role } = params;
+  const displayName = name || email.split("@")[0];
+  const roleLabel = role === "Client" ? "Client" : "Media Buyer";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're invited to AFM DIGITAL</title>
+</head>
+<body style="margin:0;padding:0;background:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:48px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="padding-bottom:40px;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background:#d4a843;width:4px;border-radius:2px;">&nbsp;</td>
+                  <td style="padding-left:14px;">
+                    <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">AFM</span>
+                    <span style="font-size:22px;font-weight:300;color:#d4a843;letter-spacing:2px;"> DIGITAL</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background:#111113;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+
+              <!-- Gold top bar -->
+              <tr>
+                <td style="background:linear-gradient(90deg,#d4a843 0%,#f0c860 100%);height:3px;font-size:0;line-height:0;">&nbsp;</td>
+              </tr>
+
+              <!-- Content -->
+              <tr>
+                <td style="padding:40px 40px 36px;">
+
+                  <!-- Icon + headline -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-bottom:28px;">
+                        <div style="width:48px;height:48px;background:#d4a84318;border:1px solid #d4a84340;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px;">
+                          <span style="font-size:22px;line-height:48px;display:block;text-align:center;">✦</span>
+                        </div>
+                        <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.4px;">
+                          You're invited, ${displayName}
+                        </h1>
+                        <p style="margin:0;font-size:15px;color:#71717a;line-height:1.5;">
+                          Your access request has been approved. You've been granted
+                          <strong style="color:#d4a843;">${roleLabel}</strong> access to the AFM DIGITAL Portal.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Info row -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background:#18181b;border:1px solid #27272a;border-radius:10px;margin-bottom:28px;">
+                    <tr>
+                      <td style="padding:16px 20px;">
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="padding-bottom:10px;">
+                              <span style="font-size:11px;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:1px;">Account</span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="font-size:13px;color:#a1a1aa;padding-right:8px;">Email</td>
+                                  <td style="font-size:13px;color:#ffffff;font-weight:500;">${email}</td>
+                                </tr>
+                                <tr>
+                                  <td style="font-size:13px;color:#a1a1aa;padding-right:8px;padding-top:6px;">Role</td>
+                                  <td style="font-size:13px;color:#d4a843;font-weight:600;padding-top:6px;">${roleLabel}</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- CTA Button -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center" style="padding-bottom:28px;">
+                        <a href="${inviteLink}"
+                           style="display:inline-block;background:linear-gradient(135deg,#d4a843 0%,#f0c860 100%);color:#0a0a0b;font-size:15px;font-weight:700;letter-spacing:-0.2px;text-decoration:none;padding:14px 40px;border-radius:10px;min-width:200px;text-align:center;">
+                          Set Password &amp; Sign In →
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Notice -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="background:#27272a28;border:1px solid #27272a;border-radius:8px;padding:14px 16px;">
+                        <p style="margin:0;font-size:12px;color:#71717a;line-height:1.6;">
+                          This invitation link is <strong style="color:#a1a1aa;">single-use</strong> and expires in <strong style="color:#a1a1aa;">24 hours</strong>.
+                          If you didn't request access, you can safely ignore this email.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+
+                </td>
+              </tr>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding-top:32px;">
+              <p style="margin:0;font-size:12px;color:#3f3f46;">
+                © ${new Date().getFullYear()} AFM DIGITAL · <a href="https://app.afmdigital.com" style="color:#52525b;text-decoration:none;">app.afmdigital.com</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function buildDenialEmail(name: string, email: string): string {
+  const displayName = name || email.split("@")[0];
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:48px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
+          <tr>
+            <td align="center" style="padding-bottom:40px;">
+              <span style="font-size:22px;font-weight:700;color:#ffffff;">AFM</span>
+              <span style="font-size:22px;font-weight:300;color:#d4a843;letter-spacing:2px;"> DIGITAL</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#111113;border:1px solid #27272a;border-radius:16px;padding:40px;">
+              <h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#ffffff;">Access Request Update</h1>
+              <p style="margin:0 0 16px;font-size:14px;color:#71717a;line-height:1.6;">
+                Hi ${displayName}, unfortunately your access request to the AFM DIGITAL Portal could not be approved at this time.
+              </p>
+              <p style="margin:0;font-size:13px;color:#52525b;line-height:1.6;">
+                If you believe this is a mistake or have questions, please reach out to your account manager or reply to this email.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding-top:32px;">
+              <p style="margin:0;font-size:12px;color:#3f3f46;">© ${new Date().getFullYear()} AFM DIGITAL</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 serve(async (req) => {
@@ -21,7 +200,6 @@ serve(async (req) => {
   }
 
   try {
-    // Verify the caller is an admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No authorization header" }), {
@@ -30,17 +208,12 @@ serve(async (req) => {
       });
     }
 
-    // Read and validate environment variables
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_KEY");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing environment variables:", {
-        hasUrl: !!supabaseUrl,
-        hasServiceKey: !!supabaseServiceKey,
-      });
       return new Response(
         JSON.stringify({ error: "Server configuration error: Missing Supabase credentials." }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -48,14 +221,12 @@ serve(async (req) => {
     }
 
     if (!supabaseAnonKey) {
-      console.error("Missing SUPABASE_ANON_KEY environment variable");
       return new Response(
         JSON.stringify({ error: "Server configuration error: Missing anon key." }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Client with caller's token to verify admin
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -69,12 +240,10 @@ serve(async (req) => {
       });
     }
 
-    // Admin client with service role
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Check caller is admin
     const { data: adminCheck } = await supabaseAdmin
       .from("agency_users")
       .select("agency_role")
@@ -90,19 +259,13 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const {
-      action,
-      request_id,
-      invitation_id,
-      email,
-      full_name,
-      role,
-      client_id,
-      permissions,
-    } = body;
+    const { action, request_id, invitation_id, email, full_name, role, client_id, permissions } = body;
 
     console.log("approve-user action:", action, "email:", email);
 
+    // ────────────────────────────────────────────────────────────────
+    // APPROVE / CREATE_INVITE — magic link flow (no temp passwords)
+    // ────────────────────────────────────────────────────────────────
     if (action === "approve" || action === "create_invite") {
       if (!email) {
         return new Response(JSON.stringify({ error: "Email is required" }), {
@@ -111,76 +274,68 @@ serve(async (req) => {
         });
       }
 
-      // Generate temp password
-      const tempPassword = generateTempPassword();
-      const tempPasswordExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const cleanEmail = email.toLowerCase().trim();
 
-      // Create auth user with service role
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: email.toLowerCase().trim(),
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { display_name: full_name || email.split("@")[0] },
-      });
+      // Find or create the auth user
+      let resolvedUserId: string | null = null;
 
-      let resolvedUserId: string | null = newUser?.user?.id || null;
+      // Check if user already exists
+      const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = listData?.users?.find(
+        (u) => u.email?.toLowerCase() === cleanEmail
+      );
 
-      if (createError) {
-        console.error("Error creating user:", createError);
-        // If user already exists, try to update password
-        if (createError.message?.includes("already been registered") || createError.message?.includes("already exists")) {
-          const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
-          const existingUser = listData?.users?.find(
-            (u) => u.email?.toLowerCase() === email.toLowerCase().trim()
-          );
-          if (existingUser) {
-            resolvedUserId = existingUser.id;
-            await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-              password: tempPassword,
-            });
-          } else {
-            return new Response(JSON.stringify({ error: createError.message }), {
-              status: 400,
-              headers: { "Content-Type": "application/json", ...corsHeaders },
-            });
-          }
-        } else {
+      if (existingUser) {
+        resolvedUserId = existingUser.id;
+      } else {
+        // Create a new user with a random secure password (they'll set their own via magic link)
+        const randomPw = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("");
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: cleanEmail,
+          password: randomPw,
+          email_confirm: true,
+          user_metadata: { display_name: full_name || cleanEmail.split("@")[0] },
+        });
+
+        if (createError) {
+          console.error("Error creating user:", createError);
           return new Response(JSON.stringify({ error: createError.message }), {
             status: 400,
             headers: { "Content-Type": "application/json", ...corsHeaders },
           });
         }
+        resolvedUserId = newUser?.user?.id || null;
       }
 
       if (resolvedUserId) {
-        // Always create agency_users record for visibility in admin panel
+        // Upsert agency_users
         const { data: existingAU } = await supabaseAdmin.from("agency_users").select("id").eq("user_id", resolvedUserId).maybeSingle();
         if (!existingAU) {
           await supabaseAdmin.from("agency_users").insert({
             user_id: resolvedUserId,
             agency_role: role || "MediaBuyer",
-            display_name: full_name || email.split("@")[0],
+            display_name: full_name || cleanEmail.split("@")[0],
           });
         } else {
           await supabaseAdmin.from("agency_users").update({
             agency_role: role || "MediaBuyer",
-            display_name: full_name || email.split("@")[0],
+            display_name: full_name || cleanEmail.split("@")[0],
           }).eq("user_id", resolvedUserId);
         }
 
-        // Additionally create client_users record for Client role
+        // Client role — also add to client_users
         if (role === "Client" && client_id) {
           const { data: existingCU } = await supabaseAdmin.from("client_users").select("id").eq("user_id", resolvedUserId).eq("client_id", client_id).maybeSingle();
           if (!existingCU) {
             await supabaseAdmin.from("client_users").insert({
               user_id: resolvedUserId,
-              client_id: client_id,
+              client_id,
               role: "Client",
             });
           }
         }
 
-        // Create or update permissions
+        // Upsert permissions
         const perms = permissions || {};
         const { data: existingPerms } = await supabaseAdmin.from("user_permissions").select("id").eq("user_id", resolvedUserId).maybeSingle();
         if (!existingPerms) {
@@ -198,151 +353,106 @@ serve(async (req) => {
           });
         }
 
-        // Create or update user settings with force_password_change
+        // Upsert user_settings (no force_password_change needed)
         const { data: existingSettings } = await supabaseAdmin.from("user_settings").select("id").eq("user_id", resolvedUserId).maybeSingle();
-        if (existingSettings) {
-          await supabaseAdmin.from("user_settings").update({
-            force_password_change: true,
-            temp_password_expires_at: tempPasswordExpiresAt,
-          }).eq("user_id", resolvedUserId);
-        } else {
+        if (!existingSettings) {
           await supabaseAdmin.from("user_settings").insert({
             user_id: resolvedUserId,
-            force_password_change: true,
-            temp_password_expires_at: tempPasswordExpiresAt,
+            force_password_change: false,
             language: "ru",
             theme: "dark",
           });
+        } else {
+          await supabaseAdmin.from("user_settings").update({
+            force_password_change: false,
+            temp_password_expires_at: null,
+          }).eq("user_id", resolvedUserId);
         }
       }
 
-      // Update access request if provided
+      // Update access_request status
       if (request_id) {
-        await supabaseAdmin
-          .from("access_requests")
-          .update({
-            status: "approved",
-            reviewed_at: new Date().toISOString(),
-            reviewed_by: callerUser.id,
-          })
-          .eq("id", request_id);
+        await supabaseAdmin.from("access_requests").update({
+          status: "approved",
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: callerUser.id,
+        }).eq("id", request_id);
       }
 
-      // Update or create invitation
+      // Mark invitation as accepted
       if (invitation_id) {
-        await supabaseAdmin
-          .from("invitations")
-          .update({ status: "accepted", accepted_at: new Date().toISOString() })
-          .eq("id", invitation_id);
+        await supabaseAdmin.from("invitations").update({
+          status: "accepted",
+          accepted_at: new Date().toISOString(),
+        }).eq("id", invitation_id);
       }
 
-      // Send email via Resend
+      // Generate a magic sign-in link (one-time, expires in 24h)
+      let inviteLink = `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/auth`;
+
       if (resendApiKey) {
         try {
-          const resend = new Resend(resendApiKey);
-          const loginUrl = `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/auth`;
+          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: "magiclink",
+            email: cleanEmail,
+            options: {
+              redirectTo: `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/`,
+            },
+          });
 
+          if (!linkError && linkData?.properties?.action_link) {
+            inviteLink = linkData.properties.action_link;
+          } else {
+            console.warn("Could not generate magic link, falling back to login URL:", linkError?.message);
+          }
+
+          const resend = new Resend(resendApiKey);
           await resend.emails.send({
             from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
-            to: [email.toLowerCase().trim()],
-            subject: "AFM DIGITAL Portal — Доступ одобрен / Access Approved",
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #0a0b10; color: #e2e8f0; border-radius: 16px;">
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <h1 style="color: #d4a843; font-size: 24px; margin: 0;">AFM DIGITAL</h1>
-                  <p style="color: #94a3b8; font-size: 14px; margin-top: 8px;">Portal Access</p>
-                </div>
-                
-                <div style="background: #131520; border-radius: 12px; padding: 24px; border: 1px solid #1e2030;">
-                  <h2 style="color: #f1f5f9; font-size: 18px; margin: 0 0 16px;">✅ Доступ одобрен / Access Approved</h2>
-                  
-                  <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-                    Ваша заявка на доступ к AFM DIGITAL Portal была одобрена.<br>
-                    Your access request to AFM DIGITAL Portal has been approved.
-                  </p>
-                  
-                  <div style="background: #1a1c2e; border-radius: 8px; padding: 16px; margin: 20px 0; border: 1px solid #2a2d45;">
-                    <p style="color: #94a3b8; font-size: 12px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Учётные данные / Credentials</p>
-                    <p style="color: #f1f5f9; font-size: 14px; margin: 4px 0;"><strong>Email:</strong> ${email}</p>
-                    <p style="color: #f1f5f9; font-size: 14px; margin: 4px 0;"><strong>Пароль / Password:</strong> <code style="background: #0f1018; padding: 2px 8px; border-radius: 4px; color: #d4a843; font-size: 15px;">${tempPassword}</code></p>
-                  </div>
-                  
-                  <p style="color: #f59e0b; font-size: 13px; line-height: 1.5; background: #f59e0b15; padding: 12px; border-radius: 8px; border: 1px solid #f59e0b30;">
-                    ⚠️ Это временный пароль. При первом входе вам будет необходимо сменить пароль.<br>
-                    ⚠️ This is a temporary password. You will be required to change your password on first login.
-                  </p>
-                  
-                  <div style="text-align: center; margin-top: 24px;">
-                    <a href="${loginUrl}" style="display: inline-block; background: #d4a843; color: #0a0b10; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-                      Войти в портал / Sign In
-                    </a>
-                  </div>
-                  
-                  <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 20px;">
-                    Временный пароль действителен 24 часа.<br>
-                    Temporary password is valid for 24 hours.
-                  </p>
-                </div>
-              </div>
-            `,
+            to: [cleanEmail],
+            subject: "You're invited to AFM DIGITAL Portal",
+            html: buildApprovalEmail({
+              name: full_name || "",
+              email: cleanEmail,
+              inviteLink,
+              role: role || "MediaBuyer",
+            }),
           });
-          console.log("Approval email sent to:", email);
+
+          console.log("Invitation email sent to:", cleanEmail);
         } catch (emailError) {
           console.error("Error sending email:", emailError);
-          // Don't fail the whole operation if email fails
         }
       } else {
         console.warn("RESEND_API_KEY not configured, skipping email");
       }
 
       return new Response(
-        JSON.stringify({
-          success: true,
-          message: "User approved and email sent",
-          temp_password: tempPassword, // Return to admin for manual sharing if email fails
-        }),
+        JSON.stringify({ success: true, message: "User approved and invitation sent" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
+    // ────────────────────────────────────────────────────────────────
+    // DENY
+    // ────────────────────────────────────────────────────────────────
     if (action === "deny") {
       if (request_id) {
-        await supabaseAdmin
-          .from("access_requests")
-          .update({
-            status: "denied",
-            reviewed_at: new Date().toISOString(),
-            reviewed_by: callerUser.id,
-          })
-          .eq("id", request_id);
+        await supabaseAdmin.from("access_requests").update({
+          status: "denied",
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: callerUser.id,
+        }).eq("id", request_id);
       }
 
-      // Optionally send denial email
       if (resendApiKey && email) {
         try {
           const resend = new Resend(resendApiKey);
           await resend.emails.send({
             from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
             to: [email.toLowerCase().trim()],
-            subject: "AFM DIGITAL Portal — Заявка отклонена / Access Denied",
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #0a0b10; color: #e2e8f0; border-radius: 16px;">
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <h1 style="color: #d4a843; font-size: 24px; margin: 0;">AFM DIGITAL</h1>
-                </div>
-                <div style="background: #131520; border-radius: 12px; padding: 24px; border: 1px solid #1e2030;">
-                  <h2 style="color: #f1f5f9; font-size: 18px; margin: 0 0 16px;">Заявка отклонена / Access Denied</h2>
-                  <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-                    К сожалению, ваша заявка на доступ к AFM DIGITAL Portal была отклонена.<br>
-                    Unfortunately, your access request to AFM DIGITAL Portal has been denied.
-                  </p>
-                  <p style="color: #94a3b8; font-size: 13px; margin-top: 16px;">
-                    Если у вас есть вопросы, свяжитесь с администратором.<br>
-                    If you have questions, please contact the administrator.
-                  </p>
-                </div>
-              </div>
-            `,
+            subject: "AFM DIGITAL Portal — Access Request Update",
+            html: buildDenialEmail(full_name || "", email),
           });
         } catch (emailError) {
           console.error("Error sending denial email:", emailError);
@@ -355,11 +465,13 @@ serve(async (req) => {
       );
     }
 
+    // ────────────────────────────────────────────────────────────────
+    // RESEND INVITE — regenerate magic link and resend
+    // ────────────────────────────────────────────────────────────────
     if (action === "resend_temp_password") {
       let targetEmail = email;
       let existingUser: any = null;
 
-      // Support lookup by user_id (UUID) or email
       const user_id = body.user_id;
       if (user_id) {
         const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user_id);
@@ -381,59 +493,57 @@ serve(async (req) => {
         });
       }
 
-      const tempPassword = generateTempPassword();
-      const tempPasswordExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-      await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-        password: tempPassword,
-      });
-
-      await supabaseAdmin
-        .from("user_settings")
-        .update({
-          force_password_change: true,
-          temp_password_expires_at: tempPasswordExpiresAt,
-        })
-        .eq("user_id", existingUser.id);
+      // Clear any leftover force_password_change flag
+      await supabaseAdmin.from("user_settings").update({
+        force_password_change: false,
+        temp_password_expires_at: null,
+      }).eq("user_id", existingUser.id);
 
       if (resendApiKey) {
         try {
+          let inviteLink = `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/auth`;
+
+          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: "magiclink",
+            email: targetEmail.toLowerCase().trim(),
+            options: {
+              redirectTo: `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/`,
+            },
+          });
+
+          if (!linkError && linkData?.properties?.action_link) {
+            inviteLink = linkData.properties.action_link;
+          }
+
           const resend = new Resend(resendApiKey);
-          const loginUrl = `${req.headers.get("origin") || "https://portalafmdigital.lovable.app"}/auth`;
+
+          // Get display_name from agency_users
+          const { data: agencyUser } = await supabaseAdmin
+            .from("agency_users")
+            .select("display_name, agency_role")
+            .eq("user_id", existingUser.id)
+            .maybeSingle();
 
           await resend.emails.send({
             from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
             to: [targetEmail.toLowerCase().trim()],
-            subject: "AFM DIGITAL Portal — Новый временный пароль / New Temporary Password",
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #0a0b10; color: #e2e8f0; border-radius: 16px;">
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <h1 style="color: #d4a843; font-size: 24px; margin: 0;">AFM DIGITAL</h1>
-                </div>
-                <div style="background: #131520; border-radius: 12px; padding: 24px; border: 1px solid #1e2030;">
-                  <h2 style="color: #f1f5f9; font-size: 18px; margin: 0 0 16px;">🔑 Новый временный пароль / New Temporary Password</h2>
-                  <div style="background: #1a1c2e; border-radius: 8px; padding: 16px; margin: 20px 0; border: 1px solid #2a2d45;">
-                    <p style="color: #f1f5f9; font-size: 14px; margin: 4px 0;"><strong>Email:</strong> ${targetEmail}</p>
-                    <p style="color: #f1f5f9; font-size: 14px; margin: 4px 0;"><strong>Пароль / Password:</strong> <code style="background: #0f1018; padding: 2px 8px; border-radius: 4px; color: #d4a843;">${tempPassword}</code></p>
-                  </div>
-                  <p style="color: #f59e0b; font-size: 13px; background: #f59e0b15; padding: 12px; border-radius: 8px; border: 1px solid #f59e0b30;">
-                    ⚠️ При входе вам потребуется сменить пароль. Действителен 24 часа.<br>
-                    ⚠️ You will need to change your password on login. Valid for 24 hours.
-                  </p>
-                  <div style="text-align: center; margin-top: 24px;">
-                    <a href="${loginUrl}" style="display: inline-block; background: #d4a843; color: #0a0b10; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Войти / Sign In</a>
-                  </div>
-                </div>
-              </div>
-            `,
+            subject: "Your new invitation link — AFM DIGITAL Portal",
+            html: buildApprovalEmail({
+              name: agencyUser?.display_name || "",
+              email: targetEmail,
+              inviteLink,
+              role: agencyUser?.agency_role || "MediaBuyer",
+            }),
           });
+
+          console.log("Resent invitation to:", targetEmail);
         } catch (emailError) {
           console.error("Error sending email:", emailError);
         }
       }
 
       return new Response(
-        JSON.stringify({ success: true, temp_password: tempPassword }),
+        JSON.stringify({ success: true, message: "Invitation resent" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
