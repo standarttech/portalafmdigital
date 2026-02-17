@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
@@ -400,12 +400,12 @@ export default function ClientsPage() {
               <Input value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Optional notes" />
             </div>
           </div>
-          <DialogFooter>
-            <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-2">
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? t('common.creating') : editingClient ? t('common.save') : t('common.create')}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
