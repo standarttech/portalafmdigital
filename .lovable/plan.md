@@ -1,142 +1,120 @@
 
+# Полная система уведомлений: Email + Telegram + Web Push
 
-# Dashboard Real Data + Client Management + Google Sheets Integration
+## Обзор
+Реализация трёхканальной системы уведомлений с настройками для каждого пользователя. Админы смогут рассылать уведомления команде и клиентам через любой канал.
 
-## Overview
+## Что будет реализовано
 
-This plan covers 4 major areas: connecting KPIs to real database data, fixing the custom date picker UX, full client CRUD management, and Google Sheets integration for pulling report data per client.
+### 1. Настройки уведомлений в профиле пользователя
+Каждый пользователь сможет в своём профиле:
+- Привязать Telegram (через бота)
+- Включить/выключить Web Push
+- Выбрать какие типы уведомлений получать по какому каналу (матрица: тип x канал)
 
----
+### 2. Каналы доставки
 
-## 1. Custom Date Picker -- "Apply" Button Fix
+**Email (Resend — уже подключён)**
+- Мгновенные алерты: ошибки синхронизации, превышение бюджета
+- Еженедельные дайджесты для команды (cron-задача)
+- Месячные отчёты для клиентов (cron-задача)
+- Событийные: новые задачи, комментарии, одобрения
 
-**Problem**: Currently, the custom date range auto-applies when both dates are selected, but often the second click selects a single-day range before the user finishes picking. The popover closes too early.
+**Telegram Bot**
+- Мгновенные push-уведомления в личку
+- Пользователь привязывает аккаунт через бота командой `/start <код>`
+- Типы: алерты, задачи, сообщения в чате, изменения статусов
 
-**Solution**: 
-- Remove auto-close behavior from `DashboardControls.tsx`
-- Add an "Apply" button inside the calendar popover
-- Only apply the range and close when user clicks "Apply"
-- Add a "Cancel" button to dismiss without applying
+**Web Push (браузерные уведомления)**
+- Всплывающие уведомления даже при закрытой вкладке
+- Service Worker для фоновой обработки
+- Пользователь разрешает через кнопку в профиле
 
----
+### 3. Типы уведомлений
 
-## 2. KPI Cards Connected to Real `daily_metrics` Data
+| Тип | Описание | Каналы |
+|-----|----------|--------|
+| Алерты | Ошибки синхронизации, нет лидов, превышение CPL | In-App + Email + Telegram |
+| Задачи | Назначение, дедлайны, смена статуса | In-App + Telegram + Web Push |
+| Чат | Новые сообщения в поддержке | In-App + Telegram |
+| Отчёты | Еженедельный дайджест метрик | Email |
+| Одобрения | Запросы на доступ, admin approvals | In-App + Email + Telegram |
+| Клиентские | Месячные отчёты для клиентов | Email |
 
-**Problem**: All KPI values come from hardcoded demo data in `dashboardData.ts` using multipliers.
-
-**Solution**:
-- Create a new hook `useDashboardMetrics(filters)` that queries `daily_metrics` table with date range and platform filters
-- When real data exists (rows > 0), use it; otherwise fall back to demo data
-- The hook will:
-  - Calculate date range boundaries (e.g., today, last 7/14/30/90 days, or custom range)
-  - Query `daily_metrics` aggregated: `SUM(spend)`, `SUM(leads)`, `SUM(link_clicks)`, `SUM(impressions)`
-  - For comparison: query the previous period with the same logic
-  - Calculate deltas (% change)
-- Also query `clients` count and `campaigns` count for Operations KPIs
-- Feed this data into `KpiSection`, `PerformanceChart`, `PlatformBreakdown`, `ClientsPerformanceTable`, and `AttentionRequired`
-
-**Files changed**:
-- New: `src/hooks/useDashboardMetrics.ts`
-- Modified: `src/components/dashboard/KpiSection.tsx` -- accept real data props
-- Modified: `src/components/dashboard/PerformanceChart.tsx` -- accept real chart data
-- Modified: `src/components/dashboard/PlatformBreakdown.tsx` -- accept real platform data
-- Modified: `src/components/dashboard/ClientsPerformanceTable.tsx` -- query real per-client metrics
-- Modified: `src/components/dashboard/AttentionRequired.tsx` -- use real alerts
-- Modified: `src/pages/DashboardPage.tsx` -- wire hook to components
-- Modified: `src/components/dashboard/dashboardData.ts` -- keep as fallback, add date calculation helpers
-
-**DashboardPage flow**:
-- `DashboardPage` passes `filters` (including `customDateRange`) to the hook
-- Hook returns `{ kpis, chartData, platformData, clientsData, alerts, loading }`
-- Each component receives real data or falls back to demo
+### 4. Админская панель рассылок
+Страница для массовой рассылки: выбор получателей (команда / клиенты / все), канал, текст сообщения.
 
 ---
 
-## 3. Full Client Management (CRUD + Status)
+## Технический план
 
-**Problem**: Only "Create" exists. No edit, delete, or status change.
+### Шаг 1: База данных
+Новые таблицы и изменения:
 
-**Solution** in `ClientsPage.tsx`:
-- Add **Edit Client** dialog: update name, timezone, currency, notes
-- Add **Change Status** dropdown: Active / Paused / Archived
-- Add **Delete Client** with confirmation dialog (soft delete = set status to 'archived', or hard delete for AgencyAdmin)
-- Add action buttons column to the clients table (three-dot menu with Edit / Change Status / Delete)
+```text
+notification_preferences (настройки каналов для каждого пользователя)
+  - user_id (FK)
+  - email_enabled (boolean, default true)
+  - telegram_enabled (boolean, default false)
+  - telegram_chat_id (text, nullable)
+  - telegram_link_code (text, nullable)
+  - webpush_enabled (boolean, default false)
+  - webpush_subscription (jsonb, nullable)
+  - alert_channels (text[], default '{in_app,email}')
+  - task_channels (text[], default '{in_app}')
+  - chat_channels (text[], default '{in_app}')
+  - report_channels (text[], default '{email}')
 
-**Solution** in `ClientDetailPage.tsx`:
-- Add edit button in header to modify client details
-- Add status change button in header
-- Add delete button with confirmation
-
----
-
-## 4. Google Sheets Integration
-
-**Architecture**:
-1. Add `google_sheet_url` column to `clients` table (nullable text)
-2. Create an Edge Function `sync-google-sheet` that:
-   - Receives `client_id`
-   - Reads the `google_sheet_url` from the client record
-   - Fetches the Google Sheet via the public CSV export URL (no OAuth needed -- sheet must be "Anyone with link can view")
-   - Parses the CSV data (expects columns: Date, Spend, Impressions, Clicks, Leads, etc.)
-   - Upserts rows into `daily_metrics` for that client
-3. In `ClientDetailPage.tsx` Connections tab:
-   - Show a form to paste Google Sheet URL
-   - "Sync Now" button that calls the edge function
-   - Show last sync status
-
-**Google Sheet format expected** (first row = headers):
-| Date | Campaign | Spend | Impressions | Clicks | Leads |
-|------|----------|-------|-------------|--------|-------|
-| 2026-02-01 | Campaign A | 1500 | 25000 | 890 | 42 |
-
-**Edge Function logic**:
-- Convert Google Sheet URL to CSV export URL: replace `/edit...` with `/export?format=csv`
-- Parse CSV rows
-- For each row, upsert into `daily_metrics` matching on `client_id + date + campaign`
-- Auto-create campaign records if they don't exist
-
-**Database migration**:
-- `ALTER TABLE clients ADD COLUMN google_sheet_url text;`
-
----
-
-## 5. Translations
-
-Add new keys for:
-- `clients.editClient`, `clients.deleteClient`, `clients.confirmDelete`, `clients.statusChanged`
-- `clients.googleSheetUrl`, `clients.syncSheet`, `clients.syncSheetDesc`, `clients.sheetSynced`
-- `dashboard.apply`, `dashboard.applyRange`
-
----
-
-## Technical Details
-
-### Database Migration
-```sql
-ALTER TABLE clients ADD COLUMN IF NOT EXISTS google_sheet_url text;
+notification_broadcasts (история массовых рассылок)
+  - id, created_by, channels, recipients_filter, subject, body, sent_at
 ```
 
-### Edge Function: `sync-google-sheet`
-- Endpoint: POST with `{ client_id: string }`
-- Auth: requires authenticated user with client access
-- Reads sheet URL from clients table
-- Fetches CSV, parses, upserts into daily_metrics
-- Returns `{ success: true, rows_synced: N }`
+RLS: пользователи видят и редактируют только свои настройки. Админы могут создавать broadcasts.
 
-### Files to Create
-- `src/hooks/useDashboardMetrics.ts` -- real data hook
-- `supabase/functions/sync-google-sheet/index.ts` -- sheet sync function
+### Шаг 2: Telegram Bot Edge Function
+Новая edge function `telegram-bot`:
+- Обработка webhook от Telegram (`/start <code>` для привязки)
+- Отправка сообщений через Telegram Bot API
+- Потребуется секрет `TELEGRAM_BOT_TOKEN` (пользователь создаёт бота через @BotFather)
 
-### Files to Modify
-- `src/components/dashboard/DashboardControls.tsx` -- Apply button for custom range
-- `src/components/dashboard/KpiSection.tsx` -- accept real data
-- `src/components/dashboard/PerformanceChart.tsx` -- accept real data
-- `src/components/dashboard/PlatformBreakdown.tsx` -- accept real data
-- `src/components/dashboard/ClientsPerformanceTable.tsx` -- accept real data
-- `src/components/dashboard/AttentionRequired.tsx` -- accept real data
-- `src/pages/DashboardPage.tsx` -- wire real data hook, pass customDateRange
-- `src/pages/ClientsPage.tsx` -- add edit/delete/status actions
-- `src/pages/ClientDetailPage.tsx` -- add edit header, Google Sheets in Connections tab
-- `src/components/dashboard/dashboardData.ts` -- add date helpers, keep as fallback
-- `src/i18n/translations.ts` -- new keys
+### Шаг 3: Web Push Edge Function
+Новая edge function `send-webpush`:
+- Отправка push-уведомлений через Web Push API
+- Потребуется сгенерировать VAPID-ключи (секреты `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`)
 
+### Шаг 4: Единый диспетчер уведомлений
+Новая edge function `send-notification`:
+- Принимает: user_id, type, title, message, link
+- Проверяет настройки пользователя в `notification_preferences`
+- Рассылает по нужным каналам: in-app (insert в notifications), email (Resend), telegram, web push
+- Все существующие триггеры БД будут вызывать эту функцию вместо прямого INSERT
+
+### Шаг 5: Cron-задачи для периодических отчётов
+- Еженедельный дайджест (каждый понедельник): агрегация метрик за неделю, отправка email команде
+- Месячный отчёт для клиентов: сводка по расходам и результатам
+
+### Шаг 6: UI компоненты
+- **ProfilePage** — новая секция "Notification Settings": переключатели каналов, привязка Telegram, разрешение Web Push
+- **Service Worker** — `public/sw.js` для фоновых push-уведомлений
+- **Админская рассылка** — новая страница или секция для массовых уведомлений
+- **i18n** — переводы на все 6 языков
+
+### Шаг 7: Обновление триггеров БД
+Переписать существующие триггеры (`notify_admins_new_access_request`, `notify_admins_support_message`, `notify_admins_approval_request`) чтобы они вызывали единый диспетчер через `pg_net.http_post` к edge function `send-notification`.
+
+---
+
+## Что потребуется от вас
+
+1. **Telegram Bot Token** — создать бота через [@BotFather](https://t.me/BotFather) в Telegram и получить токен
+2. **VAPID Keys** — будут сгенерированы автоматически при первом запуске
+
+## Порядок реализации
+1. Таблицы БД + RLS
+2. Edge function `send-notification` (диспетчер)
+3. Telegram bot + привязка в профиле
+4. Web Push + Service Worker
+5. Email-дайджесты (cron)
+6. Админская панель рассылок
+7. Обновление триггеров БД
+8. i18n переводы
