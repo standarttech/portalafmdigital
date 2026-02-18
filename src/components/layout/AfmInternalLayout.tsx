@@ -2,16 +2,18 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   LayoutDashboard, TrendingUp, Globe, Settings, DollarSign,
-  ArrowLeftCircle, Zap, Menu, LogOut, Users, BarChart3,
+  ArrowLeftCircle, Zap, Menu, LogOut, BarChart3, BarChart2, Sun, Moon,
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
+import type { Language } from '@/i18n/translations';
 
 const afmNavItems = [
   { label: 'afm.dashboard', icon: LayoutDashboard, path: '/afm-internal' },
@@ -19,11 +21,22 @@ const afmNavItems = [
   { label: 'afm.socialMedia', icon: Globe, path: '/afm-internal/social' },
   { label: 'afm.sales', icon: DollarSign, path: '/afm-internal/sales' },
   { label: 'afm.tools', icon: BarChart3, path: '/afm-internal/tools' },
+  { label: 'afm.finance', icon: BarChart2, path: '/afm-internal/finance' },
   { label: 'afm.settings', icon: Settings, path: '/afm-internal/settings' },
 ] as const;
 
+const LANGUAGES: { code: Language; label: string }[] = [
+  { code: 'en', label: 'EN' },
+  { code: 'ru', label: 'RU' },
+  { code: 'it', label: 'IT' },
+  { code: 'es', label: 'ES' },
+  { code: 'ar', label: 'AR' },
+  { code: 'fr', label: 'FR' },
+];
+
 function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const { signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -84,6 +97,37 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
+
+      {/* Theme & Language */}
+      <div className="px-3 py-2 border-t border-sidebar-border/50 space-y-2">
+        {/* Theme toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-2 text-xs text-sidebar-muted hover:text-sidebar-foreground transition-colors"
+          >
+            {theme === 'dark' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+            <span>{theme === 'dark' ? 'Dark' : 'Light'}</span>
+          </button>
+        </div>
+        {/* Language switcher */}
+        <div className="flex flex-wrap gap-1">
+          {LANGUAGES.map(lang => (
+            <button
+              key={lang.code}
+              onClick={() => setLanguage(lang.code)}
+              className={cn(
+                'text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors',
+                language === lang.code
+                  ? 'bg-primary/20 text-primary border border-primary/30'
+                  : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+              )}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Logout */}
       <div className="p-2 border-t border-sidebar-border flex-shrink-0">

@@ -586,6 +586,7 @@ export const translations = {
   'afm.comingSoon': t('Coming soon', 'Скоро', 'Prossimamente', 'Próximamente', 'قريباً', 'Bientôt'),
   'afm.inDevelopment': t('In development', 'В разработке', 'In sviluppo', 'En desarrollo', 'قيد التطوير', 'En développement'),
   'afm.crmPipeline': t('CRM Pipeline', 'CRM Pipeline', 'CRM Pipeline', 'CRM Pipeline', 'CRM Pipeline', 'CRM Pipeline'),
+  'afm.finance': t('Finance', 'Финансы', 'Finanza', 'Finanzas', 'المالية', 'Finance'),
   'afm.crmDesc': t('Sales funnel and deals', 'Воронка продаж и сделок', 'Funnel vendite e trattative', 'Embudo de ventas y tratos', 'مسار المبيعات والصفقات', 'Entonnoir de ventes et affaires'),
   'afm.leadTracker': t('Lead Tracker', 'Лид-трекер', 'Tracker dei lead', 'Rastreador de leads', 'متتبع العملاء المحتملين', 'Traqueur de leads'),
   'afm.leadTrackerDesc': t('Track incoming leads', 'Отслеживание входящих лидов', 'Tracciamento dei lead in arrivo', 'Seguimiento de leads entrantes', 'تتبع العملاء المحتملين الواردين', 'Suivi des leads entrants'),
