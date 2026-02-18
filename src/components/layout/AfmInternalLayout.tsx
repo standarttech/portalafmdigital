@@ -10,22 +10,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import {
   LayoutDashboard, TrendingUp, Globe, Settings, DollarSign,
   ArrowLeftCircle, Zap, Menu, LogOut, BarChart3, BarChart2, Sun, Moon, Sparkles,
-  Languages, BarChart2 as StatsIcon,
+  Languages, ChevronDown, Users, Wrench, LineChart, Banknote,
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
 import type { Language } from '@/i18n/translations';
-
-const afmNavItems = [
-  { label: 'afm.dashboard', icon: LayoutDashboard, path: '/afm-internal' },
-  { label: 'afm.mediaBuying', icon: TrendingUp, path: '/afm-internal/media' },
-  { label: 'afm.socialMedia', icon: Globe, path: '/afm-internal/social' },
-  { label: 'afm.sales', icon: DollarSign, path: '/afm-internal/sales' },
-  { label: 'afm.stats', icon: BarChart3, path: '/afm-internal/stats' },
-  { label: 'afm.tools', icon: BarChart3, path: '/afm-internal/tools' },
-  { label: 'afm.finance', icon: BarChart2, path: '/afm-internal/finance' },
-  { label: 'afm.settings', icon: Settings, path: '/afm-internal/settings' },
-] as const;
 
 const LANGUAGES: { code: Language; label: string; flag: string }[] = [
   { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -36,11 +25,127 @@ const LANGUAGES: { code: Language; label: string; flag: string }[] = [
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
 ];
 
-function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { t, language, setLanguage } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
-  const { signOut } = useAuth();
+interface NavItem {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
+}
+
+interface NavGroup {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: 'overview',
+    label: 'Обзор',
+    icon: LayoutDashboard,
+    items: [
+      { label: 'Дашборд', icon: LayoutDashboard, path: '/afm-internal' },
+      { label: 'Статистика', icon: BarChart3, path: '/afm-internal/stats' },
+    ],
+  },
+  {
+    id: 'marketing',
+    label: 'Маркетинг',
+    icon: TrendingUp,
+    items: [
+      { label: 'Media Buying', icon: TrendingUp, path: '/afm-internal/media' },
+      { label: 'Social Media', icon: Globe, path: '/afm-internal/social' },
+    ],
+  },
+  {
+    id: 'sales',
+    label: 'Продажи',
+    icon: Users,
+    items: [
+      { label: 'Sales CRM', icon: DollarSign, path: '/afm-internal/sales' },
+    ],
+  },
+  {
+    id: 'finance',
+    label: 'Финансы',
+    icon: Banknote,
+    items: [
+      { label: 'Plan по доходу', icon: LineChart, path: '/afm-internal/income-plan' },
+      { label: 'Фин. планирование', icon: BarChart2, path: '/afm-internal/financial-planning' },
+    ],
+  },
+  {
+    id: 'workspace',
+    label: 'Рабочее пространство',
+    icon: Wrench,
+    items: [
+      { label: 'Инструменты', icon: Wrench, path: '/afm-internal/tools' },
+      { label: 'Настройки', icon: Settings, path: '/afm-internal/settings' },
+    ],
+  },
+];
+
+function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate?: () => void }) {
   const location = useLocation();
+
+  // Check if any item in this group is active
+  const isGroupActive = group.items.some(item => {
+    if (item.path === '/afm-internal') return location.pathname === '/afm-internal';
+    return location.pathname.startsWith(item.path);
+  });
+
+  const [open, setOpen] = useState(isGroupActive);
+
+  const GroupIcon = group.icon;
+
+  return (
+    <div className="mb-0.5">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors',
+          isGroupActive
+            ? 'text-primary'
+            : 'text-sidebar-muted/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30'
+        )}
+      >
+        <GroupIcon className={cn('h-3.5 w-3.5 flex-shrink-0', isGroupActive && 'text-primary')} />
+        <span className="flex-1 text-left uppercase tracking-[0.1em]">{group.label}</span>
+        <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="ml-3 pl-3 border-l border-sidebar-border/40 space-y-0.5 mt-0.5 mb-1">
+          {group.items.map(item => {
+            const isActive = item.path === '/afm-internal'
+              ? location.pathname === '/afm-internal'
+              : location.pathname.startsWith(item.path);
+            const ItemIcon = item.icon;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={onNavigate}
+                className={cn(
+                  'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors',
+                  isActive
+                    ? 'bg-primary/15 text-primary font-medium'
+                    : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                )}
+              >
+                <ItemIcon className={cn('h-3.5 w-3.5 flex-shrink-0', isActive && 'text-primary')} />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const { signOut } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -57,7 +162,7 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {/* Back to Portal */}
-      <div className="px-2 pt-3 pb-1">
+      <div className="px-2 pt-3 pb-2">
         <Button
           variant="ghost"
           size="sm"
@@ -65,39 +170,17 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           className="w-full justify-start gap-2.5 px-3 text-sidebar-muted hover:text-primary hover:bg-primary/10 text-xs"
         >
           <ArrowLeftCircle className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">{t('afm.backToPortal')}</span>
+          <span className="truncate">Назад в портал</span>
         </Button>
       </div>
 
-      {/* Divider */}
       <div className="mx-3 mb-2 border-t border-sidebar-border/50" />
 
-      {/* Nav items */}
-      <nav className="flex-1 py-1 px-2 overflow-y-auto space-y-0.5 min-h-0">
-        <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-sidebar-muted/60">
-          {t('nav.internalSection')}
-        </p>
-        {afmNavItems.map((item) => {
-          const isActive = item.path === '/afm-internal'
-            ? location.pathname === '/afm-internal'
-            : location.pathname.startsWith(item.path);
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={onNavigate}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary/15 text-primary'
-                  : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-              )}
-            >
-              <item.icon className={cn('h-4 w-4 flex-shrink-0', isActive && 'text-primary')} />
-              <span className="truncate">{t(item.label as any)}</span>
-            </Link>
-          );
-        })}
+      {/* Nav groups */}
+      <nav className="flex-1 py-1 px-2 overflow-y-auto min-h-0 space-y-0">
+        {NAV_GROUPS.map(group => (
+          <NavGroupItem key={group.id} group={group} onNavigate={onNavigate} />
+        ))}
       </nav>
 
       {/* Logout */}
@@ -109,23 +192,20 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           className="w-full justify-start gap-3 px-3 text-sidebar-muted hover:text-destructive hover:bg-destructive/10"
         >
           <LogOut className="h-4 w-4" />
-          <span className="text-sm">{t('auth.logout')}</span>
+          <span className="text-sm">Выйти</span>
         </Button>
       </div>
     </div>
   );
 }
 
-// Top-right controls: theme + language + FX
 function AfmHeaderControls() {
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme, fxEnabled, toggleFx } = useTheme();
-
   const currentLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
 
   return (
     <div className="flex items-center gap-1.5">
-      {/* FX toggle */}
       <button
         onClick={toggleFx}
         title="Futuristic FX"
@@ -137,7 +217,6 @@ function AfmHeaderControls() {
         <Sparkles className="h-3.5 w-3.5" />
       </button>
 
-      {/* Theme toggle */}
       <button
         onClick={toggleTheme}
         className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
@@ -146,7 +225,6 @@ function AfmHeaderControls() {
         {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
       </button>
 
-      {/* Language dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors text-xs font-medium">
@@ -181,7 +259,6 @@ export default function AfmInternalLayout() {
     <div className="flex min-h-screen w-full bg-background">
       <FuturisticOverlay />
 
-      {/* Sidebar */}
       {isMobile ? (
         <div className="fixed top-0 left-0 z-40 h-14 flex items-center px-3">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -201,12 +278,10 @@ export default function AfmInternalLayout() {
         </aside>
       )}
 
-      {/* Main content */}
       <div className={cn(
         'flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10',
         isMobile ? 'ml-0' : 'ml-56'
       )}>
-        {/* Top bar */}
         <header className={cn(
           'h-14 flex items-center px-3 sm:px-4 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0 gap-2',
           isMobile && 'pl-14'

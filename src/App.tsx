@@ -40,6 +40,8 @@ import AfmSales from "@/pages/afm/AfmSales";
 import AfmTools from "@/pages/afm/AfmTools";
 import AfmSettings from "@/pages/afm/AfmSettings";
 import AfmFinancePage from "@/pages/afm/AfmFinancePage";
+import AfmIncomePlan from "@/pages/afm/AfmIncomePlan";
+import AfmFinancialPlanning from "@/pages/afm/AfmFinancialPlanning";
 import AfmStats from "@/pages/afm/AfmStats";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect, useCallback } from "react";
@@ -259,6 +261,8 @@ function AppRoutes() {
         <Route path="/afm-internal/stats" element={<AfmStats />} />
         <Route path="/afm-internal/tools" element={<AfmTools />} />
         <Route path="/afm-internal/finance" element={<AfmFinancePage />} />
+        <Route path="/afm-internal/income-plan" element={<AfmIncomePlan />} />
+        <Route path="/afm-internal/financial-planning" element={<AfmFinancialPlanning />} />
         <Route path="/afm-internal/settings" element={<AfmSettings />} />
       </Route>
       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
