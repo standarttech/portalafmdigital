@@ -143,7 +143,7 @@ export default function InvitePage() {
       // MediaBuyer — agency user
       await supabase.from('agency_users').insert({
         user_id: signUpData.user.id,
-        agency_role: 'MediaBuyer',
+        agency_role: invitation.role as any,
         display_name: displayName.trim(),
       });
 

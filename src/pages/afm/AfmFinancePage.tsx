@@ -263,12 +263,14 @@ function FinancialPlanningTable() {
   const totalRevenue = (mi: number) => revRows.reduce((s, r) => s + cell(r.id, mi), 0);
   const totalSalary  = (mi: number) => salaryRows.reduce((s, r) => s + cell(r.id, mi), 0);
   const totalExpenses = (mi: number) => expenseRows.reduce((s, r) => s + cell(r.id, mi), 0);
-  const available    = (mi: number) => totalRevenue(mi) - totalSalary(mi) - totalExpenses(mi);
+  // Available = Total Revenue (matching sheet: "Available amount" = Revenue before deductions)
+  const available    = (mi: number) => totalRevenue(mi);
 
-  // Fund amounts auto-calculated unless overridden
+  // Fund amounts: % of Total Revenue (matching Google Sheet formula)
   const fundAmt = (pct: number, rowId: string, mi: number) => {
     const key = `${rowId}_${mi}`;
     if (overrides[key]) return cell(rowId, mi);
+    // Sheet: Taxes/Savings/Marketing = % of Total Revenue
     const auto = Math.round(totalRevenue(mi) * pct / 100);
     return auto;
   };
@@ -277,13 +279,17 @@ function FinancialPlanningTable() {
   const savAmt  = (mi: number) => fundAmt(savPct, 'savings_15', mi);
   const mktAmt  = (mi: number) => fundAmt(mktPct, 'marketing_20', mi);
   const totalFunds = (mi: number) => taxAmt(mi) + savAmt(mi) + mktAmt(mi);
-  const leftAmount = (mi: number) => available(mi) - totalFunds(mi);
+  // Left amount = Available - Total costs (salary + expenses) — shown in sheet as separate from funds
+  const leftAmount = (mi: number) => available(mi) - totalSalary(mi) - totalExpenses(mi);
+  // Dividends base = Left amount after removing funds
+  const dividendBase = (mi: number) => leftAmount(mi) - totalFunds(mi);
 
-  // Dividend amounts
+  // Dividend amounts: % of dividendBase (Left - Funds)
   const divAmt = (pct: number, rowId: string, mi: number) => {
     const key = `${rowId}_${mi}`;
     if (overrides[key]) return cell(rowId, mi);
-    return Math.round(leftAmount(mi) * pct / 100);
+    const base = dividendBase(mi);
+    return Math.round(base * pct / 100);
   };
   const denisAmt   = (mi: number) => divAmt(denisPct, 'denis_40', mi);
   const danilAmt   = (mi: number) => divAmt(danilPct, 'danil_40', mi);
@@ -541,12 +547,13 @@ function FinancialPlanningTable() {
             ))}
             <AddRowInline onAdd={label => addRow(setExpenseRows, label)} />
 
-            {/* Available */}
-            <ComputedDisplayRow label="Available amount" computedFn={available}
+            {/* Available = Total Revenue */}
+            <ComputedDisplayRow label="Available amount (= Total Revenue)" computedFn={available}
               style="bg-blue-500/10 text-blue-400" />
             <ComputedDisplayRow label="Total costs (Salary + Expenses)" computedFn={mi => totalSalary(mi) + totalExpenses(mi)}
               style="bg-orange-500/10 text-orange-400" />
-            <ComputedDisplayRow label="Left amount" computedFn={leftAmount}
+            {/* Left amount = Revenue - Salary - Expenses */}
+            <ComputedDisplayRow label="Left amount (Revenue − Salary − Expenses)" computedFn={leftAmount}
               style="bg-green-500/10 text-green-400" />
 
             {/* ── FUNDS ──────────────────────────────────────── */}

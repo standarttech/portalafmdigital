@@ -29,8 +29,24 @@ import {
 const roleStyles: Record<string, string> = {
   AgencyAdmin: 'bg-primary/15 text-primary border-primary/20',
   MediaBuyer: 'bg-success/15 text-success border-success/20',
+  Manager: 'bg-blue-500/15 text-blue-400 border-blue-400/20',
+  SalesManager: 'bg-orange-500/15 text-orange-400 border-orange-400/20',
+  AccountManager: 'bg-purple-500/15 text-purple-400 border-purple-400/20',
+  Designer: 'bg-pink-500/15 text-pink-400 border-pink-400/20',
+  Copywriter: 'bg-yellow-500/15 text-yellow-600 border-yellow-500/20',
   Client: 'bg-muted text-muted-foreground border-border',
 };
+
+const ALL_AGENCY_ROLES = [
+  { value: 'AgencyAdmin', label: 'Agency Admin' },
+  { value: 'MediaBuyer', label: 'Media Buyer' },
+  { value: 'Manager', label: 'Manager' },
+  { value: 'SalesManager', label: 'Sales Manager' },
+  { value: 'AccountManager', label: 'Account Manager' },
+  { value: 'Designer', label: 'Designer' },
+  { value: 'Copywriter', label: 'Copywriter' },
+  { value: 'Client', label: 'Client' },
+];
 const requestStatusStyles: Record<string, string> = {
   pending: 'bg-warning/15 text-warning border-warning/20',
   approved: 'bg-success/15 text-success border-success/20',
@@ -341,9 +357,9 @@ export default function UsersPage() {
                 <Select value={inviteRole} onValueChange={setInviteRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="AgencyAdmin">{t('role.agencyAdmin')}</SelectItem>
-                    <SelectItem value="MediaBuyer">{t('role.mediaBuyer')}</SelectItem>
-                    <SelectItem value="Client">{t('role.client')}</SelectItem>
+                    {ALL_AGENCY_ROLES.map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -438,9 +454,9 @@ export default function UsersPage() {
                                 </Badge>
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="AgencyAdmin">{t('role.agencyAdmin')}</SelectItem>
-                                <SelectItem value="MediaBuyer">{t('role.mediaBuyer')}</SelectItem>
-                                <SelectItem value="Client">{t('role.client')}</SelectItem>
+                                {ALL_AGENCY_ROLES.map(r => (
+                                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </TableCell>
