@@ -148,7 +148,15 @@ export default function ClientDashboardPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Filter metrics by date + platform
+  // Current month metrics — always based on today's month, ignoring date picker
+  const currentMonthMetrics = useMemo(() => {
+    const now = new Date();
+    const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd');
+    const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd');
+    return dailyMetrics.filter(m => m.date >= monthStart && m.date <= monthEnd);
+  }, [dailyMetrics]);
+
+  // Filter metrics by date + platform (for KPIs, chart, daily table)
   const filteredMetrics = useMemo(() => {
     let metrics = dailyMetrics;
     if (customDateRange) {
@@ -161,6 +169,15 @@ export default function ClientDashboardPage() {
     }
     return metrics;
   }, [dailyMetrics, customDateRange, platformFilter, campaignPlatformMap]);
+
+  // Budget spend — always current month total spend (ignoring platform filter too)
+  const currentMonthSpend = useMemo(() => {
+    return currentMonthMetrics.reduce((sum, m) => sum + Number(m.spend), 0);
+  }, [currentMonthMetrics]);
+
+  const currentMonthLeads = useMemo(() => {
+    return currentMonthMetrics.reduce((sum, m) => sum + m.leads, 0);
+  }, [currentMonthMetrics]);
 
   // Platform-specific spend check — if no sheet URL, show 0 for that platform
   const platformHasData = useMemo(() => ({
@@ -365,25 +382,25 @@ export default function ClientDashboardPage() {
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{formatCurrency(totals.spend)}</span></span>
-                    <span className={`font-semibold ${totals.spend / budgetPlan.planned_spend > 0.9 ? 'text-destructive' : totals.spend / budgetPlan.planned_spend > 0.7 ? 'text-warning' : 'text-success'}`}>
-                      {Math.min(100, Math.round((totals.spend / budgetPlan.planned_spend) * 100))}%
+                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{formatCurrency(currentMonthSpend)}</span></span>
+                    <span className={`font-semibold ${currentMonthSpend / budgetPlan.planned_spend > 0.9 ? 'text-destructive' : currentMonthSpend / budgetPlan.planned_spend > 0.7 ? 'text-warning' : 'text-success'}`}>
+                      {Math.min(100, Math.round((currentMonthSpend / budgetPlan.planned_spend) * 100))}%
                     </span>
                   </div>
                   <div className="relative h-2.5 w-full bg-secondary rounded-full overflow-hidden">
                     <motion.div
                       className={`absolute left-0 top-0 h-full rounded-full ${
-                        totals.spend / budgetPlan.planned_spend > 0.9 ? 'bg-destructive'
-                          : totals.spend / budgetPlan.planned_spend > 0.7 ? 'bg-warning' : 'bg-primary'
+                        currentMonthSpend / budgetPlan.planned_spend > 0.9 ? 'bg-destructive'
+                          : currentMonthSpend / budgetPlan.planned_spend > 0.7 ? 'bg-warning' : 'bg-primary'
                       }`}
                       initial={{ width: '0%' }}
-                      animate={{ width: `${Math.min(100, (totals.spend / budgetPlan.planned_spend) * 100)}%` }}
+                      animate={{ width: `${Math.min(100, (currentMonthSpend / budgetPlan.planned_spend) * 100)}%` }}
                       transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>$0</span>
-                    <span>{formatCurrency(Math.max(0, budgetPlan.planned_spend - totals.spend))} remaining</span>
+                    <span>{formatCurrency(Math.max(0, budgetPlan.planned_spend - currentMonthSpend))} remaining</span>
                     <span>{formatCurrency(budgetPlan.planned_spend)}</span>
                   </div>
                 </div>
@@ -391,7 +408,7 @@ export default function ClientDashboardPage() {
                   <div className="flex-shrink-0 text-right sm:text-left">
                     <p className="text-xs text-muted-foreground">Lead Goal</p>
                     <p className="text-sm font-semibold text-foreground">
-                      <span className={totals.leads >= budgetPlan.planned_leads ? 'text-success' : 'text-foreground'}>{totals.leads}</span>
+                      <span className={currentMonthLeads >= budgetPlan.planned_leads ? 'text-success' : 'text-foreground'}>{currentMonthLeads}</span>
                       <span className="text-muted-foreground"> / {budgetPlan.planned_leads}</span>
                     </p>
                   </div>

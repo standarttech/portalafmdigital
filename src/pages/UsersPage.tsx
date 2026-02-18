@@ -1,7 +1,7 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import AdminApprovalsPanel from '@/components/shared/AdminApprovalsPanel';
 import { motion } from 'framer-motion';
-import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2, Building2 } from 'lucide-react';
+import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2, Building2, Camera, Loader2 as LoaderIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
 
 const roleStyles: Record<string, string> = {
   AgencyAdmin: 'bg-primary/15 text-primary border-primary/20',
@@ -51,7 +52,7 @@ const PERM_KEYS = [
 ] as const;
 
 interface AgencyUser {
-  id: string; user_id: string; display_name: string | null; agency_role: string;
+  id: string; user_id: string; display_name: string | null; agency_role: string; avatar_url?: string | null;
 }
 interface AccessRequest {
   id: string; full_name: string; email: string; message: string | null; status: string; created_at: string;
@@ -115,8 +116,12 @@ export default function UsersPage() {
   const [editNameUser, setEditNameUser] = useState<AgencyUser | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
 
+  const [avatarUploadingFor, setAvatarUploadingFor] = useState<string | null>(null);
+  const avatarFileRef = useRef<HTMLInputElement>(null);
+  const [avatarTargetUser, setAvatarTargetUser] = useState<AgencyUser | null>(null);
+
   const fetchUsers = useCallback(async () => {
-    const { data } = await supabase.from('agency_users').select('id, user_id, display_name, agency_role').order('created_at', { ascending: true });
+    const { data } = await supabase.from('agency_users').select('id, user_id, display_name, agency_role, avatar_url').order('created_at', { ascending: true });
     setUsers(data || []); setLoadingUsers(false);
   }, []);
   const fetchRequests = useCallback(async () => {
@@ -280,6 +285,29 @@ export default function UsersPage() {
   };
 
   // Edit display name
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !avatarTargetUser) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error('Max 5MB'); return; }
+    setAvatarUploadingFor(avatarTargetUser.user_id);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `avatars/${avatarTargetUser.user_id}.${ext}`;
+      await supabase.storage.from('branding').remove([path]);
+      const { error: upErr } = await supabase.storage.from('branding').upload(path, file, { contentType: file.type, upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from('branding').getPublicUrl(path);
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      await supabase.from('agency_users').update({ avatar_url: avatarUrl }).eq('user_id', avatarTargetUser.user_id);
+      toast.success('Аватарка обновлена');
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed');
+    }
+    setAvatarUploadingFor(null);
+    e.target.value = '';
+  };
+
   const handleSaveName = async () => {
     if (!editNameUser || !editNameValue.trim()) return;
     await supabase.from('agency_users').update({ display_name: editNameValue.trim() }).eq('user_id', editNameUser.user_id);
@@ -299,6 +327,7 @@ export default function UsersPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+      <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
       <motion.div variants={item} className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-foreground">{t('users.title')}</h1></div>
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
@@ -378,8 +407,22 @@ export default function UsersPage() {
                         <TableRow key={u.id} className="hover:bg-accent/30">
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                                {u.agency_role === 'AgencyAdmin' ? <Shield className="h-4 w-4 text-primary" /> : <UserCheck className="h-4 w-4 text-primary" />}
+                              <div className="relative group/avatar">
+                                <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                  {u.avatar_url
+                                    ? <img src={u.avatar_url} alt={u.display_name || ''} className="h-full w-full object-cover" />
+                                    : u.agency_role === 'AgencyAdmin' ? <Shield className="h-4 w-4 text-primary" /> : <UserCheck className="h-4 w-4 text-primary" />
+                                  }
+                                </div>
+                                <button
+                                  onClick={() => { setAvatarTargetUser(u); avatarFileRef.current?.click(); }}
+                                  className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity"
+                                  title="Загрузить аватарку"
+                                >
+                                  {avatarUploadingFor === u.user_id
+                                    ? <LoaderIcon className="h-3 w-3 text-white animate-spin" />
+                                    : <Camera className="h-3 w-3 text-white" />}
+                                </button>
                               </div>
                               <div>
                                 <p className="font-medium text-foreground">{u.display_name || 'No name'}</p>
