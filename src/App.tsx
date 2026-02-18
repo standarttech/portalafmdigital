@@ -31,6 +31,8 @@ import TaskBoardPage from "@/pages/TaskBoardPage";
 import BroadcastsPage from "@/pages/BroadcastsPage";
 import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import MfaChallengePage from "@/pages/MfaChallengePage";
+import AfmInternalPage from "@/pages/AfmInternalPage";
+import BrandingPage from "@/pages/BrandingPage";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -238,6 +240,8 @@ function AppRoutes() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
+        <Route path="/afm-internal" element={<AfmInternalPage />} />
+        <Route path="/branding" element={<BrandingPage />} />
       </Route>
       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />

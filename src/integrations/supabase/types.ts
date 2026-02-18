@@ -1505,7 +1505,15 @@ export type Database = {
       no_admin_exists: { Args: never; Returns: boolean }
     }
     Enums: {
-      agency_role: "AgencyAdmin" | "MediaBuyer" | "Client"
+      agency_role:
+        | "AgencyAdmin"
+        | "MediaBuyer"
+        | "Client"
+        | "Manager"
+        | "SalesManager"
+        | "AccountManager"
+        | "Designer"
+        | "Copywriter"
       campaign_status: "active" | "paused" | "archived"
       client_role: "Client"
       client_status: "active" | "inactive" | "paused" | "onboarding" | "stop"
@@ -1640,7 +1648,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      agency_role: ["AgencyAdmin", "MediaBuyer", "Client"],
+      agency_role: [
+        "AgencyAdmin",
+        "MediaBuyer",
+        "Client",
+        "Manager",
+        "SalesManager",
+        "AccountManager",
+        "Designer",
+        "Copywriter",
+      ],
       campaign_status: ["active", "paused", "archived"],
       client_role: ["Client"],
       client_status: ["active", "inactive", "paused", "onboarding", "stop"],

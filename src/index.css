@@ -246,19 +246,19 @@
     @apply bg-gradient-to-r from-primary via-amber-400 to-purple-400 bg-clip-text text-transparent;
   }
 
-  /* Glow scrollbar for futuristic */
+  /* Glow scrollbar for futuristic - works on both light and dark */
   .futuristic ::-webkit-scrollbar {
     width: 4px;
   }
   .futuristic ::-webkit-scrollbar-track {
-    background: hsla(260, 20%, 8%, 0.5);
+    background: hsl(var(--muted) / 0.3);
   }
   .futuristic ::-webkit-scrollbar-thumb {
-    background: hsla(42, 87%, 55%, 0.3);
+    background: hsl(var(--primary) / 0.35);
     border-radius: 2px;
   }
   .futuristic ::-webkit-scrollbar-thumb:hover {
-    background: hsla(42, 87%, 55%, 0.5);
+    background: hsl(var(--primary) / 0.55);
   }
 
   /* Animated border for futuristic cards */
