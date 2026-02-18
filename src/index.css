@@ -113,57 +113,15 @@
     --info-foreground: 0 0% 100%;
   }
 
-  .futuristic {
-    --background: 240 25% 4%;
-    --foreground: 210 40% 92%;
-
-    --card: 240 20% 8%;
-    --card-foreground: 210 40% 92%;
-
-    --popover: 240 20% 8%;
-    --popover-foreground: 210 40% 92%;
-
-    --primary: 42 87% 55%;
-    --primary-foreground: 240 25% 4%;
-
-    --secondary: 260 30% 15%;
-    --secondary-foreground: 210 40% 92%;
-
-    --muted: 260 20% 14%;
-    --muted-foreground: 230 15% 55%;
-
-    --accent: 260 30% 18%;
-    --accent-foreground: 210 40% 92%;
-
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 260 20% 16%;
-    --input: 260 20% 14%;
-    --ring: 42 87% 55%;
-
-    --sidebar-background: 240 30% 3%;
-    --sidebar-foreground: 210 40% 92%;
-    --sidebar-primary: 42 87% 55%;
-    --sidebar-primary-foreground: 240 25% 4%;
-    --sidebar-accent: 260 25% 12%;
-    --sidebar-accent-foreground: 210 40% 92%;
-    --sidebar-border: 260 20% 14%;
-    --sidebar-ring: 42 87% 55%;
-    --sidebar-muted: 230 15% 45%;
-
-    --chart-1: 42 87% 55%;
-    --chart-2: 160 84% 39%;
-    --chart-3: 217 91% 60%;
-    --chart-4: 280 64% 60%;
-    --chart-5: 350 80% 60%;
-
-    --success: 160 84% 39%;
-    --success-foreground: 0 0% 100%;
-    --warning: 43 96% 56%;
-    --warning-foreground: 0 0% 0%;
-    --info: 217 91% 60%;
-    --info-foreground: 0 0% 100%;
+  /* .futuristic only adds FX visual styles — does NOT override colors.
+     Colors stay from :root (light) or .dark. FX works on both themes. */
+  .futuristic .glass-card {
+    @apply backdrop-blur-2xl border border-primary/20 shadow-lg;
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.15), 0 4px 32px -4px hsl(var(--primary) / 0.1);
+  }
+  .futuristic .glass-card-elevated {
+    @apply backdrop-blur-2xl;
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2), 0 8px 40px -8px hsl(var(--primary) / 0.15);
   }
 }
 

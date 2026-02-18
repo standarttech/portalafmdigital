@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  MessageSquare, Send, Plus, Trash2, Loader2, Users, Building2, Hash, Settings, Crown, Shield, Headphones,
+  MessageSquare, Send, Plus, Trash2, Loader2, Users, Building2, Hash, Settings, Crown, Shield, Headphones, ImageIcon, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
@@ -56,6 +56,12 @@ interface Client {
 const ROLE_ICON: Record<string, typeof Crown> = { AgencyAdmin: Crown, MediaBuyer: Shield, Client: Building2 };
 const ROLE_COLOR: Record<string, string> = { AgencyAdmin: 'text-primary', MediaBuyer: 'text-amber-400', Client: 'text-emerald-400' };
 
+// Detect if content is an image URL stored in our bucket
+const isImageMessage = (content: string) =>
+  content.startsWith('__img__:');
+const getImageUrl = (content: string) =>
+  content.replace('__img__:', '');
+
 export default function ChatPage() {
   const { t } = useLanguage();
   const { user, agencyRole } = useAuth();
@@ -87,6 +93,9 @@ export default function ChatPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [mobileShowMessages, setMobileShowMessages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
 
   // Client: ensure support room exists, then show it
   const ensureClientSupportRoom = useCallback(async () => {
@@ -107,14 +116,10 @@ export default function ChatPage() {
       setSelectedRoom(existingRooms[0].id);
       setMobileShowMessages(true);
     } else {
-      // Auto-create support room
       const { data: clientData } = await supabase.from('clients').select('name').eq('id', assignedClientIds[0]).maybeSingle();
       const roomNameStr = `Support: ${clientData?.name || 'Client'}`;
       const { data: newRoom } = await supabase.from('chat_rooms').insert({
-        name: roomNameStr,
-        type: 'support',
-        client_id: assignedClientIds[0],
-        created_by: user.id,
+        name: roomNameStr, type: 'support', client_id: assignedClientIds[0], created_by: user.id,
       }).select().single();
       if (newRoom) {
         await supabase.from('chat_members').insert({ room_id: newRoom.id, user_id: user.id, can_write: true });
@@ -126,13 +131,11 @@ export default function ChatPage() {
     setLoadingRooms(false);
   }, [user, isClient]);
 
-  // Agency: fetch rooms + enrich support rooms with client names
   const fetchRooms = useCallback(async () => {
     if (isClient) return;
     const { data } = await supabase.from('chat_rooms').select('*').order('updated_at', { ascending: false });
     if (!data) { setLoadingRooms(false); return; }
 
-    // Enrich support rooms with client names
     const supportRooms = data.filter(r => r.type === 'support' && r.client_id);
     const clientIdsToFetch = [...new Set(supportRooms.map(r => r.client_id!))];
     let clientNameMap: Record<string, string> = {};
@@ -209,6 +212,46 @@ export default function ChatPage() {
     await supabase.from('chat_rooms').update({ updated_at: new Date().toISOString() } as any).eq('id', selectedRoom);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error('Image must be under 10MB'); return; }
+    setImagePreview({ file, url: URL.createObjectURL(file) });
+    e.target.value = '';
+  };
+
+  const cancelImagePreview = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview.url);
+    setImagePreview(null);
+  };
+
+  const handleSendImage = async () => {
+    if (!imagePreview || !user || !selectedRoom) return;
+    setUploadingImage(true);
+    try {
+      const ext = imagePreview.file.name.split('.').pop() || 'jpg';
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('chat-images')
+        .upload(path, imagePreview.file, { contentType: imagePreview.file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      await supabase.from('chat_messages').insert({
+        room_id: selectedRoom,
+        user_id: user.id,
+        content: `__img__:${publicUrl}`,
+      });
+      await supabase.from('chat_rooms').update({ updated_at: new Date().toISOString() } as any).eq('id', selectedRoom);
+      cancelImagePreview();
+    } catch (e: any) {
+      toast.error(e.message || 'Upload failed');
+    }
+    setUploadingImage(false);
+  };
+
   const handleCreateRoom = async () => {
     if (!roomName.trim() || !user) return;
     setCreating(true);
@@ -228,11 +271,9 @@ export default function ChatPage() {
   };
 
   const [confirmDeleteRoom, setConfirmDeleteRoom] = useState<string | null>(null);
-  
-  const handleDeleteRoom = async (roomId: string) => {
-    setConfirmDeleteRoom(roomId);
-  };
-  
+
+  const handleDeleteRoom = async (roomId: string) => setConfirmDeleteRoom(roomId);
+
   const executeDeleteRoom = async () => {
     if (!confirmDeleteRoom) return;
     await supabase.from('chat_rooms').delete().eq('id', confirmDeleteRoom);
@@ -269,13 +310,9 @@ export default function ChatPage() {
   };
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
-
-  // Separate support rooms from regular rooms for admin view
-  // Separate rooms into sections
   const supportRooms = rooms.filter(r => r.type === 'support');
   const clientRooms = rooms.filter(r => r.type === 'client');
   const teamRooms = rooms.filter(r => r.type === 'team' || r.type === 'custom');
-
   const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : type === 'support' ? Headphones : Hash;
 
   const renderRoomItem = (room: ChatRoom) => {
@@ -293,9 +330,7 @@ export default function ChatPage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium truncate">
-              {room.type === 'support' && room.client_name
-                ? room.client_name
-                : room.name}
+              {room.type === 'support' && room.client_name ? room.client_name : room.name}
             </span>
             {room.type === 'support' && (
               <Badge variant="outline" className="text-[9px] px-1 flex-shrink-0 border-emerald-500/30 text-emerald-500">
@@ -335,12 +370,8 @@ export default function ChatPage() {
       </div>
 
       <div className="flex-1 flex gap-3 min-h-0 overflow-hidden">
-        {/* Room list - show for clients too so they see support */}
         {isClient ? (
-          /* Client: simplified view - just show the support room header and go straight to messages */
-          <div className={`${mobileShowMessages ? 'hidden md:flex' : 'flex'} flex-col flex-1 border border-border rounded-lg bg-card overflow-hidden`}>
-            {/* Client always has messages open */}
-          </div>
+          <div className={`${mobileShowMessages ? 'hidden md:flex' : 'flex'} flex-col flex-1 border border-border rounded-lg bg-card overflow-hidden`} />
         ) : null}
 
         {/* Room list for agency members */}
@@ -353,7 +384,6 @@ export default function ChatPage() {
                 <p className="text-center text-sm text-muted-foreground py-8">{t('chat.noRooms' as TranslationKey)}</p>
               ) : (
                 <div className="p-1">
-                   {/* Client rooms section (support + client) */}
                    {(supportRooms.length > 0 || clientRooms.length > 0) && (
                      <>
                        <div className="px-3 pt-3 pb-1">
@@ -366,7 +396,6 @@ export default function ChatPage() {
                        {clientRooms.map(renderRoomItem)}
                      </>
                    )}
-                   {/* Team rooms section */}
                    {teamRooms.length > 0 && (
                      <>
                        <div className="px-3 pt-3 pb-1">
@@ -441,6 +470,7 @@ export default function ChatPage() {
                       const isOwn = msg.user_id === user?.id;
                       const showAuthor = idx === 0 || messages[idx - 1].user_id !== msg.user_id;
                       const RIcon = ROLE_ICON[msg.role || 'Client'] || Building2;
+                      const isImg = isImageMessage(msg.content);
                       return (
                         <div key={msg.id} className={`flex gap-2.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
                           {showAuthor && (
@@ -457,9 +487,20 @@ export default function ChatPage() {
                                 <span className="text-[10px] text-muted-foreground">{timeAgo(msg.created_at)}</span>
                               </div>
                             )}
-                            <div className={`rounded-xl px-3 py-2 text-sm ${isOwn ? 'bg-primary text-primary-foreground' : 'bg-secondary/70 text-foreground'}`}>
-                              {msg.content}
-                            </div>
+                            {isImg ? (
+                              <a href={getImageUrl(msg.content)} target="_blank" rel="noopener noreferrer">
+                                <img
+                                  src={getImageUrl(msg.content)}
+                                  alt="shared image"
+                                  className="max-w-xs rounded-xl border border-border/50 hover:opacity-90 transition-opacity cursor-pointer"
+                                  loading="lazy"
+                                />
+                              </a>
+                            ) : (
+                              <div className={`rounded-xl px-3 py-2 text-sm ${isOwn ? 'bg-primary text-primary-foreground' : 'bg-secondary/70 text-foreground'}`}>
+                                {msg.content}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -469,9 +510,33 @@ export default function ChatPage() {
                 )}
               </ScrollArea>
 
+              {/* Image preview bar */}
+              {imagePreview && (
+                <div className="px-3 py-2 border-t border-border bg-secondary/30 flex items-center gap-3">
+                  <img src={imagePreview.url} alt="preview" className="h-14 w-14 object-cover rounded-lg border border-border" />
+                  <span className="text-xs text-muted-foreground flex-1 truncate">{imagePreview.file.name}</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={cancelImagePreview}><X className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" onClick={handleSendImage} disabled={uploadingImage} className="gap-1.5">
+                    {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    Send
+                  </Button>
+                </div>
+              )}
+
               {/* Input */}
               <div className="p-3 border-t border-border">
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
                 <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    title="Attach image"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                  </Button>
                   <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
@@ -573,7 +638,7 @@ export default function ChatPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       <ConfirmDialog
         open={!!confirmDeleteRoom}
         onOpenChange={(open) => !open && setConfirmDeleteRoom(null)}
