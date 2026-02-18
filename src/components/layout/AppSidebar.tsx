@@ -250,8 +250,10 @@ export default function AppSidebar() {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0 bg-sidebar border-sidebar-border">
-            <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
+          <SheetContent side="left" className="w-64 p-0 bg-sidebar border-sidebar-border flex flex-col">
+            <div className="flex-1 overflow-y-auto">
+              <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
+            </div>
           </SheetContent>
         </Sheet>
       </div>

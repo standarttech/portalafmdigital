@@ -7,11 +7,13 @@ import {
   ArrowLeft, Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
   BarChart3, FileText, Table2, Link2, ListTodo, Clock, Target, Plus, Loader2,
   Sheet, RefreshCw, Settings2, ChevronDown, ShoppingBag, ShoppingCart, CreditCard,
-  Save, GripVertical, Wallet,
+  Save, GripVertical, Wallet, History, CalendarClock, CheckCircle2,
+  AlertCircle, Zap, Play, PauseCircle, XCircle, MessageSquare, Edit2,
 } from 'lucide-react';
 import ConversionFunnel from '@/components/client/ConversionFunnel';
 import ClientComments from '@/components/client/ClientComments';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import { MetricTooltip } from '@/components/shared/MetricTooltip';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,12 +27,13 @@ import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { format, subDays } from 'date-fns';
+import { format, subDays, formatDistanceToNow } from 'date-fns';
 import {
   ALL_METRIC_COLUMNS, CATEGORY_DEFAULTS, CATEGORY_KPIS, CATEGORY_CHART_METRICS, CATEGORY_OPTIONS,
   toClientCategory, computeDailyRow, formatMetricValue,
@@ -46,7 +49,7 @@ interface ClientData {
 }
 type PlatformKey = 'all' | 'meta' | 'google' | 'tiktok';
 interface Campaign { id: string; campaign_name: string; status: string; platform_campaign_id: string; platform?: string; }
-interface Task { id: string; title: string; description: string | null; status: string; due_date: string | null; created_at: string; }
+interface Task { id: string; title: string; description: string | null; status: string; due_date: string | null; created_at: string; assigned_to: string | null; assignee_name?: string; }
 interface ClientTarget { target_cpl: number | null; target_ctr: number | null; target_leads: number | null; target_roas: number | null; }
 interface DailyRow {
   date: string; spend: number; impressions: number; link_clicks: number; leads: number;
@@ -55,12 +58,32 @@ interface DailyRow {
 }
 interface BudgetPlan { planned_spend: number; planned_leads: number; month: string; }
 interface ClientListItem { id: string; name: string; }
+interface ProjectEvent {
+  id: string; event_type: string; title: string; description: string | null;
+  metadata: any; created_by: string | null; created_at: string;
+}
+interface StatusHistoryItem {
+  id: string; old_status: string | null; new_status: string; changed_at: string; notes: string | null;
+}
+
+const CLIENT_STATUSES = [
+  { value: 'active', labelKey: 'common.active', icon: CheckCircle2, color: 'text-success border-success/20 bg-success/10' },
+  { value: 'onboarding', labelKey: 'clients.onboarding', icon: Zap, color: 'text-info border-info/20 bg-info/10' },
+  { value: 'paused', labelKey: 'common.paused', icon: PauseCircle, color: 'text-warning border-warning/20 bg-warning/10' },
+  { value: 'stop', labelKey: 'clients.stop', icon: XCircle, color: 'text-destructive border-destructive/20 bg-destructive/10' },
+  { value: 'inactive', labelKey: 'common.inactive', icon: AlertCircle, color: 'text-muted-foreground border-border bg-muted/30' },
+];
 
 const statusStyles: Record<string, string> = {
-  active: 'bg-success/15 text-success border-success/20', paused: 'bg-warning/15 text-warning border-warning/20',
-  inactive: 'bg-muted text-muted-foreground border-border', archived: 'bg-muted text-muted-foreground border-border',
-  pending: 'bg-warning/15 text-warning border-warning/20', in_progress: 'bg-info/15 text-info border-info/20',
+  active: 'bg-success/15 text-success border-success/20', 
+  paused: 'bg-warning/15 text-warning border-warning/20',
+  inactive: 'bg-muted text-muted-foreground border-border', 
+  archived: 'bg-muted text-muted-foreground border-border',
+  pending: 'bg-warning/15 text-warning border-warning/20', 
+  in_progress: 'bg-info/15 text-info border-info/20',
   completed: 'bg-success/15 text-success border-success/20',
+  onboarding: 'bg-info/15 text-info border-info/20',
+  stop: 'bg-destructive/15 text-destructive border-destructive/20',
 };
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
@@ -178,6 +201,7 @@ export default function ClientDetailPage() {
   const [targetCpl, setTargetCpl] = useState('');
   const [targetCtr, setTargetCtr] = useState('');
   const [targetLeads, setTargetLeads] = useState('');
+  const [targetRoas, setTargetRoas] = useState('');
   const [dailyMetrics, setDailyMetrics] = useState<DailyRow[]>([]);
   const [campaignPlatformMap, setCampaignPlatformMap] = useState<Record<string, string>>({});
   const [budgetPlan, setBudgetPlan] = useState<BudgetPlan | null>(null);
@@ -188,6 +212,11 @@ export default function ClientDetailPage() {
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [creatingTask, setCreatingTask] = useState(false);
   const [savingColumns, setSavingColumns] = useState(false);
+  const [projectEvents, setProjectEvents] = useState<ProjectEvent[]>([]);
+  const [statusHistory, setStatusHistory] = useState<StatusHistoryItem[]>([]);
+  const [newEventNote, setNewEventNote] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   // Unified DateRangePicker state
   const [dateRange, setDateRange] = useState<DateRange>('30d');
@@ -348,8 +377,8 @@ export default function ClientDetailPage() {
 
   const fetchTasks = useCallback(async () => {
     if (!id) return;
-    const { data } = await supabase.from('tasks').select('id, title, description, status, due_date, created_at').eq('client_id', id).order('created_at', { ascending: false });
-    if (data) setTasks(data);
+    const { data } = await supabase.from('tasks').select('id, title, description, status, due_date, created_at, assigned_to').eq('client_id', id).order('created_at', { ascending: false });
+    if (data) setTasks(data as Task[]);
   }, [id]);
 
   const fetchTargets = useCallback(async () => {

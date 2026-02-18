@@ -471,6 +471,44 @@ export type Database = {
           },
         ]
       }
+      client_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          client_id: string
+          id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          client_id: string
+          id?: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          client_id?: string
+          id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_status_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_table_presets: {
         Row: {
           client_id: string
@@ -967,6 +1005,71 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json | null
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json | null
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json | null
+        }
+        Relationships: []
+      }
+      project_events: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          title: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          title: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raw_api_logs: {
         Row: {
           client_id: string | null
@@ -1405,7 +1508,7 @@ export type Database = {
       agency_role: "AgencyAdmin" | "MediaBuyer" | "Client"
       campaign_status: "active" | "paused" | "archived"
       client_role: "Client"
-      client_status: "active" | "inactive" | "paused"
+      client_status: "active" | "inactive" | "paused" | "onboarding" | "stop"
       platform_type: "meta" | "google" | "tiktok"
       report_status: "draft" | "published"
       sync_status: "idle" | "running" | "success" | "error"
@@ -1540,7 +1643,7 @@ export const Constants = {
       agency_role: ["AgencyAdmin", "MediaBuyer", "Client"],
       campaign_status: ["active", "paused", "archived"],
       client_role: ["Client"],
-      client_status: ["active", "inactive", "paused"],
+      client_status: ["active", "inactive", "paused", "onboarding", "stop"],
       platform_type: ["meta", "google", "tiktok"],
       report_status: ["draft", "published"],
       sync_status: ["idle", "running", "success", "error"],
