@@ -47,9 +47,19 @@ export default function SetPasswordPage() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Password strength checks
+  const checks = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[!?<>@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/`~]/.test(password),
+  };
+  const allChecksPassed = Object.values(checks).every(Boolean);
+
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    if (!allChecksPassed) { toast.error('Password does not meet all requirements'); return; }
     if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
 
     setIsLoading(true);
@@ -182,17 +192,36 @@ export default function SetPasswordPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div className={`flex items-center gap-1.5 ${password.length >= 8 ? 'text-green-500' : ''}`}>
-                        <div className={`h-1.5 w-1.5 rounded-full ${password.length >= 8 ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
-                        At least 8 characters
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${password === confirmPassword && password.length > 0 ? 'text-green-500' : ''}`}>
-                        <div className={`h-1.5 w-1.5 rounded-full ${password === confirmPassword && password.length > 0 ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
-                        Passwords match
-                      </div>
+                    {/* Password requirements */}
+                    <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-1.5">
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Password requirements</p>
+                      {[
+                        { key: 'uppercase', label: 'Uppercase letter' },
+                        { key: 'lowercase', label: 'Lowercase letter' },
+                        { key: 'number', label: 'Number' },
+                        { key: 'special', label: 'Special character (e.g. !?<>@#$%)' },
+                        { key: 'length', label: '8 characters or more' },
+                      ].map(({ key, label }) => {
+                        const ok = checks[key as keyof typeof checks];
+                        return (
+                          <div key={key} className={`flex items-center gap-2 text-xs transition-colors ${ok ? 'text-green-500' : 'text-muted-foreground'}`}>
+                            <div className={`h-3.5 w-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all ${ok ? 'bg-green-500 border-green-500' : 'border-muted-foreground/40'}`}>
+                              {ok && <svg className="h-2 w-2 text-white" fill="none" viewBox="0 0 12 12"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                            {label}
+                          </div>
+                        );
+                      })}
+                      {password.length > 0 && (
+                        <div className={`flex items-center gap-2 text-xs transition-colors ${password === confirmPassword ? 'text-green-500' : 'text-muted-foreground'}`}>
+                          <div className={`h-3.5 w-3.5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all ${password === confirmPassword ? 'bg-green-500 border-green-500' : 'border-muted-foreground/40'}`}>
+                            {password === confirmPassword && <svg className="h-2 w-2 text-white" fill="none" viewBox="0 0 12 12"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
+                          Passwords match
+                        </div>
+                      )}
                     </div>
-                    <Button type="submit" className="w-full" disabled={isLoading || password.length < 8 || password !== confirmPassword}>
+                    <Button type="submit" className="w-full" disabled={isLoading || !allChecksPassed || password !== confirmPassword}>
                       {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting password...</> : 'Continue →'}
                     </Button>
                   </form>

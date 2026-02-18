@@ -39,6 +39,7 @@ import AfmSocialMedia from "@/pages/afm/AfmSocialMedia";
 import AfmSales from "@/pages/afm/AfmSales";
 import AfmTools from "@/pages/afm/AfmTools";
 import AfmSettings from "@/pages/afm/AfmSettings";
+import AfmFinancePage from "@/pages/afm/AfmFinancePage";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -255,6 +256,7 @@ function AppRoutes() {
         <Route path="/afm-internal/social" element={<AfmSocialMedia />} />
         <Route path="/afm-internal/sales" element={<AfmSales />} />
         <Route path="/afm-internal/tools" element={<AfmTools />} />
+        <Route path="/afm-internal/finance" element={<AfmFinancePage />} />
         <Route path="/afm-internal/settings" element={<AfmSettings />} />
       </Route>
       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />

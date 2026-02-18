@@ -34,6 +34,13 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
+    id: 'internal',
+    labelKey: 'nav.afmInternal' as TranslationKey,
+    items: [
+      { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal' },
+    ],
+  },
+  {
     id: 'analytics',
     labelKey: 'nav.dashboard' as TranslationKey,
     items: [
@@ -49,13 +56,6 @@ const navSections: NavSection[] = [
       { key: 'nav.calendar', icon: Calendar, path: '/calendar' },
       { key: 'nav.tasks' as TranslationKey, icon: ClipboardList, path: '/tasks' },
       { key: 'nav.chat', icon: MessageSquare, path: '/chat', badgeKey: 'unreadChats' },
-    ],
-  },
-  {
-    id: 'internal',
-    labelKey: 'nav.afmInternal' as TranslationKey,
-    items: [
-      { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal' },
     ],
   },
   {
@@ -117,6 +117,15 @@ function useSidebarBadges(isAdmin: boolean) {
   return badges;
 }
 
+function useSidebarLogo() {
+  const [sidebarLogoUrl, setSidebarLogoUrl] = useState('');
+  useEffect(() => {
+    supabase.from('platform_settings').select('value').eq('key', 'sidebar_logo_url').maybeSingle()
+      .then(({ data }) => { if (data?.value) setSidebarLogoUrl(data.value as string); });
+  }, []);
+  return sidebarLogoUrl;
+}
+
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { t } = useLanguage();
   const { signOut } = useAuth();
@@ -125,6 +134,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
   const isAdmin = agencyRole === 'AgencyAdmin';
   const isClient = agencyRole === 'Client';
   const badges = useSidebarBadges(isAdmin);
+  const sidebarLogoUrl = useSidebarLogo();
 
   const clientAllowedPaths = ['/dashboard', '/chat', '/glossary', '/profile'];
 
@@ -184,7 +194,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border gap-3 flex-shrink-0">
         <div className="h-9 w-9 flex-shrink-0 bg-primary/20 rounded-lg flex items-center justify-center overflow-hidden p-0.5">
-          <img src={logoAfm} alt="AFM" className="h-8 w-8 object-contain" />
+          <img src={sidebarLogoUrl || logoAfm} alt="AFM" className="h-8 w-8 object-contain" />
         </div>
         {!collapsed && (
           <div className="flex flex-col">
