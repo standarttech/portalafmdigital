@@ -258,14 +258,53 @@ serve(async (req) => {
     const body = await req.json();
     const { action, request_id, invitation_id, email, full_name, role, client_id, permissions } = body;
 
-    console.log("approve-user action:", action, "email:", email);
+    console.log("approve-user action:", action);
+
+    // ── Input validation helpers ──────────────────────────────────────
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const ALLOWED_ROLES = [
+      "AgencyAdmin", "MediaBuyer", "Client", "Manager",
+      "SalesManager", "AccountManager", "Designer", "Copywriter",
+    ];
+
+    function validateEmail(e: string): boolean {
+      return typeof e === "string" && EMAIL_REGEX.test(e.trim()) && e.length <= 255;
+    }
+    function validateUUID(id: string): boolean {
+      return typeof id === "string" && UUID_REGEX.test(id);
+    }
+    function validateRole(r: string): boolean {
+      return typeof r === "string" && ALLOWED_ROLES.includes(r);
+    }
+    function validateName(n: string): boolean {
+      return typeof n === "string" && n.trim().length >= 1 && n.length <= 100;
+    }
 
     // ────────────────────────────────────────────────────────────────
     // APPROVE / CREATE_INVITE — magic link flow (no temp passwords)
     // ────────────────────────────────────────────────────────────────
     if (action === "approve" || action === "create_invite") {
-      if (!email) {
-        return new Response(JSON.stringify({ error: "Email is required" }), {
+      if (!email || !validateEmail(email)) {
+        return new Response(JSON.stringify({ error: "Valid email address is required (max 255 characters)" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      if (role && !validateRole(role)) {
+        return new Response(JSON.stringify({ error: "Invalid role specified" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      if (full_name && !validateName(full_name)) {
+        return new Response(JSON.stringify({ error: "Name must be between 1 and 100 characters" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      if (client_id && !validateUUID(client_id)) {
+        return new Response(JSON.stringify({ error: "Invalid client_id format" }), {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         });
@@ -437,6 +476,12 @@ serve(async (req) => {
     // DENY
     // ────────────────────────────────────────────────────────────────
     if (action === "deny") {
+      if (email && !validateEmail(email)) {
+        return new Response(JSON.stringify({ error: "Invalid email format" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
       if (request_id) {
         await supabaseAdmin.from("access_requests").update({
           status: "denied",
