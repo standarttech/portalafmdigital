@@ -6,9 +6,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   LayoutDashboard, TrendingUp, Globe, Settings, DollarSign,
   ArrowLeftCircle, Zap, Menu, LogOut, BarChart3, BarChart2, Sun, Moon, Sparkles,
+  Languages, BarChart2 as StatsIcon,
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
@@ -19,18 +21,19 @@ const afmNavItems = [
   { label: 'afm.mediaBuying', icon: TrendingUp, path: '/afm-internal/media' },
   { label: 'afm.socialMedia', icon: Globe, path: '/afm-internal/social' },
   { label: 'afm.sales', icon: DollarSign, path: '/afm-internal/sales' },
+  { label: 'afm.stats', icon: BarChart3, path: '/afm-internal/stats' },
   { label: 'afm.tools', icon: BarChart3, path: '/afm-internal/tools' },
   { label: 'afm.finance', icon: BarChart2, path: '/afm-internal/finance' },
   { label: 'afm.settings', icon: Settings, path: '/afm-internal/settings' },
 ] as const;
 
-const LANGUAGES: { code: Language; label: string }[] = [
-  { code: 'en', label: 'EN' },
-  { code: 'ru', label: 'RU' },
-  { code: 'it', label: 'IT' },
-  { code: 'es', label: 'ES' },
-  { code: 'ar', label: 'AR' },
-  { code: 'fr', label: 'FR' },
+const LANGUAGES: { code: Language; label: string; flag: string }[] = [
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
 ];
 
 function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
@@ -118,8 +121,10 @@ function AfmHeaderControls() {
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme, fxEnabled, toggleFx } = useTheme();
 
+  const currentLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       {/* FX toggle */}
       <button
         onClick={toggleFx}
@@ -141,23 +146,29 @@ function AfmHeaderControls() {
         {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
       </button>
 
-      {/* Language switcher */}
-      <div className="hidden sm:flex items-center gap-0.5 bg-muted/30 rounded-md p-0.5">
-        {LANGUAGES.map(lang => (
-          <button
-            key={lang.code}
-            onClick={() => setLanguage(lang.code)}
-            className={cn(
-              'text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors',
-              language === lang.code
-                ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {lang.label}
+      {/* Language dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors text-xs font-medium">
+            <Languages className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{currentLang.flag} {currentLang.code.toUpperCase()}</span>
+            <span className="sm:hidden">{currentLang.flag}</span>
           </button>
-        ))}
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[140px]">
+          {LANGUAGES.map(lang => (
+            <DropdownMenuItem
+              key={lang.code}
+              onClick={() => setLanguage(lang.code)}
+              className={cn('flex items-center gap-2 text-sm cursor-pointer', language === lang.code && 'text-primary font-medium')}
+            >
+              <span>{lang.flag}</span>
+              <span>{lang.label}</span>
+              {language === lang.code && <span className="ml-auto text-primary text-xs">✓</span>}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -197,22 +208,22 @@ export default function AfmInternalLayout() {
       )}>
         {/* Top bar */}
         <header className={cn(
-          'h-14 flex items-center px-4 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0 gap-3',
+          'h-14 flex items-center px-3 sm:px-4 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0 gap-2',
           isMobile && 'pl-14'
         )}>
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-foreground text-sm tracking-wide">AFM Digital</span>
-            <span className="text-muted-foreground text-xs hidden sm:block">— Internal</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <Zap className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="font-semibold text-foreground text-sm tracking-wide truncate">AFM Digital</span>
+            <span className="text-muted-foreground text-xs hidden sm:block flex-shrink-0">— Internal</span>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
             <AfmHeaderControls />
-            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs text-muted-foreground hidden md:block">Team only</span>
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
+            <span className="text-xs text-muted-foreground hidden lg:block">Team only</span>
           </div>
         </header>
 
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-2 sm:p-4 lg:p-6 overflow-auto">
           <Outlet />
         </main>
       </div>

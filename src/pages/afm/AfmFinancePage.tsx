@@ -79,18 +79,23 @@ function AnnualIncomePlan() {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border/40">
-        <table className="min-w-[900px] w-full text-xs border-collapse">
+        <table className="min-w-[900px] w-full text-xs border-collapse table-fixed">
+          <colgroup>
+            <col style={{ width: '180px', minWidth: '180px' }} />
+            {MONTHS.map(m => <col key={m} style={{ width: '68px', minWidth: '68px' }} />)}
+            <col style={{ width: '80px', minWidth: '80px' }} />
+          </colgroup>
           <thead>
             <tr className="bg-muted/50">
-              <th className="sticky left-0 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground min-w-[180px] border-r border-border/40">
+              <th className="sticky left-0 z-10 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground border-r border-border/40">
                 Показатель
               </th>
               {MONTHS.map(m => (
-                <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20 min-w-[62px]">
+                <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20">
                   {m}
                 </th>
               ))}
-              <th className="px-3 py-2 text-center font-semibold text-foreground whitespace-nowrap min-w-[80px]">Итого</th>
+              <th className="px-3 py-2 text-center font-semibold text-foreground whitespace-nowrap">Итого</th>
             </tr>
           </thead>
           <tbody>
@@ -104,7 +109,7 @@ function AnnualIncomePlan() {
 
               return (
                 <tr key={ri} className={`border-b border-border/20 ${isTotal ? 'bg-primary/10 font-semibold' : isMargin ? 'bg-green-500/10 font-semibold' : isSub ? 'bg-muted/20' : ''}`}>
-                  <td className={`sticky left-0 px-3 py-1.5 border-r border-border/40 ${
+                  <td className={`sticky left-0 z-10 px-3 py-1.5 border-r border-border/40 ${
                     isTotal ? 'bg-primary/10 text-foreground' :
                     isMargin ? 'bg-green-500/10 text-green-400' :
                     isSub ? 'bg-muted/30 text-foreground' : 'bg-background text-foreground'
@@ -313,7 +318,7 @@ function FinancialPlanningTable() {
   }) {
     return (
       <tr className="border-b border-border/20 hover:bg-muted/10 transition-colors group">
-        <td className="sticky left-0 bg-background px-3 py-1 text-foreground/80 border-r border-border/40 pl-5">
+        <td className="sticky left-0 z-10 bg-background px-3 py-1 text-foreground/80 border-r border-border/40 pl-5">
           <div className="flex items-center gap-2">
             <span className="flex-1 truncate text-xs">{row.label}</span>
             {onDelete && (
@@ -384,7 +389,7 @@ function FinancialPlanningTable() {
   }) {
     return (
       <tr className="border-b border-border/20 hover:bg-muted/10 transition-colors group">
-        <td className="sticky left-0 bg-background px-3 py-1 text-foreground/80 border-r border-border/40 pl-5">
+        <td className="sticky left-0 z-10 bg-background px-3 py-1 text-foreground/80 border-r border-border/40 pl-5">
           <div className="flex items-center gap-2">
             <span className={`flex-1 text-xs ${color || ''}`}>{label}</span>
             <div className="flex items-center gap-0.5 opacity-70 group-hover:opacity-100">
@@ -442,7 +447,7 @@ function FinancialPlanningTable() {
   function SectionHeader({ title, color, totalFn }: { title: string; color: string; totalFn: (mi: number) => number }) {
     return (
       <tr className="bg-muted/30 border-y border-border/40">
-        <td className={`sticky left-0 bg-muted/50 px-3 py-1.5 font-bold border-r border-border/40 text-sm ${color}`}>
+        <td className={`sticky left-0 z-10 bg-muted/50 px-3 py-1.5 font-bold border-r border-border/40 text-sm ${color}`}>
           {title}
         </td>
         {FIN_MONTHS.map((_, mi) => (
@@ -462,7 +467,7 @@ function FinancialPlanningTable() {
   }) {
     return (
       <tr className={`border-b border-border/30 ${style || ''}`}>
-        <td className={`sticky left-0 px-3 py-1.5 font-semibold border-r border-border/40 text-xs ${style ? '' : 'bg-background'}`}>
+        <td className={`sticky left-0 z-10 px-3 py-1.5 font-semibold border-r border-border/40 text-xs ${style ? 'bg-blue-500/10' : 'bg-background'}`}>
           {label}
         </td>
         {FIN_MONTHS.map((_, mi) => (
@@ -480,18 +485,23 @@ function FinancialPlanningTable() {
   return (
     <div className="space-y-4">
       <div className="overflow-x-auto rounded-xl border border-border/40">
-        <table className="min-w-[1100px] w-full text-xs border-collapse">
+        <table className="min-w-[1200px] w-full text-xs border-collapse table-fixed">
+          <colgroup>
+            <col style={{ width: '190px', minWidth: '190px' }} />
+            {FIN_MONTHS.map(m => <col key={m} style={{ width: '90px', minWidth: '90px' }} />)}
+            <col style={{ width: '95px', minWidth: '95px' }} />
+          </colgroup>
           <thead>
             <tr className="bg-muted/50">
-              <th className="sticky left-0 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground min-w-[190px] border-r border-border/40">
+              <th className="sticky left-0 z-10 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground border-r border-border/40">
                 Статья
               </th>
               {FIN_MONTHS.map(m => (
-                <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20 min-w-[80px]">
+                <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20">
                   {m}
                 </th>
               ))}
-              <th className="px-2 py-2 text-center font-semibold text-foreground whitespace-nowrap min-w-[90px]">Итого</th>
+              <th className="px-2 py-2 text-center font-semibold text-foreground whitespace-nowrap">Итого</th>
             </tr>
           </thead>
           <tbody>
@@ -555,15 +565,15 @@ function FinancialPlanningTable() {
       </div>
 
       {/* Fund Summary */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Taxes Fund', amount: totalTaxFund, color: 'text-purple-400 border-purple-400/30 bg-purple-400/5' },
           { label: 'Savings Fund', amount: totalSavFund, color: 'text-blue-400 border-blue-400/30 bg-blue-400/5' },
           { label: 'Marketing Fund', amount: totalMktFund, color: 'text-primary border-primary/30 bg-primary/5' },
         ].map(f => (
-          <div key={f.label} className={`rounded-xl border p-4 ${f.color}`}>
+          <div key={f.label} className={`rounded-xl border p-3 sm:p-4 ${f.color}`}>
             <p className="text-xs font-medium mb-1 opacity-80">{f.label}</p>
-            <p className="text-xl font-bold font-mono">{fmtFin(f.amount)}</p>
+            <p className="text-lg sm:text-xl font-bold font-mono">{fmtFin(f.amount)}</p>
             <p className="text-[10px] opacity-60 mt-0.5">Накоплено за период</p>
           </div>
         ))}
