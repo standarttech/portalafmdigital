@@ -572,6 +572,7 @@ export const translations = {
   'afm.mediaBuying': t('Media Buying', 'Медиабаинг', 'Media Buying', 'Media Buying', 'شراء الإعلانات', 'Achat média'),
   'afm.socialMedia': t('Social Media', 'Соц. сети', 'Social Media', 'Redes sociales', 'الشبكات الاجتماعية', 'Réseaux sociaux'),
   'afm.sales': t('Sales & CRM', 'Продажи и CRM', 'Vendite e CRM', 'Ventas y CRM', 'المبيعات وCRM', 'Ventes et CRM'),
+  'afm.stats': t('Statistics', 'Статистики', 'Statistiche', 'Estadísticas', 'الإحصائيات', 'Statistiques'),
   'afm.tools': t('Tools', 'Инструменты', 'Strumenti', 'Herramientas', 'الأدوات', 'Outils'),
   'afm.settings': t('Settings', 'Настройки', 'Impostazioni', 'Configuración', 'الإعدادات', 'Paramètres'),
   'afm.adBudget': t('Ad Budget', 'Рекл. бюджет', 'Budget pubblicitario', 'Presupuesto publicitario', 'ميزانية الإعلانات', 'Budget pub'),
