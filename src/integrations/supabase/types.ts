@@ -141,6 +141,93 @@ export type Database = {
         }
         Relationships: []
       }
+      afm_finance_data: {
+        Row: {
+          created_at: string
+          field_name: string
+          id: string
+          row_id: string
+          row_label: string | null
+          section: string
+          tab_key: string
+          updated_at: string
+          updated_by: string | null
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          field_name: string
+          id?: string
+          row_id: string
+          row_label?: string | null
+          section: string
+          tab_key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          field_name?: string
+          id?: string
+          row_id?: string
+          row_label?: string | null
+          section?: string
+          tab_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
+      afm_sales_leads: {
+        Row: {
+          company: string
+          created_at: string
+          created_by: string | null
+          created_date: string
+          email: string
+          id: string
+          name: string
+          notes: string
+          phone: string
+          source: string
+          status: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          company?: string
+          created_at?: string
+          created_by?: string | null
+          created_date?: string
+          email?: string
+          id?: string
+          name: string
+          notes?: string
+          phone?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          created_by?: string | null
+          created_date?: string
+          email?: string
+          id?: string
+          name?: string
+          notes?: string
+          phone?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
       afm_stats_data: {
         Row: {
           created_at: string
@@ -1586,6 +1673,17 @@ export type Database = {
           _stat_type: string
           _value: number
           _year_range: string
+        }
+        Returns: undefined
+      }
+      upsert_finance_data: {
+        Args: {
+          _field_name: string
+          _row_id: string
+          _row_label: string
+          _section: string
+          _tab_key: string
+          _value: number
         }
         Returns: undefined
       }

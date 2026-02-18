@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  DollarSign, Users, TrendingUp, Plus, Phone, Mail, Calendar,
-  ChevronRight, Circle, CheckCircle2, Clock, Edit2, Trash2, X, Save,
+  DollarSign, Users, TrendingUp, Plus, Phone, Mail,
+  ChevronRight, Circle, CheckCircle2, Clock, Edit2, Trash2, X, Save, Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
@@ -46,14 +47,6 @@ const EMPTY_LEAD: Omit<Lead, 'id'> = {
   name: '', company: '', email: '', phone: '', status: 'new',
   value: 0, source: 'Website', createdAt: new Date().toISOString().split('T')[0], notes: '',
 };
-
-const SAMPLE_LEADS: Lead[] = [
-  { id: '1', name: 'Алексей Смирнов', company: 'TechStart LLC', email: 'alex@techstart.com', phone: '+7 999 123-4567', status: 'negotiation', value: 3500, source: 'Referral', createdAt: '2026-02-01', notes: 'Интересует SEO + Meta Ads' },
-  { id: '2', name: 'Мария Петрова', company: 'Bloom Beauty', email: 'm.petrova@bloom.ru', phone: '+7 912 987-6543', status: 'proposal', value: 1800, source: 'Instagram', createdAt: '2026-02-05', notes: 'Малый бизнес, нужен SMM' },
-  { id: '3', name: 'Дмитрий Козлов', company: 'BuildPro', email: 'dk@buildpro.com', phone: '+7 905 555-0011', status: 'contacted', value: 5000, source: 'Cold outreach', createdAt: '2026-02-10', notes: 'Застройщик, большой бюджет' },
-  { id: '4', name: 'Elena Vance', company: 'Vance Fashion', email: 'elena@vance.io', phone: '+7 900 001-2233', status: 'new', value: 2200, source: 'Website', createdAt: '2026-02-15', notes: 'eCommerce, Google + Meta' },
-  { id: '5', name: 'Олег Иванов', company: 'FoodDelivery Pro', email: 'o.ivanov@fdpro.ru', phone: '+7 916 777-8899', status: 'won', value: 4000, source: 'Referral', createdAt: '2026-01-20', notes: 'Закрыт на 3 месяца' },
-];
 
 interface LeadFormProps {
   initial?: Partial<Lead>;
@@ -151,13 +144,41 @@ function LeadForm({ initial, onSave, onCancel, title }: LeadFormProps) {
 }
 
 export default function AfmSales() {
-  const [leads, setLeads] = useState<Lead[]>(SAMPLE_LEADS);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  // Load leads from DB
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('afm_sales_leads')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        setLeads(data.map(r => ({
+          id: r.id,
+          name: r.name,
+          company: r.company,
+          email: r.email,
+          phone: r.phone,
+          status: r.status as LeadStatus,
+          value: r.value,
+          source: r.source,
+          createdAt: r.created_date,
+          notes: r.notes,
+        })));
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const filtered = leads.filter(l => {
     const matchStatus = filterStatus === 'all' || l.status === filterStatus;
@@ -171,29 +192,75 @@ export default function AfmSales() {
   const wonRevenue = wonDeals.reduce((s, l) => s + l.value, 0);
   const convRate = leads.length > 0 ? Math.round((wonDeals.length / leads.length) * 100) : 0;
 
-  const handleAdd = (data: Omit<Lead, 'id'>) => {
-    const newLead = { ...data, id: Date.now().toString() };
+  const handleAdd = async (data: Omit<Lead, 'id'>) => {
+    const { data: inserted, error } = await supabase
+      .from('afm_sales_leads')
+      .insert({
+        name: data.name,
+        company: data.company,
+        email: data.email,
+        phone: data.phone,
+        status: data.status,
+        value: data.value,
+        source: data.source,
+        created_date: data.createdAt,
+        notes: data.notes,
+      })
+      .select()
+      .single();
+    if (error) { toast.error('Ошибка сохранения'); return; }
+    const newLead: Lead = {
+      id: inserted.id,
+      name: inserted.name,
+      company: inserted.company,
+      email: inserted.email,
+      phone: inserted.phone,
+      status: inserted.status as LeadStatus,
+      value: inserted.value,
+      source: inserted.source,
+      createdAt: inserted.created_date,
+      notes: inserted.notes,
+    };
     setLeads(prev => [newLead, ...prev]);
     setShowAddForm(false);
     toast.success('Лид добавлен');
   };
 
-  const handleEdit = (data: Omit<Lead, 'id'>) => {
+  const handleEdit = async (data: Omit<Lead, 'id'>) => {
     if (!editingLead) return;
-    setLeads(prev => prev.map(l => l.id === editingLead.id ? { ...data, id: l.id } : l));
-    if (selectedLead?.id === editingLead.id) setSelectedLead({ ...data, id: editingLead.id });
+    const { error } = await supabase
+      .from('afm_sales_leads')
+      .update({
+        name: data.name,
+        company: data.company,
+        email: data.email,
+        phone: data.phone,
+        status: data.status,
+        value: data.value,
+        source: data.source,
+        created_date: data.createdAt,
+        notes: data.notes,
+      })
+      .eq('id', editingLead.id);
+    if (error) { toast.error('Ошибка обновления'); return; }
+    const updated = { ...data, id: editingLead.id };
+    setLeads(prev => prev.map(l => l.id === editingLead.id ? updated : l));
+    if (selectedLead?.id === editingLead.id) setSelectedLead(updated);
     setEditingLead(null);
     toast.success('Лид обновлён');
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('afm_sales_leads').delete().eq('id', id);
+    if (error) { toast.error('Ошибка удаления'); return; }
     setLeads(prev => prev.filter(l => l.id !== id));
     if (selectedLead?.id === id) setSelectedLead(null);
     setDeleteConfirm(null);
     toast.success('Лид удалён');
   };
 
-  const handleStatusChange = (lead: Lead, status: LeadStatus) => {
+  const handleStatusChange = async (lead: Lead, status: LeadStatus) => {
+    await supabase.from('afm_sales_leads').update({ status }).eq('id', lead.id);
     const updated = { ...lead, status };
     setLeads(prev => prev.map(l => l.id === lead.id ? updated : l));
     setSelectedLead(updated);
@@ -256,7 +323,7 @@ export default function AfmSales() {
         </Card>
       </motion.div>
 
-      {/* Add form */}
+      {/* Add / Edit form */}
       <AnimatePresence>
         {showAddForm && (
           <motion.div variants={item}>
@@ -275,7 +342,10 @@ export default function AfmSales() {
         <Card className="glass-card">
           <CardHeader className="pb-2">
             <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
-              <CardTitle className="text-sm">Лиды ({filtered.length})</CardTitle>
+              <CardTitle className="text-sm">
+                Лиды ({filtered.length})
+                {loading && <Loader2 className="inline h-3.5 w-3.5 ml-2 animate-spin text-muted-foreground" />}
+              </CardTitle>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Input
                   placeholder="Поиск..."
@@ -301,6 +371,11 @@ export default function AfmSales() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
+            {!loading && leads.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                Нет лидов. Нажмите «Добавить» чтобы создать первый.
+              </div>
+            )}
             <div className="divide-y divide-border/40">
               {filtered.map(lead => {
                 const cfg = STATUS_CONFIG[lead.status];
@@ -351,44 +426,50 @@ export default function AfmSales() {
                       </div>
                     )}
 
-                    {/* Expanded detail */}
+                    {/* Detail panel */}
                     <AnimatePresence>
                       {isSelected && (
                         <motion.div
-                          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden border-t border-border/30 bg-muted/10"
                         >
-                          <div className="px-4 pb-3 pt-1 bg-muted/10 border-t border-border/30 space-y-2">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs">
-                              <div className="flex items-center gap-1.5 text-muted-foreground">
-                                <Mail className="h-3.5 w-3.5" />{lead.email || '—'}
-                              </div>
-                              <div className="flex items-center gap-1.5 text-muted-foreground">
-                                <Phone className="h-3.5 w-3.5" />{lead.phone || '—'}
-                              </div>
-                              <div className="flex items-center gap-1.5 text-muted-foreground">
-                                <Calendar className="h-3.5 w-3.5" />{lead.createdAt}
-                              </div>
-                              <div className="flex items-center gap-1.5 text-muted-foreground">
-                                <Clock className="h-3.5 w-3.5" />{lead.source}
-                              </div>
+                          <div className="px-4 py-3 space-y-3">
+                            {/* Contact info */}
+                            <div className="flex flex-wrap gap-4">
+                              {lead.email && (
+                                <a href={`mailto:${lead.email}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                  <Mail className="h-3.5 w-3.5" />{lead.email}
+                                </a>
+                              )}
+                              {lead.phone && (
+                                <a href={`tel:${lead.phone}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                                  <Phone className="h-3.5 w-3.5" />{lead.phone}
+                                </a>
+                              )}
+                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Clock className="h-3.5 w-3.5" />{lead.createdAt}
+                              </span>
                             </div>
                             {lead.notes && (
-                              <p className="text-xs text-muted-foreground bg-muted/40 rounded px-2 py-1">{lead.notes}</p>
+                              <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">{lead.notes}</p>
                             )}
-                            <div className="flex gap-1 flex-wrap pt-1">
-                              {(Object.entries(STATUS_CONFIG) as [LeadStatus, typeof STATUS_CONFIG[LeadStatus]][]).map(([status, cfg]) => (
+                            {/* Status switcher */}
+                            <div className="flex flex-wrap gap-1.5">
+                              <span className="text-xs text-muted-foreground self-center">Статус:</span>
+                              {(Object.entries(STATUS_CONFIG) as [LeadStatus, typeof STATUS_CONFIG[LeadStatus]][]).map(([s, c]) => (
                                 <button
-                                  key={status}
-                                  onClick={() => handleStatusChange(lead, status)}
+                                  key={s}
+                                  onClick={() => handleStatusChange(lead, s)}
                                   className={cn(
-                                    'text-[10px] px-2 py-1 rounded-md border transition-colors font-medium',
-                                    lead.status === status
-                                      ? `${cfg.bg} ${cfg.color} border-current`
-                                      : 'border-border/40 text-muted-foreground hover:border-primary/40'
+                                    'text-[10px] px-2 py-0.5 rounded-full border transition-all',
+                                    lead.status === s
+                                      ? `${c.bg} ${c.color} border-current`
+                                      : 'border-border/30 text-muted-foreground hover:border-border/60'
                                   )}
                                 >
-                                  {cfg.label}
+                                  {c.label}
                                 </button>
                               ))}
                             </div>
@@ -399,12 +480,6 @@ export default function AfmSales() {
                   </div>
                 );
               })}
-              {filtered.length === 0 && (
-                <div className="py-12 text-center text-muted-foreground text-sm">
-                  <Circle className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  Лидов не найдено
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

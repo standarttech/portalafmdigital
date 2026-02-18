@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, StickyNote, TrendingUp, Users, Calendar, History, Save, Loader2 } from 'lucide-react';
+import { BarChart3, StickyNote, TrendingUp, Users, Calendar, History, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,6 +25,24 @@ function cn(...classes: (string | boolean | undefined)[]) {
 function num(v: number | string): number {
   const n = Number(v);
   return isNaN(n) ? 0 : n;
+}
+function hasValue(v: number | string): boolean {
+  return v !== '' && v !== null && v !== undefined;
+}
+
+// Persist chart settings per stat_type to localStorage
+function usePersistedState<T>(key: string, defaultVal: T): [T, (v: T) => void] {
+  const [state, setState] = useState<T>(() => {
+    try {
+      const stored = localStorage.getItem(`afm_stats_${key}`);
+      return stored !== null ? JSON.parse(stored) : defaultVal;
+    } catch { return defaultVal; }
+  });
+  const set = useCallback((v: T) => {
+    setState(v);
+    try { localStorage.setItem(`afm_stats_${key}`, JSON.stringify(v)); } catch {}
+  }, [key]);
+  return [state, set];
 }
 
 // ─── CHART TOOLTIP ─────────────────────────────────────────────
@@ -70,7 +88,7 @@ function ChartControls({ lineType, setLineType, tickCount, setTickCount }: Chart
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {[3,4,5,6,8,10].map(n => <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>)}
+            {[3, 4, 5, 6, 8, 10].map(n => <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -130,37 +148,57 @@ function HistoryPanel({ statType, yearRange }: { statType: string; yearRange: st
   );
 }
 
+// ─── DATE RANGE PICKER (styled like the rest of the app) ───────
+function DateRangePicker({ value, onChange }: { value: DRType | undefined; onChange: (r: DRType | undefined) => void }) {
+  const [open, setOpen] = useState(false);
+  const label = value?.from && value?.to
+    ? `${format(value.from, 'dd.MM.yy')} — ${format(value.to, 'dd.MM.yy')}`
+    : 'Выбрать период';
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
+          <Calendar className="h-3.5 w-3.5" />{label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
+        <CalendarComponent
+          mode="range" selected={value}
+          onSelect={r => { onChange(r); if (r?.from && r?.to) setOpen(false); }}
+          numberOfMonths={2} className="pointer-events-auto"
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ─── WEEKLY STATS ──────────────────────────────────────────────
 interface WeekRow {
   id: string;
   week: string;
-  totalClients: number | string;
-  qualLeads: number | string;
-  meetings: number | string;
-  newContracts: number | string;
-  newPayments: number | string;
+  totalClients: string;
+  qualLeads: string;
+  meetings: string;
+  newContracts: string;
+  newPayments: string;
   note: string;
 }
 
 const WEEK_COLS = [
-  { key: 'totalClients', label: 'Всего клиентов', color: '#60a5fa' },
-  { key: 'qualLeads', label: 'Квал. лиды', color: '#34d399' },
-  { key: 'meetings', label: 'Встречи', color: '#a78bfa' },
-  { key: 'newContracts', label: 'Новые контракты', color: '#fbbf24' },
-  { key: 'newPayments', label: 'Новые оплаты', color: '#f87171' },
-] as const;
+  { key: 'totalClients' as const, label: 'Всего клиентов', color: '#60a5fa' },
+  { key: 'qualLeads' as const, label: 'Квал. лиды', color: '#34d399' },
+  { key: 'meetings' as const, label: 'Встречи', color: '#a78bfa' },
+  { key: 'newContracts' as const, label: 'Новые контракты', color: '#fbbf24' },
+  { key: 'newPayments' as const, label: 'Новые оплаты', color: '#f87171' },
+];
 
-function generateWeeks(from: Date, to: Date): WeekRow[] {
-  const weeks: WeekRow[] = [];
+function generateWeeks(from: Date, to: Date): { id: string; week: string }[] {
+  const weeks: { id: string; week: string }[] = [];
   const interval = eachWeekOfInterval({ start: from, end: to }, { weekStartsOn: 5 });
   interval.forEach((fridayStart, i) => {
     const thursdayEnd = addDays(fridayStart, 6);
     const weekLabel = `${format(fridayStart, 'dd.MM')} - ${format(thursdayEnd, 'dd.MM')}`;
-    weeks.push({
-      id: `w${i}-${fridayStart.getTime()}`,
-      week: weekLabel,
-      totalClients: '', qualLeads: '', meetings: '', newContracts: '', newPayments: '', note: '',
-    });
+    weeks.push({ id: `w_${format(fridayStart, 'yyyy-MM-dd')}`, week: weekLabel });
   });
   return weeks;
 }
@@ -175,12 +213,10 @@ function WeeklyTable() {
     d.setMonth(d.getMonth() - 3);
     return d;
   }, []);
-  const defaultTo = new Date();
 
-  const [dateRange, setDateRange] = useState<DRType | undefined>({ from: defaultFrom, to: defaultTo });
-  const [calOpen, setCalOpen] = useState(false);
-  const [lineType, setLineType] = useState<'monotone' | 'linear'>('monotone');
-  const [tickCount, setTickCount] = useState(5);
+  const [dateRange, setDateRange] = usePersistedState<DRType | undefined>('weekly_range', { from: defaultFrom, to: new Date() });
+  const [lineType, setLineType] = usePersistedState<'monotone' | 'linear'>('weekly_lineType', 'monotone');
+  const [tickCount, setTickCount] = usePersistedState<number>('weekly_tickCount', 5);
   const [showHistory, setShowHistory] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -199,7 +235,7 @@ function WeeklyTable() {
   const [noteRow, setNoteRow] = useState<string | null>(null);
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  // Load data from DB
+  // Load data from DB when yearRange changes
   useEffect(() => {
     if (!yearRange) return;
     setLoading(true);
@@ -213,14 +249,15 @@ function WeeklyTable() {
           const loaded: Record<string, WeekRow> = {};
           data.forEach(d => {
             if (!loaded[d.period_key]) {
-              // Find matching generated week
-              const gw = generatedWeeks.find(w => w.id === d.period_key) || { id: d.period_key, week: d.period_key, totalClients: '', qualLeads: '', meetings: '', newContracts: '', newPayments: '', note: '' };
-              loaded[d.period_key] = { ...gw };
+              const gw = generatedWeeks.find(w => w.id === d.period_key);
+              loaded[d.period_key] = {
+                id: d.period_key,
+                week: gw?.week || d.period_key,
+                totalClients: '', qualLeads: '', meetings: '', newContracts: '', newPayments: '', note: '',
+              };
             }
-            if (d.field_name === 'note') {
-              loaded[d.period_key].note = String(d.value || '');
-            } else {
-              (loaded[d.period_key] as any)[d.field_name] = d.value || '';
+            if (d.field_name !== 'note') {
+              (loaded[d.period_key] as any)[d.field_name] = String(d.value);
             }
             if (d.note) loaded[d.period_key].note = d.note;
           });
@@ -233,17 +270,16 @@ function WeeklyTable() {
   const getRow = (id: string, week: string): WeekRow =>
     rows[id] || { id, week, totalClients: '', qualLeads: '', meetings: '', newContracts: '', newPayments: '', note: '' };
 
-  const saveToDb = useCallback(async (id: string, week: string, row: WeekRow) => {
+  const saveToDb = useCallback(async (id: string, row: WeekRow) => {
     if (!yearRange) return;
     setSaving(true);
-    const fields = WEEK_COLS.map(c => c.key);
-    await Promise.all(fields.map(async (field) => {
-      const val = num((row as any)[field]);
+    await Promise.all(WEEK_COLS.map(async (c) => {
+      const val = num(row[c.key]);
       await supabase.rpc('upsert_afm_stat', {
         _stat_type: 'weekly',
         _period_key: id,
         _year_range: yearRange,
-        _field_name: field,
+        _field_name: c.key,
         _value: val,
         _note: row.note || null,
       });
@@ -254,54 +290,42 @@ function WeeklyTable() {
   const update = (id: string, week: string, key: keyof WeekRow, val: string) => {
     setRows(prev => {
       const updated = { ...prev, [id]: { ...getRow(id, week), [key]: val } };
-      // Debounce save
       if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
-      saveTimers.current[id] = setTimeout(() => {
-        saveToDb(id, week, updated[id]);
-      }, 800);
+      saveTimers.current[id] = setTimeout(() => saveToDb(id, updated[id]), 600);
       return updated;
     });
   };
 
+  // Chart: 0 is valid, only empty string means "not filled"
   const chartData = useMemo(() => {
     const allPoints = generatedWeeks.map(gw => {
       const r = getRow(gw.id, gw.week);
+      const filledAny = WEEK_COLS.some(c => hasValue(r[c.key]));
       return {
         week: gw.week.slice(0, 5),
-        'Клиенты': num(r.totalClients) || null,
-        'Лиды': num(r.qualLeads) || null,
-        'Встречи': num(r.meetings) || null,
-        'Контракты': num(r.newContracts) || null,
-        hasFilled: r.totalClients !== '' || r.qualLeads !== '' || r.meetings !== '' || r.newContracts !== '' || r.newPayments !== '',
+        'Клиенты': hasValue(r.totalClients) ? num(r.totalClients) : null,
+        'Лиды': hasValue(r.qualLeads) ? num(r.qualLeads) : null,
+        'Встречи': hasValue(r.meetings) ? num(r.meetings) : null,
+        'Контракты': hasValue(r.newContracts) ? num(r.newContracts) : null,
+        hasFilled: filledAny,
       };
     });
-    let lastFilledIdx = -1;
-    allPoints.forEach((p, i) => { if (p.hasFilled) lastFilledIdx = i; });
-    return lastFilledIdx >= 0 ? allPoints.slice(0, lastFilledIdx + 1) : [];
+    // Find first filled index
+    const firstIdx = allPoints.findIndex(p => p.hasFilled);
+    let lastIdx = -1;
+    allPoints.forEach((p, i) => { if (p.hasFilled) lastIdx = i; });
+    if (firstIdx === -1) return [];
+    return allPoints.slice(firstIdx, lastIdx + 1);
   }, [generatedWeeks, rows]);
-
-  const rangeLabel = dateRange?.from && dateRange?.to
-    ? `${format(dateRange.from, 'dd.MM.yy')} — ${format(dateRange.to, 'dd.MM.yy')}`
-    : 'Выбрать период';
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap justify-between">
         <div className="flex items-center gap-2 flex-wrap">
-          <Popover open={calOpen} onOpenChange={setCalOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
-                <Calendar className="h-3.5 w-3.5" />{rangeLabel}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
-              <CalendarComponent
-                mode="range" selected={dateRange}
-                onSelect={(r) => { setDateRange(r); if (r?.from && r?.to) setCalOpen(false); }}
-                numberOfMonths={2} className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+          <DateRangePicker
+            value={dateRange}
+            onChange={r => setDateRange(r)}
+          />
           <span className="text-xs text-muted-foreground">Пт → Чт</span>
           {saving && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Сохраняю...</div>}
           {loading && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Загрузка...</div>}
@@ -309,8 +333,7 @@ function WeeklyTable() {
         <div className="flex items-center gap-2">
           <ChartControls lineType={lineType} setLineType={setLineType} tickCount={tickCount} setTickCount={setTickCount} />
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setShowHistory(h => !h)}>
-            <History className="h-3.5 w-3.5" />
-            История
+            <History className="h-3.5 w-3.5" />История
           </Button>
         </div>
       </div>
@@ -347,7 +370,15 @@ function WeeklyTable() {
                     <XAxis dataKey="week" tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" tickCount={tickCount} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Line type={lineType} dataKey={chart.dataKey} stroke={chart.color} strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} connectNulls={false} />
+                    <Line
+                      type={lineType}
+                      dataKey={chart.dataKey}
+                      stroke={chart.color}
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 4 }}
+                      connectNulls={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -394,8 +425,9 @@ function WeeklyTable() {
                   {WEEK_COLS.map(c => (
                     <td key={c.key} className="px-1 py-1 border-r border-border/20">
                       <input
-                        type="number"
-                        value={row[c.key] as string}
+                        type="text"
+                        inputMode="numeric"
+                        value={row[c.key]}
                         onChange={e => update(gw.id, gw.week, c.key, e.target.value)}
                         placeholder="—"
                         className="w-full text-center bg-transparent border border-transparent rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary/50 hover:border-border/50 transition-colors"
@@ -413,38 +445,35 @@ function WeeklyTable() {
 }
 
 // ─── MONTHLY STATS ─────────────────────────────────────────────
+const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
 interface MonthRow {
   id: string;
   month: string;
-  clients: number | string;
-  newRevenue: number | string;
-  renewalRevenue: number | string;
-  totalRevenue: number | string;
+  clients: string;
+  newRevenue: string;
+  renewalRevenue: string;
+  totalRevenue: string;
   note: string;
 }
 
 const MONTH_COLS = [
-  { key: 'clients', label: 'Кол-во клиентов', color: '#60a5fa' },
-  { key: 'newRevenue', label: 'Выручка новая ($)', color: '#34d399' },
-  { key: 'renewalRevenue', label: 'Выручка продления ($)', color: '#a78bfa' },
-  { key: 'totalRevenue', label: 'Общая выручка ($)', color: '#fbbf24', readOnly: true },
+  { key: 'clients' as const, label: 'Кол-во клиентов', color: '#60a5fa' },
+  { key: 'newRevenue' as const, label: 'Выручка новая ($)', color: '#34d399' },
+  { key: 'renewalRevenue' as const, label: 'Выручка продления ($)', color: '#a78bfa' },
+  { key: 'totalRevenue' as const, label: 'Общая выручка ($)', color: '#fbbf24', readOnly: true },
 ] as const;
 
-const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-
-function generateMonths(year: number): MonthRow[] {
-  return MONTH_NAMES.map((name, i) => ({
-    id: `m-${year}-${i}`,
-    month: name,
-    clients: '', newRevenue: '', renewalRevenue: '', totalRevenue: '', note: '',
-  }));
+function generateMonths(year: number): { id: string; month: string }[] {
+  return MONTH_NAMES.map((name, i) => ({ id: `m-${year}-${i}`, month: name }));
 }
 
 function MonthlyTable() {
   const currentYear = new Date().getFullYear();
-  const [year, setYear] = useState(currentYear);
-  const [lineType, setLineType] = useState<'monotone' | 'linear'>('monotone');
-  const [tickCount, setTickCount] = useState(5);
+  const [year, setYearState] = usePersistedState<number>('monthly_year', currentYear);
+  const setYear = (fn: number | ((y: number) => number)) => setYearState(typeof fn === 'function' ? fn(year) : fn);
+  const [lineType, setLineType] = usePersistedState<'monotone' | 'linear'>('monthly_lineType', 'monotone');
+  const [tickCount, setTickCount] = usePersistedState<number>('monthly_tickCount', 5);
   const [showHistory, setShowHistory] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -455,7 +484,6 @@ function MonthlyTable() {
   const [noteRow, setNoteRow] = useState<string | null>(null);
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  // Load from DB
   useEffect(() => {
     setLoading(true);
     supabase
@@ -468,17 +496,20 @@ function MonthlyTable() {
           const loaded: Record<string, MonthRow> = {};
           data.forEach(d => {
             if (!loaded[d.period_key]) {
-              const gm = generatedMonths.find(m => m.id === d.period_key) || { id: d.period_key, month: d.period_key, clients: '', newRevenue: '', renewalRevenue: '', totalRevenue: '', note: '' };
-              loaded[d.period_key] = { ...gm };
+              const gm = generatedMonths.find(m => m.id === d.period_key);
+              loaded[d.period_key] = {
+                id: d.period_key, month: gm?.month || d.period_key,
+                clients: '', newRevenue: '', renewalRevenue: '', totalRevenue: '', note: '',
+              };
             }
-            (loaded[d.period_key] as any)[d.field_name] = d.value || '';
+            (loaded[d.period_key] as any)[d.field_name] = String(d.value);
             if (d.note) loaded[d.period_key].note = d.note;
           });
-          // Recalculate totalRevenue for loaded rows
+          // Recalculate totalRevenue
           Object.values(loaded).forEach(row => {
             const nr = num(row.newRevenue);
             const rr = num(row.renewalRevenue);
-            row.totalRevenue = nr + rr || '';
+            row.totalRevenue = String(nr + rr);
           });
           setRows(prev => ({ ...prev, ...loaded }));
         }
@@ -513,30 +544,34 @@ function MonthlyTable() {
       if (key === 'newRevenue' || key === 'renewalRevenue') {
         const nr = key === 'newRevenue' ? num(val) : num(updated.newRevenue);
         const rr = key === 'renewalRevenue' ? num(val) : num(updated.renewalRevenue);
-        updated.totalRevenue = (nr + rr) || '';
+        updated.totalRevenue = String(nr + rr);
       }
       const newRows = { ...prev, [id]: updated };
       if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
-      saveTimers.current[id] = setTimeout(() => saveToDb(id, updated), 800);
+      saveTimers.current[id] = setTimeout(() => saveToDb(id, updated), 600);
       return newRows;
     });
   };
 
+  // Chart: 0 is valid, only empty string = not filled
   const chartData = useMemo(() => {
     const allPoints = generatedMonths.map(gm => {
       const r = getRow(gm.id, gm.month);
+      const filledAny = hasValue(r.clients) || hasValue(r.newRevenue) || hasValue(r.renewalRevenue);
       return {
         month: gm.month.slice(0, 3),
-        'Клиенты': num(r.clients) || null,
-        'Новая ($)': num(r.newRevenue) || null,
-        'Продление ($)': num(r.renewalRevenue) || null,
-        'Итого ($)': num(r.totalRevenue) || null,
-        hasFilled: r.clients !== '' || r.newRevenue !== '' || r.renewalRevenue !== '',
+        'Клиенты': hasValue(r.clients) ? num(r.clients) : null,
+        'Новая ($)': hasValue(r.newRevenue) ? num(r.newRevenue) : null,
+        'Продление ($)': hasValue(r.renewalRevenue) ? num(r.renewalRevenue) : null,
+        'Итого ($)': (hasValue(r.newRevenue) || hasValue(r.renewalRevenue)) ? num(r.totalRevenue) : null,
+        hasFilled: filledAny,
       };
     });
-    let lastFilledIdx = -1;
-    allPoints.forEach((p, i) => { if (p.hasFilled) lastFilledIdx = i; });
-    return lastFilledIdx >= 0 ? allPoints.slice(0, lastFilledIdx + 1) : [];
+    const firstIdx = allPoints.findIndex(p => p.hasFilled);
+    let lastIdx = -1;
+    allPoints.forEach((p, i) => { if (p.hasFilled) lastIdx = i; });
+    if (firstIdx === -1) return [];
+    return allPoints.slice(firstIdx, lastIdx + 1);
   }, [generatedMonths, rows]);
 
   return (
@@ -590,7 +625,15 @@ function MonthlyTable() {
                     <XAxis dataKey="month" tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" />
                     <YAxis tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" tickCount={tickCount} tickFormatter={v => chart.isMoney ? `$${v}` : String(v)} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Line type={lineType} dataKey={chart.dataKey} stroke={chart.color} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls={false} />
+                    <Line
+                      type={lineType}
+                      dataKey={chart.dataKey}
+                      stroke={chart.color}
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                      connectNulls={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -637,9 +680,10 @@ function MonthlyTable() {
                   {MONTH_COLS.map(c => (
                     <td key={c.key} className={cn('px-1 py-1 border-r border-border/20', c.key === 'totalRevenue' ? 'bg-primary/5' : '')}>
                       <input
-                        type="number"
-                        value={row[c.key] as string}
-                        onChange={e => !('readOnly' in c && c.readOnly) && update(gm.id, gm.month, c.key, e.target.value)}
+                        type="text"
+                        inputMode="numeric"
+                        value={row[c.key]}
+                        onChange={e => !('readOnly' in c && c.readOnly) && update(gm.id, gm.month, c.key as keyof MonthRow, e.target.value)}
                         placeholder="—"
                         readOnly={'readOnly' in c && c.readOnly}
                         className={cn(
@@ -669,7 +713,7 @@ export default function AfmStats() {
           Статистики и состояния
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-          Данные сохраняются автоматически. 📌 — пометка к строке. История изменений доступна по кнопке.
+          Данные сохраняются автоматически. 📌 — пометка к строке. История изменений по кнопке.
         </p>
       </motion.div>
 
