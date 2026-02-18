@@ -97,7 +97,7 @@ export default function ChatPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
 
-  // Client: ensure support room exists, then show it
+  // Client: ensure support room exists and client is a member, then show it
   const ensureClientSupportRoom = useCallback(async () => {
     if (!user || !isClient) return;
     const { data: assignments } = await supabase.from('client_users').select('client_id').eq('user_id', user.id);
@@ -112,8 +112,19 @@ export default function ChatPage() {
       .order('updated_at', { ascending: false });
 
     if (existingRooms && existingRooms.length > 0) {
+      const room = existingRooms[0];
+      // Ensure the client is a member so they can write
+      const { data: membership } = await supabase
+        .from('chat_members')
+        .select('id')
+        .eq('room_id', room.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!membership) {
+        await supabase.from('chat_members').insert({ room_id: room.id, user_id: user.id, can_write: true });
+      }
       setRooms(existingRooms as ChatRoom[]);
-      setSelectedRoom(existingRooms[0].id);
+      setSelectedRoom(room.id);
       setMobileShowMessages(true);
     } else {
       const { data: clientData } = await supabase.from('clients').select('name').eq('id', assignedClientIds[0]).maybeSingle();
