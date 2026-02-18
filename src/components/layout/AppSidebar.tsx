@@ -142,6 +142,8 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
   const renderNavItem = (item: NavItem) => {
     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     const badgeCount = item.badgeKey ? (badges[item.badgeKey] || 0) : 0;
+    const isAfmInternal = item.path === '/afm-internal';
+
     return (
       <Link
         key={item.path}
@@ -149,14 +151,18 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         onClick={onNavigate}
         className={cn(
           'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative',
-          isActive
-            ? 'bg-primary/15 text-primary'
-            : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+          isAfmInternal
+            ? isActive
+              ? 'bg-primary/20 text-primary border border-primary/30'
+              : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/40'
+            : isActive
+              ? 'bg-primary/15 text-primary'
+              : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
         )}
         title={collapsed ? t(item.key) : undefined}
       >
         <div className="relative flex-shrink-0">
-          <item.icon className={cn('h-4 w-4', isActive && 'text-primary')} />
+          <item.icon className={cn('h-4 w-4', (isActive || isAfmInternal) && 'text-primary')} />
           {badgeCount > 0 && collapsed && (
             <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-0.5">
               {badgeCount > 9 ? '9+' : badgeCount}

@@ -31,8 +31,14 @@ import TaskBoardPage from "@/pages/TaskBoardPage";
 import BroadcastsPage from "@/pages/BroadcastsPage";
 import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import MfaChallengePage from "@/pages/MfaChallengePage";
-import AfmInternalPage from "@/pages/AfmInternalPage";
 import BrandingPage from "@/pages/BrandingPage";
+import AfmInternalLayout from "@/components/layout/AfmInternalLayout";
+import AfmDashboard from "@/pages/afm/AfmDashboard";
+import AfmMediaBuying from "@/pages/afm/AfmMediaBuying";
+import AfmSocialMedia from "@/pages/afm/AfmSocialMedia";
+import AfmSales from "@/pages/afm/AfmSales";
+import AfmTools from "@/pages/afm/AfmTools";
+import AfmSettings from "@/pages/afm/AfmSettings";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -240,8 +246,16 @@ function AppRoutes() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
-        <Route path="/afm-internal" element={<AfmInternalPage />} />
         <Route path="/branding" element={<BrandingPage />} />
+      </Route>
+      {/* AFM Internal — separate workspace with its own layout */}
+      <Route element={<AfmInternalLayout />}>
+        <Route path="/afm-internal" element={<AfmDashboard />} />
+        <Route path="/afm-internal/media" element={<AfmMediaBuying />} />
+        <Route path="/afm-internal/social" element={<AfmSocialMedia />} />
+        <Route path="/afm-internal/sales" element={<AfmSales />} />
+        <Route path="/afm-internal/tools" element={<AfmTools />} />
+        <Route path="/afm-internal/settings" element={<AfmSettings />} />
       </Route>
       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
