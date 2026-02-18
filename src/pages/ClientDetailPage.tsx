@@ -407,7 +407,19 @@ export default function ClientDetailPage() {
     setAllClientsLoaded(true);
   }, []);
 
-  useEffect(() => { fetchClient(); fetchDailyMetrics(); fetchCampaigns(); fetchTasks(); fetchTargets(); fetchAllClients(); fetchBudgetPlan(); }, [fetchClient, fetchDailyMetrics, fetchCampaigns, fetchTasks, fetchTargets, fetchAllClients, fetchBudgetPlan]);
+  const fetchProjectHistory = useCallback(async () => {
+    if (!id) return;
+    const { data } = await supabase.from('project_events').select('*').eq('client_id', id).order('created_at', { ascending: false });
+    setProjectEvents(data || []);
+  }, [id]);
+
+  const fetchStatusHistory = useCallback(async () => {
+    if (!id) return;
+    const { data } = await supabase.from('client_status_history').select('*').eq('client_id', id).order('changed_at', { ascending: false });
+    setStatusHistory(data || []);
+  }, [id]);
+
+  useEffect(() => { fetchClient(); fetchDailyMetrics(); fetchCampaigns(); fetchTasks(); fetchTargets(); fetchAllClients(); fetchBudgetPlan(); fetchProjectHistory(); fetchStatusHistory(); }, [fetchClient, fetchDailyMetrics, fetchCampaigns, fetchTasks, fetchTargets, fetchAllClients, fetchBudgetPlan, fetchProjectHistory, fetchStatusHistory]);
 
   // Set default date range on mount
   useEffect(() => {
@@ -632,12 +644,12 @@ export default function ClientDetailPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('dashboard.overview')}</span></TabsTrigger>
-            <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{t('dashboard.daily')}</TabsTrigger>
-            <TabsTrigger value="campaigns" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('campaigns.title')}</span><span className="sm:hidden">Camps</span></TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('tasks.title')}</span><span className="sm:hidden">{t('tasks.title')}</span></TabsTrigger>
-            {isAdmin && <TabsTrigger value="targets" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('targets.title')}</span><span className="sm:hidden">Targets</span></TabsTrigger>}
-            <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('nav.reports')}</span><span className="sm:hidden">{t('nav.reports')}</span></TabsTrigger>
-            {isAgency && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span className="hidden sm:inline">{t('clients.connections')}</span><span className="sm:hidden">Conn</span></TabsTrigger>}
+            <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Daily Stats</TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('tasks.title')}</span></TabsTrigger>
+            {isAdmin && <TabsTrigger value="targets" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('targets.title')}</span></TabsTrigger>}
+            <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('nav.reports')}</span></TabsTrigger>
+            {isAgency && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clients.connections')}</span></TabsTrigger>}
+            {isAgency && <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />History</TabsTrigger>}
           </TabsList>
 
           {/* OVERVIEW TAB */}
@@ -816,19 +828,82 @@ export default function ClientDetailPage() {
             </Card>
           </TabsContent>
 
-          {/* CAMPAIGNS TAB */}
-          <TabsContent value="campaigns" className="space-y-4">
-            {campaigns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Target className="h-10 w-10 text-muted-foreground mb-3" /><p className="font-medium text-foreground">{t('campaigns.noCampaigns')}</p><p className="text-sm text-muted-foreground mt-1">{t('campaigns.noCampaignsDesc')}</p>
+          {/* HISTORY TAB — replaces Campaigns */}
+          <TabsContent value="history" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Project History</h3>
+            </div>
+            {/* Status History */}
+            {statusHistory.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Status Changes</h4>
+                {statusHistory.map(sh => (
+                  <Card key={sh.id} className="glass-card">
+                    <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <CalendarClock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-sm">
+                            <span className="text-muted-foreground">{sh.old_status || '—'}</span>
+                            <span className="mx-2">→</span>
+                            <Badge variant="outline" className={`text-[10px] ${statusStyles[sh.new_status] || ''}`}>{sh.new_status}</Badge>
+                          </p>
+                          {sh.notes && <p className="text-xs text-muted-foreground mt-0.5">{sh.notes}</p>}
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(sh.changed_at), 'dd.MM.yyyy HH:mm')}</span>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            ) : (
-              <Card className="glass-card overflow-hidden"><CardContent className="p-0"><div className="overflow-x-auto"><table className="spreadsheet-table">
-                <thead><tr><th>{t('campaigns.title')}</th><th>{t('common.status')}</th><th>Platform ID</th></tr></thead>
-                <tbody>{campaigns.map(c => (
-                  <tr key={c.id}><td className="text-foreground font-medium font-sans">{c.campaign_name}</td><td><Badge variant="outline" className={statusStyles[c.status] || ''}>{c.status}</Badge></td><td className="text-muted-foreground text-xs">{c.platform_campaign_id}</td></tr>
-                ))}</tbody>
-              </table></div></CardContent></Card>
+            )}
+            {/* Project Events */}
+            {projectEvents.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Events & Notes</h4>
+                {projectEvents.map(ev => (
+                  <Card key={ev.id} className="glass-card">
+                    <CardContent className="py-3 px-4 flex items-start gap-3">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{ev.title}</p>
+                        {ev.description && <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>}
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(ev.created_at), 'dd.MM.yyyy')}</span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {statusHistory.length === 0 && projectEvents.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <History className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="font-medium text-foreground">No history yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Status changes and project events will appear here</p>
+              </div>
+            )}
+            {/* Add note */}
+            {isAgency && (
+              <Card className="glass-card">
+                <CardContent className="p-4 space-y-3">
+                  <h4 className="text-sm font-medium">Add Project Note</h4>
+                  <Textarea value={newEventNote} onChange={e => setNewEventNote(e.target.value)} placeholder="Write a note about this project..." className="text-sm" rows={3} />
+                  <Button size="sm" disabled={addingNote || !newEventNote.trim()} onClick={async () => {
+                    if (!id || !newEventNote.trim()) return;
+                    setAddingNote(true);
+                    await supabase.from('project_events').insert({ client_id: id, title: newEventNote.trim(), event_type: 'note', created_by: user?.id });
+                    setNewEventNote('');
+                    setAddingNote(false);
+                    // refresh
+                    const { data } = await supabase.from('project_events').select('*').eq('client_id', id).order('created_at', { ascending: false });
+                    setProjectEvents(data || []);
+                    toast.success('Note added');
+                  }}>
+                    {addingNote ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Add Note
+                  </Button>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
 
@@ -878,18 +953,54 @@ export default function ClientDetailPage() {
             )}
           </TabsContent>
 
-          {/* TARGETS TAB */}
+          {/* TARGETS TAB — redesigned with progress bars */}
           {isAdmin && (
             <TabsContent value="targets" className="space-y-4">
-              <Card className="glass-card max-w-lg">
-                <CardHeader><CardTitle className="text-base flex items-center gap-2"><Target className="h-5 w-5 text-primary" />{t('targets.title')}</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2"><Label>{t('targets.cpl')} ($)</Label><Input type="number" step="0.01" value={targetCpl} onChange={(e) => setTargetCpl(e.target.value)} placeholder="e.g. 50.00" /></div>
-                  <div className="space-y-2"><Label>{t('targets.ctr')} (%)</Label><Input type="number" step="0.01" value={targetCtr} onChange={(e) => setTargetCtr(e.target.value)} placeholder="e.g. 1.50" /></div>
-                  <div className="space-y-2"><Label>{t('targets.leads')}</Label><Input type="number" value={targetLeads} onChange={(e) => setTargetLeads(e.target.value)} placeholder="e.g. 100" /></div>
-                  <Button onClick={handleSaveTargets} disabled={savingTargets}>{savingTargets ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{t('common.save')}</Button>
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                {[
+                  { key: 'cpl', label: t('targets.cpl'), unit: '$', value: targetCpl, setter: setTargetCpl, actual: totals.cpl, type: 'number', step: '0.01', lowerIsBetter: true },
+                  { key: 'ctr', label: t('targets.ctr'), unit: '%', value: targetCtr, setter: setTargetCtr, actual: totals.ctr, type: 'number', step: '0.01', lowerIsBetter: false },
+                  { key: 'leads', label: t('targets.leads'), unit: '', value: targetLeads, setter: setTargetLeads, actual: totals.leads, type: 'number', step: '1', lowerIsBetter: false },
+                  { key: 'roas', label: t('targets.roas'), unit: 'x', value: targetRoas, setter: setTargetRoas, actual: totals.roas, type: 'number', step: '0.01', lowerIsBetter: false },
+                ].map(f => {
+                  const targetNum = parseFloat(f.value) || 0;
+                  const actualNum = f.actual || 0;
+                  let pct = targetNum > 0 ? Math.min(100, Math.round((actualNum / targetNum) * 100)) : 0;
+                  if (f.lowerIsBetter && targetNum > 0) pct = actualNum <= targetNum ? 100 : Math.max(0, Math.round((targetNum / actualNum) * 100));
+                  const isGood = f.lowerIsBetter ? actualNum <= targetNum && targetNum > 0 : pct >= 80;
+                  const barColor = !targetNum ? 'bg-muted' : isGood ? 'bg-success' : pct >= 60 ? 'bg-warning' : 'bg-destructive';
+                  return (
+                    <Card key={f.key} className="glass-card">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">{f.label}</Label>
+                          {targetNum > 0 && (
+                            <Badge variant="outline" className={`text-[10px] ${isGood ? 'border-success/30 text-success' : 'border-warning/30 text-warning'}`}>
+                              {pct}%
+                            </Badge>
+                          )}
+                        </div>
+                        <Input type={f.type} step={f.step} value={f.value} onChange={e => f.setter(e.target.value)} placeholder={`Target ${f.label}`} className="h-8 text-sm" />
+                        {targetNum > 0 && (
+                          <div className="space-y-1">
+                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <div className="flex justify-between text-[10px] text-muted-foreground">
+                              <span>Actual: {typeof actualNum === 'number' ? actualNum.toFixed(2) : actualNum}{f.unit}</span>
+                              <span>Target: {targetNum}{f.unit}</span>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+              <Button onClick={handleSaveTargets} disabled={savingTargets} className="gap-2">
+                {savingTargets ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {t('common.save')}
+              </Button>
             </TabsContent>
           )}
 

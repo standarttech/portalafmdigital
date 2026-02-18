@@ -7,7 +7,7 @@ import logoAfm from '@/assets/logo-afm-new.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
   ChevronLeft, ChevronRight, UserCircle, LogOut, Menu, BookOpen, Calculator, DollarSign, Calendar, MessageSquare, ClipboardList,
-  ChevronDown, Megaphone,
+  ChevronDown, Megaphone, Zap, Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,13 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    id: 'internal',
+    labelKey: 'nav.afmInternal' as TranslationKey,
+    items: [
+      { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal' },
+    ],
+  },
+  {
     id: 'data',
     labelKey: 'nav.dataSection' as TranslationKey,
     items: [
@@ -68,6 +75,7 @@ const navSections: NavSection[] = [
       { key: 'nav.broadcasts' as TranslationKey, icon: Megaphone, path: '/broadcasts', adminOnly: true },
       { key: 'nav.budget', icon: DollarSign, path: '/budget', adminOnly: true },
       { key: 'nav.decomposition', icon: Calculator, path: '/decomposition', adminOnly: true },
+      { key: 'nav.branding' as TranslationKey, icon: Palette, path: '/branding', adminOnly: true },
     ],
   },
   {
@@ -166,7 +174,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
   };
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border gap-3 flex-shrink-0">
         <div className="h-9 w-9 flex-shrink-0 bg-primary/20 rounded-lg flex items-center justify-center overflow-hidden p-0.5">
@@ -180,8 +188,8 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-2">
+      {/* Nav - scrollable */}
+      <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-2 min-h-0">
         {filteredSections.map((section) => {
           const sectionActive = section.items.some(
             item => location.pathname === item.path || location.pathname.startsWith(item.path + '/')
@@ -217,8 +225,8 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         })}
       </nav>
 
-      {/* Logout - always at bottom */}
-      <div className="p-2 border-t border-sidebar-border flex-shrink-0">
+      {/* Logout - pinned to bottom */}
+      <div className="p-2 border-t border-sidebar-border flex-shrink-0 mt-auto">
         <Button
           variant="ghost"
           size="sm"
@@ -232,7 +240,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
           {!collapsed && <span className="text-sm">{t('auth.logout')}</span>}
         </Button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -250,8 +258,8 @@ export default function AppSidebar() {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0 bg-sidebar border-sidebar-border flex flex-col">
-            <div className="flex-1 overflow-y-auto">
+          <SheetContent side="left" className="w-64 p-0 bg-sidebar border-sidebar-border flex flex-col h-full">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
             </div>
           </SheetContent>
@@ -267,7 +275,9 @@ export default function AppSidebar() {
         collapsed ? 'w-16' : 'w-60'
       )}
     >
-      <SidebarContent collapsed={collapsed} />
+      <div className="flex-1 flex flex-col min-h-0">
+        <SidebarContent collapsed={collapsed} />
+      </div>
       <div className="p-2 border-t border-sidebar-border flex-shrink-0">
         <Button
           variant="ghost"
