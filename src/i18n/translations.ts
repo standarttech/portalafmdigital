@@ -556,6 +556,77 @@ export const translations = {
   'broadcast.noHistory': t('No broadcasts sent yet', 'Рассылок пока нет', 'Nessuna diffusione ancora', 'No hay difusiones aún', 'لا توجد عمليات بث بعد', 'Aucune diffusion encore'),
   'broadcast.sentLabel': t('Sent', 'Отправлено', 'Inviato', 'Enviado', 'مرسل', 'Envoyé'),
   'nav.broadcasts': t('Broadcasts', 'Рассылки', 'Diffusioni', 'Difusiones', 'البث', 'Diffusions'),
+
+  // New nav keys
+  'nav.internalSection': t('Internal', 'Внутреннее', 'Interno', 'Interno', 'داخلي', 'Interne'),
+  'nav.branding': t('Branding', 'Брендинг', 'Branding', 'Branding', 'العلامة التجارية', 'Branding'),
+  'nav.afmInternal': t('AFM Internal', 'AFM Внутренний', 'AFM Interno', 'AFM Interno', 'AFM داخلي', 'AFM Interne'),
+
+  // AFM Internal workspace
+  'afm.title': t('AFM Digital — Internal', 'AFM Digital — Внутренний', 'AFM Digital — Interno', 'AFM Digital — Interno', 'AFM Digital — داخلي', 'AFM Digital — Interne'),
+  'afm.subtitle': t('Internal agency command center', 'Командный центр агентства', 'Centro di comando interno', 'Centro de comando interno', 'مركز القيادة الداخلي للوكالة', "Centre de commandement interne de l'agence"),
+  'afm.teamOnly': t('Team only', 'Только для команды', 'Solo team', 'Solo equipo', 'للفريق فقط', 'Équipe uniquement'),
+  'afm.backToPortal': t('Back to Client Portal', 'Вернуться к порталу', 'Torna al portale', 'Volver al portal', 'العودة إلى البوابة', 'Retour au portail'),
+  'afm.openInternal': t('Open Internal Panel', 'Открыть внутреннюю панель', 'Apri pannello interno', 'Abrir panel interno', 'فتح اللوحة الداخلية', 'Ouvrir le panneau interne'),
+  'afm.dashboard': t('Dashboard', 'Дашборд', 'Dashboard', 'Panel', 'لوحة التحكم', 'Tableau de bord'),
+  'afm.mediaBuying': t('Media Buying', 'Медиабаинг', 'Media Buying', 'Media Buying', 'شراء الإعلانات', 'Achat média'),
+  'afm.socialMedia': t('Social Media', 'Соц. сети', 'Social Media', 'Redes sociales', 'الشبكات الاجتماعية', 'Réseaux sociaux'),
+  'afm.sales': t('Sales & CRM', 'Продажи и CRM', 'Vendite e CRM', 'Ventas y CRM', 'المبيعات وCRM', 'Ventes et CRM'),
+  'afm.tools': t('Tools', 'Инструменты', 'Strumenti', 'Herramientas', 'الأدوات', 'Outils'),
+  'afm.settings': t('Settings', 'Настройки', 'Impostazioni', 'Configuración', 'الإعدادات', 'Paramètres'),
+  'afm.adBudget': t('Ad Budget', 'Рекл. бюджет', 'Budget pubblicitario', 'Presupuesto publicitario', 'ميزانية الإعلانات', 'Budget pub'),
+  'afm.monthlyLeads': t('Monthly Leads', 'Лиды за месяц', 'Lead mensili', 'Leads mensuales', 'العملاء الشهريون', 'Leads mensuels'),
+  'afm.activeCampaigns': t('Active Campaigns', 'Активные кампании', 'Campagne attive', 'Campañas activas', 'الحملات النشطة', 'Campagnes actives'),
+  'afm.vsLastMonth': t('vs last month', 'vs прошлый месяц', 'vs mese scorso', 'vs mes pasado', 'مقابل الشهر الماضي', 'vs mois dernier'),
+  'afm.mediaBuyingInfo': t('Self-promotion media buying data for AFM Digital', 'Данные рекламы на продвижение самого AFM Digital', 'Dati di media buying per la promozione di AFM Digital', 'Datos de compra de medios para la promoción de AFM Digital', 'بيانات شراء الوسائط الترويجية لـ AFM Digital', 'Données de media buying pour la promotion de AFM Digital'),
+  'afm.connectAdAccount': t('Connect ad accounts via Clients section, creating client "AFM Digital".', 'Подключите рекламные аккаунты через раздел «Клиенты», создав клиента «AFM Digital».', 'Collega gli account pubblicitari tramite la sezione Clienti, creando il cliente "AFM Digital".', 'Conecta cuentas publicitarias en la sección Clientes, creando el cliente "AFM Digital".', 'اربط حسابات الإعلانات عبر قسم العملاء بإنشاء عميل "AFM Digital".', 'Connectez les comptes publicitaires via la section Clients en créant le client "AFM Digital".'),
+  'afm.socialSecurity': t('Social Media Security', 'Безопасность соц. сетей', 'Sicurezza social media', 'Seguridad en redes sociales', 'أمان الشبكات الاجتماعية', 'Sécurité des réseaux sociaux'),
+  'afm.socialSecurityDesc': t('Token storage is encrypted on the server side via Vault. Direct OAuth connection will be added after security audit.', 'Токены хранятся в зашифрованном виде на серверной стороне через Vault. Прямое подключение через OAuth будет добавлено после аудита безопасности.', 'I token vengono archiviati in modo crittografato lato server tramite Vault. La connessione OAuth diretta verrà aggiunta dopo l\'audit di sicurezza.', 'Los tokens se almacenan cifrados en el servidor a través de Vault. La conexión OAuth directa se añadirá tras la auditoría de seguridad.', 'يتم تخزين الرموز المشفرة على جانب الخادم عبر Vault. سيتم إضافة اتصال OAuth المباشر بعد مراجعة الأمان.', 'Les jetons sont stockés chiffrés côté serveur via Vault. La connexion OAuth directe sera ajoutée après l\'audit de sécurité.'),
+  'afm.notConnected': t('Not connected', 'Не подключено', 'Non connesso', 'No conectado', 'غير متصل', 'Non connecté'),
+  'afm.comingSoon': t('Coming soon', 'Скоро', 'Prossimamente', 'Próximamente', 'قريباً', 'Bientôt'),
+  'afm.inDevelopment': t('In development', 'В разработке', 'In sviluppo', 'En desarrollo', 'قيد التطوير', 'En développement'),
+  'afm.crmPipeline': t('CRM Pipeline', 'CRM Pipeline', 'CRM Pipeline', 'CRM Pipeline', 'CRM Pipeline', 'CRM Pipeline'),
+  'afm.crmDesc': t('Sales funnel and deals', 'Воронка продаж и сделок', 'Funnel vendite e trattative', 'Embudo de ventas y tratos', 'مسار المبيعات والصفقات', 'Entonnoir de ventes et affaires'),
+  'afm.leadTracker': t('Lead Tracker', 'Лид-трекер', 'Tracker dei lead', 'Rastreador de leads', 'متتبع العملاء المحتملين', 'Traqueur de leads'),
+  'afm.leadTrackerDesc': t('Track incoming leads', 'Отслеживание входящих лидов', 'Tracciamento dei lead in arrivo', 'Seguimiento de leads entrantes', 'تتبع العملاء المحتملين الواردين', 'Suivi des leads entrants'),
+  'afm.plCalc': t('P&L Calculator', 'Расчёт P&L', 'Calcolatore P&L', 'Calculadora P&L', 'حاسبة الأرباح والخسائر', 'Calculateur P&L'),
+  'afm.plDesc': t('Agency profitability', 'Прибыльность агентства', "Redditività dell'agenzia", 'Rentabilidad de la agencia', 'ربحية الوكالة', "Rentabilité de l'agence"),
+  'afm.hrPanel': t('HR Panel', 'HR-панель', 'Pannello HR', 'Panel de RRHH', 'لوحة الموارد البشرية', 'Panneau RH'),
+  'afm.hrDesc': t('Team and workload', 'Команда и нагрузка', 'Team e carico di lavoro', 'Equipo y carga de trabajo', 'الفريق وعبء العمل', 'Équipe et charge de travail'),
+
+  // Roles
+  'role.AgencyAdmin': t('Agency Admin', 'Администратор агентства', 'Admin agenzia', 'Admin de agencia', 'مدير الوكالة', "Admin d'agence"),
+  'role.MediaBuyer': t('Media Buyer', 'Медиабаер', 'Media Buyer', 'Media Buyer', 'مشتري الإعلانات', 'Acheteur média'),
+  'role.Manager': t('Manager', 'Менеджер', 'Manager', 'Gerente', 'مدير', 'Manager'),
+  'role.SalesManager': t('Sales Manager', 'Менеджер по продажам', 'Responsabile vendite', 'Gerente de ventas', 'مدير المبيعات', 'Responsable des ventes'),
+  'role.AccountManager': t('Account Manager', 'Аккаунт-менеджер', 'Account Manager', 'Gestor de cuentas', 'مدير الحساب', 'Responsable de compte'),
+  'role.Designer': t('Designer', 'Дизайнер', 'Designer', 'Diseñador', 'مصمم', 'Designer'),
+  'role.Copywriter': t('Copywriter', 'Копирайтер', 'Copywriter', 'Redactor', 'كاتب إعلاني', 'Rédacteur'),
+  'role.Client': t('Client', 'Клиент', 'Cliente', 'Cliente', 'عميل', 'Client'),
+
+  // Client statuses
+  'status.active': t('Active', 'Активный', 'Attivo', 'Activo', 'نشط', 'Actif'),
+  'status.inactive': t('Inactive', 'Неактивный', 'Inattivo', 'Inactivo', 'غير نشط', 'Inactif'),
+  'status.paused': t('Paused', 'Пауза', 'In pausa', 'En pausa', 'متوقف مؤقتاً', 'En pause'),
+  'status.onboarding': t('Onboarding', 'Онбординг', 'Onboarding', 'Incorporación', 'تهيئة', 'Intégration'),
+  'status.stop': t('Stop', 'Стоп', 'Stop', 'Stop', 'توقف', 'Arrêt'),
+
+  // Project history / events
+  'history.title': t('Project History', 'История проекта', 'Cronologia progetto', 'Historial del proyecto', 'سجل المشروع', 'Historique du projet'),
+  'history.statusChanged': t('Status changed', 'Статус изменён', 'Stato modificato', 'Estado cambiado', 'تم تغيير الحالة', 'Statut modifié'),
+  'history.commentAdded': t('Comment added', 'Добавлен комментарий', 'Commento aggiunto', 'Comentario añadido', 'تمت إضافة تعليق', 'Commentaire ajouté'),
+  'history.noEvents': t('No history yet', 'История пока пуста', 'Nessuna cronologia', 'Sin historial aún', 'لا يوجد سجل بعد', 'Pas encore d\'historique'),
+  'history.filterAll': t('All events', 'Все события', 'Tutti gli eventi', 'Todos los eventos', 'جميع الأحداث', 'Tous les événements'),
+  'history.filterStatus': t('Status changes', 'Изменения статуса', 'Cambiamenti di stato', 'Cambios de estado', 'تغييرات الحالة', 'Changements de statut'),
+  'history.filterComments': t('Comments', 'Комментарии', 'Commenti', 'Comentarios', 'التعليقات', 'Commentaires'),
+
+  // Client detail tabs
+  'client.tab.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
+  'client.tab.dailyStats': t('Daily Stats', 'Статистика по дням', 'Statistiche giornaliere', 'Estadísticas diarias', 'إحصائيات يومية', 'Statistiques journalières'),
+  'client.tab.tasks': t('Tasks', 'Задачи', 'Attività', 'Tareas', 'المهام', 'Tâches'),
+  'client.tab.targets': t('Targets', 'Цели', 'Obiettivi', 'Objetivos', 'الأهداف', 'Objectifs'),
+  'client.tab.connections': t('Connections', 'Подключения', 'Connessioni', 'Conexiones', 'الاتصالات', 'Connexions'),
+  'client.tab.history': t('History', 'История', 'Cronologia', 'Historial', 'السجل', 'Historique'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
