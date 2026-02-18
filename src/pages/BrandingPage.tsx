@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Upload, Loader2, Palette, Image as ImageIcon, RotateCcw, Layout } from 'lucide-react';
@@ -138,14 +137,18 @@ function LogoUploadCard({
 
       {/* Size */}
       <Card className="glass-card">
-        <CardHeader><CardTitle className="text-sm">Размер логотипа</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-muted-foreground w-8">16px</span>
-            <Slider value={[logoSize]} onValueChange={([v]) => setLogoSize(v)} min={16} max={64} step={2} className="flex-1" />
-            <span className="text-xs text-muted-foreground w-8">64px</span>
+        <CardHeader><CardTitle className="text-sm">Размер логотипа (px)</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              value={logoSize}
+              min={16} max={64}
+              onChange={e => setLogoSize(Math.min(64, Math.max(16, parseInt(e.target.value) || 16)))}
+              className="w-20 text-center bg-background border border-primary/40 rounded px-2 py-1.5 text-sm text-primary font-mono focus:outline-none focus:border-primary"
+            />
+            <span className="text-xs text-muted-foreground">Мин: 16px · Макс: 64px</span>
           </div>
-          <p className="text-xs text-muted-foreground">Текущий: <span className="text-foreground font-mono">{logoSize}px</span></p>
         </CardContent>
       </Card>
 

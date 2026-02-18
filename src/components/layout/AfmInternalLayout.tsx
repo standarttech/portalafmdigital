@@ -1,5 +1,4 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -9,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   LayoutDashboard, TrendingUp, Globe, Settings, DollarSign,
-  ArrowLeftCircle, Zap, Menu, LogOut, BarChart3, BarChart2, Sun, Moon,
+  ArrowLeftCircle, Zap, Menu, LogOut, BarChart3, BarChart2, Sun, Moon, Sparkles,
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
@@ -98,37 +97,6 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      {/* Theme & Language */}
-      <div className="px-3 py-2 border-t border-sidebar-border/50 space-y-2">
-        {/* Theme toggle */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleTheme}
-            className="flex items-center gap-2 text-xs text-sidebar-muted hover:text-sidebar-foreground transition-colors"
-          >
-            {theme === 'dark' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
-            <span>{theme === 'dark' ? 'Dark' : 'Light'}</span>
-          </button>
-        </div>
-        {/* Language switcher */}
-        <div className="flex flex-wrap gap-1">
-          {LANGUAGES.map(lang => (
-            <button
-              key={lang.code}
-              onClick={() => setLanguage(lang.code)}
-              className={cn(
-                'text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors',
-                language === lang.code
-                  ? 'bg-primary/20 text-primary border border-primary/30'
-                  : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-              )}
-            >
-              {lang.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Logout */}
       <div className="p-2 border-t border-sidebar-border flex-shrink-0">
         <Button
@@ -140,6 +108,55 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <LogOut className="h-4 w-4" />
           <span className="text-sm">{t('auth.logout')}</span>
         </Button>
+      </div>
+    </div>
+  );
+}
+
+// Top-right controls: theme + language + FX
+function AfmHeaderControls() {
+  const { language, setLanguage } = useLanguage();
+  const { theme, toggleTheme, fxEnabled, toggleFx } = useTheme();
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* FX toggle */}
+      <button
+        onClick={toggleFx}
+        title="Futuristic FX"
+        className={cn(
+          'p-1.5 rounded-md text-xs transition-colors',
+          fxEnabled ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+        )}
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+      </button>
+
+      {/* Theme toggle */}
+      <button
+        onClick={toggleTheme}
+        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+        title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+      >
+        {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+      </button>
+
+      {/* Language switcher */}
+      <div className="hidden sm:flex items-center gap-0.5 bg-muted/30 rounded-md p-0.5">
+        {LANGUAGES.map(lang => (
+          <button
+            key={lang.code}
+            onClick={() => setLanguage(lang.code)}
+            className={cn(
+              'text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors',
+              language === lang.code
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {lang.label}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -180,17 +197,18 @@ export default function AfmInternalLayout() {
       )}>
         {/* Top bar */}
         <header className={cn(
-          'h-14 flex items-center px-4 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0',
+          'h-14 flex items-center px-4 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0 gap-3',
           isMobile && 'pl-14'
         )}>
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4 text-primary" />
             <span className="font-semibold text-foreground text-sm tracking-wide">AFM Digital</span>
-            <span className="text-muted-foreground text-xs">— Internal</span>
+            <span className="text-muted-foreground text-xs hidden sm:block">— Internal</span>
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-3">
+            <AfmHeaderControls />
             <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs text-muted-foreground">Team only</span>
+            <span className="text-xs text-muted-foreground hidden md:block">Team only</span>
           </div>
         </header>
 
