@@ -120,8 +120,14 @@ function useSidebarBadges(isAdmin: boolean) {
 function useSidebarLogo() {
   const [sidebarLogoUrl, setSidebarLogoUrl] = useState('');
   useEffect(() => {
-    supabase.from('platform_settings').select('value').eq('key', 'sidebar_logo_url').maybeSingle()
-      .then(({ data }) => { if (data?.value) setSidebarLogoUrl(data.value as string); });
+    const load = () => supabase.from('platform_settings').select('value').eq('key', 'sidebar_logo_url').maybeSingle()
+      .then(({ data }) => { setSidebarLogoUrl(data?.value ? String(data.value) : ''); });
+    load();
+    // Re-fetch when storage changes (branding page saves)
+    const channel = supabase.channel('sidebar-logo-refresh')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_settings' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
   return sidebarLogoUrl;
 }

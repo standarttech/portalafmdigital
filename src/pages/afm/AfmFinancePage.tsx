@@ -2,410 +2,577 @@ import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { BarChart2, TrendingUp, DollarSign } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BarChart2, TrendingUp, DollarSign, Plus, Trash2, Info } from 'lucide-react';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
-// ─── MONTHS ────────────────────────────────────────────────────────────────
-const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+function fmt$(n: number) {
+  if (!n) return '$0';
+  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+function fmtN(n: number) { return n === 0 ? '0' : String(n); }
 
 // ─── ANNUAL INCOME PLAN ────────────────────────────────────────────────────
-type IncomeRow = {
-  id: string;
-  label: string;
-  editable?: boolean;
-  computed?: (rows: Record<string, number[]>, averageCheck: number) => number[];
-  style?: 'total' | 'margin' | 'sub' | 'tax';
-};
-
-const AVG_CHECK_INIT = 3500;
-
-const INCOME_ROWS: IncomeRow[] = [
-  { id: 'new_clients',    label: 'Новый клиент',       editable: true },
-  { id: 'renewals',       label: 'Продление',           editable: true },
-  { id: 'refusals',       label: 'Отказы 20%',          computed: (r) => MONTHS.map((_, i) => -Math.round((r.new_clients[i] + r.renewals[i]) * 0.2)) },
-  { id: 'total_clients',  label: 'Итого клиентов',      computed: (r) => MONTHS.map((_, i) => r.new_clients[i] + r.renewals[i] + r.refusals[i]), style: 'sub' },
-  { id: 'new_rev',        label: 'Выручка новых клиентов', computed: (r, avg) => MONTHS.map((_, i) => r.new_clients[i] * avg) },
-  { id: 'renewal_rev',    label: 'Выручка продления',   computed: (r, avg) => MONTHS.map((_, i) => r.renewals[i] * avg) },
-  { id: 'total_rev',      label: 'Общая выручка',       computed: (r, avg) => MONTHS.map((_, i) => r.new_clients[i] * avg + r.renewals[i] * avg), style: 'total' },
-  { id: 'avg_check',      label: 'Средний чек',         computed: (_r, avg) => MONTHS.map(() => avg), style: 'sub' },
-  { id: 'team_30',        label: 'Команда 30%',         computed: (r, avg) => MONTHS.map((_, i) => -Math.round((r.new_clients[i] * avg + r.renewals[i] * avg) * 0.3)) },
-  { id: 'marketing_20',   label: 'Маркетинг 20%',       computed: (r, avg) => MONTHS.map((_, i) => -Math.round((r.new_clients[i] * avg + r.renewals[i] * avg) * 0.2)) },
-  { id: 'expenses_other', label: 'Расходы',             computed: (r, avg) => MONTHS.map((_, i) => -Math.round((r.new_clients[i] * avg + r.renewals[i] * avg) * 0.1)) },
-  { id: 'margin',         label: 'Маржа',               computed: (r, avg) => MONTHS.map((_, i) => {
-    const rev = r.new_clients[i] * avg + r.renewals[i] * avg;
-    return Math.round(rev - rev * 0.3 - rev * 0.2 - rev * 0.1);
-  }), style: 'margin' },
-  { id: 'tax_10',         label: 'Налог', style: 'tax' },
-  { id: 'net',            label: 'Чистая прибыль',      computed: (r, avg) => MONTHS.map((_, i) => {
-    const rev = r.new_clients[i] * avg + r.renewals[i] * avg;
-    const margin = Math.round(rev - rev * 0.3 - rev * 0.2 - rev * 0.1);
-    return Math.round(margin * 0.9);
-  }), style: 'total' },
-];
-
-const EDITABLE_ROWS = ['new_clients', 'renewals'];
-
-function fmt(n: number): string {
-  if (n === 0) return '$0';
-  if (Math.abs(n) < 100) return String(n); // count rows
-  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString();
-}
-
-function isCount(rowId: string) {
-  return ['new_clients', 'renewals', 'refusals', 'total_clients'].includes(rowId);
-}
-
 function AnnualIncomePlan() {
-  const [values, setValues] = useState<Record<string, number[]>>(() => ({
-    new_clients: [1, 3, 3, 3, 4, 5, 7, 9, 10, 12, 15, 18],
-    renewals:    [2, 2, 3, 6, 9, 12, 16, 21, 28, 37, 47, 59],
-    refusals:    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    total_clients: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  }));
-  const [avgCheck, setAvgCheck] = useState(AVG_CHECK_INIT);
+  const [newClients, setNewClients] = useState<number[]>([1, 3, 3, 3, 4, 5, 7, 9, 10, 12, 15, 18]);
+  const [renewals,   setRenewals]   = useState<number[]>([2, 2, 3, 6, 9, 12, 16, 21, 28, 37, 47, 59]);
+  const [avgCheck, setAvgCheck] = useState(3500);
+  // Editable percentages
+  const [teamPct,       setTeamPct]       = useState(30);
+  const [marketingPct,  setMarketingPct]  = useState(20);
+  const [expensesPct,   setExpensesPct]   = useState(10);
+  const [taxPct,        setTaxPct]        = useState(10);
 
-  const getRow = useCallback((row: IncomeRow): number[] => {
-    if (row.computed) return row.computed(values, avgCheck);
-    return values[row.id] || Array(12).fill(0);
-  }, [values, avgCheck]);
+  const n = (arr: number[], i: number) => arr[i] ?? 0;
 
-  const handleCell = (rowId: string, monthIdx: number, val: string) => {
-    const n = parseInt(val) || 0;
-    setValues(prev => {
-      const arr = [...(prev[rowId] || Array(12).fill(0))];
-      arr[monthIdx] = n;
-      return { ...prev, [rowId]: arr };
-    });
+  const refusals     = (i: number) => -Math.round((n(newClients,i) + n(renewals,i)) * 0.2);
+  const totalClients = (i: number) => n(newClients,i) + n(renewals,i) + refusals(i);
+  const rev          = (i: number) => (n(newClients,i) + n(renewals,i)) * avgCheck;
+  const teamCost     = (i: number) => -Math.round(rev(i) * teamPct / 100);
+  const mktCost      = (i: number) => -Math.round(rev(i) * marketingPct / 100);
+  const expCost      = (i: number) => -Math.round(rev(i) * expensesPct / 100);
+  const margin       = (i: number) => rev(i) + teamCost(i) + mktCost(i) + expCost(i);
+  const tax          = (i: number) => Math.round(margin(i) * taxPct / 100);
+  const net          = (i: number) => margin(i) - tax(i);
+
+  const setCellArr = (setter: React.Dispatch<React.SetStateAction<number[]>>, idx: number, val: string) => {
+    setter(prev => { const a = [...prev]; a[idx] = parseInt(val) || 0; return a; });
   };
 
+  const totRev = MONTHS.reduce((s, _, i) => s + rev(i), 0);
+  const totNet = MONTHS.reduce((s, _, i) => s + net(i), 0);
+
+  const rows: { label: string; cells: (i: number) => number; style?: string; editable?: boolean; pct?: number; setPct?: (v: number) => void }[] = [
+    { label: 'Новый клиент',         cells: i => n(newClients, i), editable: true },
+    { label: 'Продление',            cells: i => n(renewals, i), editable: true },
+    { label: 'Отказы (−20%)',        cells: refusals, style: 'muted' },
+    { label: 'Итого клиентов',       cells: totalClients, style: 'sub' },
+    { label: 'Общая выручка',        cells: rev, style: 'total' },
+    { label: `Команда (${teamPct}%)`, cells: teamCost, style: 'neg', pct: teamPct, setPct: setTeamPct },
+    { label: `Маркетинг (${marketingPct}%)`, cells: mktCost, style: 'neg', pct: marketingPct, setPct: setMarketingPct },
+    { label: `Расходы (${expensesPct}%)`, cells: expCost, style: 'neg', pct: expensesPct, setPct: setExpensesPct },
+    { label: 'Маржа',                cells: margin, style: 'margin' },
+    { label: `Налог (${taxPct}%)`,   cells: tax, style: 'neg', pct: taxPct, setPct: setTaxPct },
+    { label: 'Чистая прибыль',       cells: net, style: 'total' },
+  ];
+
+  const isCount = (label: string) => ['Новый клиент','Продление','Отказы (−20%)','Итого клиентов'].includes(label);
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-border/40">
-      <table className="min-w-[900px] w-full text-xs border-collapse">
-        <thead>
-          <tr className="bg-muted/50">
-            <th className="sticky left-0 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground min-w-[160px] border-r border-border/40">
-              12 месяцев
-            </th>
-            {MONTHS.map(m => (
-              <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20 last:border-0">
-                {m.slice(0, 3)}
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Средний чек ($)</label>
+          <input
+            type="number"
+            value={avgCheck}
+            onChange={e => setAvgCheck(parseInt(e.target.value) || 0)}
+            className="w-28 text-center bg-background border border-primary/40 rounded px-2 py-1 text-sm text-primary font-mono focus:outline-none focus:border-primary"
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-border/40">
+        <table className="min-w-[900px] w-full text-xs border-collapse">
+          <thead>
+            <tr className="bg-muted/50">
+              <th className="sticky left-0 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground min-w-[180px] border-r border-border/40">
+                Показатель
               </th>
-            ))}
-            <th className="px-3 py-2 text-center font-semibold text-foreground whitespace-nowrap">Итого</th>
-          </tr>
-        </thead>
-        <tbody>
-          {/* Avg check row */}
-          <tr className="bg-muted/20 border-b border-border/30">
-            <td className="sticky left-0 bg-muted/40 px-3 py-1.5 font-medium text-foreground border-r border-border/40">
-              Средний чек ($)
-            </td>
-            {MONTHS.map((_, i) => (
-              <td key={i} className="px-1 py-1 border-r border-border/20 last:border-0">
-                {i === 0 ? (
-                  <input
-                    type="number"
-                    value={avgCheck}
-                    onChange={e => setAvgCheck(parseInt(e.target.value) || 0)}
-                    className="w-full text-center bg-background/60 border border-primary/30 rounded px-1 py-0.5 text-xs text-primary font-mono focus:outline-none focus:border-primary"
-                  />
-                ) : (
-                  <span className="block text-center text-muted-foreground">${avgCheck.toLocaleString()}</span>
-                )}
-              </td>
-            ))}
-            <td className="px-3 py-1.5 text-center font-semibold text-foreground">${avgCheck.toLocaleString()}</td>
-          </tr>
+              {MONTHS.map(m => (
+                <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20 min-w-[62px]">
+                  {m}
+                </th>
+              ))}
+              <th className="px-3 py-2 text-center font-semibold text-foreground whitespace-nowrap min-w-[80px]">Итого</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => {
+              const vals = MONTHS.map((_, i) => row.cells(i));
+              const total = vals.reduce((a, b) => a + b, 0);
+              const isTotal  = row.style === 'total';
+              const isMargin = row.style === 'margin';
+              const isNeg    = row.style === 'neg';
+              const isSub    = row.style === 'sub';
 
-          {INCOME_ROWS.filter(r => r.id !== 'avg_check').map((row) => {
-            const data = getRow(row);
-            const total = data.reduce((a, b) => a + b, 0);
-            const isTotal = row.style === 'total';
-            const isMargin = row.style === 'margin';
-            const isTaxRow = row.style === 'tax';
-            const isSub = row.style === 'sub';
-
-            if (isTaxRow) return (
-              <tr key={row.id} className="border-b border-border/30">
-                <td className="sticky left-0 bg-background px-3 py-1.5 text-muted-foreground border-r border-border/40">
-                  {row.label} (10%)
-                </td>
-                {MONTHS.map((_, i) => {
-                  const rev = (values.new_clients?.[i] || 0) * avgCheck + (values.renewals?.[i] || 0) * avgCheck;
-                  const margin = Math.round(rev - rev * 0.3 - rev * 0.2 - rev * 0.1);
-                  const tax = Math.round(margin * 0.1);
-                  return (
-                    <td key={i} className="px-2 py-1.5 text-center text-muted-foreground border-r border-border/20">
-                      {tax ? `$${tax.toLocaleString()}` : '—'}
-                    </td>
-                  );
-                })}
-                <td className="px-3 py-1.5 text-center text-muted-foreground">
-                  ${Math.round(data.reduce((_,__, i) => {
-                    const rev = (values.new_clients?.[i] || 0) * avgCheck + (values.renewals?.[i] || 0) * avgCheck;
-                    const margin = Math.round(rev - rev * 0.3 - rev * 0.2 - rev * 0.1);
-                    return _ + Math.round(margin * 0.1);
-                  }, 0)).toLocaleString()}
-                </td>
-              </tr>
-            );
-
-            return (
-              <tr
-                key={row.id}
-                className={`border-b border-border/30 ${
-                  isTotal ? 'bg-primary/10 font-semibold' :
-                  isMargin ? 'bg-green-500/10 font-semibold' :
-                  isSub ? 'bg-muted/20' : ''
-                }`}
-              >
-                <td className={`sticky left-0 px-3 py-1.5 border-r border-border/40 font-${isTotal || isMargin ? 'semibold' : 'normal'} ${
-                  isTotal ? 'bg-primary/10 text-foreground' :
-                  isMargin ? 'bg-green-500/10 text-green-400' :
-                  isSub ? 'bg-muted/30 text-foreground' : 'bg-background text-foreground'
-                }`}>
-                  {row.label}
-                </td>
-                {data.map((val, i) => (
-                  <td key={i} className={`px-1 py-1 border-r border-border/20 last:border-0 ${
-                    isTotal ? 'text-primary' : isMargin ? 'text-green-400' : val < 0 ? 'text-destructive' : ''
+              return (
+                <tr key={ri} className={`border-b border-border/20 ${isTotal ? 'bg-primary/10 font-semibold' : isMargin ? 'bg-green-500/10 font-semibold' : isSub ? 'bg-muted/20' : ''}`}>
+                  <td className={`sticky left-0 px-3 py-1.5 border-r border-border/40 ${
+                    isTotal ? 'bg-primary/10 text-foreground' :
+                    isMargin ? 'bg-green-500/10 text-green-400' :
+                    isSub ? 'bg-muted/30 text-foreground' : 'bg-background text-foreground'
                   }`}>
-                    {EDITABLE_ROWS.includes(row.id) ? (
-                      <input
-                        type="number"
-                        value={val}
-                        onChange={e => handleCell(row.id, i, e.target.value)}
-                        className="w-full text-center bg-background/60 border border-border/40 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary hover:border-primary/50 transition-colors"
-                      />
-                    ) : (
-                      <span className="block text-center">
-                        {isCount(row.id) ? val : fmt(val)}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span>{row.label}</span>
+                      {row.setPct && (
+                        <div className="flex items-center gap-1 ml-auto">
+                          <input
+                            type="number"
+                            value={row.pct}
+                            min={0} max={100}
+                            onChange={e => row.setPct!(parseInt(e.target.value) || 0)}
+                            className="w-10 text-center bg-background/60 border border-border/40 rounded px-1 py-0 text-[10px] focus:outline-none focus:border-primary"
+                          />
+                          <span className="text-[10px] text-muted-foreground">%</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
-                ))}
-                <td className={`px-3 py-1.5 text-center font-semibold ${
-                  isTotal ? 'text-primary' : isMargin ? 'text-green-400' : total < 0 ? 'text-destructive' : 'text-foreground'
-                }`}>
-                  {isCount(row.id) ? total : fmt(total)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  {vals.map((val, i) => (
+                    <td key={i} className={`px-1 py-1 border-r border-border/20 ${
+                      isTotal ? 'text-primary' : isMargin ? 'text-green-400' : isNeg || val < 0 ? 'text-destructive/80' : ''
+                    }`}>
+                      {ri === 0 ? (
+                        <input type="number" value={newClients[i]}
+                          onChange={e => setCellArr(setNewClients, i, e.target.value)}
+                          className="w-full text-center bg-background/60 border border-border/30 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary" />
+                      ) : ri === 1 ? (
+                        <input type="number" value={renewals[i]}
+                          onChange={e => setCellArr(setRenewals, i, e.target.value)}
+                          className="w-full text-center bg-background/60 border border-border/30 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary" />
+                      ) : (
+                        <span className="block text-center">{isCount(row.label) ? fmtN(val) : fmt$(val)}</span>
+                      )}
+                    </td>
+                  ))}
+                  <td className={`px-3 py-1.5 text-center font-semibold ${
+                    isTotal ? 'text-primary' : isMargin ? 'text-green-400' : isNeg || total < 0 ? 'text-destructive/80' : 'text-foreground'
+                  }`}>
+                    {isCount(row.label) ? fmtN(total) : fmt$(total)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 // ─── FINANCIAL PLANNING ────────────────────────────────────────────────────
-const MONTHS_WITH_PREV = ['Декабрь 2025', ...MONTHS.map(m => m + ' 2026')];
+const FIN_MONTHS = ['Дек 2025', 'Янв 2026', 'Фев 2026', 'Мар 2026', 'Апр 2026', 'Май 2026', 'Июн 2026', 'Июл 2026', 'Авг 2026', 'Сен 2026', 'Окт 2026', 'Ноя 2026'];
+const NM = FIN_MONTHS.length;
 
-type FinSection = {
-  title: string;
-  color: string;
-  rows: { id: string; label: string; computed?: (data: Record<string, number[]>, mIdx: number) => number }[];
+interface FinRow { id: string; label: string; manual?: boolean }
+
+// Initial data matching the screenshot
+const INIT_DATA: Record<string, number[]> = {
+  // Revenue
+  from_past:    [0, 1206, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  palm_craft:   [0,  500, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  kelner:       [0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  mexico:       [0,    0, 648, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  alice:        [0,    0, 2500, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  us_quest:     [0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  hrlme:        [0, 5000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  // Salary
+  media_buyer:  Array(NM).fill(0),
+  project_mgr:  Array(NM).fill(0),
+  sales_salary: Array(NM).fill(0),
+  smm:          Array(NM).fill(0),
+  // Expenses
+  ghl:          [0,  97,  97, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  database:     [0, 370, 449, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  google_ws:    [0,   0,  24, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  panda_doc:    [0, 739,  35, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  meta_ads:     Array(NM).fill(0),
+  platform_dev: [0,   0,  80, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  vsl_video:    [0,   0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  // Funds (10%, 15%, 20% of net revenue after salary+expenses)
+  taxes_10:     Array(NM).fill(0),
+  savings_15:   Array(NM).fill(0),
+  marketing_20: Array(NM).fill(0),
+  // Dividends (% of what's left after funds)
+  denis_40:     Array(NM).fill(0),
+  danil_40:     Array(NM).fill(0),
+  vladimir_20:  Array(NM).fill(0),
 };
 
-const FIN_SECTIONS: FinSection[] = [
-  {
-    title: 'Total Revenue',
-    color: 'text-blue-400',
-    rows: [
-      { id: 'from_past', label: 'From past month' },
-      { id: 'palm_craft', label: 'Palm Craft' },
-      { id: 'kelner', label: 'Kelner Homes' },
-      { id: 'mexico', label: 'Mexico Natural Slim' },
-      { id: 'alice', label: 'Alice Cabinets' },
-      { id: 'us_quest', label: 'US Quest' },
-      { id: 'hrlme', label: 'HRLME' },
-    ],
-  },
-  {
-    title: 'Salary',
-    color: 'text-yellow-400',
-    rows: [
-      { id: 'media_buyer', label: 'Media buyer' },
-      { id: 'project_mgr', label: 'Project manager' },
-      { id: 'sales', label: 'Sales' },
-      { id: 'smm', label: 'SMM' },
-    ],
-  },
-  {
-    title: 'Expenses',
-    color: 'text-orange-400',
-    rows: [
-      { id: 'ghl', label: 'GHL' },
-      { id: 'database', label: 'Database' },
-      { id: 'google_ws', label: 'Google Workspace' },
-      { id: 'panda_doc', label: 'Panda Doc' },
-      { id: 'meta_ads', label: 'Meta Ads' },
-      { id: 'platform_dev', label: 'Platform Development' },
-      { id: 'vsl_video', label: 'VSL Video' },
-    ],
-  },
-  {
-    title: 'Funds',
-    color: 'text-purple-400',
-    rows: [
-      { id: 'taxes_10', label: 'Taxes 10%' },
-      { id: 'savings_15', label: 'Savings 15%' },
-      { id: 'marketing_20', label: 'Marketing 20%' },
-    ],
-  },
-  {
-    title: 'Dividends',
-    color: 'text-green-400',
-    rows: [
-      { id: 'denis_40', label: 'Denis 40%' },
-      { id: 'danil_40', label: 'Danil 40%' },
-      { id: 'vladimir_20', label: 'Vladimir 20%' },
-    ],
-  },
-];
-
-function fmtFin(n: number) {
-  if (!n) return '$0.00';
-  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+type SectionDef = {
+  id: string;
+  title: string;
+  color: string;
+  rowsKey: string;
+};
 
 function FinancialPlanningTable() {
-  const NUM_MONTHS = MONTHS_WITH_PREV.length;
+  // Revenue rows (addable)
+  const [revRows, setRevRows] = useState<FinRow[]>([
+    { id: 'from_past', label: 'From past month' },
+    { id: 'palm_craft', label: 'Palm Craft' },
+    { id: 'kelner', label: 'Kelner Homes' },
+    { id: 'mexico', label: 'Mexico Natural Slim' },
+    { id: 'alice', label: 'Alice Cabinets' },
+    { id: 'us_quest', label: 'US Quest' },
+    { id: 'hrlme', label: 'HRLME' },
+  ]);
+  const [salaryRows, setSalaryRows] = useState<FinRow[]>([
+    { id: 'media_buyer', label: 'Media buyer' },
+    { id: 'project_mgr', label: 'Project manager' },
+    { id: 'sales_salary', label: 'Sales' },
+    { id: 'smm', label: 'SMM' },
+  ]);
+  const [expenseRows, setExpenseRows] = useState<FinRow[]>([
+    { id: 'ghl', label: 'GHL' },
+    { id: 'database', label: 'Database' },
+    { id: 'google_ws', label: 'Google Workspace' },
+    { id: 'panda_doc', label: 'Panda Doc' },
+    { id: 'meta_ads', label: 'Meta Ads' },
+    { id: 'platform_dev', label: 'Platform Development' },
+    { id: 'vsl_video', label: 'VSL Video' },
+  ]);
 
-  // Flat map of all row IDs → editable values per month
-  const allRowIds = FIN_SECTIONS.flatMap(s => s.rows.map(r => r.id));
-  const [data, setData] = useState<Record<string, number[]>>(() =>
-    Object.fromEntries(allRowIds.map(id => [id, Array(NUM_MONTHS).fill(0)]))
-  );
+  const [data, setData] = useState<Record<string, number[]>>(() => ({ ...INIT_DATA }));
 
-  const handleCell = (rowId: string, mi: number, val: string) => {
+  // Fund percentages
+  const [taxPct, setTaxPct] = useState(10);
+  const [savPct, setSavPct] = useState(15);
+  const [mktPct, setMktPct] = useState(20);
+  // Dividend percentages
+  const [denisPct, setDenisPct] = useState(40);
+  const [danilPct, setDanilPct] = useState(40);
+  const [vladPct, setVladPct] = useState(20);
+
+  // Manual override: { rowId_mi: true } means this cell is overridden manually
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+
+  const cell = (rowId: string, mi: number) => data[rowId]?.[mi] ?? 0;
+  const setCell = (rowId: string, mi: number, val: string) => {
     const n = parseFloat(val) || 0;
     setData(prev => {
-      const arr = [...(prev[rowId] || Array(NUM_MONTHS).fill(0))];
+      const arr = [...(prev[rowId] ?? Array(NM).fill(0))];
       arr[mi] = n;
       return { ...prev, [rowId]: arr };
     });
   };
 
-  // Computed section totals per month
-  const sectionTotal = (sectionTitle: string, mi: number): number => {
-    const sec = FIN_SECTIONS.find(s => s.title === sectionTitle);
-    if (!sec) return 0;
-    return sec.rows.reduce((sum, row) => sum + (data[row.id]?.[mi] || 0), 0);
+  // Computed values
+  const totalRevenue = (mi: number) => revRows.reduce((s, r) => s + cell(r.id, mi), 0);
+  const totalSalary  = (mi: number) => salaryRows.reduce((s, r) => s + cell(r.id, mi), 0);
+  const totalExpenses = (mi: number) => expenseRows.reduce((s, r) => s + cell(r.id, mi), 0);
+  const available    = (mi: number) => totalRevenue(mi) - totalSalary(mi) - totalExpenses(mi);
+
+  // Fund amounts auto-calculated unless overridden
+  const fundAmt = (pct: number, rowId: string, mi: number) => {
+    const key = `${rowId}_${mi}`;
+    if (overrides[key]) return cell(rowId, mi);
+    const auto = Math.round(totalRevenue(mi) * pct / 100);
+    return auto;
   };
 
-  const totalRevenue = (mi: number) => sectionTotal('Total Revenue', mi);
-  const totalSalary = (mi: number) => sectionTotal('Salary', mi);
-  const totalExpenses = (mi: number) => sectionTotal('Expenses', mi);
-  const available = (mi: number) => totalRevenue(mi) - totalSalary(mi) - totalExpenses(mi);
-  const totalFunds = (mi: number) => sectionTotal('Funds', mi);
+  const taxAmt  = (mi: number) => fundAmt(taxPct, 'taxes_10', mi);
+  const savAmt  = (mi: number) => fundAmt(savPct, 'savings_15', mi);
+  const mktAmt  = (mi: number) => fundAmt(mktPct, 'marketing_20', mi);
+  const totalFunds = (mi: number) => taxAmt(mi) + savAmt(mi) + mktAmt(mi);
   const leftAmount = (mi: number) => available(mi) - totalFunds(mi);
-  const totalDividends = (mi: number) => sectionTotal('Dividends', mi);
+
+  // Dividend amounts
+  const divAmt = (pct: number, rowId: string, mi: number) => {
+    const key = `${rowId}_${mi}`;
+    if (overrides[key]) return cell(rowId, mi);
+    return Math.round(leftAmount(mi) * pct / 100);
+  };
+  const denisAmt   = (mi: number) => divAmt(denisPct, 'denis_40', mi);
+  const danilAmt   = (mi: number) => divAmt(danilPct, 'danil_40', mi);
+  const vladAmt    = (mi: number) => divAmt(vladPct, 'vladimir_20', mi);
+  const totalDivs  = (mi: number) => denisAmt(mi) + danilAmt(mi) + vladAmt(mi);
+
+  // Fund totals (accumulated)
+  const totalTaxFund = FIN_MONTHS.reduce((s, _, mi) => s + taxAmt(mi), 0);
+  const totalSavFund = FIN_MONTHS.reduce((s, _, mi) => s + savAmt(mi), 0);
+  const totalMktFund = FIN_MONTHS.reduce((s, _, mi) => s + mktAmt(mi), 0);
+
+  const addRow = (setter: React.Dispatch<React.SetStateAction<FinRow[]>>, label: string) => {
+    if (!label.trim()) return;
+    const id = `custom_${Date.now()}`;
+    setter(prev => [...prev, { id, label }]);
+    setData(prev => ({ ...prev, [id]: Array(NM).fill(0) }));
+  };
+
+  const deleteRow = (setter: React.Dispatch<React.SetStateAction<FinRow[]>>, id: string) => {
+    setter(prev => prev.filter(r => r.id !== id));
+  };
+
+  function fmtFin(n: number) {
+    if (!n) return '$0.00';
+    return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function EditableRow({ row, onDelete, value, onChange }: {
+    row: FinRow; onDelete?: () => void;
+    value: (mi: number) => number;
+    onChange: (mi: number, v: string) => void;
+  }) {
+    return (
+      <tr className="border-b border-border/20 hover:bg-muted/10 transition-colors group">
+        <td className="sticky left-0 bg-background px-3 py-1 text-foreground/80 border-r border-border/40 pl-5">
+          <div className="flex items-center gap-2">
+            <span className="flex-1 truncate text-xs">{row.label}</span>
+            {onDelete && (
+              <button onClick={onDelete}
+                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5 rounded">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        </td>
+        {FIN_MONTHS.map((_, mi) => (
+          <td key={mi} className="px-1 py-0.5 border-r border-border/20">
+            <input
+              type="number"
+              value={value(mi) || ''}
+              onChange={e => onChange(mi, e.target.value)}
+              placeholder="0"
+              className="w-full text-center bg-transparent border border-transparent rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary/50 hover:border-border/50 transition-colors"
+            />
+          </td>
+        ))}
+        <td className="px-2 py-1 text-center text-xs text-muted-foreground font-medium">
+          {fmtFin(FIN_MONTHS.reduce((s, _, mi) => s + value(mi), 0))}
+        </td>
+      </tr>
+    );
+  }
+
+  function AddRowInline({ onAdd }: { onAdd: (label: string) => void }) {
+    const [adding, setAdding] = useState(false);
+    const [label, setLabel] = useState('');
+    if (!adding) return (
+      <tr>
+        <td colSpan={NM + 2} className="px-3 py-1">
+          <button onClick={() => setAdding(true)}
+            className="flex items-center gap-1.5 text-xs text-primary/70 hover:text-primary transition-colors py-0.5">
+            <Plus className="h-3 w-3" /> Добавить строку
+          </button>
+        </td>
+      </tr>
+    );
+    return (
+      <tr className="bg-primary/5">
+        <td className="sticky left-0 bg-primary/5 px-3 py-1 border-r border-border/40" colSpan={1}>
+          <div className="flex gap-1.5 items-center">
+            <input
+              autoFocus
+              value={label}
+              onChange={e => setLabel(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { onAdd(label); setLabel(''); setAdding(false); } if (e.key === 'Escape') setAdding(false); }}
+              placeholder="Название строки..."
+              className="flex-1 bg-background border border-primary/40 rounded px-2 py-0.5 text-xs focus:outline-none"
+            />
+            <Button size="sm" className="h-5 text-[10px] px-2" onClick={() => { onAdd(label); setLabel(''); setAdding(false); }}>OK</Button>
+            <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1" onClick={() => setAdding(false)}>✕</Button>
+          </div>
+        </td>
+        {FIN_MONTHS.map((_, i) => <td key={i} />)}
+        <td />
+      </tr>
+    );
+  }
+
+  // Auto-computed row (fund/dividend) with override option
+  function ComputedRow({ label, computedFn, rowId, pct, setPct, color }: {
+    label: string; computedFn: (mi: number) => number; rowId: string;
+    pct: number; setPct: (v: number) => void; color?: string;
+  }) {
+    return (
+      <tr className="border-b border-border/20 hover:bg-muted/10 transition-colors group">
+        <td className="sticky left-0 bg-background px-3 py-1 text-foreground/80 border-r border-border/40 pl-5">
+          <div className="flex items-center gap-2">
+            <span className={`flex-1 text-xs ${color || ''}`}>{label}</span>
+            <div className="flex items-center gap-0.5 opacity-70 group-hover:opacity-100">
+              <input
+                type="number" value={pct} min={0} max={100}
+                onChange={e => setPct(parseInt(e.target.value) || 0)}
+                className="w-8 text-center bg-background/60 border border-border/40 rounded px-1 py-0 text-[10px] focus:outline-none focus:border-primary"
+              />
+              <span className="text-[10px] text-muted-foreground">%</span>
+            </div>
+          </div>
+        </td>
+        {FIN_MONTHS.map((_, mi) => {
+          const key = `${rowId}_${mi}`;
+          const isOverride = overrides[key];
+          const computed = computedFn(mi);
+          return (
+            <td key={mi} className="px-1 py-0.5 border-r border-border/20 relative group/cell">
+              {isOverride ? (
+                <input
+                  type="number"
+                  value={cell(rowId, mi) || ''}
+                  onChange={e => setCell(rowId, mi, e.target.value)}
+                  className="w-full text-center bg-background border border-primary/50 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary"
+                />
+              ) : (
+                <div
+                  title="Двойной клик — ручной ввод"
+                  onDoubleClick={() => {
+                    setOverrides(p => ({ ...p, [key]: true }));
+                    setCell(rowId, mi, String(computed));
+                  }}
+                  className="text-center text-xs py-0.5 cursor-pointer hover:bg-muted/30 rounded"
+                >
+                  {computed ? fmtFin(computed) : '—'}
+                </div>
+              )}
+              {isOverride && (
+                <button
+                  title="Сбросить к авторасчёту"
+                  onClick={() => setOverrides(p => { const n = { ...p }; delete n[key]; return n; })}
+                  className="absolute top-0 right-0 text-[8px] text-primary opacity-0 group-hover/cell:opacity-100 p-0.5"
+                >↺</button>
+              )}
+            </td>
+          );
+        })}
+        <td className="px-2 py-1 text-center text-xs font-medium text-muted-foreground">
+          {fmtFin(FIN_MONTHS.reduce((s, _, mi) => s + computedFn(mi), 0))}
+        </td>
+      </tr>
+    );
+  }
+
+  function SectionHeader({ title, color, totalFn }: { title: string; color: string; totalFn: (mi: number) => number }) {
+    return (
+      <tr className="bg-muted/30 border-y border-border/40">
+        <td className={`sticky left-0 bg-muted/50 px-3 py-1.5 font-bold border-r border-border/40 text-sm ${color}`}>
+          {title}
+        </td>
+        {FIN_MONTHS.map((_, mi) => (
+          <td key={mi} className={`px-2 py-1.5 text-center font-bold border-r border-border/20 text-xs ${color}`}>
+            {totalFn(mi) ? fmtFin(totalFn(mi)) : '—'}
+          </td>
+        ))}
+        <td className={`px-2 py-1.5 text-center font-bold text-xs ${color}`}>
+          {fmtFin(FIN_MONTHS.reduce((s, _, mi) => s + totalFn(mi), 0))}
+        </td>
+      </tr>
+    );
+  }
+
+  function ComputedDisplayRow({ label, computedFn, style }: {
+    label: string; computedFn: (mi: number) => number; style?: string;
+  }) {
+    return (
+      <tr className={`border-b border-border/30 ${style || ''}`}>
+        <td className={`sticky left-0 px-3 py-1.5 font-semibold border-r border-border/40 text-xs ${style ? '' : 'bg-background'}`}>
+          {label}
+        </td>
+        {FIN_MONTHS.map((_, mi) => (
+          <td key={mi} className="px-2 py-1.5 text-center text-xs font-semibold border-r border-border/20">
+            {fmtFin(computedFn(mi))}
+          </td>
+        ))}
+        <td className="px-2 py-1.5 text-center text-xs font-semibold">
+          {fmtFin(FIN_MONTHS.reduce((s, _, mi) => s + computedFn(mi), 0))}
+        </td>
+      </tr>
+    );
+  }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border/40">
-      <table className="min-w-[1200px] w-full text-xs border-collapse">
-        <thead>
-          <tr className="bg-muted/50">
-            <th className="sticky left-0 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground min-w-[180px] border-r border-border/40">
-              Статья
-            </th>
-            {MONTHS_WITH_PREV.map(m => (
-              <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20 min-w-[90px]">
-                {m.length > 8 ? m.slice(0, 3) + ' ' + m.slice(-4) : m}
+    <div className="space-y-4">
+      <div className="overflow-x-auto rounded-xl border border-border/40">
+        <table className="min-w-[1100px] w-full text-xs border-collapse">
+          <thead>
+            <tr className="bg-muted/50">
+              <th className="sticky left-0 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground min-w-[190px] border-r border-border/40">
+                Статья
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {FIN_SECTIONS.map((section, si) => (
-            <>
-              {/* Section header */}
-              <tr key={`sec-${si}`} className="bg-muted/30 border-y border-border/40">
-                <td className={`sticky left-0 bg-muted/50 px-3 py-1.5 font-bold border-r border-border/40 ${section.color}`}>
-                  {section.title}
-                </td>
-                {Array.from({ length: NUM_MONTHS }).map((_, mi) => {
-                  const tot = sectionTotal(section.title, mi);
-                  const isAvailRow = section.title === 'Expenses';
-                  return (
-                    <td key={mi} className={`px-2 py-1.5 text-center font-bold border-r border-border/20 ${section.color}`}>
-                      {tot ? fmtFin(tot) : '—'}
-                    </td>
-                  );
-                })}
-              </tr>
-
-              {/* Section rows */}
-              {section.rows.map(row => (
-                <tr key={row.id} className="border-b border-border/20 hover:bg-muted/10 transition-colors">
-                  <td className="sticky left-0 bg-background px-3 py-1 text-foreground/80 border-r border-border/40 pl-6">
-                    {row.label}
-                  </td>
-                  {Array.from({ length: NUM_MONTHS }).map((_, mi) => (
-                    <td key={mi} className="px-1 py-0.5 border-r border-border/20">
-                      <input
-                        type="number"
-                        value={data[row.id]?.[mi] || ''}
-                        onChange={e => handleCell(row.id, mi, e.target.value)}
-                        placeholder="0"
-                        className="w-full text-center bg-transparent border border-transparent rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary/50 hover:border-border/60 transition-colors"
-                      />
-                    </td>
-                  ))}
-                </tr>
+              {FIN_MONTHS.map(m => (
+                <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20 min-w-[80px]">
+                  {m}
+                </th>
               ))}
-
-              {/* Special computed rows after Expenses section */}
-              {section.title === 'Expenses' && (
-                <>
-                  <tr className="bg-blue-500/10 border-b border-border/30">
-                    <td className="sticky left-0 bg-blue-500/10 px-3 py-1.5 font-semibold text-blue-400 border-r border-border/40">
-                      Available amount
-                    </td>
-                    {Array.from({ length: NUM_MONTHS }).map((_, mi) => (
-                      <td key={mi} className="px-2 py-1.5 text-center font-semibold text-blue-400 border-r border-border/20">
-                        {fmtFin(available(mi))}
-                      </td>
-                    ))}
-                  </tr>
-                </>
-              )}
-
-              {/* After Funds section */}
-              {section.title === 'Funds' && (
-                <>
-                  <tr className="bg-green-500/10 border-b border-border/30">
-                    <td className="sticky left-0 bg-green-500/10 px-3 py-1.5 font-semibold text-green-400 border-r border-border/40">
-                      Left amount
-                    </td>
-                    {Array.from({ length: NUM_MONTHS }).map((_, mi) => (
-                      <td key={mi} className="px-2 py-1.5 text-center font-semibold text-green-400 border-r border-border/20">
-                        {fmtFin(leftAmount(mi))}
-                      </td>
-                    ))}
-                  </tr>
-                </>
-              )}
-            </>
-          ))}
-
-          {/* Dividends total */}
-          <tr className="bg-primary/10 border-t border-border/40">
-            <td className="sticky left-0 bg-primary/10 px-3 py-1.5 font-bold text-primary border-r border-border/40">
-              Total Dividends
-            </td>
-            {Array.from({ length: NUM_MONTHS }).map((_, mi) => (
-              <td key={mi} className="px-2 py-1.5 text-center font-bold text-primary border-r border-border/20">
-                {fmtFin(totalDividends(mi))}
-              </td>
+              <th className="px-2 py-2 text-center font-semibold text-foreground whitespace-nowrap min-w-[90px]">Итого</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* ── REVENUE ─────────────────────────────────────── */}
+            <SectionHeader title="Total Revenue" color="text-blue-400" totalFn={totalRevenue} />
+            {revRows.map(row => (
+              <EditableRow
+                key={row.id} row={row}
+                onDelete={() => deleteRow(setRevRows, row.id)}
+                value={mi => cell(row.id, mi)}
+                onChange={(mi, v) => setCell(row.id, mi, v)}
+              />
             ))}
-          </tr>
-        </tbody>
-      </table>
+            <AddRowInline onAdd={label => addRow(setRevRows, label)} />
+
+            {/* ── SALARY ─────────────────────────────────────── */}
+            <SectionHeader title="Salary" color="text-yellow-400" totalFn={totalSalary} />
+            {salaryRows.map(row => (
+              <EditableRow
+                key={row.id} row={row}
+                onDelete={() => deleteRow(setSalaryRows, row.id)}
+                value={mi => cell(row.id, mi)}
+                onChange={(mi, v) => setCell(row.id, mi, v)}
+              />
+            ))}
+            <AddRowInline onAdd={label => addRow(setSalaryRows, label)} />
+
+            {/* ── EXPENSES ────────────────────────────────────── */}
+            <SectionHeader title="Expenses" color="text-orange-400" totalFn={totalExpenses} />
+            {expenseRows.map(row => (
+              <EditableRow
+                key={row.id} row={row}
+                onDelete={() => deleteRow(setExpenseRows, row.id)}
+                value={mi => cell(row.id, mi)}
+                onChange={(mi, v) => setCell(row.id, mi, v)}
+              />
+            ))}
+            <AddRowInline onAdd={label => addRow(setExpenseRows, label)} />
+
+            {/* Available */}
+            <ComputedDisplayRow label="Available amount" computedFn={available}
+              style="bg-blue-500/10 text-blue-400" />
+            <ComputedDisplayRow label="Total costs (Salary + Expenses)" computedFn={mi => totalSalary(mi) + totalExpenses(mi)}
+              style="bg-orange-500/10 text-orange-400" />
+            <ComputedDisplayRow label="Left amount" computedFn={leftAmount}
+              style="bg-green-500/10 text-green-400" />
+
+            {/* ── FUNDS ──────────────────────────────────────── */}
+            <SectionHeader title="Funds" color="text-purple-400" totalFn={totalFunds} />
+            <ComputedRow label={`Taxes ${taxPct}%`} computedFn={taxAmt} rowId="taxes_10" pct={taxPct} setPct={setTaxPct} color="text-foreground/80" />
+            <ComputedRow label={`Savings ${savPct}%`} computedFn={savAmt} rowId="savings_15" pct={savPct} setPct={setSavPct} color="text-foreground/80" />
+            <ComputedRow label={`Marketing ${mktPct}%`} computedFn={mktAmt} rowId="marketing_20" pct={mktPct} setPct={setMktPct} color="text-foreground/80" />
+
+            {/* ── DIVIDENDS ──────────────────────────────────── */}
+            <SectionHeader title="Dividends" color="text-green-400" totalFn={totalDivs} />
+            <ComputedRow label={`Denis ${denisPct}%`} computedFn={denisAmt} rowId="denis_40" pct={denisPct} setPct={setDenisPct} color="text-foreground/80" />
+            <ComputedRow label={`Danil ${danilPct}%`} computedFn={danilAmt} rowId="danil_40" pct={danilPct} setPct={setDanilPct} color="text-foreground/80" />
+            <ComputedRow label={`Vladimir ${vladPct}%`} computedFn={vladAmt} rowId="vladimir_20" pct={vladPct} setPct={setVladPct} color="text-foreground/80" />
+          </tbody>
+        </table>
+      </div>
+
+      {/* Fund Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Taxes Fund', amount: totalTaxFund, color: 'text-purple-400 border-purple-400/30 bg-purple-400/5' },
+          { label: 'Savings Fund', amount: totalSavFund, color: 'text-blue-400 border-blue-400/30 bg-blue-400/5' },
+          { label: 'Marketing Fund', amount: totalMktFund, color: 'text-primary border-primary/30 bg-primary/5' },
+        ].map(f => (
+          <div key={f.label} className={`rounded-xl border p-4 ${f.color}`}>
+            <p className="text-xs font-medium mb-1 opacity-80">{f.label}</p>
+            <p className="text-xl font-bold font-mono">{fmtFin(f.amount)}</p>
+            <p className="text-[10px] opacity-60 mt-0.5">Накоплено за период</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+        <Info className="h-3 w-3" />
+        Двойной клик на ячейке авторасчёта — ввести вручную. Клик на «↺» — сбросить к авторасчёту.
+      </p>
     </div>
   );
 }
@@ -442,7 +609,9 @@ export default function AfmFinancePage() {
                   <TrendingUp className="h-4 w-4 text-primary" />
                   План по доходу — 12 месяцев
                 </CardTitle>
-                <p className="text-xs text-muted-foreground">Введите количество новых клиентов и продлений. Все расчёты — автоматически.</p>
+                <p className="text-xs text-muted-foreground">
+                  Введите количество новых клиентов и продлений. Проценты расходов редактируемые. Расчёты автоматические.
+                </p>
               </CardHeader>
               <CardContent className="p-2 sm:p-4">
                 <AnnualIncomePlan />
@@ -457,7 +626,10 @@ export default function AfmFinancePage() {
                   <DollarSign className="h-4 w-4 text-primary" />
                   Финансовое планирование
                 </CardTitle>
-                <p className="text-xs text-muted-foreground">Вносите суммы по каждой статье — итоги, остаток и дивиденды считаются автоматически.</p>
+                <p className="text-xs text-muted-foreground">
+                  Добавляйте клиентов, расходы и зарплаты. Фонды и дивиденды считаются автоматически по процентам.
+                  Двойной клик на ячейке авторасчёта — ввести вручную.
+                </p>
               </CardHeader>
               <CardContent className="p-2 sm:p-4">
                 <FinancialPlanningTable />
