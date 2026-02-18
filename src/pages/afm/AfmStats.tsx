@@ -1,26 +1,27 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Plus, Trash2, StickyNote, TrendingUp, Users, Calendar } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { BarChart3, StickyNote, TrendingUp, Users, Calendar, History, Save, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { format, startOfYear, endOfYear, addDays, startOfWeek, endOfWeek, eachWeekOfInterval, eachMonthOfInterval, startOfMonth, endOfMonth } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { format, addDays, eachWeekOfInterval } from 'date-fns';
 import type { DateRange as DRType } from 'react-day-picker';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
-// ─── HELPERS ───────────────────────────────────────────────────
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
-
 function num(v: number | string): number {
   const n = Number(v);
   return isNaN(n) ? 0 : n;
@@ -39,10 +40,100 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
+// ─── CHART CONTROLS ────────────────────────────────────────────
+interface ChartControlsProps {
+  lineType: 'monotone' | 'linear';
+  setLineType: (v: 'monotone' | 'linear') => void;
+  tickCount: number;
+  setTickCount: (v: number) => void;
+}
+function ChartControls({ lineType, setLineType, tickCount, setTickCount }: ChartControlsProps) {
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] text-muted-foreground">Линии:</span>
+        <div className="flex bg-muted/50 rounded-md p-0.5">
+          <button onClick={() => setLineType('monotone')}
+            className={cn('text-[10px] px-2 py-0.5 rounded transition-colors', lineType === 'monotone' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            Гладкие
+          </button>
+          <button onClick={() => setLineType('linear')}
+            className={cn('text-[10px] px-2 py-0.5 rounded transition-colors', lineType === 'linear' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
+            Прямые
+          </button>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] text-muted-foreground">Делений Y:</span>
+        <Select value={String(tickCount)} onValueChange={v => setTickCount(Number(v))}>
+          <SelectTrigger className="h-6 text-[10px] w-14 px-1.5">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[3,4,5,6,8,10].map(n => <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+// ─── HISTORY PANEL ─────────────────────────────────────────────
+interface HistoryEntry {
+  id: string;
+  period_key: string;
+  field_name: string;
+  old_value: number | null;
+  new_value: number;
+  changed_at: string;
+}
+
+function HistoryPanel({ statType, yearRange }: { statType: string; yearRange: string }) {
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('afm_stats_history')
+        .select('id, period_key, field_name, old_value, new_value, changed_at')
+        .eq('stat_type', statType)
+        .eq('year_range', yearRange)
+        .order('changed_at', { ascending: false })
+        .limit(50);
+      setHistory(data || []);
+      setLoading(false);
+    };
+    fetchHistory();
+  }, [statType, yearRange]);
+
+  if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  if (!history.length) return <p className="text-xs text-muted-foreground text-center py-4">Нет истории изменений</p>;
+
+  return (
+    <div className="space-y-1 max-h-60 overflow-y-auto">
+      {history.map(h => (
+        <div key={h.id} className="flex items-center justify-between text-xs px-2 py-1 rounded-lg hover:bg-muted/20 transition-colors">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground font-mono">{h.period_key}</span>
+            <span className="text-foreground">{h.field_name}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {h.old_value !== null && <span className="text-muted-foreground line-through">{h.old_value}</span>}
+            <span className="text-primary font-medium">→ {h.new_value}</span>
+            <span className="text-muted-foreground text-[10px]">{format(new Date(h.changed_at), 'dd.MM HH:mm')}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── WEEKLY STATS ──────────────────────────────────────────────
 interface WeekRow {
   id: string;
-  week: string; // "DD.MM - DD.MM"
+  week: string;
   totalClients: number | string;
   qualLeads: number | string;
   meetings: number | string;
@@ -59,11 +150,8 @@ const WEEK_COLS = [
   { key: 'newPayments', label: 'Новые оплаты', color: '#f87171' },
 ] as const;
 
-// Generate weeks (Fri→Thu) for a date range
 function generateWeeks(from: Date, to: Date): WeekRow[] {
-  // Find first Friday on or before `from`
   const weeks: WeekRow[] = [];
-  // Get weeks starting Friday
   const interval = eachWeekOfInterval({ start: from, end: to }, { weekStartsOn: 5 });
   interval.forEach((fridayStart, i) => {
     const thursdayEnd = addDays(fridayStart, 6);
@@ -77,8 +165,11 @@ function generateWeeks(from: Date, to: Date): WeekRow[] {
   return weeks;
 }
 
+function getWeeklyYearRange(from: Date, to: Date) {
+  return `${format(from, 'yyyy-MM-dd')}_${format(to, 'yyyy-MM-dd')}`;
+}
+
 function WeeklyTable() {
-  // Default: last 3 months
   const defaultFrom = useMemo(() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 3);
@@ -88,6 +179,16 @@ function WeeklyTable() {
 
   const [dateRange, setDateRange] = useState<DRType | undefined>({ from: defaultFrom, to: defaultTo });
   const [calOpen, setCalOpen] = useState(false);
+  const [lineType, setLineType] = useState<'monotone' | 'linear'>('monotone');
+  const [tickCount, setTickCount] = useState(5);
+  const [showHistory, setShowHistory] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const yearRange = useMemo(() =>
+    dateRange?.from && dateRange?.to ? getWeeklyYearRange(dateRange.from, dateRange.to) : '',
+    [dateRange]
+  );
 
   const generatedWeeks = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) return [];
@@ -96,27 +197,84 @@ function WeeklyTable() {
 
   const [rows, setRows] = useState<Record<string, WeekRow>>({});
   const [noteRow, setNoteRow] = useState<string | null>(null);
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const getRow = (id: string, week: string): WeekRow => rows[id] || { id, week, totalClients: '', qualLeads: '', meetings: '', newContracts: '', newPayments: '', note: '' };
+  // Load data from DB
+  useEffect(() => {
+    if (!yearRange) return;
+    setLoading(true);
+    supabase
+      .from('afm_stats_data')
+      .select('period_key, field_name, value, note')
+      .eq('stat_type', 'weekly')
+      .eq('year_range', yearRange)
+      .then(({ data }) => {
+        if (data) {
+          const loaded: Record<string, WeekRow> = {};
+          data.forEach(d => {
+            if (!loaded[d.period_key]) {
+              // Find matching generated week
+              const gw = generatedWeeks.find(w => w.id === d.period_key) || { id: d.period_key, week: d.period_key, totalClients: '', qualLeads: '', meetings: '', newContracts: '', newPayments: '', note: '' };
+              loaded[d.period_key] = { ...gw };
+            }
+            if (d.field_name === 'note') {
+              loaded[d.period_key].note = String(d.value || '');
+            } else {
+              (loaded[d.period_key] as any)[d.field_name] = d.value || '';
+            }
+            if (d.note) loaded[d.period_key].note = d.note;
+          });
+          setRows(prev => ({ ...prev, ...loaded }));
+        }
+        setLoading(false);
+      });
+  }, [yearRange, generatedWeeks.length]);
+
+  const getRow = (id: string, week: string): WeekRow =>
+    rows[id] || { id, week, totalClients: '', qualLeads: '', meetings: '', newContracts: '', newPayments: '', note: '' };
+
+  const saveToDb = useCallback(async (id: string, week: string, row: WeekRow) => {
+    if (!yearRange) return;
+    setSaving(true);
+    const fields = WEEK_COLS.map(c => c.key);
+    await Promise.all(fields.map(async (field) => {
+      const val = num((row as any)[field]);
+      await supabase.rpc('upsert_afm_stat', {
+        _stat_type: 'weekly',
+        _period_key: id,
+        _year_range: yearRange,
+        _field_name: field,
+        _value: val,
+        _note: row.note || null,
+      });
+    }));
+    setSaving(false);
+  }, [yearRange]);
 
   const update = (id: string, week: string, key: keyof WeekRow, val: string) => {
-    setRows(prev => ({ ...prev, [id]: { ...getRow(id, week), [key]: val } }));
+    setRows(prev => {
+      const updated = { ...prev, [id]: { ...getRow(id, week), [key]: val } };
+      // Debounce save
+      if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
+      saveTimers.current[id] = setTimeout(() => {
+        saveToDb(id, week, updated[id]);
+      }, 800);
+      return updated;
+    });
   };
 
-  // Build chart data only from rows that have at least one filled value, stop at last filled
   const chartData = useMemo(() => {
     const allPoints = generatedWeeks.map(gw => {
       const r = getRow(gw.id, gw.week);
       return {
         week: gw.week.slice(0, 5),
-        'Клиенты': num(r.totalClients),
-        'Лиды': num(r.qualLeads),
-        'Встречи': num(r.meetings),
-        'Контракты': num(r.newContracts),
+        'Клиенты': num(r.totalClients) || null,
+        'Лиды': num(r.qualLeads) || null,
+        'Встречи': num(r.meetings) || null,
+        'Контракты': num(r.newContracts) || null,
         hasFilled: r.totalClients !== '' || r.qualLeads !== '' || r.meetings !== '' || r.newContracts !== '' || r.newPayments !== '',
       };
     });
-    // Trim trailing unfilled
     let lastFilledIdx = -1;
     allPoints.forEach((p, i) => { if (p.hasFilled) lastFilledIdx = i; });
     return lastFilledIdx >= 0 ? allPoints.slice(0, lastFilledIdx + 1) : [];
@@ -128,29 +286,48 @@ function WeeklyTable() {
 
   return (
     <div className="space-y-4">
-      {/* Date range picker */}
-      <div className="flex items-center gap-2">
-        <Popover open={calOpen} onOpenChange={setCalOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
-              <Calendar className="h-3.5 w-3.5" />
-              {rangeLabel}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
-            <CalendarComponent
-              mode="range"
-              selected={dateRange}
-              onSelect={(r) => { setDateRange(r); if (r?.from && r?.to) setCalOpen(false); }}
-              numberOfMonths={2}
-              className="pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-        <span className="text-xs text-muted-foreground">Недели: пятница → четверг</span>
+      <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Popover open={calOpen} onOpenChange={setCalOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
+                <Calendar className="h-3.5 w-3.5" />{rangeLabel}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
+              <CalendarComponent
+                mode="range" selected={dateRange}
+                onSelect={(r) => { setDateRange(r); if (r?.from && r?.to) setCalOpen(false); }}
+                numberOfMonths={2} className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          <span className="text-xs text-muted-foreground">Пт → Чт</span>
+          {saving && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Сохраняю...</div>}
+          {loading && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Загрузка...</div>}
+        </div>
+        <div className="flex items-center gap-2">
+          <ChartControls lineType={lineType} setLineType={setLineType} tickCount={tickCount} setTickCount={setTickCount} />
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setShowHistory(h => !h)}>
+            <History className="h-3.5 w-3.5" />
+            История
+          </Button>
+        </div>
       </div>
 
-      {/* Charts */}
+      {showHistory && (
+        <Card className="glass-card">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-xs font-medium flex items-center gap-1.5">
+              <History className="h-3.5 w-3.5" />История изменений
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <HistoryPanel statType="weekly" yearRange={yearRange} />
+          </CardContent>
+        </Card>
+      )}
+
       {chartData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {[
@@ -168,9 +345,9 @@ function WeeklyTable() {
                   <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                     <XAxis dataKey="week" tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" tickCount={tickCount} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Line type="monotone" dataKey={chart.dataKey} stroke={chart.color} strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} connectNulls={false} />
+                    <Line type={lineType} dataKey={chart.dataKey} stroke={chart.color} strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} connectNulls={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -179,7 +356,6 @@ function WeeklyTable() {
         </div>
       )}
 
-      {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-border/40">
         <table className="min-w-[700px] w-full text-xs border-collapse">
           <thead>
@@ -251,7 +427,7 @@ const MONTH_COLS = [
   { key: 'clients', label: 'Кол-во клиентов', color: '#60a5fa' },
   { key: 'newRevenue', label: 'Выручка новая ($)', color: '#34d399' },
   { key: 'renewalRevenue', label: 'Выручка продления ($)', color: '#a78bfa' },
-  { key: 'totalRevenue', label: 'Общая выручка ($)', color: '#fbbf24' },
+  { key: 'totalRevenue', label: 'Общая выручка ($)', color: '#fbbf24', readOnly: true },
 ] as const;
 
 const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -267,13 +443,68 @@ function generateMonths(year: number): MonthRow[] {
 function MonthlyTable() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
-  const [calOpen, setCalOpen] = useState(false);
+  const [lineType, setLineType] = useState<'monotone' | 'linear'>('monotone');
+  const [tickCount, setTickCount] = useState(5);
+  const [showHistory, setShowHistory] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  const yearRange = String(year);
   const generatedMonths = useMemo(() => generateMonths(year), [year]);
   const [rows, setRows] = useState<Record<string, MonthRow>>({});
   const [noteRow, setNoteRow] = useState<string | null>(null);
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const getRow = (id: string, month: string): MonthRow => rows[id] || { id, month, clients: '', newRevenue: '', renewalRevenue: '', totalRevenue: '', note: '' };
+  // Load from DB
+  useEffect(() => {
+    setLoading(true);
+    supabase
+      .from('afm_stats_data')
+      .select('period_key, field_name, value, note')
+      .eq('stat_type', 'monthly')
+      .eq('year_range', yearRange)
+      .then(({ data }) => {
+        if (data) {
+          const loaded: Record<string, MonthRow> = {};
+          data.forEach(d => {
+            if (!loaded[d.period_key]) {
+              const gm = generatedMonths.find(m => m.id === d.period_key) || { id: d.period_key, month: d.period_key, clients: '', newRevenue: '', renewalRevenue: '', totalRevenue: '', note: '' };
+              loaded[d.period_key] = { ...gm };
+            }
+            (loaded[d.period_key] as any)[d.field_name] = d.value || '';
+            if (d.note) loaded[d.period_key].note = d.note;
+          });
+          // Recalculate totalRevenue for loaded rows
+          Object.values(loaded).forEach(row => {
+            const nr = num(row.newRevenue);
+            const rr = num(row.renewalRevenue);
+            row.totalRevenue = nr + rr || '';
+          });
+          setRows(prev => ({ ...prev, ...loaded }));
+        }
+        setLoading(false);
+      });
+  }, [year]);
+
+  const getRow = (id: string, month: string): MonthRow =>
+    rows[id] || { id, month, clients: '', newRevenue: '', renewalRevenue: '', totalRevenue: '', note: '' };
+
+  const saveToDb = useCallback(async (id: string, row: MonthRow) => {
+    setSaving(true);
+    const fields = ['clients', 'newRevenue', 'renewalRevenue'] as const;
+    await Promise.all(fields.map(async (field) => {
+      const val = num((row as any)[field]);
+      await supabase.rpc('upsert_afm_stat', {
+        _stat_type: 'monthly',
+        _period_key: id,
+        _year_range: yearRange,
+        _field_name: field,
+        _value: val,
+        _note: row.note || null,
+      });
+    }));
+    setSaving(false);
+  }, [yearRange]);
 
   const update = (id: string, month: string, key: keyof MonthRow, val: string) => {
     setRows(prev => {
@@ -284,20 +515,22 @@ function MonthlyTable() {
         const rr = key === 'renewalRevenue' ? num(val) : num(updated.renewalRevenue);
         updated.totalRevenue = (nr + rr) || '';
       }
-      return { ...prev, [id]: updated };
+      const newRows = { ...prev, [id]: updated };
+      if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
+      saveTimers.current[id] = setTimeout(() => saveToDb(id, updated), 800);
+      return newRows;
     });
   };
 
-  // Build chart data, trim trailing unfilled
   const chartData = useMemo(() => {
     const allPoints = generatedMonths.map(gm => {
       const r = getRow(gm.id, gm.month);
       return {
         month: gm.month.slice(0, 3),
-        'Клиенты': num(r.clients),
-        'Новая ($)': num(r.newRevenue),
-        'Продление ($)': num(r.renewalRevenue),
-        'Итого ($)': num(r.totalRevenue),
+        'Клиенты': num(r.clients) || null,
+        'Новая ($)': num(r.newRevenue) || null,
+        'Продление ($)': num(r.renewalRevenue) || null,
+        'Итого ($)': num(r.totalRevenue) || null,
         hasFilled: r.clients !== '' || r.newRevenue !== '' || r.renewalRevenue !== '',
       };
     });
@@ -308,15 +541,36 @@ function MonthlyTable() {
 
   return (
     <div className="space-y-4">
-      {/* Year picker */}
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setYear(y => y - 1)}>‹</Button>
-        <span className="text-sm font-semibold text-foreground w-12 text-center">{year}</span>
-        <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setYear(y => y + 1)}>›</Button>
-        <span className="text-xs text-muted-foreground">Все 12 месяцев года</span>
+      <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setYear(y => y - 1)}>‹</Button>
+          <span className="text-sm font-semibold text-foreground w-12 text-center">{year}</span>
+          <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setYear(y => y + 1)}>›</Button>
+          <span className="text-xs text-muted-foreground">Все 12 месяцев</span>
+          {saving && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Сохраняю...</div>}
+          {loading && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Загрузка...</div>}
+        </div>
+        <div className="flex items-center gap-2">
+          <ChartControls lineType={lineType} setLineType={setLineType} tickCount={tickCount} setTickCount={setTickCount} />
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setShowHistory(h => !h)}>
+            <History className="h-3.5 w-3.5" />История
+          </Button>
+        </div>
       </div>
 
-      {/* Charts */}
+      {showHistory && (
+        <Card className="glass-card">
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-xs font-medium flex items-center gap-1.5">
+              <History className="h-3.5 w-3.5" />История изменений — {year}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <HistoryPanel statType="monthly" yearRange={yearRange} />
+          </CardContent>
+        </Card>
+      )}
+
       {chartData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {[
@@ -334,9 +588,9 @@ function MonthlyTable() {
                   <LineChart data={chartData} margin={{ top: 4, right: 8, left: chart.isMoney ? -10 : -20, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                     <XAxis dataKey="month" tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => chart.isMoney ? `$${v}` : String(v)} />
+                    <YAxis tick={{ fontSize: 8 }} stroke="hsl(var(--muted-foreground))" tickCount={tickCount} tickFormatter={v => chart.isMoney ? `$${v}` : String(v)} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Line type="monotone" dataKey={chart.dataKey} stroke={chart.color} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls={false} />
+                    <Line type={lineType} dataKey={chart.dataKey} stroke={chart.color} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -345,7 +599,6 @@ function MonthlyTable() {
         </div>
       )}
 
-      {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-border/40">
         <table className="min-w-[600px] w-full text-xs border-collapse">
           <thead>
@@ -386,12 +639,12 @@ function MonthlyTable() {
                       <input
                         type="number"
                         value={row[c.key] as string}
-                        onChange={e => update(gm.id, gm.month, c.key, e.target.value)}
+                        onChange={e => !('readOnly' in c && c.readOnly) && update(gm.id, gm.month, c.key, e.target.value)}
                         placeholder="—"
-                        readOnly={c.key === 'totalRevenue'}
+                        readOnly={'readOnly' in c && c.readOnly}
                         className={cn(
                           'w-full text-center bg-transparent border border-transparent rounded px-1 py-0.5 text-xs focus:outline-none transition-colors',
-                          c.key === 'totalRevenue' ? 'font-semibold text-primary cursor-default' : 'focus:border-primary/50 hover:border-border/50'
+                          'readOnly' in c && c.readOnly ? 'font-semibold text-primary cursor-default' : 'focus:border-primary/50 hover:border-border/50'
                         )}
                       />
                     </td>
@@ -416,7 +669,7 @@ export default function AfmStats() {
           Статистики и состояния
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-          Вносите данные — графики строятся автоматически. Иконка 📌 — добавить пометку к строке.
+          Данные сохраняются автоматически. 📌 — пометка к строке. История изменений доступна по кнопке.
         </p>
       </motion.div>
 
@@ -424,12 +677,10 @@ export default function AfmStats() {
         <Tabs defaultValue="weekly">
           <TabsList className="mb-4">
             <TabsTrigger value="weekly" className="gap-1.5 text-xs sm:text-sm">
-              <TrendingUp className="h-3.5 w-3.5" />
-              Еженедельно
+              <TrendingUp className="h-3.5 w-3.5" />Еженедельно
             </TabsTrigger>
             <TabsTrigger value="monthly" className="gap-1.5 text-xs sm:text-sm">
-              <Users className="h-3.5 w-3.5" />
-              Ежемесячно
+              <Users className="h-3.5 w-3.5" />Ежемесячно
             </TabsTrigger>
           </TabsList>
 
@@ -437,7 +688,7 @@ export default function AfmStats() {
             <Card className="glass-card">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Недельные показатели</CardTitle>
-                <p className="text-xs text-muted-foreground">Вписывайте данные — графики обновляются автоматически</p>
+                <p className="text-xs text-muted-foreground">Недели пятница → четверг. Данные сохраняются в базу автоматически.</p>
               </CardHeader>
               <CardContent className="p-2 sm:p-4">
                 <WeeklyTable />
@@ -449,7 +700,7 @@ export default function AfmStats() {
             <Card className="glass-card">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Месячные показатели</CardTitle>
-                <p className="text-xs text-muted-foreground">Общая выручка рассчитывается автоматически (новая + продления)</p>
+                <p className="text-xs text-muted-foreground">Общая выручка рассчитывается автоматически. Данные сохраняются в базу.</p>
               </CardHeader>
               <CardContent className="p-2 sm:p-4">
                 <MonthlyTable />

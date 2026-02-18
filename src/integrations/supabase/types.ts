@@ -141,6 +141,81 @@ export type Database = {
         }
         Relationships: []
       }
+      afm_stats_data: {
+        Row: {
+          created_at: string
+          field_name: string
+          id: string
+          note: string | null
+          period_key: string
+          stat_type: string
+          updated_at: string
+          updated_by: string | null
+          value: number
+          year_range: string
+        }
+        Insert: {
+          created_at?: string
+          field_name: string
+          id?: string
+          note?: string | null
+          period_key: string
+          stat_type: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+          year_range: string
+        }
+        Update: {
+          created_at?: string
+          field_name?: string
+          id?: string
+          note?: string | null
+          period_key?: string
+          stat_type?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+          year_range?: string
+        }
+        Relationships: []
+      }
+      afm_stats_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          field_name: string
+          id: string
+          new_value: number
+          old_value: number | null
+          period_key: string
+          stat_type: string
+          year_range: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          field_name: string
+          id?: string
+          new_value: number
+          old_value?: number | null
+          period_key: string
+          stat_type: string
+          year_range: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          field_name?: string
+          id?: string
+          new_value?: number
+          old_value?: number | null
+          period_key?: string
+          stat_type?: string
+          year_range?: string
+        }
+        Relationships: []
+      }
       agency_users: {
         Row: {
           agency_role: Database["public"]["Enums"]["agency_role"]
@@ -1503,6 +1578,17 @@ export type Database = {
       is_agency_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agency_member: { Args: { _user_id: string }; Returns: boolean }
       no_admin_exists: { Args: never; Returns: boolean }
+      upsert_afm_stat: {
+        Args: {
+          _field_name: string
+          _note?: string
+          _period_key: string
+          _stat_type: string
+          _value: number
+          _year_range: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       agency_role:
