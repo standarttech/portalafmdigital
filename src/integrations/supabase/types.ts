@@ -1441,6 +1441,7 @@ export type Database = {
           page_name: string | null
           platform: string
           token_expires_at: string | null
+          token_reference: string | null
         }
         Insert: {
           access_token: string
@@ -1454,6 +1455,7 @@ export type Database = {
           page_name?: string | null
           platform: string
           token_expires_at?: string | null
+          token_reference?: string | null
         }
         Update: {
           access_token?: string
@@ -1467,6 +1469,7 @@ export type Database = {
           page_name?: string | null
           platform?: string
           token_expires_at?: string | null
+          token_reference?: string | null
         }
         Relationships: []
       }
@@ -1722,6 +1725,10 @@ export type Database = {
         Args: { _invitation_id: string }
         Returns: undefined
       }
+      delete_social_token: {
+        Args: { _token_reference: string }
+        Returns: undefined
+      }
       get_invitation_by_token: {
         Args: { _token: string }
         Returns: {
@@ -1739,6 +1746,7 @@ export type Database = {
           permissions: Json
         }[]
       }
+      get_social_token: { Args: { _token_reference: string }; Returns: string }
       has_client_access: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
@@ -1746,6 +1754,10 @@ export type Database = {
       is_agency_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agency_member: { Args: { _user_id: string }; Returns: boolean }
       no_admin_exists: { Args: never; Returns: boolean }
+      store_social_token: {
+        Args: { _secret_name: string; _secret_value: string }
+        Returns: string
+      }
       upsert_afm_stat: {
         Args: {
           _field_name: string
