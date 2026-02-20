@@ -1,15 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, BarChart3, RefreshCw, Target, DollarSign, Users, Zap, Calendar, Loader2, Link2 } from 'lucide-react';
+import { TrendingUp, BarChart3, RefreshCw, Target, DollarSign, Users, Zap, CalendarIcon, Loader2, Link2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend,
 } from 'recharts';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
@@ -24,6 +28,86 @@ interface Client { id: string; name: string; google_sheet_url: string | null; me
 interface DailyMetric { date: string; spend: number; leads: number; impressions: number; link_clicks: number; }
 interface BudgetPlan { id: string; month: string; planned_spend: number; planned_leads: number; planned_cpl: number | null; }
 interface ClientTarget { target_cpl: number | null; target_leads: number | null; target_roas: number | null; }
+
+// Date presets
+const DATE_PRESETS = [
+  { label: '7 дней', getDates: () => ({ from: subDays(new Date(), 6), to: new Date() }) },
+  { label: '30 дней', getDates: () => ({ from: subDays(new Date(), 29), to: new Date() }) },
+  { label: 'Этот месяц', getDates: () => ({ from: startOfMonth(new Date()), to: new Date() }) },
+  { label: 'Прош. месяц', getDates: () => { const lm = subMonths(new Date(), 1); return { from: startOfMonth(lm), to: endOfMonth(lm) }; } },
+  { label: 'Эта неделя', getDates: () => ({ from: startOfWeek(new Date(), { weekStartsOn: 1 }), to: new Date() }) },
+];
+
+function MbDatePicker({ dateRange, onDateRangeChange }: {
+  dateRange: { from: Date; to: Date };
+  onDateRangeChange: (r: { from: Date; to: Date }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState<DateRange | undefined>({ from: dateRange.from, to: dateRange.to });
+  const [preset, setPreset] = useState('30 дней');
+
+  const handlePreset = (p: typeof DATE_PRESETS[0]) => {
+    const range = p.getDates();
+    setPick({ from: range.from, to: range.to });
+    setPreset(p.label);
+  };
+
+  const handleApply = () => {
+    if (pick?.from && pick?.to) {
+      onDateRangeChange({ from: pick.from, to: pick.to });
+    }
+    setOpen(false);
+  };
+
+  const displayLabel = dateRange
+    ? `${format(dateRange.from, 'dd.MM.yy')} – ${format(dateRange.to, 'dd.MM.yy')}`
+    : '30 дней';
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs border-border/50">
+          <CalendarIcon className="h-3.5 w-3.5" />
+          <span>{displayLabel}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={4}>
+        <div className="flex">
+          <div className="w-36 border-r border-border/50 py-2">
+            {DATE_PRESETS.map(p => (
+              <button key={p.label} onClick={() => handlePreset(p)}
+                className={cn('w-full text-left px-4 py-1.5 text-xs transition-colors', preset === p.label ? 'text-primary font-semibold bg-primary/5' : 'text-foreground hover:bg-muted/50')}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-col">
+            <Calendar
+              mode="range"
+              selected={pick}
+              onSelect={r => { setPick(r); setPreset(''); }}
+              numberOfMonths={2}
+              disabled={d => d > new Date()}
+              className="p-3 pointer-events-auto"
+              weekStartsOn={1}
+            />
+            <div className="flex items-center justify-between px-4 pb-3 gap-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="px-2 py-1 bg-muted/50 rounded">{pick?.from ? format(pick.from, 'dd.MM.yy') : '—'}</span>
+                <span>–</span>
+                <span className="px-2 py-1 bg-muted/50 rounded">{pick?.to ? format(pick.to, 'dd.MM.yy') : '—'}</span>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setOpen(false)}>Отмена</Button>
+                <Button size="sm" className="h-8 text-xs" onClick={handleApply}>Применить</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function AfmMediaBuying() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -40,6 +124,7 @@ export default function AfmMediaBuying() {
   const [targetCpl, setTargetCpl] = useState('');
   const [targetLeads, setTargetLeads] = useState('');
   const [targetRoas, setTargetRoas] = useState('');
+  const [dateRange, setDateRange] = useState({ from: subDays(new Date(), 29), to: new Date() });
 
   useEffect(() => {
     supabase.from('clients').select('id, name, google_sheet_url, meta_sheet_url, tiktok_sheet_url')
@@ -54,14 +139,16 @@ export default function AfmMediaBuying() {
 
   useEffect(() => {
     if (!selectedClientId) return;
-    const from30 = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+    const fromStr = format(dateRange.from, 'yyyy-MM-dd');
+    const toStr = format(dateRange.to, 'yyyy-MM-dd');
     const monthStr = format(new Date(), 'yyyy-MM-01');
 
     Promise.all([
       supabase.from('daily_metrics')
         .select('date, spend, leads, impressions, link_clicks')
         .eq('client_id', selectedClientId)
-        .gte('date', from30)
+        .gte('date', fromStr)
+        .lte('date', toStr)
         .order('date'),
       supabase.from('budget_plans')
         .select('id, month, planned_spend, planned_leads, planned_cpl')
@@ -91,7 +178,8 @@ export default function AfmMediaBuying() {
         setTargetCpl(''); setTargetLeads(''); setTargetRoas('');
       }
     });
-  }, [selectedClientId]);
+  }, [selectedClientId, dateRange]);
+
 
   const totalSpend = metrics.reduce((s, m) => s + m.spend, 0);
   const totalLeads = metrics.reduce((s, m) => s + m.leads, 0);
@@ -181,6 +269,7 @@ export default function AfmMediaBuying() {
           <p className="text-sm text-muted-foreground mt-0.5">Внутренняя реклама и продвижение</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <MbDatePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
           <select
             value={selectedClientId || ''}
             onChange={e => setSelectedClientId(e.target.value)}

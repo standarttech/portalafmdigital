@@ -38,13 +38,13 @@ Deno.serve(async (req) => {
 
       const redirectUri = `https://${SUPABASE_URL.replace(/^https?:\/\//, '')}/functions/v1/meta-oauth?action=callback`;
       console.log('[meta-oauth] Generated OAuth URL with redirect_uri:', redirectUri);
+      // Only use scopes that are valid without App Review for development.
+      // For production (Live mode), add: pages_read_engagement, instagram_manage_insights
       const scopes = [
-        'instagram_basic',
-        'instagram_manage_insights',
-        'pages_read_engagement',
+        'public_profile',
+        'email',
         'pages_show_list',
-        'read_insights',
-        'business_management',
+        'pages_read_engagement',
       ].join(',');
 
       const state = encodeURIComponent(JSON.stringify({ userId: claims.sub }));

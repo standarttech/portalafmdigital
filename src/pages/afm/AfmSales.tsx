@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DollarSign, Users, TrendingUp, Plus, Phone, Mail,
-  ChevronRight, Circle, CheckCircle2, Clock, Edit2, Trash2, X, Save, Loader2,
+  ChevronRight, Circle, CheckCircle2, Clock, Edit2, Trash2, X, Save, Loader2, Star,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,9 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import AfmPerformance from './AfmPerformance';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
@@ -270,8 +272,16 @@ export default function AfmSales() {
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
       <motion.div variants={item}>
         <h1 className="text-2xl font-bold text-foreground">Sales & CRM</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Управление лидами и сделками</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Управление лидами, сделками и эффективностью команды</p>
       </motion.div>
+
+      <Tabs defaultValue="crm" className="space-y-4">
+        <TabsList className="h-9">
+          <TabsTrigger value="crm" className="text-xs gap-1.5"><Circle className="h-3 w-3" />CRM & Лиды</TabsTrigger>
+          <TabsTrigger value="performance" className="text-xs gap-1.5"><Star className="h-3 w-3" />Предоставление</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="crm" className="space-y-5">
 
       {/* KPIs */}
       <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -484,6 +494,12 @@ export default function AfmSales() {
           </CardContent>
         </Card>
       </motion.div>
+        </TabsContent>
+
+        <TabsContent value="performance">
+          <AfmPerformance />
+        </TabsContent>
+      </Tabs>
     </motion.div>
   );
 }
