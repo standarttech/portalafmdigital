@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import ssLogo from "@/assets/ss-logo-afm.png";
 import ssBg from "@/assets/ss-bg-gradient.jpg";
 import ProgressBar from "./ProgressBar";
 import OptionCard from "./OptionCard";
 import "./ss.css";
 
-// ---- Meta Pixel init ----
+// ---- Meta Pixel: PageView only (Lead is fired on /thanks) ----
 function initMetaPixel() {
   if (typeof window === "undefined") return;
   const win = window as any;
@@ -35,13 +36,9 @@ function getUTMParams(): Record<string, string> {
     const val = params.get(key);
     if (val) result[key] = val;
   });
-  // Also try sessionStorage for cross-page UTM persistence
   const stored = sessionStorage.getItem("afm_utm");
   if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      return { ...parsed, ...result };
-    } catch { /* ignore */ }
+    try { return { ...JSON.parse(stored), ...result }; } catch { /* ignore */ }
   }
   return result;
 }
@@ -49,9 +46,32 @@ function getUTMParams(): Record<string, string> {
 function storeUTMParams() {
   if (typeof window === "undefined") return;
   const utm = getUTMParams();
-  if (Object.keys(utm).length > 0) {
-    sessionStorage.setItem("afm_utm", JSON.stringify(utm));
-  }
+  if (Object.keys(utm).length > 0) sessionStorage.setItem("afm_utm", JSON.stringify(utm));
+}
+
+// ---- Phone formatting helpers ----
+// Strips everything except digits
+function digitsOnly(s: string): string {
+  return s.replace(/\D/g, "");
+}
+
+// Format US number: (XXX) XXX-XXXX
+function formatUSPhone(digits: string): string {
+  // Remove leading 1 if present
+  const d = digits.startsWith("1") ? digits.slice(1) : digits;
+  if (d.length === 0) return "";
+  if (d.length <= 3) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6, 10)}`;
+}
+
+function validatePhone(raw: string): string | null {
+  const digits = digitsOnly(raw);
+  const local = digits.startsWith("1") ? digits.slice(1) : digits;
+  if (local.length === 0) return "Phone number is required.";
+  if (local.length < 10) return "Phone number is too short — enter all 10 digits.";
+  if (local.length > 10) return "Phone number is too long.";
+  return null; // valid
 }
 
 // ---- Types ----
@@ -60,7 +80,7 @@ interface FormData {
   business_vertical: string;
   biggest_challenge: string;
   full_name: string;
-  phone: string;
+  phone: string; // stored as raw formatted, sent with +1 prefix
   email: string;
 }
 
@@ -72,7 +92,6 @@ interface ContactErrors {
 
 // ---- Constants ----
 const TOTAL_STEPS = 5;
-
 const SPEND_OPTIONS = ["$5,000 – $10,000", "$10,000 – $50,000", "$50,000 – $100,000", "$100,000+"];
 const VERTICAL_OPTIONS = ["E-COM Brand", "Info Product / Coaching", "Other Online Business"];
 
@@ -82,6 +101,7 @@ const TESTIMONIALS = [
   { quote: "Clear communication, fast execution, and actual performance thinking.", name: "Emily T.", role: "Info-product Operator", initials: "ET" },
 ];
 
+// ---- Helpers ----
 function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
@@ -89,9 +109,10 @@ function validateEmail(email: string): boolean {
 function validateContact(data: FormData): ContactErrors {
   const errors: ContactErrors = {};
   if (!data.full_name.trim()) errors.full_name = "Full name is required.";
-  if (!data.phone.trim()) errors.phone = "Phone number is required.";
-  if (!data.email.trim()) { errors.email = "Email is required."; }
-  else if (!validateEmail(data.email)) { errors.email = "Please enter a valid email."; }
+  const phoneErr = validatePhone(data.phone);
+  if (phoneErr) errors.phone = phoneErr;
+  if (!data.email.trim()) errors.email = "Email is required.";
+  else if (!validateEmail(data.email)) errors.email = "Please enter a valid email.";
   return errors;
 }
 
@@ -106,24 +127,43 @@ const StarRow = () => (
   </div>
 );
 
+// ---- Testimonials — redesigned like reference image ----
 function TestimonialsBlock() {
   return (
-    <div className="mt-5 space-y-2.5">
+    <div className="mt-6 space-y-3">
       {TESTIMONIALS.map((t, i) => (
-        <div key={i} className="ss-testimonial-badge">
-          <div className="flex-shrink-0 mt-0.5"><StarRow /></div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] leading-snug italic" style={{ color: "hsl(var(--ss-muted-fg))" }}>"{t.quote}"</p>
-            <div className="flex items-center gap-2 mt-1.5">
-              {/* Avatar with initials — always visible, no empty circle */}
-              <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[9px]"
-                style={{ background: "hsl(220 13% 88%)", border: "1px solid hsl(var(--ss-border))", color: "rgba(0,0,0,0.55)" }}>
-                {t.initials}
-              </div>
-              <p className="text-[12px] font-semibold" style={{ color: "hsl(var(--ss-card-fg))" }}>
-                {t.name} <span className="font-normal" style={{ color: "hsl(var(--ss-muted-fg))" }}>— {t.role}</span>
-              </p>
+        <div
+          key={i}
+          className="rounded-2xl p-4"
+          style={{
+            background: "hsl(220 14% 95%)",
+            border: "1px solid hsl(var(--ss-border))",
+          }}
+        >
+          {/* Stars row */}
+          <StarRow />
+          {/* Quote */}
+          <p
+            className="text-[13px] leading-snug italic mt-2 mb-3"
+            style={{ color: "hsl(220 15% 35%)" }}
+          >
+            "{t.quote}"
+          </p>
+          {/* Author */}
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[11px]"
+              style={{
+                background: "hsl(220 13% 82%)",
+                color: "hsl(220 15% 35%)",
+              }}
+            >
+              {t.initials}
             </div>
+            <p className="text-[12px]" style={{ color: "hsl(var(--ss-card-fg))" }}>
+              <span className="font-semibold">{t.name}</span>
+              <span style={{ color: "hsl(var(--ss-muted-fg))" }}> — {t.role}</span>
+            </p>
           </div>
         </div>
       ))}
@@ -199,7 +239,7 @@ function StepChallenge({ value, onChange, onContinue }: { value: string; onChang
   return (
     <div className="step-animate">
       <h2 className="text-[clamp(18px,4vw,22px)] font-bold leading-snug mb-2" style={{ color: "hsl(var(--ss-card-fg))" }}>
-        What is the biggest challenge you&apos;re running into that our team can help solve?
+        What is the biggest challenge you're running into that our team can help solve?
       </h2>
       <p className="text-[13px] mb-5" style={{ color: "hsl(var(--ss-muted-fg))" }}>Be as specific as possible — it helps us prepare for your call.</p>
       <textarea className="form-input resize-none mb-6" rows={5} placeholder="Enter your answer…" value={value} onChange={(e) => onChange(e.target.value)} />
@@ -213,53 +253,133 @@ function StepChallenge({ value, onChange, onContinue }: { value: string; onChang
   );
 }
 
-function StepContact({ data, onChange, onSubmit }: { data: FormData; onChange: (field: keyof FormData, val: string) => void; onSubmit: () => void; }) {
+// ---- Phone input with +1 prefix ----
+function PhoneInput({ value, onChange, hasError }: {
+  value: string;
+  onChange: (v: string) => void;
+  hasError: boolean;
+}) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Strip non-digits and reformat
+    const digits = digitsOnly(raw);
+    // Cap at 10 local digits
+    const local = digits.startsWith("1") ? digits.slice(1) : digits;
+    const capped = local.slice(0, 10);
+    onChange(formatUSPhone(capped));
+  };
+
+  return (
+    <div className={`flex items-stretch rounded-[10px] overflow-hidden${hasError ? " error-outline" : ""}`}
+      style={{ border: `1.5px solid ${hasError ? "hsl(var(--ss-destructive))" : "hsl(var(--ss-border))"}`, background: "hsl(var(--ss-card))" }}>
+      {/* +1 prefix badge */}
+      <div
+        className="flex items-center px-3 text-[15px] font-medium select-none flex-shrink-0"
+        style={{
+          background: "hsl(220 14% 95%)",
+          borderRight: "1.5px solid hsl(var(--ss-border))",
+          color: "hsl(var(--ss-card-fg))",
+          minWidth: "44px",
+        }}
+      >
+        +1
+      </div>
+      <input
+        type="tel"
+        inputMode="numeric"
+        className="flex-1 px-3 py-[13px] text-[15px] outline-none bg-transparent"
+        style={{ color: "hsl(var(--ss-card-fg))", fontFamily: "inherit" }}
+        placeholder="(555) 000-0000"
+        value={value}
+        onChange={handleChange}
+      />
+    </div>
+  );
+}
+
+function StepContact({ data, onChange, onSubmit }: {
+  data: FormData;
+  onChange: (field: keyof FormData, val: string) => void;
+  onSubmit: () => void;
+}) {
   const [errors, setErrors] = useState<ContactErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const handleSubmit = () => {
     const errs = validateContact(data);
-    if (Object.keys(errs).length > 0) { setErrors(errs); setTouched({ full_name: true, phone: true, email: true }); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      setTouched({ full_name: true, phone: true, email: true });
+      return;
+    }
     onSubmit();
   };
-  const handleBlur = (field: string) => { setTouched((p) => ({ ...p, [field]: true })); setErrors(validateContact(data)); };
+
+  const handleBlur = (field: string) => {
+    setTouched((p) => ({ ...p, [field]: true }));
+    setErrors(validateContact(data));
+  };
 
   return (
     <div className="step-animate">
-      <h2 className="text-[clamp(18px,4vw,22px)] font-bold leading-snug mb-1" style={{ color: "hsl(var(--ss-card-fg))" }}>Contact information</h2>
+      <h2 className="text-[clamp(18px,4vw,22px)] font-bold leading-snug mb-1" style={{ color: "hsl(var(--ss-card-fg))" }}>
+        Contact information
+      </h2>
       <p className="text-[13px] mb-5" style={{ color: "hsl(var(--ss-muted-fg))" }}>Please answer the questions below</p>
+
       <div className="space-y-4 mb-6">
         {/* Full Name */}
         <div>
           <label className="block text-[13px] font-medium mb-1.5" style={{ color: "hsl(var(--ss-card-fg))" }}>
             Full name <span style={{ color: "hsl(var(--ss-destructive))" }}>*</span>
           </label>
-          <input type="text" className={`form-input${touched.full_name && errors.full_name ? " error" : ""}`}
-            placeholder="Jane Smith" value={data.full_name}
-            onChange={(e) => onChange("full_name", e.target.value)} onBlur={() => handleBlur("full_name")} />
-          {touched.full_name && errors.full_name && <p className="text-[12px] mt-1" style={{ color: "hsl(var(--ss-destructive))" }}>{errors.full_name}</p>}
+          <input
+            type="text"
+            className={`form-input${touched.full_name && errors.full_name ? " error" : ""}`}
+            placeholder="Jane Smith"
+            value={data.full_name}
+            onChange={(e) => onChange("full_name", e.target.value)}
+            onBlur={() => handleBlur("full_name")}
+          />
+          {touched.full_name && errors.full_name && (
+            <p className="text-[12px] mt-1" style={{ color: "hsl(var(--ss-destructive))" }}>{errors.full_name}</p>
+          )}
         </div>
-        {/* Phone */}
+
+        {/* Phone with +1 */}
         <div>
           <label className="block text-[13px] font-medium mb-1.5" style={{ color: "hsl(var(--ss-card-fg))" }}>
             Phone number <span style={{ color: "hsl(var(--ss-destructive))" }}>*</span>
           </label>
-          <input type="tel" className={`form-input${touched.phone && errors.phone ? " error" : ""}`}
-            placeholder="+1 (555) 000-0000" value={data.phone}
-            onChange={(e) => onChange("phone", e.target.value)} onBlur={() => handleBlur("phone")} />
-          {touched.phone && errors.phone && <p className="text-[12px] mt-1" style={{ color: "hsl(var(--ss-destructive))" }}>{errors.phone}</p>}
+          <PhoneInput
+            value={data.phone}
+            onChange={(v) => onChange("phone", v)}
+            hasError={!!(touched.phone && errors.phone)}
+          />
+          {touched.phone && errors.phone && (
+            <p className="text-[12px] mt-1" style={{ color: "hsl(var(--ss-destructive))" }}>{errors.phone}</p>
+          )}
         </div>
+
         {/* Email */}
         <div>
           <label className="block text-[13px] font-medium mb-1.5" style={{ color: "hsl(var(--ss-card-fg))" }}>
             Email <span style={{ color: "hsl(var(--ss-destructive))" }}>*</span>
           </label>
-          <input type="email" className={`form-input${touched.email && errors.email ? " error" : ""}`}
-            placeholder="you@company.com" value={data.email}
-            onChange={(e) => onChange("email", e.target.value)} onBlur={() => handleBlur("email")} />
-          {touched.email && errors.email && <p className="text-[12px] mt-1" style={{ color: "hsl(var(--ss-destructive))" }}>{errors.email}</p>}
+          <input
+            type="email"
+            className={`form-input${touched.email && errors.email ? " error" : ""}`}
+            placeholder="you@company.com"
+            value={data.email}
+            onChange={(e) => onChange("email", e.target.value)}
+            onBlur={() => handleBlur("email")}
+          />
+          {touched.email && errors.email && (
+            <p className="text-[12px] mt-1" style={{ color: "hsl(var(--ss-destructive))" }}>{errors.email}</p>
+          )}
         </div>
       </div>
+
       <button className="btn-primary" onClick={handleSubmit}>
         Continue
         <svg className="ml-2" width="16" height="16" viewBox="0 0 20 20" fill="none">
@@ -270,47 +390,17 @@ function StepContact({ data, onChange, onSubmit }: { data: FormData; onChange: (
   );
 }
 
-function StepConfirmation({ name }: { name: string }) {
-  const firstName = name.split(" ")[0] || "there";
-  return (
-    <div className="step-animate text-center">
-      <div className="mx-auto mb-5 w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "hsl(142 71% 45%)" }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-          <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-      <h2 className="text-[clamp(20px,4.5vw,26px)] font-extrabold leading-tight mb-3" style={{ color: "hsl(var(--ss-card-fg))" }}>
-        Your application is in, {firstName} — we&apos;ll reach out shortly.
-      </h2>
-      <p className="text-[14px] leading-relaxed mb-2" style={{ color: "hsl(var(--ss-muted-fg))" }}>
-        If you don&apos;t want to wait and keep losing money, book a call with us right now.
-      </p>
-      <p className="text-[14px] leading-relaxed mb-6" style={{ color: "hsl(var(--ss-muted-fg))" }}>
-        On the call, we&apos;ll walk you through our{" "}
-        <span className="font-semibold" style={{ color: "hsl(var(--ss-card-fg))" }}>Meta-Scaling Framework</span>{" "}
-        — a system built to improve your traffic setup and performance.
-      </p>
-      <div className="rounded-xl border p-4 mb-6" style={{ borderColor: "hsl(var(--ss-border))", background: "hsl(220 14% 97%)" }}>
-        <p className="text-[13px]" style={{ color: "hsl(var(--ss-muted-fg))" }}>✅ You successfully submitted your responses.</p>
-      </div>
-      <a href="https://api.leadconnectorhq.com/widget/booking/sHuAQKywl3pBzolErWda" target="_self" className="btn-book block no-underline">
-        📅 Book a Meeting Now
-      </a>
-      <p className="text-[12px] mt-3" style={{ color: "hsl(var(--ss-muted-fg))" }}>Free strategy call · No commitment required</p>
-    </div>
-  );
-}
-
 // ---- Main Page ----
-const initialForm: FormData = { monthly_ad_spend: "", business_vertical: "", biggest_challenge: "", full_name: "", phone: "", email: "" };
+const initialForm: FormData = {
+  monthly_ad_spend: "", business_vertical: "", biggest_challenge: "",
+  full_name: "", phone: "", email: "",
+};
 
 const ScalingStackApply: React.FC = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>(initialForm);
-  const [isConfirmation, setIsConfirmation] = useState(false);
-  const leadFiredRef = useRef(false);
 
-  // Init Meta Pixel on mount & store UTM params
   useEffect(() => {
     initMetaPixel();
     storeUTMParams();
@@ -320,34 +410,21 @@ const ScalingStackApply: React.FC = () => {
   const goNext = () => setStep((s) => s + 1);
 
   const handleContactSubmit = async () => {
-    setIsConfirmation(true);
+    // Save name for thanks page
+    sessionStorage.setItem("afm_applicant_name", form.full_name);
 
-    // Fire Meta Pixel Lead event (once)
-    if (!leadFiredRef.current) {
-      const fbq = (window as any).fbq;
-      if (typeof fbq === "function") {
-        fbq("track", "Lead", {
-          content_name: "AFM Scaling Stack Application",
-          value: 0,
-          currency: "USD",
-        });
-      }
-      leadFiredRef.current = true;
-    }
-
-    // Collect UTM params for GHL webhook
     const utmParams = getUTMParams();
+    const phoneE164 = `+1${digitsOnly(form.phone).replace(/^1/, "")}`;
 
     const webhookPayload = {
       full_name: form.full_name,
       email: form.email,
-      phone: form.phone,
+      phone: phoneE164,
       ad_spend: form.monthly_ad_spend,
       vertical: form.business_vertical,
       challenge: form.biggest_challenge,
       source: "AFM Scaling Stack Leadform",
       created_at: new Date().toISOString(),
-      // UTM / attribution fields for GHL
       utm_source: utmParams.utm_source || "",
       utm_medium: utmParams.utm_medium || "",
       utm_campaign: utmParams.utm_campaign || "",
@@ -364,10 +441,15 @@ const ScalingStackApply: React.FC = () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(webhookPayload),
     }).catch((err) => console.warn("[AFM GHL Webhook] fetch error:", err));
+
+    // Navigate to thanks page — Lead pixel fires there
+    navigate("/scaling-stack/apply/thanks");
   };
 
+  const showProgress = step > 1;
+  const displayStep = Math.min(step - 1, TOTAL_STEPS - 1);
+
   const renderStep = () => {
-    if (isConfirmation) return <StepConfirmation name={form.full_name} />;
     switch (step) {
       case 1: return <StepHero onContinue={goNext} />;
       case 2: return <StepSingleChoice title="What is your monthly ad spend?" options={SPEND_OPTIONS} selected={form.monthly_ad_spend} onSelect={(v) => updateForm("monthly_ad_spend", v)} onContinue={goNext} canContinue={!!form.monthly_ad_spend} />;
@@ -378,12 +460,11 @@ const ScalingStackApply: React.FC = () => {
     }
   };
 
-  const showProgress = !isConfirmation && step > 1;
-  const displayStep = Math.min(step - 1, TOTAL_STEPS - 1);
-
   return (
-    <div className="ss-root min-h-screen flex items-center justify-center px-4 py-8 sm:py-12 relative"
-      style={{ backgroundImage: `url(${ssBg})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+    <div
+      className="ss-root min-h-screen flex items-center justify-center px-4 py-8 sm:py-12 relative"
+      style={{ backgroundImage: `url(${ssBg})`, backgroundSize: "cover", backgroundPosition: "center" }}
+    >
       {/* Meta Pixel noscript fallback */}
       <noscript>
         <img height="1" width="1" style={{ display: "none" }}
@@ -398,11 +479,13 @@ const ScalingStackApply: React.FC = () => {
         <div className="ss-bg-orb" style={{ width: "min(350px,70vw)", height: "min(350px,70vw)", background: "hsl(230, 50%, 18%)", bottom: "5%", right: "-10%" }} />
       </div>
       {/* Card */}
-      <div className="relative z-10 w-full max-w-[460px] rounded-[20px] overflow-hidden"
-        style={{ background: "hsl(var(--ss-card))", boxShadow: "0 25px 60px -10px rgba(0,0,0,0.35), 0 10px 25px -5px rgba(0,0,0,0.2)" }}>
+      <div
+        className="relative z-10 w-full max-w-[460px] rounded-[20px] overflow-hidden"
+        style={{ background: "hsl(var(--ss-card))", boxShadow: "0 25px 60px -10px rgba(0,0,0,0.35), 0 10px 25px -5px rgba(0,0,0,0.2)" }}
+      >
         <div className="h-1 w-full" style={{ background: "hsl(var(--ss-primary))" }} />
         <div className="p-5 sm:p-7 md:p-8">
-          {step > 1 && !isConfirmation && (
+          {step > 1 && (
             <div className="flex items-center gap-2 mb-5">
               <img src={ssLogo} alt="AFM Digital Agency" className="h-7 w-auto" />
               <span className="text-[12px] font-semibold uppercase tracking-widest" style={{ color: "hsl(var(--ss-muted-fg))" }}>AFM Agency</span>
