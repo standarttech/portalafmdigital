@@ -182,10 +182,10 @@ function StatCard({ value, label, trigger }: {value: string;label: string;trigge
 
 function FadeSection({ children, className = "" }: {children: React.ReactNode;className?: string;}) {
   const { ref, inView } = useInView(0.06);
-  return (
-    <div ref={ref} className={`transition-all duration-700 ${inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"} ${className}`}>
-      {children}
-    </div>);
+  return;
+
+
+
 
 }
 
