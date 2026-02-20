@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { CellInput } from '@/components/shared/CellInput';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
@@ -138,7 +139,7 @@ export default function AfmIncomePlan() {
             </div>
             <div className="text-right">
               <p className="text-[10px] text-muted-foreground">Чистая прибыль</p>
-              <p className="text-sm font-bold text-green-400 font-mono">{fmt$(totNet)}</p>
+              <p className="text-sm font-bold text-success font-mono">{fmt$(totNet)}</p>
             </div>
             {saving && <div className="flex items-center gap-1 text-xs text-muted-foreground self-end"><Loader2 className="h-3 w-3 animate-spin" />Сохраняю...</div>}
           </div>
@@ -194,20 +195,16 @@ export default function AfmIncomePlan() {
                     {vals.map((val, i) => (
                       <td key={i} className={`px-1 py-1 border-r border-border/20 ${isTotal ? 'text-primary' : isMargin ? 'text-green-400' : isNeg || val < 0 ? 'text-destructive/80' : ''}`}>
                         {row.editable === 'new' ? (
-                          <input
-                            type="text"
-                            inputMode="numeric"
+                          <CellInput
                             value={newClients[i]}
-                            onChange={e => updateArr(setNewClients, 'newClients', i, e.target.value)}
-                            className="w-full text-center bg-background/60 border border-border/30 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary"
+                            onChange={val => updateArr(setNewClients, 'newClients', i, val)}
+                            className="bg-background/60 border-border/30"
                           />
                         ) : row.editable === 'ren' ? (
-                          <input
-                            type="text"
-                            inputMode="numeric"
+                          <CellInput
                             value={renewals[i]}
-                            onChange={e => updateArr(setRenewals, 'renewals', i, e.target.value)}
-                            className="w-full text-center bg-background/60 border border-border/30 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary"
+                            onChange={val => updateArr(setRenewals, 'renewals', i, val)}
+                            className="bg-background/60 border-border/30"
                           />
                         ) : (
                           <span className="block text-center">{isCount(row.label) ? fmtN(val) : fmt$(val)}</span>

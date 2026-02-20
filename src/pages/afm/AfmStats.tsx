@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { CellInput } from '@/components/shared/CellInput';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -424,13 +425,10 @@ function WeeklyTable() {
                   </td>
                   {WEEK_COLS.map(c => (
                     <td key={c.key} className="px-1 py-1 border-r border-border/20">
-                      <input
-                        type="text"
-                        inputMode="numeric"
+                      <CellInput
                         value={row[c.key]}
-                        onChange={e => update(gw.id, gw.week, c.key, e.target.value)}
+                        onChange={val => update(gw.id, gw.week, c.key, val)}
                         placeholder="—"
-                        className="w-full text-center bg-transparent border border-transparent rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary/50 hover:border-border/50 transition-colors"
                       />
                     </td>
                   ))}
@@ -679,17 +677,12 @@ function MonthlyTable() {
                   </td>
                   {MONTH_COLS.map(c => (
                     <td key={c.key} className={cn('px-1 py-1 border-r border-border/20', c.key === 'totalRevenue' ? 'bg-primary/5' : '')}>
-                      <input
-                        type="text"
-                        inputMode="numeric"
+                      <CellInput
                         value={row[c.key]}
-                        onChange={e => !('readOnly' in c && c.readOnly) && update(gm.id, gm.month, c.key as keyof MonthRow, e.target.value)}
+                        onChange={val => !('readOnly' in c && c.readOnly) && update(gm.id, gm.month, c.key as keyof MonthRow, val)}
                         placeholder="—"
                         readOnly={'readOnly' in c && c.readOnly}
-                        className={cn(
-                          'w-full text-center bg-transparent border border-transparent rounded px-1 py-0.5 text-xs focus:outline-none transition-colors',
-                          'readOnly' in c && c.readOnly ? 'font-semibold text-primary cursor-default' : 'focus:border-primary/50 hover:border-border/50'
-                        )}
+                        className={cn('readOnly' in c && c.readOnly ? 'font-semibold text-primary cursor-default' : '')}
                       />
                     </td>
                   ))}
