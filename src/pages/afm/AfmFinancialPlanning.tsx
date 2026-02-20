@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { DollarSign, Plus, Trash2, Info, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { CellInput } from '@/components/shared/CellInput';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
@@ -216,13 +217,9 @@ export default function AfmFinancialPlanning() {
         </td>
         {FIN_MONTHS.map((_, mi) => (
           <td key={mi} className="px-1 py-0.5 border-r border-border/20">
-            <input
-              type="text"
-              inputMode="numeric"
+            <CellInput
               value={data[row.id]?.[mi] ?? ''}
-              onChange={e => setCell(section, row.id, row.label, mi, e.target.value)}
-              placeholder="0"
-              className="w-full text-center bg-transparent border border-transparent rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary/50 hover:border-border/50 transition-colors"
+              onChange={val => setCell(section, row.id, row.label, mi, val)}
             />
           </td>
         ))}
@@ -291,12 +288,13 @@ export default function AfmFinancialPlanning() {
           return (
             <td key={mi} className="px-1 py-0.5 border-r border-border/20 relative group/cell">
               {isOverride ? (
-                <input type="text" inputMode="numeric" value={data[rowId]?.[mi] ?? ''}
-                  onChange={e => {
-                    setData(prev => { const arr = [...(prev[rowId] ?? Array(NM).fill(''))]; arr[mi] = e.target.value; return { ...prev, [rowId]: arr }; });
-                    saveCell('overrides', rowId, rowId, String(mi), Number(e.target.value) || 0);
+                <CellInput
+                  value={data[rowId]?.[mi] ?? ''}
+                  onChange={val => {
+                    setData(prev => { const arr = [...(prev[rowId] ?? Array(NM).fill(''))]; arr[mi] = val; return { ...prev, [rowId]: arr }; });
+                    saveCell('overrides', rowId, rowId, String(mi), Number(val) || 0);
                   }}
-                  className="w-full text-center bg-background border border-primary/50 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-primary"
+                  className="bg-background border-primary/50"
                 />
               ) : (
                 <div title="Двойной клик — ручной ввод" onDoubleClick={() => {

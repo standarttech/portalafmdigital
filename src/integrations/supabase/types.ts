@@ -1428,6 +1428,48 @@ export type Database = {
           },
         ]
       }
+      social_media_connections: {
+        Row: {
+          access_token: string
+          connected_at: string
+          connected_by: string
+          id: string
+          ig_user_id: string | null
+          is_active: boolean
+          last_refreshed_at: string | null
+          page_id: string | null
+          page_name: string | null
+          platform: string
+          token_expires_at: string | null
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          connected_by: string
+          id?: string
+          ig_user_id?: string | null
+          is_active?: boolean
+          last_refreshed_at?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          platform: string
+          token_expires_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          connected_by?: string
+          id?: string
+          ig_user_id?: string | null
+          is_active?: boolean
+          last_refreshed_at?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          platform?: string
+          token_expires_at?: string | null
+        }
+        Relationships: []
+      }
       task_templates: {
         Row: {
           checklist: Json | null
