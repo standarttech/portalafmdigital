@@ -22,6 +22,41 @@ async function getAuthUser(req: Request) {
   return data.claims;
 }
 
+/** Store a token in Vault and return its UUID reference */
+async function storeTokenInVault(supabaseAdmin: ReturnType<typeof createClient>, token: string, name: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin.rpc('store_social_token', {
+    _secret_value: token,
+    _secret_name: name,
+  });
+  if (error) {
+    console.error('[meta-oauth] vault store error:', error.message);
+    return null;
+  }
+  return data as string;
+}
+
+/** Retrieve a decrypted token from Vault by UUID reference */
+async function getTokenFromVault(supabaseAdmin: ReturnType<typeof createClient>, tokenReference: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin.rpc('get_social_token', {
+    _token_reference: tokenReference,
+  });
+  if (error) {
+    console.error('[meta-oauth] vault get error:', error.message);
+    return null;
+  }
+  return data as string;
+}
+
+/** Delete a Vault secret by UUID reference */
+async function deleteTokenFromVault(supabaseAdmin: ReturnType<typeof createClient>, tokenReference: string): Promise<void> {
+  const { error } = await supabaseAdmin.rpc('delete_social_token', {
+    _token_reference: tokenReference,
+  });
+  if (error) {
+    console.error('[meta-oauth] vault delete error:', error.message);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -38,9 +73,6 @@ Deno.serve(async (req) => {
 
       const redirectUri = `https://${SUPABASE_URL.replace(/^https?:\/\//, '')}/functions/v1/meta-oauth?action=callback`;
       console.log('[meta-oauth] Generated OAuth URL with redirect_uri:', redirectUri);
-      // ONLY use public_profile — no app review required for development mode.
-      // Invalid scopes (email, pages_show_list, pages_read_engagement) cause
-      // Facebook to show "This content isn't available right now" in dev mode.
       const scopes = ['public_profile'].join(',');
 
       const state = encodeURIComponent(JSON.stringify({ userId: claims.sub }));
@@ -58,7 +90,6 @@ Deno.serve(async (req) => {
 
       const body = await req.json();
       const { code } = body;
-      // Always use the canonical HTTPS redirect URI (must match Meta App settings)
       const canonicalRedirectUri = `https://${SUPABASE_URL.replace(/^https?:\/\//, '')}/functions/v1/meta-oauth?action=callback`;
       console.log('[meta-oauth] exchange: using redirect_uri:', canonicalRedirectUri, 'code received:', !!code);
 
@@ -85,11 +116,16 @@ Deno.serve(async (req) => {
       const pagesData = await pagesRes.json();
       const pages = pagesData.data || [];
 
-      // Save Facebook connection
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+      // Store Facebook token in Vault (encrypted), get reference UUID
+      const fbTokenRef = await storeTokenInVault(supabaseAdmin, finalToken, `social_facebook_${claims.sub}`);
+
+      // Save Facebook connection — token stored in Vault, only reference saved to DB
       await supabaseAdmin.from('social_media_connections').upsert({
         platform: 'facebook',
-        access_token: finalToken,
+        access_token: '', // cleared — token now in Vault
+        token_reference: fbTokenRef,
         token_expires_at: expiresAt,
         connected_by: claims.sub,
         connected_at: new Date().toISOString(),
@@ -109,12 +145,16 @@ Deno.serve(async (req) => {
         const igUserId = igData.instagram_business_account?.id;
 
         if (igUserId) {
-          // Get IG username
           const igUserRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}?fields=name,username&access_token=${pageToken}`);
           const igUserData = await igUserRes.json();
+
+          // Store Instagram page token in Vault
+          const igTokenRef = await storeTokenInVault(supabaseAdmin, pageToken, `social_instagram_${claims.sub}`);
+
           await supabaseAdmin.from('social_media_connections').upsert({
             platform: 'instagram',
-            access_token: pageToken,
+            access_token: '', // cleared — token now in Vault
+            token_reference: igTokenRef,
             token_expires_at: null, // Page tokens don't expire
             connected_by: claims.sub,
             connected_at: new Date().toISOString(),
@@ -127,7 +167,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      console.log('[meta-oauth] tokens saved successfully for pages:', pages.map((p: any) => p.name));
+      console.log('[meta-oauth] tokens saved to Vault for pages:', pages.map((p: any) => p.name));
       return new Response(JSON.stringify({ success: true, pages: pages.map((p: any) => ({ id: p.id, name: p.name })) }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -141,29 +181,32 @@ Deno.serve(async (req) => {
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       const { data: conn } = await supabaseAdmin
         .from('social_media_connections')
-        .select('*')
+        .select('token_reference, ig_user_id')
         .eq('platform', 'instagram')
         .eq('is_active', true)
         .maybeSingle();
 
       if (!conn) return new Response(JSON.stringify({ error: 'Not connected' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-      const token = conn.access_token;
+      // Retrieve token from Vault using reference
+      const token = conn.token_reference
+        ? await getTokenFromVault(supabaseAdmin, conn.token_reference)
+        : null;
+
+      if (!token) return new Response(JSON.stringify({ error: 'Token unavailable' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
       const igId = conn.ig_user_id;
 
-      // Fetch profile + follower count
       const profileRes = await fetch(
         `https://graph.facebook.com/v19.0/${igId}?fields=followers_count,follows_count,media_count,username,profile_picture_url,biography,website&access_token=${token}`
       );
       const profile = await profileRes.json();
 
-      // Fetch insights: reach, impressions for last 30 days
       const insightRes = await fetch(
         `https://graph.facebook.com/v19.0/${igId}/insights?metric=reach,impressions,profile_views,follower_count&period=day&since=${Math.floor(Date.now() / 1000) - 30 * 86400}&until=${Math.floor(Date.now() / 1000)}&access_token=${token}`
       );
       const insights = await insightRes.json();
 
-      // Fetch recent media
       const mediaRes = await fetch(
         `https://graph.facebook.com/v19.0/${igId}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count,insights.metric(impressions,reach,plays)&limit=12&access_token=${token}`
       );
@@ -182,29 +225,32 @@ Deno.serve(async (req) => {
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       const { data: conn } = await supabaseAdmin
         .from('social_media_connections')
-        .select('*')
+        .select('token_reference, page_id')
         .eq('platform', 'facebook')
         .eq('is_active', true)
         .maybeSingle();
 
       if (!conn) return new Response(JSON.stringify({ error: 'Not connected' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-      const pageToken = conn.access_token;
+      // Retrieve token from Vault using reference
+      const pageToken = conn.token_reference
+        ? await getTokenFromVault(supabaseAdmin, conn.token_reference)
+        : null;
+
+      if (!pageToken) return new Response(JSON.stringify({ error: 'Token unavailable' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
       const pageId = conn.page_id;
 
-      // Fetch page info
       const pageRes = await fetch(
         `https://graph.facebook.com/v19.0/${pageId}?fields=name,fan_count,followers_count,picture,about,website&access_token=${pageToken}`
       );
       const page = await pageRes.json();
 
-      // Fetch page insights
       const insightRes = await fetch(
         `https://graph.facebook.com/v19.0/${pageId}/insights?metric=page_impressions,page_reach,page_fan_adds,page_views_total&period=day&since=${Math.floor(Date.now() / 1000) - 30 * 86400}&until=${Math.floor(Date.now() / 1000)}&access_token=${pageToken}`
       );
       const insights = await insightRes.json();
 
-      // Fetch recent posts
       const postsRes = await fetch(
         `https://graph.facebook.com/v19.0/${pageId}/posts?fields=id,message,created_time,full_picture,likes.summary(true),comments.summary(true),shares&limit=10&access_token=${pageToken}`
       );
@@ -223,7 +269,24 @@ Deno.serve(async (req) => {
       const body = await req.json();
       const { platform } = body;
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      await supabaseAdmin.from('social_media_connections').update({ is_active: false }).eq('platform', platform);
+
+      // Retrieve token_reference before deactivating so we can delete from Vault
+      const { data: conn } = await supabaseAdmin
+        .from('social_media_connections')
+        .select('token_reference')
+        .eq('platform', platform)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (conn?.token_reference) {
+        await deleteTokenFromVault(supabaseAdmin, conn.token_reference);
+      }
+
+      await supabaseAdmin
+        .from('social_media_connections')
+        .update({ is_active: false, token_reference: null, access_token: '' })
+        .eq('platform', platform);
+
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -233,13 +296,17 @@ Deno.serve(async (req) => {
       if (!claims) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      const { data } = await supabaseAdmin.from('social_media_connections').select('platform, page_name, ig_user_id, connected_at, is_active').eq('is_active', true);
+      // Only return safe metadata — never expose token_reference or access_token to client
+      const { data } = await supabaseAdmin
+        .from('social_media_connections')
+        .select('platform, page_name, ig_user_id, connected_at, is_active')
+        .eq('is_active', true);
       return new Response(JSON.stringify({ connections: data || [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     console.error(e);
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
