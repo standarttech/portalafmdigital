@@ -33,6 +33,10 @@ import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import MfaChallengePage from "@/pages/MfaChallengePage";
 import BrandingPage from "@/pages/BrandingPage";
 import AfmInternalLayout from "@/components/layout/AfmInternalLayout";
+import ScalingStackLanding from "@/scaling-stack/ScalingStackLanding";
+import ScalingStackApply from "@/scaling-stack/ScalingStackApply";
+import ScalingStackPrivacy from "@/scaling-stack/ScalingStackPrivacy";
+import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
 import AfmDashboard from "@/pages/afm/AfmDashboard";
 import AfmMediaBuying from "@/pages/afm/AfmMediaBuying";
 import AfmSocialMedia from "@/pages/afm/AfmSocialMedia";
@@ -130,6 +134,18 @@ function AppRoutes() {
     checkForcePasswordChange();
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
+
+  // Public routes — no auth required
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/scaling-stack")) {
+    return (
+      <Routes>
+        <Route path="/scaling-stack" element={<ScalingStackLanding />} />
+        <Route path="/scaling-stack/apply" element={<ScalingStackApply />} />
+        <Route path="/scaling-stack/privacy" element={<ScalingStackPrivacy />} />
+        <Route path="/scaling-stack/terms" element={<ScalingStackTerms />} />
+      </Routes>
+    );
+  }
 
   if (loading || (user && (forcePasswordChange === null || needsPasswordSetup === null)) || checkingFpc || checkingMfa) {
     return (
