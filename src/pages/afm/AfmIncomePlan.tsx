@@ -255,8 +255,6 @@ export default function AfmIncomePlan() {
                     const isAct = activeCell?.rowKey === cellKey;
 
                     if (row.editable === 'new') {
-                      const inputRef = useRef<HTMLInputElement>(null);
-                      // NOTE: hooks inside map - using key-based input refs instead
                       return (
                         <td key={i}
                           className={`border-r border-b border-border/30 p-0 relative h-[22px] cursor-cell ${isAct ? 'ring-2 ring-inset ring-blue-500 z-20 bg-blue-500/5' : 'hover:bg-muted/20'}`}
