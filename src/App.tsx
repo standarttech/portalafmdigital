@@ -35,6 +35,7 @@ import BrandingPage from "@/pages/BrandingPage";
 import AfmInternalLayout from "@/components/layout/AfmInternalLayout";
 import ScalingStackLanding from "@/scaling-stack/ScalingStackLanding";
 import ScalingStackApply from "@/scaling-stack/ScalingStackApply";
+import ScalingStackThanks from "@/scaling-stack/ScalingStackThanks";
 import ScalingStackPrivacy from "@/scaling-stack/ScalingStackPrivacy";
 import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
 import AfmDashboard from "@/pages/afm/AfmDashboard";
@@ -141,6 +142,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/scaling-stack" element={<ScalingStackLanding />} />
         <Route path="/scaling-stack/apply" element={<ScalingStackApply />} />
+        <Route path="/scaling-stack/apply/thanks" element={<ScalingStackThanks />} />
         <Route path="/scaling-stack/privacy" element={<ScalingStackPrivacy />} />
         <Route path="/scaling-stack/terms" element={<ScalingStackTerms />} />
       </Routes>
