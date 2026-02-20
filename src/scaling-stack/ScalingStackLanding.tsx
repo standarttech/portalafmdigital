@@ -13,13 +13,6 @@ const STATS = [
   { value: "400%+", label: "Average ROAS" },
 ];
 
-const SERVICES = [
-  { icon: "📈", title: "Meta & TikTok Ads", desc: "Performance-first media buying on the platforms that move product. We optimize for ROAS, CAC, and LTV — not vanity metrics." },
-  { icon: "🧪", title: "Creative Testing Framework", desc: "Systematic creative iteration that cuts CPM and finds winning angles faster. No more guessing what creative works." },
-  { icon: "🎯", title: "Clean Tracking & Attribution", desc: "Server-side events, UTM hygiene, and pixel audits so your data reflects reality — not platform noise." },
-  { icon: "🚀", title: "Scaling Systems", desc: "Structured budget scaling protocols that maintain efficiency as you grow. From $10k/month to $100k+ without the chaos." },
-];
-
 const CASES = [
   { client: "Lapin Group", category: "Info Product / Webinar", metric: "29,871", detail: "webinar registrations in one week" },
   { client: "Kelner Homes", category: "Real Estate", metric: "$2.5M+", detail: "revenue generated in 3 months" },
@@ -51,12 +44,6 @@ const ALL_TESTIMONIALS = [
 ];
 
 const INITIAL_TESTIMONIALS = 8;
-
-const WHO_FOR = [
-  { icon: "🛍️", title: "E-commerce Brands", desc: "DTC brands spending $10k–$200k/month on paid ads who want more efficient scaling." },
-  { icon: "🎓", title: "Info Products & Coaches", desc: "Course creators and coaches running webinar or VSL funnels looking to lower CPL." },
-  { icon: "📊", title: "Performance Advertisers", desc: "Brands who already run ads and need a smarter system — not more spend." },
-];
 
 // ============================================================
 //  HOOKS
@@ -205,7 +192,11 @@ function TestimonialCard({ quote, name, role, initials }: { quote: string; name:
       <Stars />
       <p className="text-[14px] leading-relaxed mt-3 mb-5 flex-1 italic" style={{ color: "rgba(255,255,255,0.75)" }}>"{quote}"</p>
       <div className="flex items-center gap-3 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[12px]" style={{ background: "rgba(99,179,237,0.15)", border: "1px solid rgba(99,179,237,0.3)", color: "rgba(99,179,237,0.9)" }}>{initials}</div>
+        {/* Avatar with initials — always rendered, no broken empty circle */}
+        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[12px]"
+          style={{ background: "rgba(99,179,237,0.15)", border: "1px solid rgba(99,179,237,0.3)", color: "rgba(99,179,237,0.9)" }}>
+          {initials}
+        </div>
         <div>
           <div className="text-[13px] font-semibold" style={{ color: "hsl(0 0% 98%)" }}>{name}</div>
           <div className="text-[12px]" style={{ color: "rgba(255,255,255,0.45)" }}>{role}</div>
@@ -221,7 +212,6 @@ function TestimonialCard({ quote, name, role, initials }: { quote: string; name:
 const ScalingStackLanding: React.FC = () => {
   const navigate = useNavigate();
   const { ref: statsRef, inView: statsInView } = useInView(0.3);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [showAllTestimonials, setShowAllTestimonials] = useState(false);
 
   const goToForm = () => navigate("/scaling-stack/apply");
@@ -237,36 +227,25 @@ const ScalingStackLanding: React.FC = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06]"
         style={{ background: "rgba(8,11,20,0.88)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+          {/* Logo + brand name */}
           <div className="flex items-center gap-2.5">
             <img src={ssLogo} alt="AFM Digital Agency" className="h-7 sm:h-8 w-auto" />
+            <span className="text-[13px] sm:text-[14px] font-bold tracking-tight" style={{ color: "hsl(0 0% 98%)" }}>AFM Digital</span>
           </div>
           <div className="hidden md:flex items-center gap-6 lg:gap-8 text-[13px] font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>
-            <a href="#services" className="hover:text-white transition-colors">Services</a>
             <a href="#results" className="hover:text-white transition-colors">Results</a>
-            <a href="#about" className="hover:text-white transition-colors">About</a>
+            <a href="#testimonials" className="hover:text-white transition-colors">Reviews</a>
             <button onClick={goToForm} className="ml-2 px-5 py-2.5 rounded-full text-[13px] font-semibold transition-all hover:scale-[1.02]"
               style={{ background: "rgba(99,179,237,0.15)", border: "1px solid rgba(99,179,237,0.35)", color: "rgba(99,179,237,1)" }}>
               Get Free Audit →
             </button>
           </div>
-          <button className="md:hidden p-2 -mr-1" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">
-            <div className={`w-5 h-0.5 bg-white mb-1.5 transition-all duration-200 origin-center ${menuOpen ? "rotate-45 translate-y-2" : ""}`} />
-            <div className={`w-5 h-0.5 bg-white mb-1.5 transition-all duration-200 ${menuOpen ? "opacity-0 scale-x-0" : ""}`} />
-            <div className={`w-5 h-0.5 bg-white transition-all duration-200 origin-center ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`} />
+          {/* Mobile: just the CTA button, no hamburger */}
+          <button onClick={goToForm} className="md:hidden px-4 py-2 rounded-full text-[12px] font-semibold"
+            style={{ background: "rgba(99,179,237,0.15)", border: "1px solid rgba(99,179,237,0.35)", color: "rgba(99,179,237,1)" }}>
+            Free Audit →
           </button>
         </div>
-        {menuOpen && (
-          <div className="md:hidden border-t border-white/[0.06] px-4 py-6 space-y-4" style={{ background: "rgba(8,11,20,0.97)" }}>
-            {["Services", "Results", "About"].map((item) => (
-              <a key={item} href={`#${item.toLowerCase()}`} className="block text-[15px] font-medium py-1 transition-colors"
-                style={{ color: "rgba(255,255,255,0.7)" }} onClick={() => setMenuOpen(false)}>{item}</a>
-            ))}
-            <button onClick={() => { setMenuOpen(false); goToForm(); }} className="w-full py-3.5 rounded-xl text-[15px] font-semibold mt-2"
-              style={{ background: "rgba(99,179,237,0.15)", border: "1px solid rgba(99,179,237,0.35)", color: "rgba(99,179,237,1)" }}>
-              Get Free Audit →
-            </button>
-          </div>
-        )}
       </nav>
 
       {/* ── HERO ── */}
@@ -324,11 +303,14 @@ const ScalingStackLanding: React.FC = () => {
           </div>
         </div>
 
-        <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce" style={{ color: "rgba(255,255,255,0.25)" }}>
-          <span className="text-[9px] uppercase tracking-widest">Scroll</span>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M8 3v10M4 9l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+        {/* Scroll indicator — centered properly */}
+        <div className="absolute bottom-6 sm:bottom-8 left-0 right-0 flex justify-center">
+          <div className="flex flex-col items-center gap-1 animate-bounce" style={{ color: "rgba(255,255,255,0.25)" }}>
+            <span className="text-[9px] uppercase tracking-widest">Scroll</span>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M8 3v10M4 9l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
       </section>
 
@@ -340,84 +322,6 @@ const ScalingStackLanding: React.FC = () => {
           </div>
         </div>
       </section>
-
-      {/* ── PARTNERSHIPS ── */}
-      <FadeSection className="py-14 sm:py-20">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 text-center">
-          <SectionLabel>Official Whitelisted Partner</SectionLabel>
-          <div className="flex items-center justify-center gap-8 sm:gap-16 md:gap-20 flex-wrap mb-8">
-            {["Meta", "TikTok", "Google"].map((p) => (
-              <div key={p} className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: "rgba(255,255,255,0.18)" }}>{p}</div>
-            ))}
-          </div>
-          <div className="max-w-xl mx-auto text-[14px] leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.5)" }}>
-            As authorized agency partners, we operate through{" "}
-            <span className="font-semibold" style={{ color: "rgba(99,179,237,0.9)" }}>exclusive whitelisted ad accounts</span>{" "}
-            — giving clients priority support, faster approvals, and advantages unavailable to regular advertisers.
-          </div>
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-            {["No More Bans", "New Feature Access", "Private Support", "Fastest Moderation", "No Spending Limits"].map((b) => (
-              <span key={b} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium"
-                style={{ border: "1px solid rgba(99,179,237,0.2)", color: "rgba(99,179,237,0.75)", background: "rgba(99,179,237,0.06)" }}>
-                ✓ {b}
-              </span>
-            ))}
-          </div>
-        </div>
-      </FadeSection>
-
-      {/* ── SERVICES ── */}
-      <section id="services" className="py-14 sm:py-24 relative">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "rgba(99,179,237,0.025)" }} />
-        <FadeSection>
-          <div className="max-w-6xl mx-auto px-5 sm:px-6">
-            <div className="text-center mb-10 sm:mb-12">
-              <SectionLabel>What We Do</SectionLabel>
-              <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>
-                A system built for performance.<br className="hidden sm:block" /> Not promises.
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {SERVICES.map((s) => (
-                <div key={s.title} className="group p-6 sm:p-7 rounded-2xl transition-all duration-300 hover:-translate-y-1 cursor-default"
-                  style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)", backdropFilter: "blur(10px)" }}>
-                  <div className="text-3xl mb-4">{s.icon}</div>
-                  <h3 className="text-[17px] sm:text-[18px] font-bold mb-2" style={{ color: "hsl(0 0% 98%)" }}>{s.title}</h3>
-                  <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{s.desc}</p>
-                </div>
-              ))}
-            </div>
-            <div className="text-center mt-8 sm:mt-10">
-              <button onClick={goToForm} className="w-full sm:w-auto px-8 py-4 rounded-2xl text-[15px] font-bold transition-all hover:-translate-y-0.5 active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg, #4299e1, #63b3ed)", color: "#fff", boxShadow: "0 0 30px rgba(99,179,237,0.3)" }}>
-                Apply to Work With Us →
-              </button>
-            </div>
-          </div>
-        </FadeSection>
-      </section>
-
-      {/* ── WHO IT'S FOR ── */}
-      <FadeSection className="py-14 sm:py-24">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="text-center mb-10 sm:mb-12">
-            <SectionLabel>Who We Work With</SectionLabel>
-            <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>
-              Built for brands ready to scale profitably
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {WHO_FOR.map((item) => (
-              <div key={item.title} className="p-6 sm:p-7 rounded-2xl text-center transition-all hover:-translate-y-1"
-                style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}>
-                <div className="text-4xl mb-4">{item.icon}</div>
-                <h3 className="text-[17px] font-bold mb-2" style={{ color: "hsl(0 0% 98%)" }}>{item.title}</h3>
-                <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </FadeSection>
 
       {/* ── CASE STUDIES ── */}
       <section id="results" className="py-14 sm:py-24 relative">
@@ -449,32 +353,8 @@ const ScalingStackLanding: React.FC = () => {
         </FadeSection>
       </section>
 
-      {/* ── HOW WE WORK ── */}
-      <FadeSection className="py-14 sm:py-24">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="text-center mb-10 sm:mb-12">
-            <SectionLabel>Our Process</SectionLabel>
-            <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>How we scale your ads</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { step: "01", title: "Audit", desc: "We analyze your pixel, tracking, creative, and targeting. Identify what's wasting money." },
-              { step: "02", title: "Strategy", desc: "We build a custom scaling roadmap based on your goals, budget, and funnel structure." },
-              { step: "03", title: "Launch", desc: "We test systematically — creatives, audiences, offers — using our proven testing framework." },
-              { step: "04", title: "Scale", desc: "Once we have winners, we scale with confidence. More budget, same efficiency, zero chaos." },
-            ].map((item) => (
-              <div key={item.step} className="p-6 rounded-2xl" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}>
-                <div className="text-[28px] sm:text-[32px] font-black mb-3 tabular-nums" style={{ color: "rgba(99,179,237,0.28)" }}>{item.step}</div>
-                <h3 className="text-[17px] font-bold mb-2" style={{ color: "hsl(0 0% 98%)" }}>{item.title}</h3>
-                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </FadeSection>
-
       {/* ── TESTIMONIALS ── */}
-      <section className="py-14 sm:py-24 relative" style={{ background: "rgba(99,179,237,0.025)" }}>
+      <section id="testimonials" className="py-14 sm:py-24 relative" style={{ background: "rgba(99,179,237,0.025)" }}>
         <FadeSection>
           <div className="max-w-6xl mx-auto px-5 sm:px-6">
             <div className="text-center mb-10 sm:mb-12">
@@ -492,38 +372,6 @@ const ScalingStackLanding: React.FC = () => {
                 </button>
               </div>
             )}
-          </div>
-        </FadeSection>
-      </section>
-
-      {/* ── FOUNDERS ── */}
-      <section id="about" className="py-14 sm:py-24">
-        <FadeSection>
-          <div className="max-w-4xl mx-auto px-5 sm:px-6">
-            <div className="p-7 sm:p-10 md:p-12 rounded-3xl relative overflow-hidden"
-              style={{ border: "1px solid rgba(99,179,237,0.2)", background: "rgba(99,179,237,0.06)" }}>
-              <div className="absolute top-0 right-0 w-48 h-48 sm:w-64 sm:h-64 rounded-full blur-[80px] pointer-events-none"
-                style={{ background: "rgba(99,179,237,0.12)" }} />
-              <SectionLabel>From the Founders</SectionLabel>
-              <blockquote className="text-[clamp(16px,2.5vw,21px)] font-semibold leading-relaxed mb-8 relative z-10"
-                style={{ color: "rgba(255,255,255,0.85)" }}>
-                "After 11 years in paid traffic and funnel optimization, we've seen how most agencies operate — they scale their client list, not their clients' results. We built AFM to do things differently.
-                <br /><br />
-                Every decision we make is driven by data. CPL, CPA, ROAS, and the full customer journey. We win only when you do."
-              </blockquote>
-              <div className="flex items-center gap-4">
-                <div className="flex -space-x-2">
-                  {["DI", "DY"].map((init) => (
-                    <div key={init} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 text-[11px] font-bold"
-                      style={{ background: "rgba(99,179,237,0.15)", borderColor: "rgba(99,179,237,0.3)", color: "rgba(99,179,237,0.9)" }}>{init}</div>
-                  ))}
-                </div>
-                <div>
-                  <div className="text-[14px] font-semibold" style={{ color: "hsl(0 0% 98%)" }}>Denis Ishimov &amp; Danil Yussupov</div>
-                  <div className="text-[13px]" style={{ color: "rgba(255,255,255,0.45)" }}>Founders, AFM Digital Agency</div>
-                </div>
-              </div>
-            </div>
           </div>
         </FadeSection>
       </section>
@@ -571,10 +419,13 @@ const ScalingStackLanding: React.FC = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
               Meta · TikTok · Google Partner
             </div>
-            <p className="sm:hidden text-[11px] text-center" style={{ color: "rgba(255,255,255,0.3)" }}>© 2025 AFM Digital Agency · All rights reserved</p>
+          </div>
+          <div className="mt-6 text-center text-[11px] sm:hidden" style={{ color: "rgba(255,255,255,0.25)" }}>
+            © 2025 AFM Digital Agency · All rights reserved
           </div>
         </div>
       </footer>
+
     </div>
   );
 };

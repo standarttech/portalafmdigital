@@ -1,9 +1,58 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ssLogo from "@/assets/ss-logo-afm.png";
 import ssBg from "@/assets/ss-bg-gradient.jpg";
 import ProgressBar from "./ProgressBar";
 import OptionCard from "./OptionCard";
 import "./ss.css";
+
+// ---- Meta Pixel init ----
+function initMetaPixel() {
+  if (typeof window === "undefined") return;
+  const win = window as any;
+  if (win.fbq) return;
+  const n: any = function () {
+    n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+  };
+  if (!win._fbq) win._fbq = n;
+  n.push = n; n.loaded = true; n.version = "2.0"; n.queue = [];
+  win.fbq = n;
+  const t = document.createElement("script");
+  t.async = true;
+  t.src = "https://connect.facebook.net/en_US/fbevents.js";
+  const s = document.getElementsByTagName("script")[0];
+  s.parentNode?.insertBefore(t, s);
+  n("init", "1566413911316887");
+  n("track", "PageView");
+}
+
+// ---- UTM helpers ----
+function getUTMParams(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const params = new URLSearchParams(window.location.search);
+  const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid", "gclid"];
+  const result: Record<string, string> = {};
+  utmKeys.forEach((key) => {
+    const val = params.get(key);
+    if (val) result[key] = val;
+  });
+  // Also try sessionStorage for cross-page UTM persistence
+  const stored = sessionStorage.getItem("afm_utm");
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      return { ...parsed, ...result };
+    } catch { /* ignore */ }
+  }
+  return result;
+}
+
+function storeUTMParams() {
+  if (typeof window === "undefined") return;
+  const utm = getUTMParams();
+  if (Object.keys(utm).length > 0) {
+    sessionStorage.setItem("afm_utm", JSON.stringify(utm));
+  }
+}
 
 // ---- Types ----
 interface FormData {
@@ -66,9 +115,10 @@ function TestimonialsBlock() {
           <div className="min-w-0 flex-1">
             <p className="text-[13px] leading-snug italic" style={{ color: "hsl(var(--ss-muted-fg))" }}>"{t.quote}"</p>
             <div className="flex items-center gap-2 mt-1.5">
-              <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: "hsl(var(--ss-muted))", border: "1px solid hsl(var(--ss-border))" }}>
-                <span className="text-[8px] font-bold" style={{ color: "rgba(0,0,0,0.5)" }}>{t.initials}</span>
+              {/* Avatar with initials — always visible, no empty circle */}
+              <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-[9px]"
+                style={{ background: "hsl(220 13% 88%)", border: "1px solid hsl(var(--ss-border))", color: "rgba(0,0,0,0.55)" }}>
+                {t.initials}
               </div>
               <p className="text-[12px] font-semibold" style={{ color: "hsl(var(--ss-card-fg))" }}>
                 {t.name} <span className="font-normal" style={{ color: "hsl(var(--ss-muted-fg))" }}>— {t.role}</span>
@@ -260,23 +310,59 @@ const ScalingStackApply: React.FC = () => {
   const [isConfirmation, setIsConfirmation] = useState(false);
   const leadFiredRef = useRef(false);
 
+  // Init Meta Pixel on mount & store UTM params
+  useEffect(() => {
+    initMetaPixel();
+    storeUTMParams();
+  }, []);
+
   const updateForm = (field: keyof FormData, val: string) => setForm((prev) => ({ ...prev, [field]: val }));
   const goNext = () => setStep((s) => s + 1);
 
   const handleContactSubmit = async () => {
     setIsConfirmation(true);
+
+    // Fire Meta Pixel Lead event (once)
     if (!leadFiredRef.current) {
-      if (typeof window !== "undefined" && (window as any).fbq) (window as any).fbq("track", "Lead");
+      const fbq = (window as any).fbq;
+      if (typeof fbq === "function") {
+        fbq("track", "Lead", {
+          content_name: "AFM Scaling Stack Application",
+          value: 0,
+          currency: "USD",
+        });
+      }
       leadFiredRef.current = true;
     }
+
+    // Collect UTM params for GHL webhook
+    const utmParams = getUTMParams();
+
     const webhookPayload = {
-      full_name: form.full_name, email: form.email, phone: form.phone,
-      ad_spend: form.monthly_ad_spend, vertical: form.business_vertical,
-      challenge: form.biggest_challenge, source: "AFM Scaling Stack Leadform",
+      full_name: form.full_name,
+      email: form.email,
+      phone: form.phone,
+      ad_spend: form.monthly_ad_spend,
+      vertical: form.business_vertical,
+      challenge: form.biggest_challenge,
+      source: "AFM Scaling Stack Leadform",
       created_at: new Date().toISOString(),
+      // UTM / attribution fields for GHL
+      utm_source: utmParams.utm_source || "",
+      utm_medium: utmParams.utm_medium || "",
+      utm_campaign: utmParams.utm_campaign || "",
+      utm_content: utmParams.utm_content || "",
+      utm_term: utmParams.utm_term || "",
+      fbclid: utmParams.fbclid || "",
+      gclid: utmParams.gclid || "",
+      landing_page: typeof window !== "undefined" ? window.location.href : "",
+      referrer: typeof document !== "undefined" ? document.referrer : "",
     };
+
     fetch("https://services.leadconnectorhq.com/hooks/UpO90XLZCi7tScgazNP6/webhook-trigger/b2d729be-bed0-420b-8be5-3428e909f223", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(webhookPayload),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(webhookPayload),
     }).catch((err) => console.warn("[AFM GHL Webhook] fetch error:", err));
   };
 
@@ -298,6 +384,11 @@ const ScalingStackApply: React.FC = () => {
   return (
     <div className="ss-root min-h-screen flex items-center justify-center px-4 py-8 sm:py-12 relative"
       style={{ backgroundImage: `url(${ssBg})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+      {/* Meta Pixel noscript fallback */}
+      <noscript>
+        <img height="1" width="1" style={{ display: "none" }}
+          src="https://www.facebook.com/tr?id=1566413911316887&ev=PageView&noscript=1" alt="" />
+      </noscript>
       {/* Overlay */}
       <div className="absolute inset-0 pointer-events-none"
         style={{ background: "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 20%, rgba(5,8,18,0.72) 100%)" }} />
