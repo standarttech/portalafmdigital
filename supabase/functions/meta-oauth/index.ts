@@ -36,7 +36,8 @@ Deno.serve(async (req) => {
       const claims = await getAuthUser(req);
       if (!claims) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-      const redirectUri = `${url.origin}/meta-oauth?action=callback`;
+      const redirectUri = `https://${SUPABASE_URL.replace(/^https?:\/\//, '')}/functions/v1/meta-oauth?action=callback`;
+      console.log('[meta-oauth] Generated OAuth URL with redirect_uri:', redirectUri);
       const scopes = [
         'instagram_basic',
         'instagram_manage_insights',
@@ -60,11 +61,14 @@ Deno.serve(async (req) => {
       if (!claims) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
       const body = await req.json();
-      const { code, redirectUri } = body;
+      const { code } = body;
+      // Always use the canonical HTTPS redirect URI (must match Meta App settings)
+      const canonicalRedirectUri = `https://${SUPABASE_URL.replace(/^https?:\/\//, '')}/functions/v1/meta-oauth?action=callback`;
+      console.log('[meta-oauth] exchange: using redirect_uri:', canonicalRedirectUri, 'code received:', !!code);
 
       // Exchange short-lived token
       const tokenRes = await fetch(
-        `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${META_APP_ID}&client_secret=${META_APP_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`
+        `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${META_APP_ID}&client_secret=${META_APP_SECRET}&redirect_uri=${encodeURIComponent(canonicalRedirectUri)}&code=${code}`
       );
       const tokenData = await tokenRes.json();
       if (!tokenData.access_token) {
@@ -127,6 +131,7 @@ Deno.serve(async (req) => {
         }
       }
 
+      console.log('[meta-oauth] tokens saved successfully for pages:', pages.map((p: any) => p.name));
       return new Response(JSON.stringify({ success: true, pages: pages.map((p: any) => ({ id: p.id, name: p.name })) }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

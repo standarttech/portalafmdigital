@@ -76,6 +76,9 @@ async function callEdge(action: string, method = 'GET', body?: object) {
   return res.json();
 }
 
+// Canonical redirect URI — must match Meta App settings exactly
+const CANONICAL_REDIRECT_URI = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/meta-oauth?action=callback`;
+
 function StatCard({ label, value, icon: Icon, sub }: { label: string; value: string | number; icon: any; sub?: string }) {
   return (
     <Card className="glass-card">
@@ -359,12 +362,12 @@ export default function AfmSocialMedia() {
 
   useEffect(() => {
     loadStatus();
-    // Handle OAuth callback via URL hash/search (after redirect back)
+    // Handle OAuth callback via URL search params after redirect back
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('meta_code');
-    const redirectUri = urlParams.get('meta_redirect');
-    if (code && redirectUri) {
-      handleOAuthCallback(code, redirectUri);
+    if (code) {
+      console.log('[meta-oauth] callback: code received via URL param');
+      handleOAuthCallback(code);
     }
   }, []);
 
@@ -372,9 +375,11 @@ export default function AfmSocialMedia() {
   useEffect(() => {
     const handler = async (e: MessageEvent) => {
       if (e.data?.type === 'meta-oauth-callback' && e.data.code) {
+        console.log('[meta-oauth] popup callback: code received, exchanging...');
         setConnecting(true);
-        const result = await callEdge('exchange', 'POST', { code: e.data.code, redirectUri: e.data.redirectUri });
+        const result = await callEdge('exchange', 'POST', { code: e.data.code });
         if (result.success) {
+          console.log('[meta-oauth] popup: tokens saved successfully');
           toast.success('Аккаунты успешно подключены!');
           await loadStatus();
         } else {
@@ -387,10 +392,12 @@ export default function AfmSocialMedia() {
     return () => window.removeEventListener('message', handler);
   }, [loadStatus]);
 
-  const handleOAuthCallback = async (code: string, redirectUri: string) => {
+  const handleOAuthCallback = async (code: string) => {
     setConnecting(true);
-    const result = await callEdge('exchange', 'POST', { code, redirectUri });
+    console.log('[meta-oauth] exchanging code for tokens...');
+    const result = await callEdge('exchange', 'POST', { code });
     if (result.success) {
+      console.log('[meta-oauth] tokens saved successfully');
       toast.success('Аккаунты подключены!');
       await loadStatus();
     } else {
@@ -403,6 +410,12 @@ export default function AfmSocialMedia() {
     setConnecting(true);
     const data = await callEdge('auth-url');
     if (data.url) {
+      // Log the OAuth URL (without secrets) to verify redirect_uri is correct
+      try {
+        const parsed = new URL(data.url);
+        const redirectUri = parsed.searchParams.get('redirect_uri');
+        console.log('[meta-oauth] Opening OAuth URL. redirect_uri:', redirectUri);
+      } catch {}
       // Open popup for OAuth
       const popup = window.open(data.url, 'meta-oauth', 'width=600,height=700,scrollbars=yes');
       // Check if popup was blocked

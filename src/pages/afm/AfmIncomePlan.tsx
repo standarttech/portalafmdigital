@@ -2,22 +2,25 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { CellInput } from '@/components/shared/CellInput';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
 const MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+const NM = MONTHS.length;
+const COL_LETTERS = ['A', ...MONTHS.map((_, i) => String.fromCharCode(66 + i)), String.fromCharCode(66 + NM)];
 
 function fmt$(n: number) {
-  if (n === 0) return '$0';
+  if (n === 0) return '';
   return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
-function fmtN(n: number) { return String(n); }
+function fmtN(n: number) { return n === 0 ? '' : String(n); }
+
+interface ActiveCell { colIdx: number; rowLabel: string; formula: string }
 
 export default function AfmIncomePlan() {
-  const [newClients, setNewClients] = useState<string[]>(Array(12).fill(''));
-  const [renewals, setRenewals] = useState<string[]>(Array(12).fill(''));
+  const [newClients, setNewClients] = useState<string[]>(Array(NM).fill(''));
+  const [renewals, setRenewals] = useState<string[]>(Array(NM).fill(''));
   const [avgCheck, setAvgCheck] = useState('3500');
   const [teamPct, setTeamPct] = useState('30');
   const [marketingPct, setMarketingPct] = useState('20');
@@ -25,6 +28,7 @@ export default function AfmIncomePlan() {
   const [taxPct, setTaxPct] = useState('10');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [activeCell, setActiveCell] = useState<ActiveCell | null>(null);
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const n = (arr: string[], i: number) => Number(arr[i]) || 0;
@@ -88,29 +92,80 @@ export default function AfmIncomePlan() {
     saveCell(rowId, String(idx), Number(val) || 0);
   };
 
-  const isCount = (label: string) => ['Новый клиент', 'Продление', `Отказы (−20%)`, 'Итого клиентов'].includes(label);
-
-  const rows = [
-    { label: 'Новый клиент', cells: (i: number) => n(newClients, i), editable: 'new' },
-    { label: 'Продление', cells: (i: number) => n(renewals, i), editable: 'ren' },
-    { label: `Отказы (−20%)`, cells: refusals, style: 'muted' },
-    { label: 'Итого клиентов', cells: totalClients, style: 'sub' },
-    { label: 'Общая выручка', cells: rev, style: 'total' },
-    { label: 'Команда', cells: teamCost, style: 'neg', pctKey: 'teamPct', pctVal: teamPct, setPct: setTeamPct },
-    { label: 'Маркетинг', cells: mktCost, style: 'neg', pctKey: 'marketingPct', pctVal: marketingPct, setPct: setMarketingPct },
-    { label: 'Расходы', cells: expCost, style: 'neg', pctKey: 'expensesPct', pctVal: expensesPct, setPct: setExpensesPct },
-    { label: 'Маржа', cells: margin, style: 'margin' },
-    { label: 'Налог', cells: tax, style: 'neg', pctKey: 'taxPct', pctVal: taxPct, setPct: setTaxPct },
-    { label: 'Чистая прибыль', cells: net, style: 'total' },
-  ];
-
   const totRev = MONTHS.reduce((s, _, i) => s + rev(i), 0);
   const totNet = MONTHS.reduce((s, _, i) => s + net(i), 0);
+
+  // Inline editable cell
+  function EditableCell({
+    value, onChange, colIdx, rowLabel, formulaText, isCount = false
+  }: {
+    value: string; onChange: (v: string) => void;
+    colIdx: number; rowLabel: string; formulaText: string; isCount?: boolean;
+  }) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const isActive = activeCell?.colIdx === colIdx && activeCell?.rowLabel === rowLabel;
+
+    useEffect(() => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.value = value;
+      }
+    }, [value]);
+
+    return (
+      <td
+        className={`border-r border-b border-border/30 p-0 relative h-[22px] ${isActive ? 'ring-2 ring-inset ring-blue-500 z-20' : 'hover:bg-muted/20'}`}
+        onClick={() => {
+          setActiveCell({ colIdx, rowLabel, formula: value });
+          inputRef.current?.focus();
+        }}
+      >
+        <input
+          ref={inputRef}
+          defaultValue={value}
+          type="text"
+          inputMode="numeric"
+          className={`absolute inset-0 w-full h-full bg-transparent ${isCount ? 'text-center' : 'text-right'} text-[11px] px-1.5 text-foreground focus:outline-none`}
+          onChange={e => {
+            onChange(e.target.value);
+            if (isActive) setActiveCell(ac => ac ? { ...ac, formula: e.target.value } : ac);
+          }}
+          onFocus={() => setActiveCell({ colIdx, rowLabel, formula: value })}
+          onBlur={() => setActiveCell(null)}
+        />
+      </td>
+    );
+  }
+
+  type RowDef = {
+    label: string;
+    cells: (i: number) => number;
+    editable?: 'new' | 'ren';
+    style?: string;
+    pctKey?: string;
+    pctVal?: string;
+    setPct?: ((v: string) => void) | null;
+    formula?: string;
+    isCount?: boolean;
+  };
+
+  const rows: RowDef[] = [
+    { label: 'Новый клиент', cells: i => n(newClients, i), editable: 'new', isCount: true, formula: 'Ввод вручную' },
+    { label: 'Продление', cells: i => n(renewals, i), editable: 'ren', isCount: true, formula: 'Ввод вручную' },
+    { label: 'Отказы (−20%)', cells: refusals, style: 'muted', isCount: true, formula: '=−(Новый + Продление) × 20%' },
+    { label: 'Итого клиентов', cells: totalClients, style: 'sub', isCount: true, formula: '=Новый + Продление + Отказы' },
+    { label: 'Общая выручка', cells: rev, style: 'total', formula: '=(Новый + Продление) × Средний чек' },
+    { label: 'Команда', cells: teamCost, style: 'neg', pctKey: 'teamPct', pctVal: teamPct, setPct: setTeamPct, formula: `=Выручка × ${teamPct}%` },
+    { label: 'Маркетинг', cells: mktCost, style: 'neg', pctKey: 'marketingPct', pctVal: marketingPct, setPct: setMarketingPct, formula: `=Выручка × ${marketingPct}%` },
+    { label: 'Расходы', cells: expCost, style: 'neg', pctKey: 'expensesPct', pctVal: expensesPct, setPct: setExpensesPct, formula: `=Выручка × ${expensesPct}%` },
+    { label: 'Маржа', cells: margin, style: 'margin', formula: '=Выручка + Команда + Маркетинг + Расходы' },
+    { label: 'Налог', cells: tax, style: 'neg', pctKey: 'taxPct', pctVal: taxPct, setPct: setTaxPct, formula: `=Маржа × ${taxPct}%` },
+    { label: 'Чистая прибыль', cells: net, style: 'total', formula: '=Маржа − Налог' },
+  ];
 
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
       <motion.div variants={item}>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <TrendingUp className="h-6 w-6 text-primary" />
@@ -119,100 +174,155 @@ export default function AfmIncomePlan() {
         <p className="text-sm text-muted-foreground mt-0.5">Прогноз новых клиентов, выручки и рентабельности</p>
       </motion.div>
 
-      <motion.div variants={item} className="space-y-4">
-        <div className="flex flex-wrap gap-3 items-end">
+      <motion.div variants={item} className="space-y-3">
+        {/* Settings bar */}
+        <div className="flex flex-wrap gap-4 items-end px-1">
           <div>
-            <label className="text-xs text-muted-foreground block mb-1">Средний чек ($)</label>
+            <label className="text-[10px] text-muted-foreground block mb-0.5">Средний чек ($)</label>
             <input
-              type="text"
-              inputMode="numeric"
-              value={avgCheck}
+              type="text" inputMode="numeric" value={avgCheck}
               onChange={e => { setAvgCheck(e.target.value); saveCell('settings', 'avgCheck', Number(e.target.value) || 0); }}
               className="w-28 text-center bg-background border border-primary/40 rounded px-2 py-1 text-sm text-primary font-mono focus:outline-none focus:border-primary"
             />
           </div>
-          {/* KPI summary */}
           <div className="ml-auto flex gap-4">
             <div className="text-right">
               <p className="text-[10px] text-muted-foreground">Выручка за год</p>
-              <p className="text-sm font-bold text-primary font-mono">{fmt$(totRev)}</p>
+              <p className="text-sm font-bold text-primary font-mono">{fmt$(totRev) || '$0'}</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] text-muted-foreground">Чистая прибыль</p>
-              <p className="text-sm font-bold text-success font-mono">{fmt$(totNet)}</p>
+              <p className="text-sm font-bold text-green-400 font-mono">{fmt$(totNet) || '$0'}</p>
             </div>
-            {saving && <div className="flex items-center gap-1 text-xs text-muted-foreground self-end"><Loader2 className="h-3 w-3 animate-spin" />Сохраняю...</div>}
+            {saving && <div className="flex items-center gap-1 text-[11px] text-muted-foreground self-end"><Loader2 className="h-3 w-3 animate-spin" />Сохраняю...</div>}
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-border/40">
-          <table className="min-w-[900px] w-full text-xs border-collapse table-fixed">
+        {/* Google Sheets toolbar */}
+        <div className="flex items-stretch border border-border/50 rounded-t-lg overflow-hidden" style={{ background: 'hsl(var(--muted)/0.3)' }}>
+          <div className="flex items-center justify-center border-r border-border/40 px-2 min-w-[60px]" style={{ background: 'hsl(var(--muted)/0.5)' }}>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              {activeCell ? `${COL_LETTERS[(activeCell.colIdx ?? 0) + 1]}` : 'A1'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-1 px-2 py-1">
+            <span className="text-[11px] text-muted-foreground italic">fx</span>
+            <span className="text-[11px] font-mono text-foreground">{activeCell?.formula || ''}</span>
+          </div>
+        </div>
+
+        {/* The spreadsheet */}
+        <div className="overflow-auto rounded-b-lg border border-t-0 border-border/50" style={{ maxHeight: 'calc(100vh - 340px)' }}>
+          <table className="border-collapse" style={{ tableLayout: 'fixed', minWidth: `${30 + 200 + NM * 72 + 82}px` }}>
             <colgroup>
-              <col style={{ width: '200px', minWidth: '200px' }} />
-              {MONTHS.map(m => <col key={m} style={{ width: '68px', minWidth: '68px' }} />)}
-              <col style={{ width: '80px', minWidth: '80px' }} />
+              <col style={{ width: '30px' }} />
+              <col style={{ width: '200px' }} />
+              {MONTHS.map(m => <col key={m} style={{ width: '72px' }} />)}
+              <col style={{ width: '82px' }} />
             </colgroup>
-            <thead>
-              <tr className="bg-muted/50">
-                <th className="sticky left-0 z-10 bg-muted/80 text-left px-3 py-2 font-semibold text-foreground border-r border-border/40">Показатель</th>
-                {MONTHS.map(m => (
-                  <th key={m} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap border-r border-border/20">{m}</th>
+
+            {/* Column headers */}
+            <thead className="sticky top-0 z-30">
+              <tr className="h-[26px]" style={{ background: 'hsl(var(--muted)/0.8)' }}>
+                <th className="border-r border-b border-border/50 w-[30px]" />
+                <th className="sticky left-[30px] z-10 border-r border-b border-border/50 text-center text-[10px] font-medium text-muted-foreground" style={{ background: 'hsl(var(--muted)/0.8)' }}>A</th>
+                {MONTHS.map((m, i) => (
+                  <th key={i} className="border-r border-b border-border/50 text-center text-[10px] font-medium text-muted-foreground px-1">
+                    <div>{COL_LETTERS[i + 1]}</div>
+                    <div className="text-[9px] text-muted-foreground/60 font-normal leading-none">{m}</div>
+                  </th>
                 ))}
-                <th className="px-3 py-2 text-center font-semibold text-foreground whitespace-nowrap">Итого</th>
+                <th className="border-b border-border/50 text-center text-[10px] font-medium text-muted-foreground">Итого</th>
               </tr>
             </thead>
+
             <tbody>
+              {/* Header row 1 */}
+              <tr className="h-[22px]" style={{ background: 'hsl(var(--muted)/0.5)' }}>
+                <td className="sticky left-0 z-10 border-r border-b border-border/40 text-center text-[10px] text-muted-foreground/60 w-[30px]" style={{ background: 'hsl(var(--muted)/0.6)' }}>1</td>
+                <td className="sticky left-[30px] z-10 border-r border-b border-border/40 px-2 font-bold text-[11px] text-foreground" style={{ background: 'hsl(var(--muted)/0.5)' }}>Показатель</td>
+                {MONTHS.map((m, i) => (
+                  <td key={i} className="border-r border-b border-border/30 text-center text-[11px] font-semibold text-foreground px-1">{m}</td>
+                ))}
+                <td className="border-b border-border/30 text-center text-[11px] font-semibold text-foreground px-1">Итого за год</td>
+              </tr>
+
               {rows.map((row, ri) => {
+                const rn = ri + 2;
                 const vals = MONTHS.map((_, i) => row.cells(i));
                 const total = vals.reduce((a, b) => a + b, 0);
                 const isTotal = row.style === 'total';
                 const isMargin = row.style === 'margin';
                 const isNeg = row.style === 'neg';
                 const isSub = row.style === 'sub';
+                const isMuted = row.style === 'muted';
+
+                const rowBg = isTotal ? 'bg-primary/10' : isMargin ? 'bg-green-500/10' : isSub ? 'bg-muted/20' : '';
+                const textClass = isTotal ? 'text-primary' : isMargin ? 'text-green-400' : isNeg ? 'text-destructive/80' : isMuted ? 'text-muted-foreground' : 'text-foreground';
 
                 return (
-                  <tr key={ri} className={`border-b border-border/20 ${isTotal ? 'bg-primary/10 font-semibold' : isMargin ? 'bg-green-500/10 font-semibold' : isSub ? 'bg-muted/20' : ''}`}>
-                    <td className={`sticky left-0 z-10 px-3 py-1.5 border-r border-border/40 ${isTotal ? 'bg-primary/10 text-foreground' : isMargin ? 'bg-green-500/10 text-green-400' : isSub ? 'bg-muted/30 text-foreground' : 'bg-background text-foreground'}`}>
-                      <div className="flex items-center gap-2">
-                        <span>{row.label}</span>
-                        {'setPct' in row && row.setPct && (
-                          <div className="flex items-center gap-1 ml-auto">
+                  <tr key={ri} className={`h-[22px] group/row ${rowBg}`}>
+                    <td className={`sticky left-0 z-10 border-r border-b border-border/40 text-center text-[10px] text-muted-foreground/60 w-[30px] ${rowBg || ''}`} style={!rowBg ? { background: 'hsl(var(--background))' } : {}}>{rn}</td>
+                    <td className={`sticky left-[30px] z-10 border-r border-b border-border/40 px-1.5 ${rowBg || ''}`} style={!rowBg ? { background: 'hsl(var(--background))' } : {}}>
+                      <div className="flex items-center gap-1.5 h-full">
+                        <span className={`flex-1 text-[11px] ${textClass} ${isTotal || isMargin ? 'font-semibold' : ''}`}>{row.label}</span>
+                        {row.setPct && (
+                          <div className="flex items-center gap-0.5 opacity-50 group-hover/row:opacity-100">
                             <input
-                              type="text"
-                              inputMode="numeric"
-                              value={row.pctVal}
+                              type="text" inputMode="numeric" value={row.pctVal}
                               onChange={e => {
                                 row.setPct!(e.target.value);
                                 saveCell('settings', row.pctKey!, Number(e.target.value) || 0);
                               }}
-                              className="w-10 text-center bg-background/60 border border-border/40 rounded px-1 py-0 text-[10px] focus:outline-none focus:border-primary"
+                              className="w-7 text-center bg-background border border-border/50 rounded px-0 py-0 text-[10px] focus:outline-none focus:border-primary leading-none h-4"
                             />
                             <span className="text-[10px] text-muted-foreground">%</span>
                           </div>
                         )}
                       </div>
                     </td>
-                    {vals.map((val, i) => (
-                      <td key={i} className={`px-1 py-1 border-r border-border/20 ${isTotal ? 'text-primary' : isMargin ? 'text-green-400' : isNeg || val < 0 ? 'text-destructive/80' : ''}`}>
-                        {row.editable === 'new' ? (
-                          <CellInput
+
+                    {vals.map((val, i) => {
+                      if (row.editable === 'new') {
+                        return (
+                          <EditableCell
+                            key={i}
                             value={newClients[i]}
-                            onChange={val => updateArr(setNewClients, 'newClients', i, val)}
-                            className="bg-background/60 border-border/30"
+                            onChange={v => updateArr(setNewClients, 'newClients', i, v)}
+                            colIdx={i}
+                            rowLabel={row.label}
+                            formulaText="Ввод вручную"
+                            isCount
                           />
-                        ) : row.editable === 'ren' ? (
-                          <CellInput
+                        );
+                      }
+                      if (row.editable === 'ren') {
+                        return (
+                          <EditableCell
+                            key={i}
                             value={renewals[i]}
-                            onChange={val => updateArr(setRenewals, 'renewals', i, val)}
-                            className="bg-background/60 border-border/30"
+                            onChange={v => updateArr(setRenewals, 'renewals', i, v)}
+                            colIdx={i}
+                            rowLabel={row.label}
+                            formulaText="Ввод вручную"
+                            isCount
                           />
-                        ) : (
-                          <span className="block text-center">{isCount(row.label) ? fmtN(val) : fmt$(val)}</span>
-                        )}
-                      </td>
-                    ))}
-                    <td className={`px-3 py-1.5 text-center font-semibold ${isTotal ? 'text-primary' : isMargin ? 'text-green-400' : isNeg || total < 0 ? 'text-destructive/80' : 'text-foreground'}`}>
-                      {isCount(row.label) ? fmtN(total) : fmt$(total)}
+                        );
+                      }
+                      const display = row.isCount ? fmtN(val) : fmt$(val);
+                      return (
+                        <td
+                          key={i}
+                          onClick={() => setActiveCell({ colIdx: i, rowLabel: row.label, formula: row.formula || '' })}
+                          className={`border-r border-b border-border/20 h-[22px] ${row.isCount ? 'text-center' : 'text-right'} text-[11px] px-1.5 cursor-default select-none ${textClass} ${isTotal || isMargin ? 'font-semibold' : ''} hover:bg-muted/20`}
+                        >
+                          {display}
+                        </td>
+                      );
+                    })}
+
+                    <td className={`border-b border-border/20 h-[22px] ${row.isCount ? 'text-center' : 'text-right'} text-[11px] px-1.5 font-semibold ${textClass}`}>
+                      {row.isCount ? fmtN(total) : fmt$(total)}
                     </td>
                   </tr>
                 );
