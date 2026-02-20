@@ -482,6 +482,12 @@ serve(async (req) => {
           headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
+      if (request_id && !validateUUID(request_id)) {
+        return new Response(JSON.stringify({ error: "Invalid request_id format" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
       if (request_id) {
         await supabaseAdmin.from("access_requests").update({
           status: "denied",
@@ -518,6 +524,12 @@ serve(async (req) => {
       let existingUser: any = null;
 
       const user_id = body.user_id;
+      if (user_id && !validateUUID(user_id)) {
+        return new Response(JSON.stringify({ error: "Invalid user_id format" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
       if (user_id) {
         const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user_id);
         if (userData?.user) {
