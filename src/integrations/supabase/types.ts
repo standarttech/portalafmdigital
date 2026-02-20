@@ -1677,6 +1677,45 @@ export type Database = {
           },
         ]
       }
+      social_media_connections_safe: {
+        Row: {
+          connected_at: string | null
+          connected_by: string | null
+          id: string | null
+          ig_user_id: string | null
+          is_active: boolean | null
+          last_refreshed_at: string | null
+          page_id: string | null
+          page_name: string | null
+          platform: string | null
+          token_expires_at: string | null
+        }
+        Insert: {
+          connected_at?: string | null
+          connected_by?: string | null
+          id?: string | null
+          ig_user_id?: string | null
+          is_active?: boolean | null
+          last_refreshed_at?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          platform?: string | null
+          token_expires_at?: string | null
+        }
+        Update: {
+          connected_at?: string | null
+          connected_by?: string | null
+          id?: string | null
+          ig_user_id?: string | null
+          is_active?: boolean | null
+          last_refreshed_at?: string | null
+          page_id?: string | null
+          page_name?: string | null
+          platform?: string | null
+          token_expires_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_invitation: {

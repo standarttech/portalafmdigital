@@ -27,6 +27,44 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Security: only allow calls from authenticated agency members or internal service calls
+    // Internal calls (from other edge functions) pass the service role key as a bearer token
+    // User calls must pass a valid JWT from an agency member
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace("Bearer ", "");
+
+    let isAuthorized = false;
+
+    // Check if it's an internal service call (token matches service role key)
+    if (token === supabaseServiceKey) {
+      isAuthorized = true;
+    } else if (token) {
+      // Validate as a user JWT - must be an agency member or admin
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+        global: { headers: { Authorization: authHeader } },
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data: claims } = await userClient.auth.getClaims(token);
+      if (claims?.claims?.sub) {
+        const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { data: agencyUser } = await serviceClient
+          .from("agency_users")
+          .select("id")
+          .eq("user_id", claims.claims.sub)
+          .maybeSingle();
+        if (agencyUser) isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
