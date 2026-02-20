@@ -38,14 +38,10 @@ Deno.serve(async (req) => {
 
       const redirectUri = `https://${SUPABASE_URL.replace(/^https?:\/\//, '')}/functions/v1/meta-oauth?action=callback`;
       console.log('[meta-oauth] Generated OAuth URL with redirect_uri:', redirectUri);
-      // Only use scopes that are valid without App Review for development.
-      // For production (Live mode), add: pages_read_engagement, instagram_manage_insights
-      const scopes = [
-        'public_profile',
-        'email',
-        'pages_show_list',
-        'pages_read_engagement',
-      ].join(',');
+      // ONLY use public_profile — no app review required for development mode.
+      // Invalid scopes (email, pages_show_list, pages_read_engagement) cause
+      // Facebook to show "This content isn't available right now" in dev mode.
+      const scopes = ['public_profile'].join(',');
 
       const state = encodeURIComponent(JSON.stringify({ userId: claims.sub }));
       const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&state=${state}&response_type=code`;
