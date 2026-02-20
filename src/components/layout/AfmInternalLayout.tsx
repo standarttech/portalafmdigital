@@ -38,52 +38,55 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const NAV_GROUPS: NavGroup[] = [
-  {
-    id: 'overview',
-    label: 'Обзор',
-    icon: LayoutDashboard,
-    items: [
-      { label: 'Дашборд', icon: LayoutDashboard, path: '/afm-internal' },
-      { label: 'Статистика', icon: BarChart3, path: '/afm-internal/stats' },
-    ],
-  },
-  {
-    id: 'marketing',
-    label: 'Маркетинг',
-    icon: TrendingUp,
-    items: [
-      { label: 'Media Buying', icon: TrendingUp, path: '/afm-internal/media' },
-      { label: 'Social Media', icon: Globe, path: '/afm-internal/social' },
-    ],
-  },
-  {
-    id: 'sales',
-    label: 'Продажи',
-    icon: Users,
-    items: [
-      { label: 'Sales CRM', icon: DollarSign, path: '/afm-internal/sales' },
-    ],
-  },
-  {
-    id: 'finance',
-    label: 'Финансы',
-    icon: Banknote,
-    items: [
-      { label: 'Plan по доходу', icon: LineChart, path: '/afm-internal/income-plan' },
-      { label: 'Фин. планирование', icon: BarChart2, path: '/afm-internal/financial-planning' },
-    ],
-  },
-  {
-    id: 'workspace',
-    label: 'Рабочее пространство',
-    icon: Wrench,
-    items: [
-      { label: 'Инструменты', icon: Wrench, path: '/afm-internal/tools' },
-      { label: 'Настройки', icon: Settings, path: '/afm-internal/settings' },
-    ],
-  },
-];
+// Nav groups built dynamically using translation keys
+function buildNavGroups(t: (key: any) => string): NavGroup[] {
+  return [
+    {
+      id: 'overview',
+      label: t('afm.overview'),
+      icon: LayoutDashboard,
+      items: [
+        { label: t('afm.dashboard'), icon: LayoutDashboard, path: '/afm-internal' },
+        { label: t('afm.statsDashboard'), icon: BarChart3, path: '/afm-internal/stats' },
+      ],
+    },
+    {
+      id: 'marketing',
+      label: t('afm.marketing'),
+      icon: TrendingUp,
+      items: [
+        { label: t('afm.mediaBuyingInternal'), icon: TrendingUp, path: '/afm-internal/media' },
+        { label: t('afm.socialMediaInternal'), icon: Globe, path: '/afm-internal/social' },
+      ],
+    },
+    {
+      id: 'sales',
+      label: t('afm.salesGroup'),
+      icon: Users,
+      items: [
+        { label: t('afm.salesCrm'), icon: DollarSign, path: '/afm-internal/sales' },
+      ],
+    },
+    {
+      id: 'finance',
+      label: t('afm.financeGroup'),
+      icon: Banknote,
+      items: [
+        { label: t('afm.incomePlan'), icon: LineChart, path: '/afm-internal/income-plan' },
+        { label: t('afm.financialPlanning'), icon: BarChart2, path: '/afm-internal/financial-planning' },
+      ],
+    },
+    {
+      id: 'workspace',
+      label: t('afm.workspace'),
+      icon: Wrench,
+      items: [
+        { label: t('afm.internalTools'), icon: Wrench, path: '/afm-internal/tools' },
+        { label: t('afm.internalSettings'), icon: Settings, path: '/afm-internal/settings' },
+      ],
+    },
+  ];
+}
 
 function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate?: () => void }) {
   const location = useLocation();
@@ -147,6 +150,8 @@ function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate?: () 
 function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
+  const NAV_GROUPS = buildNavGroups(t);
 
   return (
     <div className="flex flex-col h-full">
@@ -163,14 +168,14 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       {/* Back to Portal */}
       <div className="px-2 pt-3 pb-2">
-        <Button
+      <Button
           variant="ghost"
           size="sm"
           onClick={() => { navigate('/dashboard'); onNavigate?.(); }}
           className="w-full justify-start gap-2.5 px-3 text-sidebar-muted hover:text-primary hover:bg-primary/10 text-xs"
         >
           <ArrowLeftCircle className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">Назад в портал</span>
+          <span className="truncate">{t('afm.backToPortal2')}</span>
         </Button>
       </div>
 
@@ -192,7 +197,7 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           className="w-full justify-start gap-3 px-3 text-sidebar-muted hover:text-destructive hover:bg-destructive/10"
         >
           <LogOut className="h-4 w-4" />
-          <span className="text-sm">Выйти</span>
+          <span className="text-sm">{t('auth.logout')}</span>
         </Button>
       </div>
     </div>
