@@ -459,26 +459,26 @@ const ScalingStackLanding: React.FC = () => {
 
       {/* ── HOW WE WORK ── */}
       <FadeSection className="py-14 sm:py-24">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="text-center mb-10 sm:mb-12">
-            <SectionLabel>Our Process</SectionLabel>
-            <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>How we scale your ads</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-            { step: "01", title: "Audit", desc: "We analyze your pixel, tracking, creative, and targeting. Identify what's wasting money." },
-            { step: "02", title: "Strategy", desc: "We build a custom scaling roadmap based on your goals, budget, and funnel structure." },
-            { step: "03", title: "Launch", desc: "We test systematically — creatives, audiences, offers — using our proven testing framework." },
-            { step: "04", title: "Scale", desc: "Once we have winners, we scale with confidence. More budget, same efficiency, zero chaos." }].
-            map((item) =>
-            <div key={item.step} className="p-6 rounded-2xl" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}>
-                <div className="text-[28px] sm:text-[32px] font-black mb-3 tabular-nums" style={{ color: "rgba(99,179,237,0.28)" }}>{item.step}</div>
-                <h3 className="text-[17px] font-bold mb-2" style={{ color: "hsl(0 0% 98%)" }}>{item.title}</h3>
-                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{item.desc}</p>
-              </div>
-            )}
-          </div>
-        </div>
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       </FadeSection>
 
       {/* ── TESTIMONIALS ── */}
