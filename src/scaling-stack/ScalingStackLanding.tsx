@@ -378,30 +378,30 @@ const ScalingStackLanding: React.FC = () => {
       <section id="services" className="py-14 sm:py-24 relative">
         <div className="absolute inset-0 pointer-events-none" style={{ background: "rgba(99,179,237,0.025)" }} />
         <FadeSection>
-          <div className="max-w-6xl mx-auto px-5 sm:px-6">
-            <div className="text-center mb-10 sm:mb-12">
-              <SectionLabel>What We Do</SectionLabel>
-              <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>
-                A system built for performance.<br className="hidden sm:block" /> Not promises.
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {SERVICES.map((s) =>
-              <div key={s.title} className="group p-6 sm:p-7 rounded-2xl transition-all duration-300 hover:-translate-y-1 cursor-default"
-              style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)", backdropFilter: "blur(10px)" }}>
-                  <div className="text-3xl mb-4">{s.icon}</div>
-                  <h3 className="text-[17px] sm:text-[18px] font-bold mb-2" style={{ color: "hsl(0 0% 98%)" }}>{s.title}</h3>
-                  <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{s.desc}</p>
-                </div>
-              )}
-            </div>
-            <div className="text-center mt-8 sm:mt-10">
-              <button onClick={goToForm} className="w-full sm:w-auto px-8 py-4 rounded-2xl text-[15px] font-bold transition-all hover:-translate-y-0.5 active:scale-[0.98]"
-              style={{ background: "linear-gradient(135deg, #4299e1, #63b3ed)", color: "#fff", boxShadow: "0 0 30px rgba(99,179,237,0.3)" }}>
-                Apply to Work With Us →
-              </button>
-            </div>
-          </div>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         </FadeSection>
       </section>
 
