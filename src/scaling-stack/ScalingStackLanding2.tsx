@@ -238,7 +238,7 @@ const ScalingStackLanding2: React.FC = () => {
         <div className="max-w-3xl mx-auto px-5 py-6">
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
             <div className="flex items-center gap-2">
-              <img src={ssLogo} alt="AFM Digital" className="h-5 w-auto" />
+              
               <span className="text-[12px] font-semibold" style={{ color: "#1e293b" }}>AFM Digital Agency</span>
             </div>
             <div className="flex items-center gap-4 text-[11px]" style={{ color: "#94a3b8" }}>
