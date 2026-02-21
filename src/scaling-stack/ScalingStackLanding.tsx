@@ -375,10 +375,7 @@ const ScalingStackLanding: React.FC = () => {
       </FadeSection>
 
       {/* ── SERVICES ── */}
-      <section id="services" className="py-14 sm:py-24 relative">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "rgba(99,179,237,0.025)" }} />
-        <FadeSection>
-          
+      
 
 
 
@@ -402,8 +399,11 @@ const ScalingStackLanding: React.FC = () => {
 
 
 
-        </FadeSection>
-      </section>
+
+
+
+
+
 
       {/* ── WHO IT'S FOR ── */}
       <FadeSection className="py-14 sm:py-24">
