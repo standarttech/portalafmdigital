@@ -117,7 +117,7 @@ const ScalingStackLanding2: React.FC = () => {
 
           {/* Social proof line */}
           <div className="flex flex-col items-center gap-2 mt-6">
-            <p className="text-[13px] italic" style={{ color: "#94a3b8" }}>"We scaled to $80k/mo in 3 months"</p>
+            <p className="text-[13px] italic" style={{ color: "#94a3b8" }}>"We scaled to $100k/mo in 3 months"</p>
             <div className="flex items-center gap-2">
               <span className="text-[13px] font-semibold" style={{ color: "#1e293b" }}>4.9 rating from</span>
               <span className="text-[13px]" style={{ color: "#64748b" }}>80+ brands</span>
