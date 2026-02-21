@@ -189,12 +189,12 @@ function FadeSection({ children, className = "" }: {children: React.ReactNode;cl
       style={{
         opacity: inView ? 1 : 0,
         transform: inView ? "translateY(0)" : "translateY(28px)",
-        transition: "opacity 0.7s ease, transform 0.7s ease",
-      }}
-    >
+        transition: "opacity 0.7s ease, transform 0.7s ease"
+      }}>
+
       {children}
-    </div>
-  );
+    </div>);
+
 }
 
 function SectionLabel({ children }: {children: React.ReactNode;}) {
@@ -351,27 +351,27 @@ const ScalingStackLanding: React.FC = () => {
 
       {/* ── PARTNERSHIPS ── */}
       <FadeSection className="py-14 sm:py-20">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6 text-center">
-          <SectionLabel>Official Whitelisted Partner</SectionLabel>
-          <div className="flex items-center justify-center gap-8 sm:gap-16 md:gap-20 flex-wrap mb-8">
-            {["Meta", "TikTok", "Google"].map((p) =>
-            <div key={p} className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: "rgba(255,255,255,0.18)" }}>{p}</div>
-            )}
-          </div>
-          <div className="max-w-xl mx-auto text-[14px] leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.5)" }}>
-            As authorized agency partners, we operate through{" "}
-            <span className="font-semibold" style={{ color: "rgba(99,179,237,0.9)" }}>exclusive whitelisted ad accounts</span>{" "}
-            — giving clients priority support, faster approvals, and advantages unavailable to regular advertisers.
-          </div>
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-            {["No More Bans", "New Feature Access", "Private Support", "Fastest Moderation", "No Spending Limits"].map((b) =>
-            <span key={b} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium"
-            style={{ border: "1px solid rgba(99,179,237,0.2)", color: "rgba(99,179,237,0.75)", background: "rgba(99,179,237,0.06)" }}>
-                ✓ {b}
-              </span>
-            )}
-          </div>
-        </div>
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       </FadeSection>
 
       {/* ── SERVICES ── */}
