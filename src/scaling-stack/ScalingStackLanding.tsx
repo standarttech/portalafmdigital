@@ -507,32 +507,32 @@ const ScalingStackLanding: React.FC = () => {
       {/* ── FOUNDERS ── */}
       <section id="about" className="py-14 sm:py-24">
         <FadeSection>
-          <div className="max-w-4xl mx-auto px-5 sm:px-6">
-            <div className="p-7 sm:p-10 md:p-12 rounded-3xl relative overflow-hidden"
-            style={{ border: "1px solid rgba(99,179,237,0.2)", background: "rgba(99,179,237,0.06)" }}>
-              <div className="absolute top-0 right-0 w-48 h-48 sm:w-64 sm:h-64 rounded-full blur-[80px] pointer-events-none"
-              style={{ background: "rgba(99,179,237,0.12)" }} />
-              <SectionLabel>From the Founders</SectionLabel>
-              <blockquote className="text-[clamp(16px,2.5vw,21px)] font-semibold leading-relaxed mb-8 relative z-10"
-              style={{ color: "rgba(255,255,255,0.85)" }}>
-                "After 11 years in paid traffic and funnel optimization, we've seen how most agencies operate — they scale their client list, not their clients' results. We built AFM to do things differently.
-                <br /><br />
-                Every decision we make is driven by data. CPL, CPA, ROAS, and the full customer journey. We win only when you do."
-              </blockquote>
-              <div className="flex items-center gap-4">
-                <div className="flex -space-x-2">
-                  {["DI", "DY"].map((init) =>
-                  <div key={init} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 text-[11px] font-bold"
-                  style={{ background: "rgba(99,179,237,0.15)", borderColor: "rgba(99,179,237,0.3)", color: "rgba(99,179,237,0.9)" }}>{init}</div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-[14px] font-semibold" style={{ color: "hsl(0 0% 98%)" }}>Denis Ishimov &amp; Danil Yussupov</div>
-                  <div className="text-[13px]" style={{ color: "rgba(255,255,255,0.45)" }}>Founders, AFM Digital Agency</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         </FadeSection>
       </section>
 
