@@ -73,15 +73,9 @@ Deno.serve(async (req) => {
 
       const redirectUri = `https://${SUPABASE_URL.replace(/^https?:\/\//, '')}/functions/v1/meta-oauth?action=callback`;
       console.log('[meta-oauth] Generated OAuth URL with redirect_uri:', redirectUri);
-      const scopes = [
-        'public_profile',
-        'pages_show_list',
-        'pages_read_engagement',
-        'pages_read_user_content',
-        'instagram_basic',
-        'instagram_manage_insights',
-        'business_management',
-      ].join(',');
+      // For Development mode apps, only public_profile and email work without App Review.
+      // Pages/Instagram scopes require passing Meta App Review first.
+      const scopes = ['public_profile', 'email'].join(',');
 
       const state = encodeURIComponent(JSON.stringify({ userId: claims.sub }));
       const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&state=${state}&response_type=code`;
