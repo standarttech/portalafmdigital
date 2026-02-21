@@ -407,24 +407,24 @@ const ScalingStackLanding: React.FC = () => {
 
       {/* ── WHO IT'S FOR ── */}
       <FadeSection className="py-14 sm:py-24">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="text-center mb-10 sm:mb-12">
-            <SectionLabel>Who We Work With</SectionLabel>
-            <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>
-              Built for brands ready to scale profitably
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {WHO_FOR.map((item) =>
-            <div key={item.title} className="p-6 sm:p-7 rounded-2xl text-center transition-all hover:-translate-y-1"
-            style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}>
-                <div className="text-4xl mb-4">{item.icon}</div>
-                <h3 className="text-[17px] font-bold mb-2" style={{ color: "hsl(0 0% 98%)" }}>{item.title}</h3>
-                <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{item.desc}</p>
-              </div>
-            )}
-          </div>
-        </div>
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       </FadeSection>
 
       {/* ── CASE STUDIES ── */}
