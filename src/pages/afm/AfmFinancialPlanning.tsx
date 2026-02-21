@@ -6,6 +6,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import FinanceSheetSync from '@/components/afm/FinanceSheetSync';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
@@ -670,6 +671,11 @@ export default function AfmFinancialPlanning() {
           <p className="text-xs text-muted-foreground mt-0.5">Двойной клик на название — редактировать · ПКМ на строке — меню</p>
         </div>
         {saving && <div className="flex items-center gap-1 text-[11px] text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Сохранение...</div>}
+      </motion.div>
+
+      {/* Google Sheets sync */}
+      <motion.div variants={item}>
+        <FinanceSheetSync tabKey="financial_planning" onSyncComplete={() => window.location.reload()} />
       </motion.div>
 
       {/* Google Sheets toolbar */}
