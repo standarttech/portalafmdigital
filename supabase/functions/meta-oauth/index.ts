@@ -83,6 +83,33 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── OAUTH CALLBACK (redirect from Facebook) ──────────────
+    if (req.method === 'GET' && action === 'callback') {
+      const code = url.searchParams.get('code');
+      const error = url.searchParams.get('error');
+      const errorReason = url.searchParams.get('error_reason');
+
+      if (error || !code) {
+        const html = `<!DOCTYPE html><html><body><script>
+          window.opener && window.opener.postMessage({ type: 'meta-oauth-callback', error: '${errorReason || error || 'no_code'}' }, '*');
+          window.close();
+        </script><p>Authorization failed. You can close this window.</p></body></html>`;
+        return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+      }
+
+      // Return HTML that sends the code to the opener and closes
+      const html = `<!DOCTYPE html><html><body><script>
+        if (window.opener) {
+          window.opener.postMessage({ type: 'meta-oauth-callback', code: '${code}' }, '*');
+          window.close();
+        } else {
+          // Fallback: redirect to app with code in URL
+          window.location.href = '/afm/social-media?meta_code=${code}';
+        }
+      </script><p>Connecting... Please wait.</p></body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+    }
+
     // ── EXCHANGE CODE FOR TOKEN ───────────────────────────────
     if (req.method === 'POST' && action === 'exchange') {
       const claims = await getAuthUser(req);

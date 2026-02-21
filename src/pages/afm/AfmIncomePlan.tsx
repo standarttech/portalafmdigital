@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, Plus, Loader2, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import FinanceSheetSync from '@/components/afm/FinanceSheetSync';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
@@ -154,6 +155,11 @@ export default function AfmIncomePlan() {
           </div>
           {saving && <div className="flex items-center gap-1 text-[11px] text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Сохранение...</div>}
         </div>
+      </motion.div>
+
+      {/* Google Sheets sync */}
+      <motion.div variants={item}>
+        <FinanceSheetSync tabKey="income_plan" onSyncComplete={() => window.location.reload()} />
       </motion.div>
 
       {/* Formula bar */}
