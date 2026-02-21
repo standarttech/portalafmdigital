@@ -34,6 +34,7 @@ import MfaChallengePage from "@/pages/MfaChallengePage";
 import BrandingPage from "@/pages/BrandingPage";
 import AfmInternalLayout from "@/components/layout/AfmInternalLayout";
 import ScalingStackLanding from "@/scaling-stack/ScalingStackLanding";
+import ScalingStackLanding2 from "@/scaling-stack/ScalingStackLanding2";
 import ScalingStackApply from "@/scaling-stack/ScalingStackApply";
 import ScalingStackThanks from "@/scaling-stack/ScalingStackThanks";
 import ScalingStackPrivacy from "@/scaling-stack/ScalingStackPrivacy";
@@ -141,6 +142,7 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/scaling-stack" element={<ScalingStackLanding />} />
+        <Route path="/scaling-stack2" element={<ScalingStackLanding2 />} />
         <Route path="/scaling-stack/apply" element={<ScalingStackApply />} />
         <Route path="/scaling-stack/apply/thanks" element={<ScalingStackThanks />} />
         <Route path="/scaling-stack/privacy" element={<ScalingStackPrivacy />} />
