@@ -431,29 +431,29 @@ const ScalingStackLanding: React.FC = () => {
       <section id="results" className="py-14 sm:py-24 relative">
         <div className="absolute inset-0 pointer-events-none" style={{ background: "rgba(99,179,237,0.025)" }} />
         <FadeSection>
-          <div className="max-w-6xl mx-auto px-5 sm:px-6">
-            <div className="text-center mb-10 sm:mb-12">
-              <SectionLabel>Proven Results</SectionLabel>
-              <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>Numbers that speak for themselves</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {CASES.map((c) =>
-              <div key={c.client} className="group p-5 sm:p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1"
-              style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)" }}>
-                  <div className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: "rgba(99,179,237,0.7)" }}>{c.category}</div>
-                  <div className="text-[32px] sm:text-[36px] font-black leading-none mb-2 tabular-nums" style={{ color: "hsl(0 0% 98%)", textShadow: "0 0 30px rgba(99,179,237,0.3)" }}>{c.metric}</div>
-                  <div className="text-[13px] mb-4 leading-snug" style={{ color: "rgba(255,255,255,0.5)" }}>{c.detail}</div>
-                  <div className="pt-3 border-t text-[12px] font-semibold" style={{ borderColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)" }}>{c.client}</div>
-                </div>
-              )}
-            </div>
-            <div className="text-center mt-8 sm:mt-10">
-              <button onClick={goToForm} className="w-full sm:w-auto px-8 py-4 rounded-2xl text-[15px] font-bold transition-all hover:-translate-y-0.5 active:scale-[0.98]"
-              style={{ border: "1px solid rgba(99,179,237,0.35)", color: "rgba(99,179,237,1)", background: "rgba(99,179,237,0.08)" }}>
-                Get Your Free Audit →
-              </button>
-            </div>
-          </div>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         </FadeSection>
       </section>
 
