@@ -367,6 +367,8 @@ export default function AfmSocialMedia() {
     const code = urlParams.get('meta_code');
     if (code) {
       console.log('[meta-oauth] callback: code received via URL param');
+      // Clean the URL
+      window.history.replaceState({}, '', window.location.pathname);
       handleOAuthCallback(code);
     }
   }, []);

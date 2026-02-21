@@ -73,7 +73,15 @@ Deno.serve(async (req) => {
 
       const redirectUri = `https://${SUPABASE_URL.replace(/^https?:\/\//, '')}/functions/v1/meta-oauth?action=callback`;
       console.log('[meta-oauth] Generated OAuth URL with redirect_uri:', redirectUri);
-      const scopes = ['public_profile'].join(',');
+      const scopes = [
+        'public_profile',
+        'pages_show_list',
+        'pages_read_engagement',
+        'pages_read_user_content',
+        'instagram_basic',
+        'instagram_manage_insights',
+        'business_management',
+      ].join(',');
 
       const state = encodeURIComponent(JSON.stringify({ userId: claims.sub }));
       const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&state=${state}&response_type=code`;
@@ -97,14 +105,20 @@ Deno.serve(async (req) => {
         return new Response(html, { headers: { 'Content-Type': 'text/html' } });
       }
 
+      // Determine the app origin from the Referer or state, fallback to known published URL
+      const appOrigin = req.headers.get('referer')?.match(/^https?:\/\/[^/]+/)?.[0] || 'https://portalafmdigital.lovable.app';
+      
       // Return HTML that sends the code to the opener and closes
       const html = `<!DOCTYPE html><html><body><script>
-        if (window.opener) {
-          window.opener.postMessage({ type: 'meta-oauth-callback', code: '${code}' }, '*');
-          window.close();
-        } else {
-          // Fallback: redirect to app with code in URL
-          window.location.href = '/afm/social-media?meta_code=${code}';
+        try {
+          if (window.opener) {
+            window.opener.postMessage({ type: 'meta-oauth-callback', code: '${code}' }, '*');
+            setTimeout(function() { window.close(); }, 500);
+          } else {
+            window.location.href = '${appOrigin}/afm-internal/social?meta_code=${code}';
+          }
+        } catch(e) {
+          window.location.href = '${appOrigin}/afm-internal/social?meta_code=${code}';
         }
       </script><p>Connecting... Please wait.</p></body></html>`;
       return new Response(html, { headers: { 'Content-Type': 'text/html' } });
