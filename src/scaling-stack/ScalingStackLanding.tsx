@@ -13,23 +13,6 @@ const STATS = [
   { value: "400%+", label: "Average ROAS" },
 ];
 
-const SERVICES = [
-  { icon: "📈", title: "Meta & TikTok Ads", desc: "Performance-first media buying on the platforms that move product. We optimize for ROAS, CAC, and LTV — not vanity metrics." },
-  { icon: "🧪", title: "Creative Testing Framework", desc: "Systematic creative iteration that cuts CPM and finds winning angles faster. No more guessing what creative works." },
-  { icon: "🎯", title: "Clean Tracking & Attribution", desc: "Server-side events, UTM hygiene, and pixel audits so your data reflects reality — not platform noise." },
-  { icon: "🚀", title: "Scaling Systems", desc: "Structured budget scaling protocols that maintain efficiency as you grow. From $10k/month to $100k+ without the chaos." },
-];
-
-const CASES = [
-  { client: "Lapin Group", category: "Info Product / Webinar", metric: "29,871", detail: "webinar registrations in one week" },
-  { client: "Kelner Homes", category: "Real Estate", metric: "$2.5M+", detail: "revenue generated in 3 months" },
-  { client: "Hyper Cyber", category: "E-commerce", metric: "+343%", detail: "increase in monthly Shopify revenue" },
-  { client: "Market Guru", category: "Info Product", metric: "$1.3M", detail: "revenue with evergreen webinar funnel" },
-  { client: "Thomas Kralow", category: "Education / VSL", metric: "171K+", detail: "revenue with VSL funnel in 2 months" },
-  { client: "Multifamily Expert", category: "Real Estate", metric: "1300%", detail: "live webinar ROAS from campaigns" },
-  { client: "RICHE", category: "Cosmetics E-com", metric: "512%", detail: "average ROAS for cosmetic brand" },
-  { client: "Eurosport", category: "Sports / Media", metric: "22,272", detail: "live broadcast subscriptions in 3 weeks" },
-];
 
 const ALL_TESTIMONIALS = [
   { quote: "AFM brought structure to our testing. CPA stabilized and we finally had a repeatable way to scale.", name: "Sarah M.", role: "DTC Skincare Founder", initials: "SM" },
@@ -350,47 +333,6 @@ const ScalingStackLanding: React.FC = () => {
         </div>
       </section>
 
-      {/* ── SERVICES ── */}
-      <FadeSection className="py-14 sm:py-24">
-        <div className="max-w-6xl mx-auto px-5 sm:px-6">
-          <div className="text-center mb-10 sm:mb-12">
-            <SectionLabel>What We Do</SectionLabel>
-            <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>Built for performance</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {SERVICES.map((s) => (
-              <div key={s.title} className="p-6 sm:p-7 rounded-2xl transition-all duration-300" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
-                <div className="text-2xl mb-3">{s.icon}</div>
-                <h3 className="text-[17px] font-bold mb-2" style={{ color: "hsl(0 0% 98%)" }}>{s.title}</h3>
-                <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </FadeSection>
-
-      {/* ── CASE STUDIES ── */}
-      <section id="results" className="py-14 sm:py-24 relative">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "rgba(99,179,237,0.025)" }} />
-        <FadeSection>
-          <div className="relative z-10 max-w-6xl mx-auto px-5 sm:px-6">
-            <div className="text-center mb-10 sm:mb-12">
-              <SectionLabel>Results</SectionLabel>
-              <h2 className="text-[clamp(26px,5vw,48px)] font-black leading-tight" style={{ color: "hsl(0 0% 98%)" }}>Real numbers. Real clients.</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {CASES.map((c) => (
-                <div key={c.client} className="p-5 rounded-2xl transition-all duration-300" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
-                  <div className="text-[11px] font-medium uppercase tracking-wider mb-2" style={{ color: "rgba(99,179,237,0.7)" }}>{c.category}</div>
-                  <div className="text-[28px] font-black mb-1" style={{ color: "hsl(0 0% 98%)", textShadow: "0 0 30px rgba(99,179,237,0.3)" }}>{c.metric}</div>
-                  <div className="text-[13px] leading-snug mb-3" style={{ color: "rgba(255,255,255,0.55)" }}>{c.detail}</div>
-                  <div className="text-[12px] font-semibold" style={{ color: "rgba(255,255,255,0.35)" }}>{c.client}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </FadeSection>
-      </section>
 
       {/* ── TESTIMONIALS ── */}
       <section className="py-14 sm:py-24 relative" style={{ background: "rgba(99,179,237,0.025)" }}>
