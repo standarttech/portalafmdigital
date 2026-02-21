@@ -263,7 +263,7 @@ const ScalingStackLanding: React.FC = () => {
       </nav>
 
       {/* ── HERO ── */}
-      <section className="relative min-h-screen flex items-center justify-center pt-14 sm:pt-16 overflow-hidden">
+      <section className="relative flex items-center justify-center pt-24 sm:pt-28 overflow-hidden">
         <ParticleCanvas />
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute rounded-full blur-[120px] sm:blur-[140px]"
@@ -274,7 +274,7 @@ const ScalingStackLanding: React.FC = () => {
             style={{ width: "min(250px, 60vw)", height: "min(250px, 60vw)", background: glowBlueBright, top: "35%", right: "10%", opacity: 0.25 }} />
         </div>
 
-        <div className="relative z-10 max-w-5xl mx-auto px-5 sm:px-6 text-center py-16 sm:py-24">
+        <div className="relative z-10 max-w-5xl mx-auto px-5 sm:px-6 text-center py-10 sm:py-16">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-[12px] font-medium mb-6 sm:mb-8"
             style={{ border: "1px solid rgba(99,179,237,0.25)", background: "rgba(99,179,237,0.08)", color: "rgba(99,179,237,0.85)", animation: "ss-fade-up 0.6s ease both" }}>
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
@@ -335,7 +335,7 @@ const ScalingStackLanding: React.FC = () => {
 
 
       {/* ── TESTIMONIALS ── */}
-      <section className="py-14 sm:py-24 relative" style={{ background: "rgba(99,179,237,0.025)" }}>
+      <section className="py-10 sm:py-16 relative" style={{ background: "rgba(99,179,237,0.025)" }}>
         <FadeSection>
           <div className="max-w-6xl mx-auto px-5 sm:px-6">
             <div className="text-center mb-10 sm:mb-12">
@@ -358,7 +358,7 @@ const ScalingStackLanding: React.FC = () => {
       </section>
 
       {/* ── FINAL CTA ── */}
-      <section className="py-16 sm:py-32 relative overflow-hidden">
+      <section className="py-12 sm:py-20 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute rounded-full blur-[120px] sm:blur-[160px]"
             style={{ width: "min(600px,120vw)", height: "min(600px,120vw)", background: "rgba(99,179,237,0.11)", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />

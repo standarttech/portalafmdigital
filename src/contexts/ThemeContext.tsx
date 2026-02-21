@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 export type BaseTheme = 'dark' | 'light';
+export type ColorScheme = 'default' | 'midnight-blue' | 'clean-light';
 
 interface ThemeContextType {
   theme: BaseTheme;
@@ -9,7 +10,9 @@ interface ThemeContextType {
   fxEnabled: boolean;
   setFxEnabled: (v: boolean) => void;
   toggleFx: () => void;
-  isFuturistic: boolean; // kept for backward compat = fxEnabled
+  isFuturistic: boolean;
+  colorScheme: ColorScheme;
+  setColorScheme: (s: ColorScheme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
@@ -20,12 +23,13 @@ const ThemeContext = createContext<ThemeContextType>({
   setFxEnabled: () => {},
   toggleFx: () => {},
   isFuturistic: false,
+  colorScheme: 'default',
+  setColorScheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<BaseTheme>(() => {
     const saved = localStorage.getItem('app-theme');
-    // migrate legacy 'futuristic' value
     if (saved === 'dark' || saved === 'light') return saved;
     if (saved === 'futuristic') return 'dark';
     return 'dark';
@@ -34,24 +38,51 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [fxEnabled, setFxEnabledState] = useState<boolean>(() => {
     const saved = localStorage.getItem('app-fx');
     if (saved === 'true') return true;
-    // migrate: if old theme was futuristic, enable fx
     if (localStorage.getItem('app-theme') === 'futuristic') return true;
     return false;
   });
 
+  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(() => {
+    const saved = localStorage.getItem('app-color-scheme');
+    if (saved === 'midnight-blue' || saved === 'clean-light' || saved === 'default') return saved;
+    return 'default';
+  });
+
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('dark', 'futuristic');
-    if (theme === 'dark') root.classList.add('dark');
+    root.classList.remove('dark', 'futuristic', 'scheme-midnight-blue', 'scheme-clean-light');
+
+    // Color scheme determines the base theme automatically
+    if (colorScheme === 'midnight-blue') {
+      root.classList.add('dark', 'scheme-midnight-blue');
+    } else if (colorScheme === 'clean-light') {
+      root.classList.add('scheme-clean-light');
+    } else {
+      if (theme === 'dark') root.classList.add('dark');
+    }
+
     if (fxEnabled) root.classList.add('futuristic');
+
     localStorage.setItem('app-theme', theme);
     localStorage.setItem('app-fx', String(fxEnabled));
-  }, [theme, fxEnabled]);
+    localStorage.setItem('app-color-scheme', colorScheme);
+  }, [theme, fxEnabled, colorScheme]);
 
-  const setTheme = useCallback((t: BaseTheme) => setThemeState(t), []);
-  const toggleTheme = useCallback(() => setThemeState(prev => prev === 'dark' ? 'light' : 'dark'), []);
+  const setTheme = useCallback((t: BaseTheme) => {
+    setThemeState(t);
+    setColorSchemeState('default');
+  }, []);
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => prev === 'dark' ? 'light' : 'dark');
+    setColorSchemeState('default');
+  }, []);
   const setFxEnabled = useCallback((v: boolean) => setFxEnabledState(v), []);
   const toggleFx = useCallback(() => setFxEnabledState(prev => !prev), []);
+  const setColorScheme = useCallback((s: ColorScheme) => {
+    setColorSchemeState(s);
+    if (s === 'midnight-blue') setThemeState('dark');
+    else if (s === 'clean-light') setThemeState('light');
+  }, []);
 
   return (
     <ThemeContext.Provider value={{
@@ -62,6 +93,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setFxEnabled,
       toggleFx,
       isFuturistic: fxEnabled,
+      colorScheme,
+      setColorScheme,
     }}>
       {children}
     </ThemeContext.Provider>
@@ -72,5 +105,4 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-// Re-export Theme type for backward compat
 export type Theme = BaseTheme;
