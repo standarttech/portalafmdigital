@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, forwardRef } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,9 @@ const categoryColors: Record<string, string> = {
   other: 'border-border bg-secondary/5',
 };
 
-export default function CategoryBreakdown({ clients }: Props) {
+import React from 'react';
+
+const CategoryBreakdown = React.forwardRef<HTMLDivElement, Props>(function CategoryBreakdown({ clients }, ref) {
   const { t, formatCurrency, formatNumber } = useLanguage();
 
   const categories = useMemo(() => {
@@ -136,4 +138,6 @@ export default function CategoryBreakdown({ clients }: Props) {
       </CardContent>
     </Card>
   );
-}
+});
+CategoryBreakdown.displayName = 'CategoryBreakdown';
+export default CategoryBreakdown;

@@ -62,33 +62,28 @@ export default function AppHeader() {
       <div className="flex items-center gap-0.5 sm:gap-2 flex-shrink-0">
         <NotificationCenter />
 
-        <TooltipProvider delayDuration={300}>
-          {/* Theme Picker */}
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                    <Palette className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Theme</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end">
-              {themeOptions.map(opt => (
-                <DropdownMenuItem
-                  key={opt.id}
-                  onClick={() => handleThemeSelect(opt.id)}
-                  className={activeThemeId === opt.id ? 'bg-accent' : ''}
-                >
-                  {opt.icon} {opt.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* Theme Picker */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <Palette className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="z-50">
+            {themeOptions.map(opt => (
+              <DropdownMenuItem
+                key={opt.id}
+                onClick={() => handleThemeSelect(opt.id)}
+                className={activeThemeId === opt.id ? 'bg-accent' : ''}
+              >
+                {opt.icon} {opt.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-          {/* Futuristic FX toggle */}
+        {/* Futuristic FX toggle */}
+        <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -105,7 +100,7 @@ export default function AppHeader() {
                 <Sparkles className={cn("h-4 w-4", isFuturistic && "animate-pulse")} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="bottom" sideOffset={8}>
               {isFuturistic ? 'Disable FX' : 'Enable FX ✨'}
             </TooltipContent>
           </Tooltip>

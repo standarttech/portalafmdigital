@@ -55,7 +55,8 @@ export function MetricTooltip({ metricKey, children, showIcon = false, className
         </TooltipTrigger>
         <TooltipContent
           side="top"
-          className="max-w-[220px] p-0 overflow-hidden border border-border/50 bg-popover shadow-lg"
+          sideOffset={8}
+          className="max-w-[220px] p-0 overflow-hidden border border-border/50 bg-popover shadow-lg z-50"
         >
           <div className="px-3 py-2 space-y-1.5">
             <p className="text-xs font-semibold text-primary">{def.term}</p>
