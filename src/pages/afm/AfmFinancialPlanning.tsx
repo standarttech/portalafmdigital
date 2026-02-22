@@ -7,7 +7,7 @@ const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
 export default function AfmFinancialPlanning() {
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-3 h-full flex flex-col">
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-3 h-full flex flex-col overflow-hidden">
       <motion.div variants={item} className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">

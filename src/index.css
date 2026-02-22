@@ -169,7 +169,7 @@
 
   /* ── Clean Light scheme (like /scaling-stack2) ── */
   .scheme-clean-light {
-    --background: 220 30% 97%;
+    --background: 220 20% 97%;
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -178,46 +178,46 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 207 68% 49%;
+    --primary: 207 68% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 95%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 220 20% 93%;
+    --secondary-foreground: 222 47% 15%;
 
-    --muted: 220 20% 95%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 220 15% 93%;
+    --muted-foreground: 215 20% 38%;
 
-    --accent: 207 68% 49%;
+    --accent: 207 68% 45%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
-    --ring: 207 68% 49%;
+    --border: 214 20% 85%;
+    --input: 214 20% 85%;
+    --ring: 207 68% 45%;
 
-    --sidebar-background: 220 30% 97%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 207 68% 49%;
+    --sidebar-background: 222 30% 14%;
+    --sidebar-foreground: 210 30% 90%;
+    --sidebar-primary: 207 68% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 92%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 20% 90%;
-    --sidebar-ring: 207 68% 49%;
-    --sidebar-muted: 215 16% 47%;
+    --sidebar-accent: 222 25% 20%;
+    --sidebar-accent-foreground: 210 30% 90%;
+    --sidebar-border: 222 25% 18%;
+    --sidebar-ring: 207 68% 55%;
+    --sidebar-muted: 215 16% 55%;
 
-    --chart-1: 207 68% 49%;
-    --chart-2: 160 84% 39%;
-    --chart-3: 42 87% 55%;
+    --chart-1: 207 68% 45%;
+    --chart-2: 160 84% 35%;
+    --chart-3: 42 87% 50%;
     --chart-4: 291 64% 42%;
-    --chart-5: 0 84% 60%;
+    --chart-5: 0 84% 55%;
 
-    --success: 160 84% 39%;
+    --success: 160 84% 35%;
     --success-foreground: 0 0% 100%;
-    --warning: 43 96% 56%;
+    --warning: 43 96% 50%;
     --warning-foreground: 0 0% 0%;
-    --info: 207 68% 49%;
+    --info: 207 68% 45%;
     --info-foreground: 0 0% 100%;
   }
 

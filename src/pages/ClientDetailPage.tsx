@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import ConversionFunnel from '@/components/client/ConversionFunnel';
 import ClientComments from '@/components/client/ClientComments';
+import ClientWebhooks from '@/components/client/ClientWebhooks';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import { MetricTooltip } from '@/components/shared/MetricTooltip';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -649,6 +650,7 @@ export default function ClientDetailPage() {
             {isAdmin && <TabsTrigger value="targets" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('targets.title')}</span></TabsTrigger>}
             <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('nav.reports')}</span></TabsTrigger>
             {isAgency && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clients.connections')}</span></TabsTrigger>}
+            {isAgency && <TabsTrigger value="webhooks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Webhooks</span></TabsTrigger>}
             {isAgency && <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />History</TabsTrigger>}
           </TabsList>
 
@@ -1018,6 +1020,13 @@ export default function ClientDetailPage() {
           {isAgency && (
             <TabsContent value="connections">
               <GoogleSheetConnection clientId={id!} isAdmin={isAdmin} />
+            </TabsContent>
+          )}
+
+          {/* WEBHOOKS TAB */}
+          {isAgency && (
+            <TabsContent value="webhooks">
+              <ClientWebhooks clientId={id!} />
             </TabsContent>
           )}
         </Tabs>

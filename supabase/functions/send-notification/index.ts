@@ -15,7 +15,6 @@ interface NotificationPayload {
   title: string;
   message: string;
   link?: string;
-  // For broadcasts: override channels instead of using user prefs
   force_channels?: string[];
 }
 
@@ -28,43 +27,42 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Security: only allow calls from authenticated agency members or internal service calls
-    // Internal calls (from other edge functions) pass the service role key as a bearer token
-    // User calls must pass a valid JWT from an agency member
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "");
 
     let isAuthorized = false;
 
-    // Check if it's an internal service call (token matches service role key)
+    // Internal service call
     if (token === supabaseServiceKey) {
       isAuthorized = true;
     } else if (token) {
-      // Validate as a user JWT - must be an agency member or admin
+      // Validate user JWT using getUser (works reliably in edge functions)
       const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
         global: { headers: { Authorization: authHeader } },
         auth: { autoRefreshToken: false, persistSession: false },
       });
-      const { data: claims } = await userClient.auth.getClaims(token);
-      if (claims?.claims?.sub) {
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user?.id) {
         const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
           auth: { autoRefreshToken: false, persistSession: false },
         });
         const { data: agencyUser } = await serviceClient
           .from("agency_users")
           .select("id")
-          .eq("user_id", claims.claims.sub)
+          .eq("user_id", user.id)
           .maybeSingle();
         if (agencyUser) isAuthorized = true;
       }
     }
 
     if (!isAuthorized) {
+      console.error("Unauthorized: no valid token or agency membership");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
+
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
@@ -103,15 +101,19 @@ serve(async (req) => {
         channels = force_channels;
       } else {
         const defaultChannels: Record<string, string[]> = {
-          alert: ["in_app", "email"],
+          alert: ["in_app", "email", "telegram"],
           task: ["in_app"],
           chat: ["in_app"],
           report: ["email"],
-          approval: ["in_app", "email"],
+          approval: ["in_app", "email", "telegram"],
           client_report: ["email"],
         };
-        channels = prefs?.[channelField] || defaultChannels[type] || ["in_app"];
+        // Use the type-specific channels from prefs, falling back to defaults
+        const prefsChannels = prefs ? (prefs as any)[channelField] : undefined;
+        channels = prefsChannels || defaultChannels[type] || ["in_app"];
       }
+
+      console.log(`Processing user ${userId}, type: ${type}, channels: ${JSON.stringify(channels)}`);
 
       // 1. In-App notification
       if (channels.includes("in_app")) {
@@ -130,11 +132,13 @@ serve(async (req) => {
       if (channels.includes("email") && resendApiKey) {
         try {
           const { data: userData } = await supabase.auth.admin.getUserById(userId);
-          if (userData?.user?.email) {
+          const email = userData?.user?.email;
+          if (email) {
+            console.log(`Sending email to ${email} for notification: ${title}`);
             const resend = new Resend(resendApiKey);
-            await resend.emails.send({
+            const { data: emailResult, error: emailError } = await resend.emails.send({
               from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
-              to: [userData.user.email],
+              to: [email],
               subject: `AFM DIGITAL — ${title}`,
               html: `
                 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #0a0b10; color: #e2e8f0; border-radius: 16px;">
@@ -149,35 +153,52 @@ serve(async (req) => {
                 </div>
               `,
             });
-            deliveredChannels.push("email");
+            if (emailError) {
+              console.error("Resend API error:", JSON.stringify(emailError));
+            } else {
+              console.log("Email sent successfully:", emailResult?.id);
+              deliveredChannels.push("email");
+            }
+          } else {
+            console.warn(`No email found for user ${userId}`);
           }
         } catch (e) {
           console.error("Email send error:", e);
         }
+      } else if (channels.includes("email") && !resendApiKey) {
+        console.warn("Email channel requested but RESEND_API_KEY not configured");
       }
 
       // 3. Telegram
-      if (channels.includes("telegram") && prefs?.telegram_chat_id && telegramBotToken) {
-        try {
-          const text = `*${title}*\n${message}${link ? `\n\n[Open in Portal](https://portalafmdigital.lovable.app${link})` : ""}`;
-          const res = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: prefs.telegram_chat_id,
-              text,
-              parse_mode: "Markdown",
-              disable_web_page_preview: true,
-            }),
-          });
-          const resData = await res.json();
-          if (res.ok) {
-            deliveredChannels.push("telegram");
-          } else {
-            console.error("Telegram API error:", JSON.stringify(resData));
+      if (channels.includes("telegram")) {
+        if (!telegramBotToken) {
+          console.warn("Telegram channel requested but TELEGRAM_BOT_TOKEN not configured");
+        } else if (!prefs?.telegram_chat_id) {
+          console.warn(`Telegram channel requested but no telegram_chat_id for user ${userId}`);
+        } else {
+          try {
+            const text = `*${title}*\n${message}${link ? `\n\n[Open in Portal](https://portalafmdigital.lovable.app${link})` : ""}`;
+            console.log(`Sending Telegram to chat_id: ${prefs.telegram_chat_id}`);
+            const res = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: prefs.telegram_chat_id,
+                text,
+                parse_mode: "Markdown",
+                disable_web_page_preview: true,
+              }),
+            });
+            const resData = await res.json();
+            if (res.ok && resData.ok) {
+              console.log("Telegram sent successfully");
+              deliveredChannels.push("telegram");
+            } else {
+              console.error("Telegram API error:", JSON.stringify(resData));
+            }
+          } catch (e) {
+            console.error("Telegram send error:", e);
           }
-        } catch (e) {
-          console.error("Telegram send error:", e);
         }
       }
 
@@ -189,7 +210,7 @@ serve(async (req) => {
       results[userId] = deliveredChannels;
     }
 
-    console.log("Notification results:", JSON.stringify(results));
+    console.log("Notification delivery results:", JSON.stringify(results));
 
     return new Response(JSON.stringify({ success: true, results }), {
       status: 200,

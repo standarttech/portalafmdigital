@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ export default function FinanceSheetSync({ tabKey }: FinanceSheetSyncProps) {
   const [showEmbed, setShowEmbed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const iframeContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -44,6 +45,20 @@ export default function FinanceSheetSync({ tabKey }: FinanceSheetSyncProps) {
     };
     load();
   }, [tabKey]);
+
+  // Prevent parent scroll when hovering over iframe container
+  useEffect(() => {
+    const container = iframeContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Stop the wheel event from propagating to parent scroll containers
+      e.stopPropagation();
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [showEmbed]);
 
   const saveUrl = async () => {
     if (!sheetUrl) {
@@ -80,8 +95,8 @@ export default function FinanceSheetSync({ tabKey }: FinanceSheetSyncProps) {
   const embedUrl = savedUrl ? extractEmbedUrl(savedUrl) : null;
 
   return (
-    <div className="space-y-2">
-      <Card className="glass-card border-border/40">
+    <div className="flex flex-col h-full gap-2">
+      <Card className="glass-card border-border/40 flex-shrink-0">
         <CardContent className="p-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
@@ -118,19 +133,25 @@ export default function FinanceSheetSync({ tabKey }: FinanceSheetSyncProps) {
       </Card>
 
       {showEmbed && embedUrl && (
-        <Card className="glass-card border-border/40 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30" style={{ background: 'hsl(var(--muted)/0.3)' }}>
+        <Card className="glass-card border-border/40 overflow-hidden flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 flex-shrink-0" style={{ background: 'hsl(var(--muted)/0.3)' }}>
             <span className="text-[10px] text-muted-foreground">Google Sheets — прямое редактирование</span>
             <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)} className="h-5 w-5 p-0">
               {expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
             </Button>
           </div>
-          <iframe
-            src={embedUrl}
-            className="w-full border-0"
-            style={{ height: expanded ? '80vh' : '400px' }}
-            allow="clipboard-read; clipboard-write"
-          />
+          <div
+            ref={iframeContainerRef}
+            className="flex-1 min-h-0 relative"
+            style={{ isolation: 'isolate' }}
+          >
+            <iframe
+              src={embedUrl}
+              className="w-full h-full border-0 absolute inset-0"
+              style={{ minHeight: expanded ? '80vh' : 'calc(100vh - 220px)' }}
+              allow="clipboard-read; clipboard-write"
+            />
+          </div>
         </Card>
       )}
     </div>
