@@ -50,10 +50,26 @@ import AfmIncomePlan from "@/pages/afm/AfmIncomePlan";
 import AfmFinancialPlanning from "@/pages/afm/AfmFinancialPlanning";
 import AfmStats from "@/pages/afm/AfmStats";
 import NotFound from "./pages/NotFound";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const queryClient = new QueryClient();
+// FIX #1: QueryClient with staleTime to prevent constant refetching/refreshes
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min — prevents constant refetching
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false, // FIX #2: Stop refetch on tab switch
+      retry: 1,
+    },
+  },
+});
+
+// FIX #3: Wrap GlossaryPage in forwardRef to fix console warning
+const GlossaryPageWrapper = React.forwardRef<HTMLDivElement>((_, ref) => (
+  <div ref={ref}><GlossaryPage /></div>
+));
+GlossaryPageWrapper.displayName = 'GlossaryPageWrapper';
 
 function AppRoutes() {
   const { user, loading, adminExists, signOut, agencyRole } = useAuth();
@@ -70,7 +86,6 @@ function AppRoutes() {
       setNeedsPasswordSetup(false);
       return;
     }
-    // If user just completed password setup (flag set in SetPasswordPage), skip re-check
     if (sessionStorage.getItem('password_setup_done') === '1') {
       setNeedsPasswordSetup(false);
       setForcePasswordChange(false);
@@ -84,7 +99,6 @@ function AppRoutes() {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    // needs_password_setup: new magic-link flow — redirect to /set-password
     if ((data as any)?.needs_password_setup === true) {
       setNeedsPasswordSetup(true);
       setForcePasswordChange(false);
@@ -107,7 +121,6 @@ function AppRoutes() {
     setCheckingFpc(false);
   }, [user]);
 
-  // Check MFA assurance level after login
   const checkMfa = useCallback(async () => {
     if (!user) {
       setMfaPending(false);
@@ -117,7 +130,6 @@ function AppRoutes() {
     try {
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (!error && data) {
-        // If user has MFA enrolled (nextLevel=aal2) but hasn't verified yet (currentLevel=aal1)
         if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
           setMfaPending(true);
         } else {
@@ -137,7 +149,7 @@ function AppRoutes() {
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
 
-  // Public routes — no auth required
+  // Public routes
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/scaling-stack")) {
     return (
       <Routes>
@@ -162,7 +174,6 @@ function AppRoutes() {
     );
   }
 
-  // Intercept authenticated user who needs to set their password (magic link flow)
   if (user && needsPasswordSetup) {
     return (
       <Routes>
@@ -192,7 +203,6 @@ function AppRoutes() {
     );
   }
 
-  // MFA challenge gate
   if (mfaPending) {
     return (
       <MfaChallengePage
@@ -210,7 +220,6 @@ function AppRoutes() {
     );
   }
 
-  // If user has no role (removed from agency_users), block access
   if (!agencyRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -272,7 +281,6 @@ function AppRoutes() {
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/branding" element={<BrandingPage />} />
       </Route>
-      {/* AFM Internal — separate workspace with its own layout */}
       <Route element={<AfmInternalLayout />}>
         <Route path="/afm-internal" element={<AfmDashboard />} />
         <Route path="/afm-internal/media" element={<AfmMediaBuying />} />

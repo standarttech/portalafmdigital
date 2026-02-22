@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,18 +46,28 @@ export default function FinanceSheetSync({ tabKey }: FinanceSheetSyncProps) {
     load();
   }, [tabKey]);
 
-  // Prevent parent scroll when hovering over iframe container
+  // FIX #5: Prevent parent scroll when interacting with iframe
+  // Using both wheel and touchmove to cover desktop and mobile
   useEffect(() => {
     const container = iframeContainerRef.current;
-    if (!container) return;
+    if (!container || !showEmbed) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // Stop the wheel event from propagating to parent scroll containers
+      e.stopPropagation();
+      // Prevent document scroll by preventing default on parent
+      e.preventDefault();
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
       e.stopPropagation();
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchmove', handleTouchMove);
+    };
   }, [showEmbed]);
 
   const saveUrl = async () => {
@@ -93,6 +103,9 @@ export default function FinanceSheetSync({ tabKey }: FinanceSheetSyncProps) {
   if (loading) return null;
 
   const embedUrl = savedUrl ? extractEmbedUrl(savedUrl) : null;
+
+  // FIX #6: Dynamic height calculation for better iframe sizing
+  const iframeHeight = expanded ? '85vh' : 'calc(100vh - 200px)';
 
   return (
     <div className="flex flex-col h-full gap-2">
@@ -142,13 +155,13 @@ export default function FinanceSheetSync({ tabKey }: FinanceSheetSyncProps) {
           </div>
           <div
             ref={iframeContainerRef}
-            className="flex-1 min-h-0 relative"
+            className="flex-1 min-h-0 relative overflow-hidden"
             style={{ isolation: 'isolate' }}
           >
             <iframe
               src={embedUrl}
-              className="w-full h-full border-0 absolute inset-0"
-              style={{ minHeight: expanded ? '80vh' : 'calc(100vh - 220px)' }}
+              className="w-full border-0 absolute inset-0"
+              style={{ height: iframeHeight, minHeight: '500px' }}
               allow="clipboard-read; clipboard-write"
             />
           </div>

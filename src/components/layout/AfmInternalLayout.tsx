@@ -38,7 +38,6 @@ interface NavGroup {
   items: NavItem[];
 }
 
-// Nav groups built dynamically using translation keys
 function buildNavGroups(t: (key: any) => string): NavGroup[] {
   return [
     {
@@ -90,15 +89,11 @@ function buildNavGroups(t: (key: any) => string): NavGroup[] {
 
 function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate?: () => void }) {
   const location = useLocation();
-
-  // Check if any item in this group is active
   const isGroupActive = group.items.some(item => {
     if (item.path === '/afm-internal') return location.pathname === '/afm-internal';
     return location.pathname.startsWith(item.path);
   });
-
   const [open, setOpen] = useState(isGroupActive);
-
   const GroupIcon = group.icon;
 
   return (
@@ -107,16 +102,13 @@ function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate?: () 
         onClick={() => setOpen(o => !o)}
         className={cn(
           'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors',
-          isGroupActive
-            ? 'text-primary'
-            : 'text-sidebar-muted/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30'
+          isGroupActive ? 'text-primary' : 'text-sidebar-muted/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/30'
         )}
       >
         <GroupIcon className={cn('h-3.5 w-3.5 flex-shrink-0', isGroupActive && 'text-primary')} />
         <span className="flex-1 text-left uppercase tracking-[0.1em]">{group.label}</span>
         <ChevronDown className={cn('h-3 w-3 transition-transform duration-200', open && 'rotate-180')} />
       </button>
-
       {open && (
         <div className="ml-3 pl-3 border-l border-sidebar-border/40 space-y-0.5 mt-0.5 mb-1">
           {group.items.map(item => {
@@ -131,9 +123,7 @@ function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate?: () 
                 onClick={onNavigate}
                 className={cn(
                   'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors',
-                  isActive
-                    ? 'bg-primary/15 text-primary font-medium'
-                    : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                  isActive ? 'bg-primary/15 text-primary font-medium' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
                 )}
               >
                 <ItemIcon className={cn('h-3.5 w-3.5 flex-shrink-0', isActive && 'text-primary')} />
@@ -155,7 +145,6 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border gap-3 flex-shrink-0">
         <div className="h-9 w-9 flex-shrink-0 bg-primary/20 rounded-lg flex items-center justify-center">
           <Zap className="h-5 w-5 text-primary" />
@@ -165,10 +154,8 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <span className="text-[9px] tracking-[0.2em] text-primary font-medium -mt-0.5">INTERNAL</span>
         </div>
       </div>
-
-      {/* Back to Portal */}
       <div className="px-2 pt-3 pb-2">
-      <Button
+        <Button
           variant="ghost"
           size="sm"
           onClick={() => { navigate('/dashboard'); onNavigate?.(); }}
@@ -178,17 +165,12 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <span className="truncate">{t('afm.backToPortal2')}</span>
         </Button>
       </div>
-
       <div className="mx-3 mb-2 border-t border-sidebar-border/50" />
-
-      {/* Nav groups */}
       <nav className="flex-1 py-1 px-2 overflow-y-auto min-h-0 space-y-0">
         {NAV_GROUPS.map(group => (
           <NavGroupItem key={group.id} group={group} onNavigate={onNavigate} />
         ))}
       </nav>
-
-      {/* Logout */}
       <div className="p-2 border-t border-sidebar-border flex-shrink-0">
         <Button
           variant="ghost"
@@ -221,7 +203,6 @@ function AfmHeaderControls() {
       >
         <Sparkles className="h-3.5 w-3.5" />
       </button>
-
       <button
         onClick={toggleTheme}
         className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
@@ -229,7 +210,6 @@ function AfmHeaderControls() {
       >
         {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
       </button>
-
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors text-xs font-medium">
@@ -261,7 +241,7 @@ export default function AfmInternalLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="flex h-screen w-full bg-background overflow-hidden">
       <FuturisticOverlay />
 
       {isMobile ? (
@@ -284,7 +264,7 @@ export default function AfmInternalLayout() {
       )}
 
       <div className={cn(
-        'flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10',
+        'flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10 h-screen',
         isMobile ? 'ml-0' : 'ml-56'
       )}>
         <header className={cn(
@@ -303,7 +283,7 @@ export default function AfmInternalLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-2 sm:p-4 lg:p-6 overflow-hidden flex flex-col min-h-0">
+        <main className="flex-1 p-2 sm:p-4 lg:p-6 overflow-auto flex flex-col min-h-0">
           <Outlet />
         </main>
       </div>

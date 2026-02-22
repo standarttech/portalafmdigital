@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,22 +22,8 @@ const BG_PRESETS = [
   { label: 'White', value: 'hsl(0, 0%, 100%)' },
 ];
 
-function LogoUploadCard({
-  settingKey,
-  title,
-  description,
-  logoUrl,
-  setLogoUrl,
-  logoSize,
-  setLogoSize,
-  logoBg,
-  setLogoBg,
-  logoBgCustom,
-  setLogoBgCustom,
-  saving,
-  onSave,
-  onReset,
-}: {
+// FIX #4: Wrap LogoUploadCard in forwardRef to fix "Function components cannot be given refs" warning
+const LogoUploadCard = React.forwardRef<HTMLDivElement, {
   settingKey: string;
   title: string;
   description: string;
@@ -52,7 +38,11 @@ function LogoUploadCard({
   saving: boolean;
   onSave: () => void;
   onReset: () => void;
-}) {
+}>(({
+  settingKey, title, description, logoUrl, setLogoUrl,
+  logoSize, setLogoSize, logoBg, setLogoBg, logoBgCustom, setLogoBgCustom,
+  saving, onSave, onReset,
+}, ref) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -73,7 +63,7 @@ function LogoUploadCard({
   const effectiveBg = logoBgCustom || logoBg;
 
   return (
-    <div className="space-y-4">
+    <div ref={ref} className="space-y-4">
       {/* Preview */}
       <Card className="glass-card">
         <CardHeader>
@@ -197,19 +187,18 @@ function LogoUploadCard({
       </div>
     </div>
   );
-}
+});
+LogoUploadCard.displayName = 'LogoUploadCard';
 
 export default function BrandingPage() {
   const { t } = useLanguage();
 
-  // Login logo settings
   const [logoUrl, setLogoUrl] = useState('');
   const [logoSize, setLogoSize] = useState(36);
   const [logoBg, setLogoBg] = useState('transparent');
   const [logoBgCustom, setLogoBgCustom] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Sidebar logo settings
   const [sidebarLogoUrl, setSidebarLogoUrl] = useState('');
   const [sidebarLogoSize, setSidebarLogoSize] = useState(32);
   const [sidebarLogoBg, setSidebarLogoBg] = useState('transparent');

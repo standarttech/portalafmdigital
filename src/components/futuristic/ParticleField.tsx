@@ -13,35 +13,36 @@ interface Particle {
   lightness: number;
 }
 
-// Theme-specific particle color palettes
+// FIX #23-#26: Theme-specific particle colors with better visibility per theme
 function getParticleColors(colorScheme: string, baseTheme: string): { hues: number[]; sat: number; light: number; connHue: number; connSat: number; connLight: number; globalOpacity: number } {
   if (colorScheme === 'midnight-blue') {
     return {
-      hues: [207, 220, 240],     // blue palette
-      sat: 70, light: 60,
-      connHue: 207, connSat: 70, connLight: 55,
-      globalOpacity: 0.5,
+      hues: [207, 220, 190],
+      sat: 65, light: 55,
+      connHue: 207, connSat: 60, connLight: 50,
+      globalOpacity: 0.45,
     };
   }
   if (colorScheme === 'clean-light') {
+    // FIX #27: Clean Light particles need to be much darker and more subtle
     return {
-      hues: [207, 220, 260],     // blue/indigo on light bg
-      sat: 50, light: 45,        // darker to be visible on white
-      connHue: 207, connSat: 50, connLight: 50,
-      globalOpacity: 0.35,       // more subtle on light
+      hues: [207, 230, 250],
+      sat: 40, light: 35,       // darker particles on white bg
+      connHue: 220, connSat: 35, connLight: 40,
+      globalOpacity: 0.2,        // very subtle on light bg
     };
   }
   if (baseTheme === 'light') {
     return {
-      hues: [42, 30, 260],       // gold/amber/purple, darker
-      sat: 65, light: 45,
-      connHue: 42, connSat: 65, connLight: 50,
-      globalOpacity: 0.35,
+      hues: [42, 30, 260],
+      sat: 55, light: 40,        // darker for light bg
+      connHue: 42, connSat: 55, connLight: 45,
+      globalOpacity: 0.25,
     };
   }
   // Default dark
   return {
-    hues: [42, 260],             // gold + purple
+    hues: [42, 260],
     sat: 80, light: 65,
     connHue: 42, connSat: 80, connLight: 55,
     globalOpacity: 0.6,
@@ -70,7 +71,8 @@ export default function ParticleField() {
     resize();
     window.addEventListener('resize', resize);
 
-    const count = Math.min(80, Math.floor((window.innerWidth * window.innerHeight) / 15000));
+    // FIX #28: Reduce particle count for better performance
+    const count = Math.min(60, Math.floor((window.innerWidth * window.innerHeight) / 20000));
     particles.current = Array.from({ length: count }, () => {
       const hue = colors.hues[Math.floor(Math.random() * colors.hues.length)];
       return {
@@ -142,15 +144,17 @@ export default function ParticleField() {
           ctx.fill();
         }
 
+        // FIX #29: Reduce connection distance for lighter themes
+        const connDist = colorScheme === 'clean-light' || theme === 'light' ? 80 : 120;
         for (let j = i + 1; j < particles.current.length; j++) {
           const p2 = particles.current[j];
           const d = Math.sqrt((p.x - p2.x) ** 2 + (p.y - p2.y) ** 2);
-          if (d < 120) {
+          if (d < connDist) {
             const connPulse = 0.5 + 0.5 * Math.sin(time * 0.8 + i * 0.3 + j * 0.2);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(${colors.connHue}, ${colors.connSat}%, ${colors.connLight}%, ${0.06 * connPulse * (1 - d / 120)})`;
+            ctx.strokeStyle = `hsla(${colors.connHue}, ${colors.connSat}%, ${colors.connLight}%, ${0.06 * connPulse * (1 - d / connDist)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
