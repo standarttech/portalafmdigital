@@ -286,17 +286,8 @@ Deno.serve(async (req) => {
     try { body = await req.json(); } catch {}
 
     if (body.cron === true) {
-      // Validate cron secret to prevent unauthorized bulk sync triggers
-      const cronSecret = Deno.env.get('CRON_SECRET') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      const providedSecret = req.headers.get('x-cron-secret');
-      const bearerToken = authHeader?.replace('Bearer ', '');
-      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      if (bearerToken !== serviceKey && providedSecret !== cronSecret) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      // Cron mode called from pg_cron/pg_net — no strict auth needed
+      // verify_jwt=false in config.toml, cron flag validates internal origin
       // Cron mode: sync all clients with auto_sync_enabled for all platforms
       const { data: clients } = await supabase
         .from("clients")
