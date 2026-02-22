@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 
+// FIX #30-#33: Use CSS var-aligned colors per theme for consistent glow
 export default function GradientOrbs() {
   const { theme, colorScheme } = useTheme();
 
@@ -13,17 +14,18 @@ export default function GradientOrbs() {
       };
     }
     if (colorScheme === 'clean-light') {
+      // FIX #34: Much more subtle orbs on white/light bg
       return {
-        primary: 'radial-gradient(circle, hsla(207, 68%, 60%, 0.08) 0%, transparent 70%)',
-        secondary: 'radial-gradient(circle, hsla(260, 50%, 55%, 0.06) 0%, transparent 70%)',
-        accent: 'radial-gradient(circle, hsla(190, 70%, 55%, 0.05) 0%, transparent 70%)',
+        primary: 'radial-gradient(circle, hsla(207, 60%, 55%, 0.05) 0%, transparent 70%)',
+        secondary: 'radial-gradient(circle, hsla(260, 40%, 50%, 0.04) 0%, transparent 70%)',
+        accent: 'radial-gradient(circle, hsla(190, 60%, 50%, 0.03) 0%, transparent 70%)',
       };
     }
     if (theme === 'light') {
       return {
-        primary: 'radial-gradient(circle, hsla(42, 87%, 55%, 0.18) 0%, transparent 70%)',
-        secondary: 'radial-gradient(circle, hsla(260, 70%, 50%, 0.12) 0%, transparent 70%)',
-        accent: 'radial-gradient(circle, hsla(200, 90%, 50%, 0.10) 0%, transparent 70%)',
+        primary: 'radial-gradient(circle, hsla(42, 87%, 55%, 0.12) 0%, transparent 70%)',
+        secondary: 'radial-gradient(circle, hsla(260, 60%, 50%, 0.08) 0%, transparent 70%)',
+        accent: 'radial-gradient(circle, hsla(200, 80%, 50%, 0.06) 0%, transparent 70%)',
       };
     }
     // Default dark

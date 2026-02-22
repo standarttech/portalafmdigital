@@ -113,7 +113,7 @@
     --info-foreground: 0 0% 100%;
   }
 
-  /* ── Midnight Blue scheme (like /scaling-stack) ── */
+  /* ── Midnight Blue scheme ── */
   .scheme-midnight-blue {
     --background: 220 30% 7%;
     --foreground: 210 40% 93%;
@@ -131,7 +131,7 @@
     --secondary-foreground: 210 40% 93%;
 
     --muted: 220 22% 14%;
-    --muted-foreground: 215 15% 50%;
+    --muted-foreground: 215 15% 55%;
 
     --accent: 220 22% 14%;
     --accent-foreground: 210 40% 93%;
@@ -167,35 +167,36 @@
     --info-foreground: 0 0% 100%;
   }
 
-  /* ── Clean Light scheme (like /scaling-stack2) ── */
+  /* ── Clean Light scheme ── */
+  /* FIX #12-#18: Improved contrast — darker foreground, darker muted, visible borders */
   .scheme-clean-light {
     --background: 220 20% 97%;
-    --foreground: 222 47% 11%;
+    --foreground: 222 47% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 222 47% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 222 47% 8%;
 
-    --primary: 207 68% 45%;
+    --primary: 207 68% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 93%;
-    --secondary-foreground: 222 47% 15%;
+    --secondary: 220 20% 92%;
+    --secondary-foreground: 222 47% 12%;
 
-    --muted: 220 15% 93%;
-    --muted-foreground: 215 20% 38%;
+    --muted: 220 15% 92%;
+    --muted-foreground: 215 20% 32%;
 
-    --accent: 207 68% 45%;
+    --accent: 207 68% 40%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 55%;
+    --destructive: 0 84% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 85%;
-    --input: 214 20% 85%;
-    --ring: 207 68% 45%;
+    --border: 214 20% 82%;
+    --input: 214 20% 82%;
+    --ring: 207 68% 40%;
 
     --sidebar-background: 222 30% 14%;
     --sidebar-foreground: 210 30% 90%;
@@ -207,22 +208,21 @@
     --sidebar-ring: 207 68% 55%;
     --sidebar-muted: 215 16% 55%;
 
-    --chart-1: 207 68% 45%;
-    --chart-2: 160 84% 35%;
-    --chart-3: 42 87% 50%;
-    --chart-4: 291 64% 42%;
-    --chart-5: 0 84% 55%;
+    --chart-1: 207 68% 40%;
+    --chart-2: 160 84% 32%;
+    --chart-3: 42 87% 45%;
+    --chart-4: 291 64% 38%;
+    --chart-5: 0 84% 50%;
 
-    --success: 160 84% 35%;
+    --success: 160 84% 32%;
     --success-foreground: 0 0% 100%;
-    --warning: 43 96% 50%;
+    --warning: 43 96% 42%;
     --warning-foreground: 0 0% 0%;
-    --info: 207 68% 45%;
+    --info: 207 68% 40%;
     --info-foreground: 0 0% 100%;
   }
 
-  /* .futuristic only adds FX visual styles — does NOT override colors.
-     Colors stay from :root (light) or .dark. FX works on both themes. */
+  /* FIX #19: Futuristic glass-card - use CSS variables for theme-adaptive glow */
   .futuristic .glass-card {
     @apply backdrop-blur-2xl border border-primary/20 shadow-lg;
     box-shadow: 0 0 0 1px hsl(var(--primary) / 0.15), 0 4px 32px -4px hsl(var(--primary) / 0.1);
@@ -284,8 +284,9 @@
     @apply bg-card/90 backdrop-blur-xl border border-border/50 shadow-md;
   }
 
+  /* FIX #20: gradient-text uses CSS vars for theme-adaptive gradients */
   .gradient-text {
-    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--chart-3, var(--primary))));
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--chart-3)));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -316,15 +317,15 @@
     @apply font-bold bg-primary/5 border-t-2 border-primary/20;
   }
 
-  /* Futuristic theme enhancements */
+  /* FIX #21: Futuristic theme - use CSS vars instead of hardcoded hsl for theme adaptation */
   .futuristic .glass-card {
     @apply bg-card/60 backdrop-blur-2xl border-border/30;
-    box-shadow: 0 0 20px hsla(260, 50%, 40%, 0.05), inset 0 1px 0 hsla(0, 0%, 100%, 0.03);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.05), inset 0 1px 0 hsl(0 0% 100% / 0.03);
   }
 
   .futuristic .glass-card:hover {
-    box-shadow: 0 0 30px hsla(42, 87%, 55%, 0.08), 0 0 60px hsla(260, 50%, 40%, 0.04);
-    border-color: hsla(42, 87%, 55%, 0.15);
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.08), 0 0 60px hsl(var(--chart-4) / 0.04);
+    border-color: hsl(var(--primary) / 0.15);
   }
 
   .futuristic .kpi-card {
@@ -339,11 +340,11 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, hsla(42, 87%, 55%, 0.4), transparent);
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
   }
 
   .futuristic .kpi-card:hover {
-    box-shadow: 0 0 25px hsla(42, 87%, 55%, 0.1), 0 8px 32px hsla(260, 50%, 30%, 0.15);
+    box-shadow: 0 0 25px hsl(var(--primary) / 0.1), 0 8px 32px hsl(var(--chart-4) / 0.15);
     transform: translateY(-2px);
   }
 
@@ -354,13 +355,13 @@
   }
 
   .futuristic .gradient-text {
-    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--chart-3, 42 87% 55%)), hsl(var(--chart-4, 291 64% 52%)));
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--chart-3)), hsl(var(--chart-4)));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  /* Glow scrollbar for futuristic - works on both light and dark */
+  /* Glow scrollbar for futuristic */
   .futuristic ::-webkit-scrollbar {
     width: 4px;
   }
@@ -375,10 +376,10 @@
     background: hsl(var(--primary) / 0.55);
   }
 
-  /* Animated border for futuristic cards */
+  /* FIX #22: Animated border uses CSS vars */
   @keyframes glow-border {
-    0%, 100% { border-color: hsla(42, 87%, 55%, 0.1); }
-    50% { border-color: hsla(42, 87%, 55%, 0.25); }
+    0%, 100% { border-color: hsl(var(--primary) / 0.1); }
+    50% { border-color: hsl(var(--primary) / 0.25); }
   }
 
   .futuristic .glow-border-animated {
