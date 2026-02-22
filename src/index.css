@@ -285,7 +285,10 @@
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent;
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--chart-3, var(--primary))));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   .kpi-card {
@@ -351,7 +354,10 @@
   }
 
   .futuristic .gradient-text {
-    @apply bg-gradient-to-r from-primary via-amber-400 to-purple-400 bg-clip-text text-transparent;
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--chart-3, 42 87% 55%)), hsl(var(--chart-4, 291 64% 52%)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   /* Glow scrollbar for futuristic - works on both light and dark */

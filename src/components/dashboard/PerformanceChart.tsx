@@ -93,9 +93,9 @@ export default function PerformanceChart({ chartData, className }: Props) {
                     </linearGradient>
                   ))}
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
-                <YAxis tick={{ fontSize: 11, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
+                <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" />
                 <Tooltip content={renderTooltip} />
                 {visible.spend && <Area type="monotone" dataKey="spend" stroke={metrics[0].color} fill={`url(#${metrics[0].gradientId})`} strokeWidth={2} />}
                 {visible.leads && <Area type="monotone" dataKey="leads" stroke={metrics[1].color} fill={`url(#${metrics[1].gradientId})`} strokeWidth={2} />}
