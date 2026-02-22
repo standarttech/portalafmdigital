@@ -18,5 +18,3 @@ verify_jwt = false
 [functions.task-reminders]
 verify_jwt = false
 
-[functions.sync-finance-sheet]
-verify_jwt = false
