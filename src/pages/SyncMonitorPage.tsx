@@ -10,15 +10,7 @@ import { cn } from '@/lib/utils';
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-// Demo fallback data
-const demoSyncHistory = [
-  { id: '1', client: 'TechStart Inc.', platform: 'Meta', status: 'success', time: '2 hours ago', duration: '12s', records: 145 },
-  { id: '2', client: 'TechStart Inc.', platform: 'Google', status: 'success', time: '2 hours ago', duration: '8s', records: 89 },
-  { id: '3', client: 'FashionBrand Pro', platform: 'Meta', status: 'success', time: '1 hour ago', duration: '15s', records: 203 },
-  { id: '4', client: 'FashionBrand Pro', platform: 'TikTok', status: 'error', time: '1 hour ago', duration: '3s', records: 0 },
-  { id: '5', client: 'HealthPlus Medical', platform: 'Google', status: 'success', time: '3 hours ago', duration: '6s', records: 67 },
-  { id: '6', client: 'AutoDeal Motors', platform: 'Meta', status: 'running', time: 'Now', duration: '—', records: 0 },
-];
+// No demo data — show only real connections
 
 interface Connection {
   id: string;
@@ -58,33 +50,25 @@ export default function SyncMonitorPage() {
   const { t } = useLanguage();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [useDemo, setUseDemo] = useState(false);
 
   const fetchConnections = useCallback(async () => {
+    // Fetch real connections with client names
     const { data, error } = await supabase
-      .from('platform_connections_safe')
-      .select('id, platform, account_name, sync_status, last_sync_at, sync_error, is_active, client_id')
-      .order('last_sync_at', { ascending: false });
+      .from('platform_connections')
+      .select('id, platform, account_name, sync_status, last_sync_at, sync_error, is_active, client_id, clients(name)')
+      .order('last_sync_at', { ascending: false, nullsFirst: false });
     
-    if (error || !data || data.length === 0) {
-      setUseDemo(true);
-    } else {
-      setConnections(data);
+    if (!error && data) {
+      setConnections(data.map((d: any) => ({ ...d, client_name: d.clients?.name })));
     }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchConnections(); }, [fetchConnections]);
 
-  const successCount = useDemo
-    ? demoSyncHistory.filter(s => s.status === 'success').length
-    : connections.filter(c => c.sync_status === 'success').length;
-  const errorCount = useDemo
-    ? demoSyncHistory.filter(s => s.status === 'error').length
-    : connections.filter(c => c.sync_status === 'error').length;
-  const runningCount = useDemo
-    ? demoSyncHistory.filter(s => s.status === 'running').length
-    : connections.filter(c => c.sync_status === 'running').length;
+  const successCount = connections.filter(c => c.sync_status === 'success').length;
+  const errorCount = connections.filter(c => c.sync_status === 'error').length;
+  const runningCount = connections.filter(c => c.sync_status === 'running').length;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -118,25 +102,6 @@ export default function SyncMonitorPage() {
               <div className="flex items-center justify-center py-12">
                 <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : useDemo ? (
-              <div className="space-y-3">
-                {demoSyncHistory.map((s) => {
-                  const Icon = statusIcon[s.status] || Clock;
-                  return (
-                    <div key={s.id} className="flex items-center gap-4 p-3 rounded-lg bg-accent/30">
-                      <Icon className={cn('h-5 w-5 flex-shrink-0', statusStyle[s.status])} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground text-sm">{s.client}</p>
-                        <p className="text-xs text-muted-foreground">{s.platform} • {s.time}</p>
-                      </div>
-                      <div className="text-right text-xs text-muted-foreground">
-                        <p>{s.duration}</p>
-                        {s.records > 0 && <p>{s.records} records</p>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             ) : connections.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Wifi className="h-10 w-10 text-muted-foreground mb-3" />
@@ -151,7 +116,7 @@ export default function SyncMonitorPage() {
                     <div key={conn.id} className="flex items-center gap-4 p-3 rounded-lg bg-accent/30">
                       <Icon className={cn('h-5 w-5 flex-shrink-0', statusStyle[conn.sync_status])} />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground text-sm">{conn.account_name || conn.platform}</p>
+                        <p className="font-medium text-foreground text-sm">{(conn as any).client_name || conn.account_name || conn.platform}</p>
                         <p className="text-xs text-muted-foreground capitalize">{conn.platform} • {getTimeAgo(conn.last_sync_at)}</p>
                       </div>
                       <div className="flex items-center gap-2">

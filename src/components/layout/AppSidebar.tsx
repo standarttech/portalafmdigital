@@ -36,8 +36,9 @@ const navSections: NavSection[] = [
   {
     id: 'internal',
     labelKey: 'nav.afmInternal' as TranslationKey,
+    adminOnly: true,
     items: [
-      { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal' },
+      { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal', adminOnly: true },
     ],
   },
   {
@@ -61,8 +62,9 @@ const navSections: NavSection[] = [
   {
     id: 'data',
     labelKey: 'nav.dataSection' as TranslationKey,
+    adminOnly: true,
     items: [
-      { key: 'nav.sync', icon: RefreshCw, path: '/sync' },
+      { key: 'nav.sync', icon: RefreshCw, path: '/sync', adminOnly: true },
       { key: 'nav.audit', icon: Shield, path: '/audit', adminOnly: true },
     ],
   },
