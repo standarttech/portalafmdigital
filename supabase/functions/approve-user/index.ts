@@ -50,6 +50,7 @@ function buildApprovalEmail(params: {
           <!-- Card -->
           <tr>
             <td style="background:#111113;border:1px solid #27272a;border-radius:16px;overflow:hidden;">
+              <table width="100%" cellpadding="0" cellspacing="0">
 
               <!-- Gold top bar -->
               <tr>
@@ -108,10 +109,30 @@ function buildApprovalEmail(params: {
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td align="center" style="padding-bottom:28px;">
-                        <a href="${inviteLink}"
-                           style="display:inline-block;background:linear-gradient(135deg,#d4a843 0%,#f0c860 100%);color:#0a0a0b;font-size:15px;font-weight:700;letter-spacing:-0.2px;text-decoration:none;padding:14px 40px;border-radius:10px;min-width:200px;text-align:center;">
+                        <!--[if mso]>
+                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${inviteLink}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="21%" fillcolor="#d4a843">
+                          <w:anchorlock/>
+                          <center style="color:#0a0a0b;font-family:sans-serif;font-size:15px;font-weight:bold;">Set Password &amp; Sign In →</center>
+                        </v:roundrect>
+                        <![endif]-->
+                        <!--[if !mso]><!-->
+                        <a href="${inviteLink}" target="_blank"
+                           style="display:inline-block;background:#d4a843;color:#0a0a0b;font-size:15px;font-weight:700;letter-spacing:-0.2px;text-decoration:none;padding:14px 40px;border-radius:10px;min-width:200px;text-align:center;mso-padding-alt:0;mso-text-raise:0;">
                           Set Password &amp; Sign In →
                         </a>
+                        <!--<![endif]-->
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Fallback link -->
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-bottom:20px;">
+                        <p style="margin:0;font-size:11px;color:#52525b;line-height:1.5;word-break:break-all;">
+                          If the button doesn't work, copy and paste this link into your browser:<br/>
+                          <a href="${inviteLink}" style="color:#d4a843;text-decoration:underline;">${inviteLink}</a>
+                        </p>
                       </td>
                     </tr>
                   </table>
@@ -119,7 +140,7 @@ function buildApprovalEmail(params: {
                   <!-- Notice -->
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
-                      <td style="background:#27272a28;border:1px solid #27272a;border-radius:8px;padding:14px 16px;">
+                      <td style="background:#1a1a1d;border:1px solid #27272a;border-radius:8px;padding:14px 16px;">
                         <p style="margin:0;font-size:12px;color:#71717a;line-height:1.6;">
                           This invitation link is <strong style="color:#a1a1aa;">single-use</strong> and expires in <strong style="color:#a1a1aa;">24 hours</strong>.
                           If you didn't request access, you can safely ignore this email.
@@ -131,6 +152,7 @@ function buildApprovalEmail(params: {
                 </td>
               </tr>
 
+              </table>
             </td>
           </tr>
 
