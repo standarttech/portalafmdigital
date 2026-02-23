@@ -266,8 +266,14 @@ function AppRoutes() {
             You do not have access to the platform. Contact your administrator.
           </p>
           <button
-            onClick={() => signOut()}
-            className="mt-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+            onClick={async () => {
+              try { await supabase.auth.signOut(); } catch {}
+              // Force clear and reload regardless of signOut result
+              localStorage.clear();
+              sessionStorage.clear();
+              window.location.replace('/auth');
+            }}
+            className="mt-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors cursor-pointer"
           >
             Sign Out
           </button>
