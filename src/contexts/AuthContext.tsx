@@ -65,30 +65,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // IMPORTANT: Set up listener BEFORE getSession to avoid race conditions
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
+        if (event === 'SIGNED_OUT') {
+          setAgencyRole(null);
+          setLoading(false);
+          return;
+        }
+        
         if (session?.user) {
-          setTimeout(() => {
-            fetchRole(session.user.id);
-          }, 0);
+          // Fetch role directly (no setTimeout) to prevent Access Denied flash
+          await fetchRole(session.user.id);
         } else {
           setAgencyRole(null);
         }
-        
-        if (event === 'SIGNED_OUT') {
-          setAgencyRole(null);
-        }
+        setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
+        await fetchRole(session.user.id);
       }
       setLoading(false);
     });
