@@ -102,6 +102,7 @@ export default function UsersPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('MediaBuyer');
   const [inviteClientId, setInviteClientId] = useState('');
+  const [inviteClientIds, setInviteClientIds] = useState<string[]>([]);
   const [inviteLoading, setInviteLoading] = useState(false);
 
   // Approve dialog
@@ -161,12 +162,20 @@ export default function UsersPage() {
     if (inviteRole === 'Client' && !inviteClientId) { toast.error(t('users.selectClient')); return; }
     setInviteLoading(true);
     const { error } = await supabase.functions.invoke('approve-user', {
-      body: { action: 'create_invite', email: inviteEmail.trim().toLowerCase(), full_name: inviteEmail.split('@')[0], role: inviteRole, client_id: inviteRole === 'Client' ? inviteClientId : null, permissions: {} },
+      body: {
+        action: 'create_invite',
+        email: inviteEmail.trim().toLowerCase(),
+        full_name: inviteEmail.split('@')[0],
+        role: inviteRole,
+        client_id: inviteRole === 'Client' ? inviteClientId : null,
+        client_ids: inviteRole !== 'Client' ? inviteClientIds : [],
+        permissions: {},
+      },
     });
     setInviteLoading(false);
     if (error) { toast.error(error.message || 'Error'); return; }
     toast.success(t('users.approvedAndEmailSent'));
-    setInviteOpen(false); setInviteEmail(''); setInviteRole('MediaBuyer'); setInviteClientId('');
+    setInviteOpen(false); setInviteEmail(''); setInviteRole('MediaBuyer'); setInviteClientId(''); setInviteClientIds([]);
     fetchInvitations(); fetchUsers();
   };
 
@@ -370,6 +379,35 @@ export default function UsersPage() {
                     <SelectTrigger><SelectValue placeholder={t('users.selectClient')} /></SelectTrigger>
                     <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
+                </div>
+              )}
+              {inviteRole !== 'Client' && (
+                <div className="space-y-2">
+                  <Label>{t('users.assignedClients')}</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Выберите проекты, к которым у пользователя будет доступ</p>
+                  <div className="max-h-[200px] overflow-y-auto rounded-lg border border-border bg-background/50 p-1">
+                    {clients.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-2">{t('common.noData')}</p>
+                    ) : clients.map(c => {
+                      const isSelected = inviteClientIds.includes(c.id);
+                      return (
+                        <label key={c.id} className="flex items-center gap-3 cursor-pointer rounded-md px-3 py-2 hover:bg-secondary/50 transition-colors">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              setInviteClientIds(prev =>
+                                checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
+                              );
+                            }}
+                          />
+                          <span className={`text-sm ${isSelected ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>{c.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {inviteClientIds.length > 0 && (
+                    <p className="text-xs text-primary">{inviteClientIds.length} проект(ов) выбрано</p>
+                  )}
                 </div>
               )}
             </div>
