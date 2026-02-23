@@ -13,10 +13,22 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 
 type Step = 'password' | 'mfa-offer' | 'mfa-setup' | 'done';
 
+function getInitialStep(): Step {
+  const saved = sessionStorage.getItem('set_password_step');
+  if (saved === 'mfa-offer' || saved === 'mfa-setup' || saved === 'done') return saved;
+  return 'password';
+}
+
 export default function SetPasswordPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>('password');
+  const [step, setStepRaw] = useState<Step>(getInitialStep);
   const [sessionReady, setSessionReady] = useState(false);
+
+  // Persist step so remounts don't reset it
+  const setStep = (s: Step) => {
+    sessionStorage.setItem('set_password_step', s);
+    setStepRaw(s);
+  };
 
   // Password step
   const [password, setPassword] = useState('');
@@ -78,6 +90,13 @@ export default function SetPasswordPage() {
     // NOW update password
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
+      // If same_password error, password was already set — skip ahead
+      if (error.message?.toLowerCase().includes('same password') || (error as any).code === 'same_password') {
+        toast.success('Password already set!');
+        setIsLoading(false);
+        setStep('mfa-offer');
+        return;
+      }
       // Rollback both flags on error
       sessionStorage.removeItem('password_setup_done');
       if (user) {
@@ -122,6 +141,8 @@ export default function SetPasswordPage() {
     toast.success('Authenticator configured!');
     setMfaLoading(false);
     setStep('done');
+    sessionStorage.removeItem('set_password_step');
+    sessionStorage.removeItem('password_setup_done');
     setTimeout(() => navigate('/dashboard'), 1500);
   };
 
@@ -252,7 +273,7 @@ export default function SetPasswordPage() {
                   <Button className="w-full" onClick={handleEnrollMfa} disabled={mfaEnrolling}>
                     {mfaEnrolling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting up...</> : <><QrCode className="mr-2 h-4 w-4" />Set up authenticator</>}
                   </Button>
-                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => navigate('/dashboard')}>
+                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { sessionStorage.removeItem('set_password_step'); sessionStorage.removeItem('password_setup_done'); navigate('/dashboard'); }}>
                     Skip for now
                   </Button>
                 </CardContent>
@@ -304,7 +325,7 @@ export default function SetPasswordPage() {
                   <Button className="w-full" onClick={handleVerifyMfa} disabled={mfaLoading || otpCode.length !== 6}>
                     {mfaLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Confirm & Enter Platform →'}
                   </Button>
-                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => navigate('/dashboard')}>
+                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { sessionStorage.removeItem('set_password_step'); sessionStorage.removeItem('password_setup_done'); navigate('/dashboard'); }}>
                     Skip for now
                   </Button>
                 </CardContent>
