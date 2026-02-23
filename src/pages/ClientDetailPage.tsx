@@ -390,13 +390,12 @@ export default function ClientDetailPage() {
 
   const fetchBudgetPlan = useCallback(async () => {
     if (!id) return;
-    const currentMonth = format(new Date(), 'yyyy-MM');
+    // Always fetch the plan for the current calendar month — fixed, not dynamic
+    const currentMonth = format(new Date(), 'yyyy-MM-01');
     const { data } = await supabase.from('budget_plans')
       .select('planned_spend, planned_leads, month')
       .eq('client_id', id)
-      .gte('month', `${currentMonth}-01`)
-      .order('month', { ascending: false })
-      .limit(1)
+      .eq('month', currentMonth)
       .maybeSingle();
     if (data) setBudgetPlan(data as BudgetPlan);
   }, [id]);
@@ -591,14 +590,14 @@ export default function ClientDetailPage() {
                   <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Wallet className="h-4 w-4 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Monthly Budget</p>
+                   <div>
+                    <p className="text-xs text-muted-foreground">{t('budget.monthlyBudget' as TranslationKey)}</p>
                     <p className="text-sm font-semibold text-foreground">{formatCurrency(budgetPlan.planned_spend)}</p>
-                  </div>
+                   </div>
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{formatCurrency(totals.spend)}</span></span>
+                    <span className="text-muted-foreground">{t('budget.spent' as TranslationKey)}: <span className="text-foreground font-medium">{formatCurrency(totals.spend)}</span></span>
                     <span className={`font-semibold ${totals.spend / budgetPlan.planned_spend > 0.9 ? 'text-destructive' : totals.spend / budgetPlan.planned_spend > 0.7 ? 'text-warning' : 'text-success'}`}>
                       {Math.min(100, Math.round((totals.spend / budgetPlan.planned_spend) * 100))}%
                     </span>
@@ -620,14 +619,14 @@ export default function ClientDetailPage() {
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>$0</span>
                     <span className="text-muted-foreground/60">
-                      {formatCurrency(Math.max(0, budgetPlan.planned_spend - totals.spend))} remaining
+                      {formatCurrency(Math.max(0, budgetPlan.planned_spend - totals.spend))} {t('budget.remaining' as TranslationKey)}
                     </span>
                     <span>{formatCurrency(budgetPlan.planned_spend)}</span>
                   </div>
                 </div>
                 {budgetPlan.planned_leads > 0 && (
                   <div className="flex-shrink-0 text-right sm:text-left">
-                    <p className="text-xs text-muted-foreground">Lead Goal</p>
+                    <p className="text-xs text-muted-foreground">{t('budget.leadGoal' as TranslationKey)}</p>
                     <p className="text-sm font-semibold text-foreground">
                       <span className={totals.leads >= budgetPlan.planned_leads ? 'text-success' : 'text-foreground'}>{totals.leads}</span>
                       <span className="text-muted-foreground"> / {budgetPlan.planned_leads}</span>
@@ -645,13 +644,13 @@ export default function ClientDetailPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('dashboard.overview')}</span></TabsTrigger>
-            <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />Daily Stats</TabsTrigger>
+            <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{t('dashboard.daily')}</TabsTrigger>
             <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('tasks.title')}</span></TabsTrigger>
             {isAdmin && <TabsTrigger value="targets" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('targets.title')}</span></TabsTrigger>}
             <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('nav.reports')}</span></TabsTrigger>
-            {isAgency && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clients.connections')}</span></TabsTrigger>}
-            {isAgency && <TabsTrigger value="webhooks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Webhooks</span></TabsTrigger>}
-            {isAgency && <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />History</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clients.connections')}</span></TabsTrigger>}
+            {isAdmin && <TabsTrigger value="webhooks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Webhooks</span></TabsTrigger>}
+            {isAgency && <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{t('clients.history' as TranslationKey)}</TabsTrigger>}
           </TabsList>
 
           {/* OVERVIEW TAB */}
@@ -833,12 +832,12 @@ export default function ClientDetailPage() {
           {/* HISTORY TAB — replaces Campaigns */}
           <TabsContent value="history" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Project History</h3>
+              <h3 className="text-lg font-semibold">{t('history.title' as TranslationKey)}</h3>
             </div>
             {/* Status History */}
             {statusHistory.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Status Changes</h4>
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t('history.statusChanges' as TranslationKey)}</h4>
                 {statusHistory.map(sh => (
                   <Card key={sh.id} className="glass-card">
                     <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
@@ -862,7 +861,7 @@ export default function ClientDetailPage() {
             {/* Project Events */}
             {projectEvents.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Events & Notes</h4>
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t('history.eventsNotes' as TranslationKey)}</h4>
                 {projectEvents.map(ev => (
                   <Card key={ev.id} className="glass-card">
                     <CardContent className="py-3 px-4 flex items-start gap-3">
@@ -880,16 +879,16 @@ export default function ClientDetailPage() {
             {statusHistory.length === 0 && projectEvents.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <History className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="font-medium text-foreground">No history yet</p>
-                <p className="text-sm text-muted-foreground mt-1">Status changes and project events will appear here</p>
+                <p className="font-medium text-foreground">{t('history.noHistoryYet' as TranslationKey)}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('history.noHistoryDesc' as TranslationKey)}</p>
               </div>
             )}
             {/* Add note */}
             {isAgency && (
               <Card className="glass-card">
                 <CardContent className="p-4 space-y-3">
-                  <h4 className="text-sm font-medium">Add Project Note</h4>
-                  <Textarea value={newEventNote} onChange={e => setNewEventNote(e.target.value)} placeholder="Write a note about this project..." className="text-sm" rows={3} />
+                  <h4 className="text-sm font-medium">{t('history.addNote' as TranslationKey)}</h4>
+                  <Textarea value={newEventNote} onChange={e => setNewEventNote(e.target.value)} placeholder={t('history.notePlaceholder' as TranslationKey)} className="text-sm" rows={3} />
                   <Button size="sm" disabled={addingNote || !newEventNote.trim()} onClick={async () => {
                     if (!id || !newEventNote.trim()) return;
                     setAddingNote(true);
@@ -899,10 +898,10 @@ export default function ClientDetailPage() {
                     // refresh
                     const { data } = await supabase.from('project_events').select('*').eq('client_id', id).order('created_at', { ascending: false });
                     setProjectEvents(data || []);
-                    toast.success('Note added');
+                    toast.success(t('history.noteAdded' as TranslationKey));
                   }}>
                     {addingNote ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                    Add Note
+                    {t('common.add')}
                   </Button>
                 </CardContent>
               </Card>
@@ -1017,14 +1016,14 @@ export default function ClientDetailPage() {
           </TabsContent>
 
           {/* CONNECTIONS TAB */}
-          {isAgency && (
+          {isAdmin && (
             <TabsContent value="connections">
               <GoogleSheetConnection clientId={id!} isAdmin={isAdmin} />
             </TabsContent>
           )}
 
           {/* WEBHOOKS TAB */}
-          {isAgency && (
+          {isAdmin && (
             <TabsContent value="webhooks">
               <ClientWebhooks clientId={id!} />
             </TabsContent>

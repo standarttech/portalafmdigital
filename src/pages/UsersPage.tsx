@@ -324,7 +324,7 @@ export default function UsersPage() {
       const { data: urlData } = supabase.storage.from('branding').getPublicUrl(path);
       const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
       await supabase.from('agency_users').update({ avatar_url: avatarUrl }).eq('user_id', avatarTargetUser.user_id);
-      toast.success('Аватарка обновлена');
+      toast.success(t('users.avatarUpdated' as any));
       fetchUsers();
     } catch (err: any) {
       toast.error(err.message || 'Upload failed');
@@ -384,7 +384,7 @@ export default function UsersPage() {
               {inviteRole !== 'Client' && (
                 <div className="space-y-2">
                   <Label>{t('users.assignedClients')}</Label>
-                  <p className="text-xs text-muted-foreground mb-1">Выберите проекты, к которым у пользователя будет доступ</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('users.selectProjectsDesc' as any)}</p>
                   <div className="max-h-[200px] overflow-y-auto rounded-lg border border-border bg-background/50 p-1">
                     {clients.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-2">{t('common.noData')}</p>
@@ -406,7 +406,7 @@ export default function UsersPage() {
                     })}
                   </div>
                   {inviteClientIds.length > 0 && (
-                    <p className="text-xs text-primary">{inviteClientIds.length} проект(ов) выбрано</p>
+                    <p className="text-xs text-primary">{inviteClientIds.length} {t('clients.selectedCount' as any)}</p>
                   )}
                 </div>
               )}
@@ -471,7 +471,7 @@ export default function UsersPage() {
                                 <button
                                   onClick={() => { setAvatarTargetUser(u); avatarFileRef.current?.click(); }}
                                   className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity"
-                                  title="Загрузить аватарку"
+                                  title={t('users.uploadAvatar' as any)}
                                 >
                                   {avatarUploadingFor === u.user_id
                                     ? <LoaderIcon className="h-3 w-3 text-white animate-spin" />
@@ -487,9 +487,9 @@ export default function UsersPage() {
                           <TableCell>
                             <Select value={u.agency_role} onValueChange={(v) => handleChangeRole(u, v)} disabled={u.user_id === currentUser?.id}>
                               <SelectTrigger className="w-[140px] h-8">
-                                <Badge variant="outline" className={roleStyles[u.agency_role] || ''}>
-                                  {u.agency_role === 'AgencyAdmin' ? t('role.agencyAdmin') : u.agency_role === 'Client' ? t('role.client') : t('role.mediaBuyer')}
-                                </Badge>
+                <Badge variant="outline" className={roleStyles[u.agency_role] || ''}>
+                                   {ALL_AGENCY_ROLES.find(r => r.value === u.agency_role)?.label || u.agency_role}
+                                 </Badge>
                               </SelectTrigger>
                               <SelectContent>
                                 {ALL_AGENCY_ROLES.map(r => (
@@ -610,7 +610,7 @@ export default function UsersPage() {
                           <TableCell className="font-medium text-foreground">{inv.email}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className={roleStyles[inv.role] || roleStyles.Client}>
-                              {inv.role === 'AgencyAdmin' ? t('role.agencyAdmin') : inv.role === 'MediaBuyer' ? t('role.mediaBuyer') : t('role.client')}
+                              {ALL_AGENCY_ROLES.find(r => r.value === inv.role)?.label || inv.role}
                             </Badge>
                           </TableCell>
                           <TableCell>

@@ -281,10 +281,10 @@ export default function BudgetPlannerPage() {
       <ConfirmDialog
         open={!!confirmDeletePlan}
         onOpenChange={(open) => !open && setConfirmDeletePlan(null)}
-        title="Удалить бюджетный план?"
-        description="Этот бюджетный план будет удалён. Это действие необратимо."
-        confirmLabel="Удалить"
-        cancelLabel="Отмена"
+        title={t('budget.deletePlan' as TranslationKey)}
+        description={t('budget.deletePlanDesc' as TranslationKey)}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         onConfirm={executeDeletePlan}
       />
     </motion.div>

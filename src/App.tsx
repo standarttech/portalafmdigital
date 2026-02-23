@@ -227,15 +227,15 @@ function AppRoutes() {
           <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
             <span className="text-destructive text-xl">✕</span>
           </div>
-          <h2 className="text-lg font-semibold text-foreground">Доступ запрещён</h2>
+          <h2 className="text-lg font-semibold text-foreground">Access Denied</h2>
           <p className="text-muted-foreground text-sm">
-            У вас нет доступа к платформе. Обратитесь к администратору.
+            You do not have access to the platform. Contact your administrator.
           </p>
           <button
             onClick={() => signOut()}
             className="mt-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
           >
-            Выйти
+            Sign Out
           </button>
         </div>
       </div>
