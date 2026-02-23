@@ -26,7 +26,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [adminExists, setAdminExists] = useState<boolean | null>(null);
   // Cache role so tab-switch doesn't cause flicker
   const roleCache = useRef<{ userId: string; role: AgencyRole } | null>(null);
-  const initialLoadDone = useRef(false);
 
   const checkAdminExists = useCallback(async () => {
     try {
@@ -64,30 +63,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Set up auth listener — INITIAL_SESSION fires first and handles initial load
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        // On TOKEN_REFRESHED or INITIAL_SESSION after initial load, don't reset loading
-        if (initialLoadDone.current && (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
-          // Just update session/user refs without triggering loading state
-          setSession(newSession);
-          setUser(newSession?.user ?? null);
-          if (newSession?.user) {
-            // Use cached role — no DB call needed on token refresh
-            await fetchRole(newSession.user.id, false);
-          }
-          return;
-        }
-        
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        
+
         if (event === 'SIGNED_OUT') {
           setAgencyRole(null);
           roleCache.current = null;
           setLoading(false);
           return;
         }
-        
+
+        // On token refresh, just use cached role — no flicker
+        if (event === 'TOKEN_REFRESHED') {
+          if (newSession?.user) {
+            await fetchRole(newSession.user.id, false);
+          }
+          return; // Don't touch loading state
+        }
+
         if (newSession?.user) {
           const force = event === 'SIGNED_IN';
           await fetchRole(newSession.user.id, force);
@@ -97,16 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     );
-
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        await fetchRole(s.user.id, true);
-      }
-      setLoading(false);
-      initialLoadDone.current = true;
-    });
 
     checkAdminExists();
 
