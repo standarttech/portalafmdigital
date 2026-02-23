@@ -63,7 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Set up auth listener — INITIAL_SESSION fires first and handles initial load
+    let initialized = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         setSession(newSession);
@@ -73,30 +74,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAgencyRole(null);
           roleCache.current = null;
           setLoading(false);
+          initialized = true;
           return;
         }
 
-        // On token refresh, just use cached role — no flicker
-        if (event === 'TOKEN_REFRESHED') {
+        // On token refresh after init, just use cached role — no flicker
+        if (initialized && event === 'TOKEN_REFRESHED') {
           if (newSession?.user) {
             await fetchRole(newSession.user.id, false);
           }
-          return; // Don't touch loading state
+          return;
         }
 
         if (newSession?.user) {
-          const force = event === 'SIGNED_IN';
+          const force = !initialized || event === 'SIGNED_IN';
           await fetchRole(newSession.user.id, force);
         } else {
           setAgencyRole(null);
         }
         setLoading(false);
+        initialized = true;
       }
     );
 
+    // Safety timeout: if auth doesn't resolve in 5 seconds, force loading to false
+    const safetyTimeout = setTimeout(() => {
+      if (!initialized) {
+        console.warn('Auth init timeout — forcing loading=false');
+        setLoading(false);
+        initialized = true;
+      }
+    }, 5000);
+
     checkAdminExists();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimeout);
+      subscription.unsubscribe();
+    };
   }, [fetchRole, checkAdminExists]);
 
   const signIn = async (email: string, password: string) => {
