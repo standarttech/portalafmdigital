@@ -71,8 +71,8 @@ export default function ParticleField() {
     resize();
     window.addEventListener('resize', resize);
 
-    // FIX #28: Reduce particle count for better performance
-    const count = Math.min(60, Math.floor((window.innerWidth * window.innerHeight) / 20000));
+    // Reduced particle count for performance
+    const count = Math.min(35, Math.floor((window.innerWidth * window.innerHeight) / 35000));
     particles.current = Array.from({ length: count }, () => {
       const hue = colors.hues[Math.floor(Math.random() * colors.hues.length)];
       return {
@@ -94,8 +94,17 @@ export default function ParticleField() {
     window.addEventListener('mousemove', handleMouse);
 
     let time = 0;
+    let paused = false;
+
+    // Pause animation when tab is hidden
+    const handleVisibility = () => {
+      paused = document.hidden;
+      if (!paused) animRef.current = requestAnimationFrame(animate);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     const animate = () => {
+      if (paused) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       time += 0.01;
 
@@ -112,12 +121,6 @@ export default function ParticleField() {
         const driftAngle = time * 0.5 + i * 0.7;
         p.vx += Math.sin(driftAngle) * 0.003;
         p.vy += Math.cos(driftAngle * 0.8 + i) * 0.003;
-
-        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-        if (speed < 0.15) {
-          p.vx += (Math.random() - 0.5) * 0.05;
-          p.vy += (Math.random() - 0.5) * 0.05;
-        }
 
         p.x += p.vx;
         p.y += p.vy;
@@ -137,15 +140,8 @@ export default function ParticleField() {
         ctx.fillStyle = `hsla(${p.hue}, ${p.saturation}%, ${p.lightness}%, ${currentOpacity})`;
         ctx.fill();
 
-        if (currentOpacity > 0.4) {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${p.hue}, ${p.saturation}%, ${p.lightness}%, ${currentOpacity * 0.08})`;
-          ctx.fill();
-        }
-
-        // FIX #29: Reduce connection distance for lighter themes
-        const connDist = colorScheme === 'clean-light' || theme === 'light' ? 80 : 120;
+        // Reduced connection distance
+        const connDist = 80;
         for (let j = i + 1; j < particles.current.length; j++) {
           const p2 = particles.current[j];
           const d = Math.sqrt((p.x - p2.x) ** 2 + (p.y - p2.y) ** 2);
@@ -168,6 +164,7 @@ export default function ParticleField() {
     return () => {
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', handleMouse);
+      document.removeEventListener('visibilitychange', handleVisibility);
       cancelAnimationFrame(animRef.current);
     };
   }, [colorScheme, theme]);

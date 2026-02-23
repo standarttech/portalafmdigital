@@ -9,67 +9,72 @@ import { SidebarStateProvider } from "@/contexts/SidebarContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import MainLayout from "@/components/layout/MainLayout";
 import AuthPage from "@/pages/AuthPage";
-import AdminSetupPage from "@/pages/AdminSetup";
-import RequestAccessPage from "@/pages/RequestAccessPage";
-import InvitePage from "@/pages/InvitePage";
-import SetPasswordPage from "@/pages/SetPasswordPage";
-import DashboardPage from "@/pages/DashboardPage";
-import ClientDashboardPage from "@/pages/ClientDashboardPage";
-import BudgetPlannerPage from "@/pages/BudgetPlannerPage";
-import CalendarPage from "@/pages/CalendarPage";
-import ClientsPage from "@/pages/ClientsPage";
-import UsersPage from "@/pages/UsersPage";
-import SyncMonitorPage from "@/pages/SyncMonitorPage";
-import ReportsPage from "@/pages/ReportsPage";
-import AuditPage from "@/pages/AuditPage";
-import ClientDetailPage from "@/pages/ClientDetailPage";
-import ProfilePage from "@/pages/ProfilePage";
-import GlossaryPage from "@/pages/GlossaryPage";
-import DecompositionPage from "@/pages/DecompositionPage";
-import ChatPage from "@/pages/ChatPage";
-import TaskBoardPage from "@/pages/TaskBoardPage";
-import BroadcastsPage from "@/pages/BroadcastsPage";
-import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
-import MfaChallengePage from "@/pages/MfaChallengePage";
-import BrandingPage from "@/pages/BrandingPage";
-import AfmInternalLayout from "@/components/layout/AfmInternalLayout";
-import ScalingStackLanding from "@/scaling-stack/ScalingStackLanding";
-import ScalingStackLanding2 from "@/scaling-stack/ScalingStackLanding2";
-import ScalingStackApply from "@/scaling-stack/ScalingStackApply";
-import ScalingStackThanks from "@/scaling-stack/ScalingStackThanks";
-import ScalingStackPrivacy from "@/scaling-stack/ScalingStackPrivacy";
-import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
-import AfmDashboard from "@/pages/afm/AfmDashboard";
-import AfmMediaBuying from "@/pages/afm/AfmMediaBuying";
-import AfmSocialMedia from "@/pages/afm/AfmSocialMedia";
-import AfmSales from "@/pages/afm/AfmSales";
-import AfmTools from "@/pages/afm/AfmTools";
-import AfmSettings from "@/pages/afm/AfmSettings";
-import AfmFinancePage from "@/pages/afm/AfmFinancePage";
-import AfmIncomePlan from "@/pages/afm/AfmIncomePlan";
-import AfmFinancialPlanning from "@/pages/afm/AfmFinancialPlanning";
-import AfmStats from "@/pages/afm/AfmStats";
-import NotFound from "./pages/NotFound";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// FIX #1: QueryClient with staleTime to prevent constant refetching/refreshes
+// Lazy load heavy pages
+const AdminSetupPage = lazy(() => import("@/pages/AdminSetup"));
+const RequestAccessPage = lazy(() => import("@/pages/RequestAccessPage"));
+const InvitePage = lazy(() => import("@/pages/InvitePage"));
+const SetPasswordPage = lazy(() => import("@/pages/SetPasswordPage"));
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const ClientDashboardPage = lazy(() => import("@/pages/ClientDashboardPage"));
+const BudgetPlannerPage = lazy(() => import("@/pages/BudgetPlannerPage"));
+const CalendarPage = lazy(() => import("@/pages/CalendarPage"));
+const ClientsPage = lazy(() => import("@/pages/ClientsPage"));
+const UsersPage = lazy(() => import("@/pages/UsersPage"));
+const SyncMonitorPage = lazy(() => import("@/pages/SyncMonitorPage"));
+const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
+const AuditPage = lazy(() => import("@/pages/AuditPage"));
+const ClientDetailPage = lazy(() => import("@/pages/ClientDetailPage"));
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
+const GlossaryPage = lazy(() => import("@/pages/GlossaryPage"));
+const DecompositionPage = lazy(() => import("@/pages/DecompositionPage"));
+const ChatPage = lazy(() => import("@/pages/ChatPage"));
+const TaskBoardPage = lazy(() => import("@/pages/TaskBoardPage"));
+const BroadcastsPage = lazy(() => import("@/pages/BroadcastsPage"));
+const ForcePasswordChangePage = lazy(() => import("@/pages/ForcePasswordChangePage"));
+const MfaChallengePage = lazy(() => import("@/pages/MfaChallengePage"));
+const BrandingPage = lazy(() => import("@/pages/BrandingPage"));
+const AfmInternalLayout = lazy(() => import("@/components/layout/AfmInternalLayout"));
+const ScalingStackLanding = lazy(() => import("@/scaling-stack/ScalingStackLanding"));
+const ScalingStackLanding2 = lazy(() => import("@/scaling-stack/ScalingStackLanding2"));
+const ScalingStackApply = lazy(() => import("@/scaling-stack/ScalingStackApply"));
+const ScalingStackThanks = lazy(() => import("@/scaling-stack/ScalingStackThanks"));
+const ScalingStackPrivacy = lazy(() => import("@/scaling-stack/ScalingStackPrivacy"));
+const ScalingStackTerms = lazy(() => import("@/scaling-stack/ScalingStackTerms"));
+const AfmDashboard = lazy(() => import("@/pages/afm/AfmDashboard"));
+const AfmMediaBuying = lazy(() => import("@/pages/afm/AfmMediaBuying"));
+const AfmSocialMedia = lazy(() => import("@/pages/afm/AfmSocialMedia"));
+const AfmSales = lazy(() => import("@/pages/afm/AfmSales"));
+const AfmTools = lazy(() => import("@/pages/afm/AfmTools"));
+const AfmSettings = lazy(() => import("@/pages/afm/AfmSettings"));
+const AfmFinancePage = lazy(() => import("@/pages/afm/AfmFinancePage"));
+const AfmIncomePlan = lazy(() => import("@/pages/afm/AfmIncomePlan"));
+const AfmFinancialPlanning = lazy(() => import("@/pages/afm/AfmFinancialPlanning"));
+const AfmStats = lazy(() => import("@/pages/afm/AfmStats"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AfmPerformance = lazy(() => import("@/pages/afm/AfmPerformance"));
+
+// FIX: QueryClient with staleTime to prevent constant refetching/refreshes
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 min — prevents constant refetching
+      staleTime: 5 * 60 * 1000,
       gcTime: 10 * 60 * 1000,
-      refetchOnWindowFocus: false, // FIX #2: Stop refetch on tab switch
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
       retry: 1,
     },
   },
 });
 
-// FIX #3: Wrap GlossaryPage in forwardRef to fix console warning
-const GlossaryPageWrapper = React.forwardRef<HTMLDivElement>((_, ref) => (
-  <div ref={ref}><GlossaryPage /></div>
-));
-GlossaryPageWrapper.displayName = 'GlossaryPageWrapper';
+// Suspense fallback for lazy loaded pages
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-full min-h-[200px]">
+    <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 function AppRoutes() {
   const { user, loading, adminExists, signOut, agencyRole } = useAuth();
@@ -152,14 +157,16 @@ function AppRoutes() {
   // Public routes
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/scaling-stack")) {
     return (
-      <Routes>
-        <Route path="/scaling-stack" element={<ScalingStackLanding />} />
-        <Route path="/scaling-stack2" element={<ScalingStackLanding2 />} />
-        <Route path="/scaling-stack/apply" element={<ScalingStackApply />} />
-        <Route path="/scaling-stack/apply/thanks" element={<ScalingStackThanks />} />
-        <Route path="/scaling-stack/privacy" element={<ScalingStackPrivacy />} />
-        <Route path="/scaling-stack/terms" element={<ScalingStackTerms />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/scaling-stack" element={<ScalingStackLanding />} />
+          <Route path="/scaling-stack2" element={<ScalingStackLanding2 />} />
+          <Route path="/scaling-stack/apply" element={<ScalingStackApply />} />
+          <Route path="/scaling-stack/apply/thanks" element={<ScalingStackThanks />} />
+          <Route path="/scaling-stack/privacy" element={<ScalingStackPrivacy />} />
+          <Route path="/scaling-stack/terms" element={<ScalingStackTerms />} />
+        </Routes>
+      </Suspense>
     );
   }
 
@@ -176,47 +183,57 @@ function AppRoutes() {
 
   if (user && needsPasswordSetup) {
     return (
-      <Routes>
-        <Route path="*" element={<SetPasswordPage />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="*" element={<SetPasswordPage />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   if (adminExists === false && !user) {
     return (
-      <Routes>
-        <Route path="/setup" element={<AdminSetupPage />} />
-        <Route path="*" element={<Navigate to="/setup" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/setup" element={<AdminSetupPage />} />
+          <Route path="*" element={<Navigate to="/setup" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   if (!user) {
     return (
-      <Routes>
-        <Route path="/auth" element={<AuthPage />} />
-        <Route path="/request-access" element={<RequestAccessPage />} />
-        <Route path="/invite" element={<InvitePage />} />
-        <Route path="/set-password" element={<SetPasswordPage />} />
-        <Route path="*" element={<Navigate to="/auth" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/request-access" element={<RequestAccessPage />} />
+          <Route path="/invite" element={<InvitePage />} />
+          <Route path="/set-password" element={<SetPasswordPage />} />
+          <Route path="*" element={<Navigate to="/auth" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   if (mfaPending) {
     return (
-      <MfaChallengePage
-        onVerified={() => setMfaPending(false)}
-        onCancel={() => { signOut(); setMfaPending(false); }}
-      />
+      <Suspense fallback={<PageLoader />}>
+        <MfaChallengePage
+          onVerified={() => setMfaPending(false)}
+          onCancel={() => { signOut(); setMfaPending(false); }}
+        />
+      </Suspense>
     );
   }
 
   if (forcePasswordChange) {
     return (
-      <ForcePasswordChangePage
-        onPasswordChanged={() => setForcePasswordChange(false)}
-      />
+      <Suspense fallback={<PageLoader />}>
+        <ForcePasswordChangePage
+          onPasswordChanged={() => setForcePasswordChange(false)}
+        />
+      </Suspense>
     );
   }
 
@@ -246,60 +263,64 @@ function AppRoutes() {
 
   if (isClient) {
     return (
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route element={<MainLayout />}>
-          <Route path="/dashboard" element={<ClientDashboardPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/glossary" element={<GlossaryPage />} />
-        </Route>
-        <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<ClientDashboardPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/glossary" element={<GlossaryPage />} />
+          </Route>
+          <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route element={<MainLayout />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/clients" element={<ClientsPage />} />
-        <Route path="/clients/:id" element={<ClientDetailPage />} />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/sync" element={<SyncMonitorPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/audit" element={<AuditPage />} />
-        <Route path="/decomposition" element={<DecompositionPage />} />
-        <Route path="/budget" element={<BudgetPlannerPage />} />
-        <Route path="/broadcasts" element={<BroadcastsPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/tasks" element={<TaskBoardPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/glossary" element={<GlossaryPage />} />
-        <Route path="/branding" element={<BrandingPage />} />
-      </Route>
-      <Route element={<AfmInternalLayout />}>
-        <Route path="/afm-internal" element={<AfmDashboard />} />
-        <Route path="/afm-internal/media" element={<AfmMediaBuying />} />
-        <Route path="/afm-internal/social" element={<AfmSocialMedia />} />
-        <Route path="/afm-internal/sales" element={<AfmSales />} />
-        <Route path="/afm-internal/stats" element={<AfmStats />} />
-        <Route path="/afm-internal/tools" element={<AfmTools />} />
-        <Route path="/afm-internal/finance" element={<AfmFinancePage />} />
-        <Route path="/afm-internal/income-plan" element={<AfmIncomePlan />} />
-        <Route path="/afm-internal/financial-planning" element={<AfmFinancialPlanning />} />
-        <Route path="/afm-internal/settings" element={<AfmSettings />} />
-      </Route>
-      <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/request-access" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/invite" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/set-password" element={<SetPasswordPage />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/clients/:id" element={<ClientDetailPage />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/sync" element={<SyncMonitorPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/audit" element={<AuditPage />} />
+          <Route path="/decomposition" element={<DecompositionPage />} />
+          <Route path="/budget" element={<BudgetPlannerPage />} />
+          <Route path="/broadcasts" element={<BroadcastsPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/tasks" element={<TaskBoardPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/glossary" element={<GlossaryPage />} />
+          <Route path="/branding" element={<BrandingPage />} />
+        </Route>
+        <Route element={<AfmInternalLayout />}>
+          <Route path="/afm-internal" element={<AfmDashboard />} />
+          <Route path="/afm-internal/media" element={<AfmMediaBuying />} />
+          <Route path="/afm-internal/social" element={<AfmSocialMedia />} />
+          <Route path="/afm-internal/sales" element={<AfmSales />} />
+          <Route path="/afm-internal/stats" element={<AfmStats />} />
+          <Route path="/afm-internal/tools" element={<AfmTools />} />
+          <Route path="/afm-internal/finance" element={<AfmFinancePage />} />
+          <Route path="/afm-internal/income-plan" element={<AfmIncomePlan />} />
+          <Route path="/afm-internal/financial-planning" element={<AfmFinancialPlanning />} />
+          <Route path="/afm-internal/settings" element={<AfmSettings />} />
+        </Route>
+        <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/request-access" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/invite" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   );
 }
 

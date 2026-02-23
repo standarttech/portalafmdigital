@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | 'Client' | null;
+type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | 'Client' | 'Manager' | 'SalesManager' | 'AccountManager' | 'Designer' | 'Copywriter' | null;
 
 interface AuthContextType {
   user: User | null;
@@ -24,29 +24,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [agencyRole, setAgencyRole] = useState<AgencyRole>(null);
   const [loading, setLoading] = useState(true);
   const [adminExists, setAdminExists] = useState<boolean | null>(null);
+  // Cache role so tab-switch doesn't cause flicker
+  const roleCache = useRef<{ userId: string; role: AgencyRole } | null>(null);
+  const initialLoadDone = useRef(false);
 
   const checkAdminExists = useCallback(async () => {
     try {
-      // Use the SECURITY DEFINER RPC function — works for anon/unauthenticated users
       const { data, error } = await supabase.rpc('no_admin_exists');
-      
       if (error) {
         console.error('Error checking admin exists:', error);
-        // Fallback: assume admin exists to prevent showing setup page inappropriately
         setAdminExists(true);
         return;
       }
-      
-      // no_admin_exists returns TRUE when no admin → adminExists = false
-      // no_admin_exists returns FALSE when admin exists → adminExists = true
       setAdminExists(!data);
     } catch {
-      // Fallback: assume admin exists to prevent showing setup page inappropriately
       setAdminExists(true);
     }
   }, []);
 
-  const fetchRole = useCallback(async (userId: string) => {
+  const fetchRole = useCallback(async (userId: string, force = false) => {
+    // Use cache if available and not forced
+    if (!force && roleCache.current?.userId === userId) {
+      setAgencyRole(roleCache.current.role);
+      return;
+    }
     try {
       const { data } = await supabase
         .from('agency_users')
@@ -54,32 +55,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .maybeSingle();
       
-      if (data) {
-        setAgencyRole(data.agency_role as AgencyRole);
-      } else {
-        setAgencyRole(null);
-      }
+      const role = data?.agency_role as AgencyRole ?? null;
+      roleCache.current = { userId, role };
+      setAgencyRole(role);
     } catch {
       setAgencyRole(null);
     }
   }, []);
 
   useEffect(() => {
-    // IMPORTANT: Set up listener BEFORE getSession to avoid race conditions
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, newSession) => {
+        // On TOKEN_REFRESHED or INITIAL_SESSION after initial load, don't reset loading
+        if (initialLoadDone.current && (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+          // Just update session/user refs without triggering loading state
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+          if (newSession?.user) {
+            // Use cached role — no DB call needed on token refresh
+            await fetchRole(newSession.user.id, false);
+          }
+          return;
+        }
+        
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
         
         if (event === 'SIGNED_OUT') {
           setAgencyRole(null);
+          roleCache.current = null;
           setLoading(false);
           return;
         }
         
-        if (session?.user) {
-          // Fetch role directly (no setTimeout) to prevent Access Denied flash
-          await fetchRole(session.user.id);
+        if (newSession?.user) {
+          const force = event === 'SIGNED_IN';
+          await fetchRole(newSession.user.id, force);
         } else {
           setAgencyRole(null);
         }
@@ -87,13 +98,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchRole(session.user.id);
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) {
+        await fetchRole(s.user.id, true);
       }
       setLoading(false);
+      initialLoadDone.current = true;
     });
 
     checkAdminExists();
