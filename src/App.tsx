@@ -84,6 +84,13 @@ function AppRoutes() {
   const [checkingMfa, setCheckingMfa] = useState(false);
 
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState<boolean | null>(null);
+  // Master timeout: if all checks don't resolve in 6s, force through
+  const [appTimedOut, setAppTimedOut] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setAppTimedOut(true), 6000);
+    return () => clearTimeout(t);
+  }, []);
 
   const checkForcePasswordChange = useCallback(async () => {
     if (!user) {
@@ -98,30 +105,35 @@ function AppRoutes() {
       return;
     }
     setCheckingFpc(true);
-    const { data } = await supabase
-      .from('user_settings')
-      .select('force_password_change, temp_password_expires_at, needs_password_setup')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    try {
+      const { data } = await supabase
+        .from('user_settings')
+        .select('force_password_change, temp_password_expires_at, needs_password_setup')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    if ((data as any)?.needs_password_setup === true) {
-      setNeedsPasswordSetup(true);
-      setForcePasswordChange(false);
-      setCheckingFpc(false);
-      return;
-    }
-
-    setNeedsPasswordSetup(false);
-
-    if (data?.force_password_change) {
-      if (data.temp_password_expires_at && new Date(data.temp_password_expires_at) < new Date()) {
-        await supabase.auth.signOut();
+      if ((data as any)?.needs_password_setup === true) {
+        setNeedsPasswordSetup(true);
         setForcePasswordChange(false);
-      } else {
-        setForcePasswordChange(true);
+        setCheckingFpc(false);
+        return;
       }
-    } else {
+
+      setNeedsPasswordSetup(false);
+
+      if (data?.force_password_change) {
+        if (data.temp_password_expires_at && new Date(data.temp_password_expires_at) < new Date()) {
+          await supabase.auth.signOut();
+          setForcePasswordChange(false);
+        } else {
+          setForcePasswordChange(true);
+        }
+      } else {
+        setForcePasswordChange(false);
+      }
+    } catch {
       setForcePasswordChange(false);
+      setNeedsPasswordSetup(false);
     }
     setCheckingFpc(false);
   }, [user]);
@@ -154,6 +166,11 @@ function AppRoutes() {
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
 
+  // Compute whether we should still show loading
+  const checksStillPending = loading || (user && (forcePasswordChange === null || needsPasswordSetup === null)) || checkingFpc || checkingMfa;
+  const roleStillPending = user && agencyRole === null && adminExists !== false;
+  const showLoading = (checksStillPending || roleStillPending) && !appTimedOut;
+
   // Public routes
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/scaling-stack")) {
     return (
@@ -170,7 +187,7 @@ function AppRoutes() {
     );
   }
 
-  if (loading || (user && (forcePasswordChange === null || needsPasswordSetup === null)) || checkingFpc || checkingMfa || (user && agencyRole === null && adminExists !== false)) {
+  if (showLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
