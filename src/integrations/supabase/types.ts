@@ -1729,10 +1729,76 @@ export type Database = {
             referencedRelation: "client_webhooks"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "webhook_logs_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "client_webhooks_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
+      client_webhooks_safe: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          created_by: string | null
+          events: string[] | null
+          failure_count: number | null
+          has_secret: boolean | null
+          headers: Json | null
+          id: string | null
+          is_active: boolean | null
+          last_status_code: number | null
+          last_triggered_at: string | null
+          name: string | null
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          events?: string[] | null
+          failure_count?: number | null
+          has_secret?: never
+          headers?: Json | null
+          id?: string | null
+          is_active?: boolean | null
+          last_status_code?: number | null
+          last_triggered_at?: string | null
+          name?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          events?: string[] | null
+          failure_count?: number | null
+          has_secret?: never
+          headers?: Json | null
+          id?: string | null
+          is_active?: boolean | null
+          last_status_code?: number | null
+          last_triggered_at?: string | null
+          name?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_webhooks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_connections_safe: {
         Row: {
           account_name: string | null
