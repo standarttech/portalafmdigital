@@ -280,14 +280,18 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if this is a cron call (no auth header, has "cron" flag)
+    // Check if this is a cron/internal call — validate via service role key or cron secret
     const authHeader = req.headers.get("Authorization");
     let body: any = {};
     try { body = await req.json(); } catch {}
 
-    if (body.cron === true) {
-      // Cron mode called from pg_cron/pg_net — no strict auth needed
-      // verify_jwt=false in config.toml, cron flag validates internal origin
+    const cronSecret = Deno.env.get('CRON_SECRET') ?? supabaseKey;
+    const internalSecret = req.headers.get('x-cron-secret');
+    const token = authHeader?.replace('Bearer ', '') ?? '';
+    const isCronCall = body.cron === true && (token === supabaseKey || internalSecret === cronSecret);
+
+    if (isCronCall) {
+      // Cron mode: validated via service role key or cron secret header
       // Cron mode: sync all clients with auto_sync_enabled for all platforms
       const { data: clients } = await supabase
         .from("clients")
