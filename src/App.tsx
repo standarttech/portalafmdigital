@@ -12,49 +12,63 @@ import AuthPage from "@/pages/AuthPage";
 import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// Lazy load heavy pages
-const AdminSetupPage = lazy(() => import("@/pages/AdminSetup"));
-const RequestAccessPage = lazy(() => import("@/pages/RequestAccessPage"));
-const InvitePage = lazy(() => import("@/pages/InvitePage"));
-const SetPasswordPage = lazy(() => import("@/pages/SetPasswordPage"));
-const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
-const ClientDashboardPage = lazy(() => import("@/pages/ClientDashboardPage"));
-const BudgetPlannerPage = lazy(() => import("@/pages/BudgetPlannerPage"));
-const CalendarPage = lazy(() => import("@/pages/CalendarPage"));
-const ClientsPage = lazy(() => import("@/pages/ClientsPage"));
-const UsersPage = lazy(() => import("@/pages/UsersPage"));
-const SyncMonitorPage = lazy(() => import("@/pages/SyncMonitorPage"));
-const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
-const AuditPage = lazy(() => import("@/pages/AuditPage"));
-const ClientDetailPage = lazy(() => import("@/pages/ClientDetailPage"));
-const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
-const GlossaryPage = lazy(() => import("@/pages/GlossaryPage"));
-const DecompositionPage = lazy(() => import("@/pages/DecompositionPage"));
-const ChatPage = lazy(() => import("@/pages/ChatPage"));
-const TaskBoardPage = lazy(() => import("@/pages/TaskBoardPage"));
-const BroadcastsPage = lazy(() => import("@/pages/BroadcastsPage"));
-const ForcePasswordChangePage = lazy(() => import("@/pages/ForcePasswordChangePage"));
-const MfaChallengePage = lazy(() => import("@/pages/MfaChallengePage"));
-const BrandingPage = lazy(() => import("@/pages/BrandingPage"));
-const AfmInternalLayout = lazy(() => import("@/components/layout/AfmInternalLayout"));
-const ScalingStackLanding = lazy(() => import("@/scaling-stack/ScalingStackLanding"));
-const ScalingStackLanding2 = lazy(() => import("@/scaling-stack/ScalingStackLanding2"));
-const ScalingStackApply = lazy(() => import("@/scaling-stack/ScalingStackApply"));
-const ScalingStackThanks = lazy(() => import("@/scaling-stack/ScalingStackThanks"));
-const ScalingStackPrivacy = lazy(() => import("@/scaling-stack/ScalingStackPrivacy"));
-const ScalingStackTerms = lazy(() => import("@/scaling-stack/ScalingStackTerms"));
-const AfmDashboard = lazy(() => import("@/pages/afm/AfmDashboard"));
-const AfmMediaBuying = lazy(() => import("@/pages/afm/AfmMediaBuying"));
-const AfmSocialMedia = lazy(() => import("@/pages/afm/AfmSocialMedia"));
-const AfmSales = lazy(() => import("@/pages/afm/AfmSales"));
-const AfmTools = lazy(() => import("@/pages/afm/AfmTools"));
-const AfmSettings = lazy(() => import("@/pages/afm/AfmSettings"));
-const AfmFinancePage = lazy(() => import("@/pages/afm/AfmFinancePage"));
-const AfmIncomePlan = lazy(() => import("@/pages/afm/AfmIncomePlan"));
-const AfmFinancialPlanning = lazy(() => import("@/pages/afm/AfmFinancialPlanning"));
-const AfmStats = lazy(() => import("@/pages/afm/AfmStats"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const AfmPerformance = lazy(() => import("@/pages/afm/AfmPerformance"));
+// Lazy load with auto-reload on stale chunk errors
+const lazyRetry = (factory: () => Promise<any>) =>
+  lazy(() =>
+    factory().catch((err) => {
+      const hasReloaded = sessionStorage.getItem('chunk_reload');
+      if (!hasReloaded) {
+        sessionStorage.setItem('chunk_reload', '1');
+        window.location.reload();
+        return new Promise(() => {}); // never resolves, page reloads
+      }
+      sessionStorage.removeItem('chunk_reload');
+      throw err;
+    })
+  );
+
+const AdminSetupPage = lazyRetry(() => import("@/pages/AdminSetup"));
+const RequestAccessPage = lazyRetry(() => import("@/pages/RequestAccessPage"));
+const InvitePage = lazyRetry(() => import("@/pages/InvitePage"));
+const SetPasswordPage = lazyRetry(() => import("@/pages/SetPasswordPage"));
+const DashboardPage = lazyRetry(() => import("@/pages/DashboardPage"));
+const ClientDashboardPage = lazyRetry(() => import("@/pages/ClientDashboardPage"));
+const BudgetPlannerPage = lazyRetry(() => import("@/pages/BudgetPlannerPage"));
+const CalendarPage = lazyRetry(() => import("@/pages/CalendarPage"));
+const ClientsPage = lazyRetry(() => import("@/pages/ClientsPage"));
+const UsersPage = lazyRetry(() => import("@/pages/UsersPage"));
+const SyncMonitorPage = lazyRetry(() => import("@/pages/SyncMonitorPage"));
+const ReportsPage = lazyRetry(() => import("@/pages/ReportsPage"));
+const AuditPage = lazyRetry(() => import("@/pages/AuditPage"));
+const ClientDetailPage = lazyRetry(() => import("@/pages/ClientDetailPage"));
+const ProfilePage = lazyRetry(() => import("@/pages/ProfilePage"));
+const GlossaryPage = lazyRetry(() => import("@/pages/GlossaryPage"));
+const DecompositionPage = lazyRetry(() => import("@/pages/DecompositionPage"));
+const ChatPage = lazyRetry(() => import("@/pages/ChatPage"));
+const TaskBoardPage = lazyRetry(() => import("@/pages/TaskBoardPage"));
+const BroadcastsPage = lazyRetry(() => import("@/pages/BroadcastsPage"));
+const ForcePasswordChangePage = lazyRetry(() => import("@/pages/ForcePasswordChangePage"));
+const MfaChallengePage = lazyRetry(() => import("@/pages/MfaChallengePage"));
+const BrandingPage = lazyRetry(() => import("@/pages/BrandingPage"));
+const AfmInternalLayout = lazyRetry(() => import("@/components/layout/AfmInternalLayout"));
+const ScalingStackLanding = lazyRetry(() => import("@/scaling-stack/ScalingStackLanding"));
+const ScalingStackLanding2 = lazyRetry(() => import("@/scaling-stack/ScalingStackLanding2"));
+const ScalingStackApply = lazyRetry(() => import("@/scaling-stack/ScalingStackApply"));
+const ScalingStackThanks = lazyRetry(() => import("@/scaling-stack/ScalingStackThanks"));
+const ScalingStackPrivacy = lazyRetry(() => import("@/scaling-stack/ScalingStackPrivacy"));
+const ScalingStackTerms = lazyRetry(() => import("@/scaling-stack/ScalingStackTerms"));
+const AfmDashboard = lazyRetry(() => import("@/pages/afm/AfmDashboard"));
+const AfmMediaBuying = lazyRetry(() => import("@/pages/afm/AfmMediaBuying"));
+const AfmSocialMedia = lazyRetry(() => import("@/pages/afm/AfmSocialMedia"));
+const AfmSales = lazyRetry(() => import("@/pages/afm/AfmSales"));
+const AfmTools = lazyRetry(() => import("@/pages/afm/AfmTools"));
+const AfmSettings = lazyRetry(() => import("@/pages/afm/AfmSettings"));
+const AfmFinancePage = lazyRetry(() => import("@/pages/afm/AfmFinancePage"));
+const AfmIncomePlan = lazyRetry(() => import("@/pages/afm/AfmIncomePlan"));
+const AfmFinancialPlanning = lazyRetry(() => import("@/pages/afm/AfmFinancialPlanning"));
+const AfmStats = lazyRetry(() => import("@/pages/afm/AfmStats"));
+const NotFound = lazyRetry(() => import("./pages/NotFound"));
+const AfmPerformance = lazyRetry(() => import("@/pages/afm/AfmPerformance"));
 
 // FIX: QueryClient with staleTime to prevent constant refetching/refreshes
 const queryClient = new QueryClient({
