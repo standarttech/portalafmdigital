@@ -79,7 +79,7 @@ export default function ClientWebhooks({ clientId }: { clientId: string }) {
 
   const fetchWebhooks = async () => {
     const { data, error } = await supabase
-      .from('client_webhooks_safe' as any)
+      .from('client_webhooks')
       .select('*')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false });
@@ -102,7 +102,7 @@ export default function ClientWebhooks({ clientId }: { clientId: string }) {
   const openEdit = (wh: WebhookRow) => {
     setFormName(wh.name);
     setFormUrl(wh.url);
-    setFormSecret('');
+    setFormSecret(wh.secret || '');
     setFormEvents(wh.events?.length ? wh.events : ['*']);
     setFormHeaders(wh.headers && Object.keys(wh.headers).length ? JSON.stringify(wh.headers, null, 2) : '');
     setEditingWebhook(wh);
@@ -133,15 +133,14 @@ export default function ClientWebhooks({ clientId }: { clientId: string }) {
     setSaving(true);
     
     if (editingWebhook) {
-      // Update — only include secret if user typed a new one
-      const updatePayload: any = {
+      // Update
+      const { error } = await supabase.from('client_webhooks').update({
         name: formName,
         url: formUrl,
+        secret: formSecret || null,
         events: formEvents,
         headers,
-      };
-      if (formSecret) updatePayload.secret = formSecret;
-      const { error } = await supabase.from('client_webhooks').update(updatePayload).eq('id', editingWebhook.id);
+      } as any).eq('id', editingWebhook.id);
       setSaving(false);
       if (error) { toast.error('Ошибка: ' + error.message); return; }
       toast.success('Вебхук обновлён');
@@ -315,7 +314,7 @@ export default function ClientWebhooks({ clientId }: { clientId: string }) {
                         {wh.last_triggered_at && (
                           <span>Последний вызов: {formatDistanceToNow(new Date(wh.last_triggered_at), { addSuffix: true })}</span>
                         )}
-                        {(wh as any).has_secret && <span>🔐 HMAC</span>}
+                        {wh.secret && <span>🔐 HMAC</span>}
                       </div>
                       {wh.failure_count >= 3 && (
                         <div className="flex items-center gap-2 mt-1.5">
@@ -368,7 +367,7 @@ export default function ClientWebhooks({ clientId }: { clientId: string }) {
             </div>
             <div>
               <Label className="text-xs">Secret (для HMAC подписи, опционально)</Label>
-              <Input placeholder={editingWebhook ? '(оставьте пустым, чтобы не менять)' : 'my-webhook-secret'} value={formSecret} onChange={e => setFormSecret(e.target.value)} className="mt-1 font-mono text-xs" />
+              <Input placeholder="my-webhook-secret" value={formSecret} onChange={e => setFormSecret(e.target.value)} className="mt-1 font-mono text-xs" />
               <p className="text-[10px] text-muted-foreground mt-1">Подпись отправляется в заголовке X-Webhook-Signature</p>
             </div>
             <div>

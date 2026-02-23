@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | 'Client' | 'Manager' | 'SalesManager' | 'AccountManager' | 'Designer' | 'Copywriter' | null;
+type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | 'Client' | null;
 
 interface AuthContextType {
   user: User | null;
@@ -24,29 +24,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [agencyRole, setAgencyRole] = useState<AgencyRole>(null);
   const [loading, setLoading] = useState(true);
   const [adminExists, setAdminExists] = useState<boolean | null>(null);
-  // Cache role so tab-switch doesn't cause flicker
-  const roleCache = useRef<{ userId: string; role: AgencyRole } | null>(null);
 
   const checkAdminExists = useCallback(async () => {
     try {
+      // Use the SECURITY DEFINER RPC function — works for anon/unauthenticated users
       const { data, error } = await supabase.rpc('no_admin_exists');
+      
       if (error) {
         console.error('Error checking admin exists:', error);
+        // Fallback: assume admin exists to prevent showing setup page inappropriately
         setAdminExists(true);
         return;
       }
+      
+      // no_admin_exists returns TRUE when no admin → adminExists = false
+      // no_admin_exists returns FALSE when admin exists → adminExists = true
       setAdminExists(!data);
     } catch {
+      // Fallback: assume admin exists to prevent showing setup page inappropriately
       setAdminExists(true);
     }
   }, []);
 
-  const fetchRole = useCallback(async (userId: string, force = false) => {
-    // Use cache if available and not forced
-    if (!force && roleCache.current?.userId === userId) {
-      setAgencyRole(roleCache.current.role);
-      return;
-    }
+  const fetchRole = useCallback(async (userId: string) => {
     try {
       const { data } = await supabase
         .from('agency_users')
@@ -54,74 +54,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .maybeSingle();
       
-      const role = data?.agency_role as AgencyRole ?? null;
-      roleCache.current = { userId, role };
-      setAgencyRole(role);
+      if (data) {
+        setAgencyRole(data.agency_role as AgencyRole);
+      } else {
+        setAgencyRole(null);
+      }
     } catch {
       setAgencyRole(null);
     }
   }, []);
 
   useEffect(() => {
-    let initialized = false;
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        if (event === 'SIGNED_OUT') {
-          setAgencyRole(null);
-          roleCache.current = null;
-          setLoading(false);
-          initialized = true;
-          return;
-        }
-
-        // On token refresh after init, just use cached role — no flicker
-        if (initialized && event === 'TOKEN_REFRESHED') {
-          if (newSession?.user) {
-            await fetchRole(newSession.user.id, false);
-          }
-          return;
-        }
-
-        if (newSession?.user) {
-          const force = !initialized || event === 'SIGNED_IN';
-          await fetchRole(newSession.user.id, force);
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          setTimeout(() => {
+            fetchRole(session.user.id);
+          }, 0);
         } else {
           setAgencyRole(null);
         }
-        setLoading(false);
-        initialized = true;
+        
+        if (event === 'SIGNED_OUT') {
+          setAgencyRole(null);
+        }
       }
     );
 
-    // Safety timeout: if auth doesn't resolve in 5 seconds, proactively fetch session & role
-    const safetyTimeout = setTimeout(async () => {
-      if (!initialized) {
-        console.warn('Auth init timeout — proactively fetching session');
-        try {
-          const { data: { session: fallbackSession } } = await supabase.auth.getSession();
-          if (fallbackSession?.user) {
-            setUser(fallbackSession.user);
-            setSession(fallbackSession);
-            await fetchRole(fallbackSession.user.id, true);
-          }
-        } catch (e) {
-          console.error('Safety timeout session fetch failed:', e);
-        }
-        setLoading(false);
-        initialized = true;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchRole(session.user.id);
       }
-    }, 5000);
+      setLoading(false);
+    });
 
     checkAdminExists();
 
-    return () => {
-      clearTimeout(safetyTimeout);
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [fetchRole, checkAdminExists]);
 
   const signIn = async (email: string, password: string) => {
