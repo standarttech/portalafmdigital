@@ -676,31 +676,20 @@ export const translations = {
   'client.tab.history': t('History', 'История', 'Cronologia', 'Historial', 'السجل', 'Historique'),
   'clients.history': t('History', 'История', 'Cronologia', 'Historial', 'السجل', 'Historique'),
 
-  // Budget planner
-  'budget.title': t('Budget Planner', 'Бюджетный план', 'Piano budget', 'Plan de presupuesto', 'مخطط الميزانية', 'Planificateur de budget'),
-  'budget.subtitle': t('Plan and track monthly budgets', 'Планируйте и отслеживайте бюджеты', 'Pianifica e monitora i budget', 'Planifica y monitorea presupuestos', 'خطط وتتبع الميزانيات', 'Planifiez et suivez les budgets'),
-  'budget.addPlan': t('Add Budget Plan', 'Добавить бюджетный план', 'Aggiungi piano budget', 'Agregar plan de presupuesto', 'إضافة خطة ميزانية', 'Ajouter un plan de budget'),
-  'budget.plannedSpend': t('Planned Spend', 'Плановый расход', 'Spesa pianificata', 'Gasto planificado', 'الإنفاق المخطط', 'Dépenses prévues'),
-  'budget.plannedLeads': t('Planned Leads', 'Плановые лиды', 'Lead pianificati', 'Leads planificados', 'العملاء المحتملون المخططون', 'Leads prévus'),
+  // Budget delete & progress
   'budget.deletePlan': t('Delete budget plan?', 'Удалить бюджетный план?', 'Eliminare il piano budget?', '¿Eliminar plan de presupuesto?', 'حذف خطة الميزانية؟', 'Supprimer le plan de budget ?'),
   'budget.deletePlanDesc': t('This budget plan will be permanently deleted.', 'Этот бюджетный план будет удалён. Это действие необратимо.', 'Questo piano budget verrà eliminato definitivamente.', 'Este plan de presupuesto se eliminará permanentemente.', 'سيتم حذف خطة الميزانية هذه نهائيًا.', 'Ce plan de budget sera définitivement supprimé.'),
-
-  // Budget progress (client detail)
   'budget.monthlyBudget': t('Monthly Budget', 'Бюджет на месяц', 'Budget mensile', 'Presupuesto mensual', 'الميزانية الشهرية', 'Budget mensuel'),
   'budget.spent': t('Spent', 'Потрачено', 'Speso', 'Gastado', 'المنفق', 'Dépensé'),
   'budget.remaining': t('remaining', 'осталось', 'rimanente', 'restante', 'متبقي', 'restant'),
   'budget.leadGoal': t('Lead Goal', 'Цель по лидам', 'Obiettivo lead', 'Objetivo de leads', 'هدف العملاء المحتملين', 'Objectif de leads'),
 
-  // Misc hardcoded strings
-  'clients.manageColumns': t('Manage Columns', 'Настроить колонки', 'Gestisci colonne', 'Gestionar columnas', 'إدارة الأعمدة', 'Gérer les colonnes'),
-  'clients.columnsSaved': t('Columns saved', 'Колонки сохранены', 'Colonne salvate', 'Columnas guardadas', 'تم حفظ الأعمدة', 'Colonnes enregistrées'),
-  'clients.changeCategoryTitle': t('Change Category?', 'Изменить категорию?', 'Cambiare categoria?', '¿Cambiar categoría?', 'تغيير الفئة؟', 'Changer la catégorie ?'),
-  'clients.changeCategoryDesc': t('Changing the category will reset column visibility to defaults. This cannot be undone.', 'Смена категории сбросит видимость колонок. Это действие необратимо.', 'Cambiare la categoria ripristinerà la visibilità delle colonne. Azione irreversibile.', 'Cambiar la categoría restablecerá la visibilidad de columnas. Esta acción no se puede deshacer.', 'سيؤدي تغيير الفئة إلى إعادة تعيين الأعمدة. لا يمكن التراجع.', 'Changer la catégorie réinitialisera les colonnes. Action irréversible.'),
+  // Client statuses
   'clients.onboarding': t('Onboarding', 'Онбординг', 'Onboarding', 'Incorporación', 'تهيئة', 'Intégration'),
   'clients.stop': t('Stop', 'Стоп', 'Stop', 'Stop', 'توقف', 'Arrêt'),
   'clients.selectedCount': t('project(s) selected', 'проект(ов) выбрано', 'progetti selezionati', 'proyectos seleccionados', 'مشاريع محددة', 'projets sélectionnés'),
 
-  // History tab
+  // History tab extras
   'history.statusChanges': t('Status Changes', 'Изменения статуса', 'Cambiamenti di stato', 'Cambios de estado', 'تغييرات الحالة', 'Changements de statut'),
   'history.eventsNotes': t('Events & Notes', 'События и заметки', 'Eventi e note', 'Eventos y notas', 'الأحداث والملاحظات', 'Événements et notes'),
   'history.noHistoryYet': t('No history yet', 'Истории пока нет', 'Nessuna cronologia', 'Sin historial', 'لا يوجد سجل بعد', 'Pas d\'historique'),
@@ -713,52 +702,10 @@ export const translations = {
   'auth.accessDenied': t('Access Denied', 'Доступ запрещён', 'Accesso negato', 'Acceso denegado', 'تم رفض الوصول', 'Accès refusé'),
   'auth.accessDeniedDesc': t('You do not have access to the platform. Contact your administrator.', 'У вас нет доступа к платформе. Обратитесь к администратору.', 'Non hai accesso alla piattaforma. Contatta il tuo amministratore.', 'No tienes acceso a la plataforma. Contacta a tu administrador.', 'ليس لديك حق الوصول إلى المنصة. اتصل بالمسؤول.', "Vous n'avez pas accès à la plateforme. Contactez votre administrateur."),
 
-  // Sync Monitor
-  'sync.title': t('Sync Monitor', 'Монитор синхронизации', 'Monitor sincronizzazione', 'Monitor de sincronización', 'مراقبة المزامنة', 'Moniteur de synchronisation'),
-  'sync.subtitle': t('Platform connection and sync status', 'Состояние подключений и синхронизации', 'Stato connessioni e sincronizzazione', 'Estado de conexiones y sincronización', 'حالة الاتصالات والمزامنة', 'État des connexions et synchronisation'),
-  'sync.successful': t('Successful', 'Успешных', 'Riuscite', 'Exitosas', 'ناجحة', 'Réussies'),
-  'sync.errors': t('Errors', 'Ошибки', 'Errori', 'Errores', 'أخطاء', 'Erreurs'),
-  'sync.running': t('Running', 'В работе', 'In esecuzione', 'En ejecución', 'قيد التشغيل', 'En cours'),
-  'sync.connections': t('Connections', 'Подключения', 'Connessioni', 'Conexiones', 'الاتصالات', 'Connexions'),
-  'sync.noConnections': t('No connections yet', 'Нет подключений', 'Nessuna connessione', 'Sin conexiones', 'لا توجد اتصالات после', 'Aucune connexion'),
-  'sync.noConnectionsDesc': t('Connect platforms via client settings', 'Подключите платформы через настройки клиента', 'Connetti piattaforme dalle impostazioni cliente', 'Conecta plataformas desde la configuración del cliente', 'اربط المنصات من إعدادات العميل', 'Connectez des plateformes via les paramètres du client'),
-
-  // Targets
-  'targets.title': t('Targets', 'Цели', 'Obiettivi', 'Objetivos', 'الأهداف', 'Objectifs'),
-  'targets.saved': t('Targets saved', 'Цели сохранены', 'Obiettivi salvati', 'Objetivos guardados', 'تم حفظ الأهداف', 'Objectifs enregistrés'),
-  'targets.cpl': t('Target CPL', 'Целевой CPL', 'CPL obiettivo', 'CPL objetivo', 'هدف CPL', 'CPL cible'),
-  'targets.ctr': t('Target CTR', 'Целевой CTR', 'CTR obiettivo', 'CTR objetivo', 'هدف CTR', 'CTR cible'),
-  'targets.leads': t('Target Leads', 'Целевые лиды', 'Lead obiettivo', 'Leads objetivo', 'هدف العملاء المحتملين', 'Leads cible'),
-  'targets.roas': t('Target ROAS', 'Целевой ROAS', 'ROAS obiettivo', 'ROAS objetivo', 'هدف ROAS', 'ROAS cible'),
-
-  // Tasks
-  'tasks.title': t('Tasks', 'Задачи', 'Attività', 'Tareas', 'المهام', 'Tâches'),
-  'tasks.addTask': t('Add Task', 'Добавить задачу', 'Aggiungi attività', 'Añadir tarea', 'إضافة مهمة', 'Ajouter une tâche'),
-  'tasks.noTasks': t('No tasks yet', 'Задач пока нет', 'Nessuna attività', 'Sin tareas', 'لا توجد مهام بعد', 'Aucune tâche'),
-  'tasks.noTasksDesc': t('Create a task to get started', 'Создайте задачу, чтобы начать', 'Crea un\'attività per iniziare', 'Crea una tarea para empezar', 'أنشئ مهمة للبدء', 'Créez une tâche pour commencer'),
-  'tasks.taskCreated': t('Task created', 'Задача создана', 'Attività creata', 'Tarea creada', 'تم إنشاء المهمة', 'Tâche créée'),
-  'tasks.taskUpdated': t('Task updated', 'Задача обновлена', 'Attività aggiornata', 'Tarea actualizada', 'تم تحديث المهمة', 'Tâche mise à jour'),
-
-  // Calendar
-  'nav.calendar': t('Calendar', 'Календарь', 'Calendario', 'Calendario', 'التقويم', 'Calendrier'),
-  'nav.tasks': t('Tasks', 'Задачи', 'Attività', 'Tareas', 'المهام', 'Tâches'),
-  'nav.chat': t('Chat', 'Чат', 'Chat', 'Chat', 'الدردشة', 'Chat'),
-  'nav.budget': t('Budget', 'Бюджет', 'Budget', 'Presupuesto', 'الميزانية', 'Budget'),
-  'nav.decomposition': t('Decomposition', 'Декомпозиция', 'Decomposizione', 'Descomposición', 'التحلل', 'Décomposition'),
-
-  // Avatar upload
+  // User management extras
   'users.avatarUpdated': t('Avatar updated', 'Аватарка обновлена', 'Avatar aggiornato', 'Avatar actualizado', 'تم تحديث الصورة الرمزية', 'Avatar mis à jour'),
   'users.uploadAvatar': t('Upload avatar', 'Загрузить аватарку', 'Carica avatar', 'Subir avatar', 'تحميل الصورة الرمزية', 'Télécharger un avatar'),
   'users.selectProjectsDesc': t('Select projects user will access', 'Выберите проекты, к которым у пользователя будет доступ', 'Seleziona i progetti a cui l\'utente avrà accesso', 'Selecciona los proyectos a los que el usuario tendrá acceso', 'حدد المشاريع التي سيصل إليها المستخدم', 'Sélectionnez les projets auxquels l\'utilisateur aura accès'),
-
-  // Client categories
-  'clients.ecom': t('E-commerce', 'Интернет-магазин', 'E-commerce', 'Comercio electrónico', 'التجارة الإلكترونية', 'E-commerce'),
-  'clients.saas': t('SaaS', 'SaaS', 'SaaS', 'SaaS', 'SaaS', 'SaaS'),
-  'clients.infoProduct': t('Info Product', 'Инфопродукт', 'Infoprodotto', 'Infoproducto', 'منتج معلوماتي', 'Infoproduit'),
-  'clients.onlineBusiness': t('Online Business', 'Онлайн-бизнес', 'Business online', 'Negocio en línea', 'أعمال عبر الإنترنت', 'Business en ligne'),
-  'clients.localBusiness': t('Local Business', 'Локальный бизнес', 'Attività locale', 'Negocio local', 'أعمال محلية', 'Business local'),
-  'clients.realEstate': t('Real Estate', 'Недвижимость', 'Immobiliare', 'Bienes raíces', 'العقارات', 'Immobilier'),
-  'clients.other': t('Other', 'Другое', 'Altro', 'Otro', 'أخرى', 'Autre'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
