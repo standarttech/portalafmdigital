@@ -97,10 +97,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Safety timeout: if auth doesn't resolve in 5 seconds, force loading to false
-    const safetyTimeout = setTimeout(() => {
+    // Safety timeout: if auth doesn't resolve in 5 seconds, proactively fetch session & role
+    const safetyTimeout = setTimeout(async () => {
       if (!initialized) {
-        console.warn('Auth init timeout — forcing loading=false');
+        console.warn('Auth init timeout — proactively fetching session');
+        try {
+          const { data: { session: fallbackSession } } = await supabase.auth.getSession();
+          if (fallbackSession?.user) {
+            setUser(fallbackSession.user);
+            setSession(fallbackSession);
+            await fetchRole(fallbackSession.user.id, true);
+          }
+        } catch (e) {
+          console.error('Safety timeout session fetch failed:', e);
+        }
         setLoading(false);
         initialized = true;
       }
