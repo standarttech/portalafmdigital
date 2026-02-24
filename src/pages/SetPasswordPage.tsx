@@ -46,17 +46,63 @@ export default function SetPasswordPage() {
   const [mfaEnrolling, setMfaEnrolling] = useState(false);
 
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let resolved = false;
+
+    const markReady = () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeoutId);
         setSessionReady(true);
       }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') && session) {
+        markReady();
+      }
     });
+
+    // Try getting existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setSessionReady(true);
+      if (session) {
+        markReady();
+      }
     });
-    return () => subscription.unsubscribe();
+
+    // If hash contains access_token, try to manually set session
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ data, error }) => {
+            if (!error && data.session) {
+              // Clean hash from URL
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+              markReady();
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    // Safety timeout — don't hang forever
+    timeoutId = setTimeout(() => {
+      if (!resolved) {
+        setSessionError(true);
+      }
+    }, 15000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // Password strength checks
@@ -149,9 +195,31 @@ export default function SetPasswordPage() {
   if (!sessionReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground text-sm">Verifying your invitation link...</p>
+        <div className="flex flex-col items-center gap-4 text-center max-w-sm px-4">
+          {sessionError ? (
+            <>
+              <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <span className="text-destructive text-xl">!</span>
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">Link verification failed</h2>
+              <p className="text-muted-foreground text-sm">
+                The invitation link could not be verified. This can happen due to browser settings, expired links, or network issues.
+              </p>
+              <div className="flex flex-col gap-2 w-full">
+                <Button onClick={() => window.location.reload()} className="w-full">
+                  Try again
+                </Button>
+                <Button variant="outline" onClick={() => { window.location.href = '/auth'; }} className="w-full">
+                  Go to login
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-muted-foreground text-sm">Verifying your invitation link...</p>
+            </>
+          )}
         </div>
       </div>
     );
