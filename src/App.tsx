@@ -51,6 +51,10 @@ import AfmFinancialPlanning from "@/pages/afm/AfmFinancialPlanning";
 import AfmStats from "@/pages/afm/AfmStats";
 import NotFound from "./pages/NotFound";
 import CrmPage from "@/pages/CrmPage";
+import CrmLayout from "@/components/layout/CrmLayout";
+import CrmLeadsPage from "@/pages/crm/CrmLeadsPage";
+import CrmWebhooksPage from "@/pages/crm/CrmWebhooksPage";
+import CrmSettingsPage from "@/pages/crm/CrmSettingsPage";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -281,7 +285,12 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/branding" element={<BrandingPage />} />
+      </Route>
+      <Route element={<CrmLayout />}>
         <Route path="/crm" element={<CrmPage />} />
+        <Route path="/crm/leads" element={<CrmLeadsPage />} />
+        <Route path="/crm/webhooks" element={<CrmWebhooksPage />} />
+        <Route path="/crm/settings" element={<CrmSettingsPage />} />
       </Route>
       <Route element={<AfmInternalLayout />}>
         <Route path="/afm-internal" element={<AfmDashboard />} />

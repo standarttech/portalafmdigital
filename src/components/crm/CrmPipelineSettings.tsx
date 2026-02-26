@@ -15,11 +15,12 @@ interface Props {
   onCreateStage: (name: string, color: string) => Promise<void>;
   onUpdateStage: (id: string, updates: Partial<CrmStage>) => Promise<void>;
   onDeleteStage: (id: string) => Promise<void>;
+  embedded?: boolean;
 }
 
 const COLORS = ['#6366f1', '#3b82f6', '#06b6d4', '#22c55e', '#f59e0b', '#f97316', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 
-export default function CrmPipelineSettings({ open, onClose, stages, onCreateStage, onUpdateStage, onDeleteStage }: Props) {
+export default function CrmPipelineSettings({ open, onClose, stages, onCreateStage, onUpdateStage, onDeleteStage, embedded }: Props) {
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#6366f1');
 
@@ -29,13 +30,8 @@ export default function CrmPipelineSettings({ open, onClose, stages, onCreateSta
     setNewName('');
   };
 
-  return (
-    <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Pipeline Stages</DialogTitle>
-        </DialogHeader>
-        
+  const content = (
+    <>
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {stages.map((stage, i) => (
             <div key={stage.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/20 border border-border/30">
@@ -93,6 +89,18 @@ export default function CrmPipelineSettings({ open, onClose, stages, onCreateSta
             <Plus className="h-3 w-3 mr-1" />Add
           </Button>
         </div>
+    </>
+  );
+
+  if (embedded) return <div className="space-y-4">{content}</div>;
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Pipeline Stages</DialogTitle>
+        </DialogHeader>
+        {content}
       </DialogContent>
     </Dialog>
   );
