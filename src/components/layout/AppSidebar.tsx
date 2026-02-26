@@ -51,10 +51,17 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    id: 'crm',
+    labelKey: 'nav.crm' as TranslationKey,
+    adminOnly: true,
+    items: [
+      { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm' },
+    ],
+  },
+  {
     id: 'workspace',
     labelKey: 'nav.calendar' as TranslationKey,
     items: [
-      { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm' },
       { key: 'nav.calendar', icon: Calendar, path: '/calendar' },
       { key: 'nav.tasks' as TranslationKey, icon: ClipboardList, path: '/tasks' },
       { key: 'nav.chat', icon: MessageSquare, path: '/chat', badgeKey: 'unreadChats' },
@@ -161,7 +168,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
   const renderNavItem = (item: NavItem) => {
     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     const badgeCount = item.badgeKey ? (badges[item.badgeKey] || 0) : 0;
-    const isAfmInternal = item.path === '/afm-internal';
+    const isModuleEntry = item.path === '/afm-internal' || item.path === '/crm';
 
     return (
       <Link
@@ -170,10 +177,14 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         onClick={onNavigate}
         className={cn(
           'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative',
-          isAfmInternal
-            ? isActive
-              ? 'bg-primary/20 text-primary border border-primary/30'
-              : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/40'
+          isModuleEntry
+            ? item.path === '/crm'
+              ? isActive
+                ? 'bg-accent/20 text-accent-foreground border border-accent/40 shadow-sm'
+                : 'bg-accent/10 text-accent-foreground border border-accent/20 hover:bg-accent/20 hover:border-accent/40'
+              : isActive
+                ? 'bg-primary/20 text-primary border border-primary/30'
+                : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/40'
             : isActive
               ? 'bg-primary/15 text-primary'
               : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
@@ -181,7 +192,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         title={collapsed ? t(item.key) : undefined}
       >
         <div className="relative flex-shrink-0">
-          <item.icon className={cn('h-4 w-4', (isActive || isAfmInternal) && 'text-primary')} />
+          <item.icon className={cn('h-4 w-4', isModuleEntry && 'text-primary')} />
           {badgeCount > 0 && collapsed && (
             <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-0.5">
               {badgeCount > 9 ? '9+' : badgeCount}

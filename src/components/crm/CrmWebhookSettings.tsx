@@ -23,11 +23,12 @@ interface Props {
   onUpdateEndpoint: (id: string, updates: Partial<CrmWebhookEndpoint>) => Promise<void>;
   selectedEndpointId: string | null;
   onSelectEndpoint: (id: string | null) => void;
+  embedded?: boolean;
 }
 
 export default function CrmWebhookSettings({ 
   open, onClose, endpoints, logs, stages, pipeline,
-  onCreateEndpoint, onUpdateEndpoint, selectedEndpointId, onSelectEndpoint 
+  onCreateEndpoint, onUpdateEndpoint, selectedEndpointId, onSelectEndpoint, embedded 
 }: Props) {
   const [newName, setNewName] = useState('');
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
@@ -52,13 +53,7 @@ export default function CrmWebhookSettings({
     toast({ title: 'Copied!', description: 'Webhook URL copied to clipboard' });
   };
 
-  return (
-    <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Webhook Settings</DialogTitle>
-        </DialogHeader>
-
+  const content = (
         <Tabs defaultValue="endpoints" className="flex-1 min-h-0 flex flex-col">
           <TabsList className="flex-shrink-0">
             <TabsTrigger value="endpoints" className="text-xs">Endpoints ({endpoints.length})</TabsTrigger>
@@ -140,6 +135,17 @@ export default function CrmWebhookSettings({
             </TabsContent>
           </ScrollArea>
         </Tabs>
+  );
+
+  if (embedded) return <div>{content}</div>;
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Webhook Settings</DialogTitle>
+        </DialogHeader>
+        {content}
       </DialogContent>
     </Dialog>
   );
