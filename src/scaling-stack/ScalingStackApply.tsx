@@ -186,7 +186,7 @@ function StepHero({ onContinue }: { onContinue: () => void }) {
         Want to keep your ROAS at 400%+ while scaling?
       </h1>
       <p className="text-[15px] leading-relaxed mb-5" style={{ color: "hsl(var(--ss-muted-fg))" }}>
-        We help e-commerce and info-product brands scale profitably across Meta &amp; TikTok with disciplined testing, tracking, and creative systems.
+        We help e-commerce and info-product brands scale profitably across Meta with disciplined testing, tracking, and creative systems.
       </p>
       <ul className="space-y-2.5 mb-6">
         {["Performance-first media buying", "Creative testing framework", "Clean tracking & attribution"].map((item) => (
