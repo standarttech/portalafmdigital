@@ -50,7 +50,15 @@ export default function CrmPipelineSettings({ open, onClose, stages, onCreateSta
               >
                 {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer">
+                  <Switch checked={(stage as any).is_qualified_stage} onCheckedChange={v => onUpdateStage(stage.id, { is_qualified_stage: v } as any)} className="scale-75" />
+                  Qual
+                </label>
+                <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer">
+                  <Switch checked={(stage as any).is_booked_stage} onCheckedChange={v => onUpdateStage(stage.id, { is_booked_stage: v } as any)} className="scale-75" />
+                  Book
+                </label>
                 <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer">
                   <Switch checked={stage.is_won_stage} onCheckedChange={v => onUpdateStage(stage.id, { is_won_stage: v, is_closed_stage: v || stage.is_lost_stage })} className="scale-75" />
                   Won

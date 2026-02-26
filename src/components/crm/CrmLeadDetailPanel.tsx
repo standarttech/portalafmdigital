@@ -45,6 +45,8 @@ export default function CrmLeadDetailPanel({ lead, stages, agencyUsers, open, on
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState<Partial<CrmLead>>({});
   const [wonLostReason, setWonLostReason] = useState('');
+  const [showWonDialog, setShowWonDialog] = useState(false);
+  const [wonAmount, setWonAmount] = useState('');
 
   useEffect(() => {
     if (lead) {
@@ -73,13 +75,17 @@ export default function CrmLeadDetailPanel({ lead, stages, agencyUsers, open, on
     setEditMode(false);
   };
 
+
   const handleMarkWon = async () => {
     await onUpdate(lead.id, {
       status: 'won',
       won_at: new Date().toISOString(),
       won_reason: wonLostReason || undefined,
+      value: wonAmount ? Number(wonAmount) : lead.value,
     } as any);
     setWonLostReason('');
+    setWonAmount('');
+    setShowWonDialog(false);
   };
 
   const handleMarkLost = async () => {
@@ -158,7 +164,7 @@ export default function CrmLeadDetailPanel({ lead, stages, agencyUsers, open, on
                   </SelectContent>
                 </Select>
                 {lead.status !== 'won' && (
-                  <Button size="sm" variant="outline" className="h-8 text-xs text-success border-success/40" onClick={handleMarkWon}>
+                  <Button size="sm" variant="outline" className="h-8 text-xs text-success border-success/40" onClick={() => setShowWonDialog(true)}>
                     <Trophy className="h-3 w-3 mr-1" />Won
                   </Button>
                 )}
@@ -169,10 +175,34 @@ export default function CrmLeadDetailPanel({ lead, stages, agencyUsers, open, on
                 )}
               </div>
 
-              {/* Won/Lost reason */}
-              {(lead.status === 'open') && (
+              {/* Won dialog */}
+              {showWonDialog && (
+                <div className="space-y-2 p-3 rounded-lg border border-success/30 bg-success/5">
+                  <p className="text-xs font-medium text-success">Mark as Won</p>
+                  <Input
+                    type="number"
+                    placeholder="Sale amount ($)"
+                    value={wonAmount}
+                    onChange={e => setWonAmount(e.target.value)}
+                    className="text-xs h-8"
+                  />
+                  <Input
+                    placeholder="Won reason (optional)"
+                    value={wonLostReason}
+                    onChange={e => setWonLostReason(e.target.value)}
+                    className="text-xs h-8"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="text-xs h-7 bg-success hover:bg-success/90" onClick={handleMarkWon}>Confirm Won</Button>
+                    <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowWonDialog(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Lost reason */}
+              {(lead.status === 'open' && !showWonDialog) && (
                 <Input
-                  placeholder="Reason (optional, for Won/Lost)"
+                  placeholder="Lost reason (optional)"
                   value={wonLostReason}
                   onChange={e => setWonLostReason(e.target.value)}
                   className="text-xs h-8"

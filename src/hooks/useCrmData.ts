@@ -20,6 +20,8 @@ export interface CrmStage {
   is_closed_stage: boolean;
   is_won_stage: boolean;
   is_lost_stage: boolean;
+  is_qualified_stage: boolean;
+  is_booked_stage: boolean;
 }
 
 export interface CrmLead {

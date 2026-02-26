@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Kanban, Users2, Webhook, Settings, LayoutGrid,
-  Sun, Moon, Sparkles, Languages, Tag, FileText,
+  Sun, Moon, Sparkles, Languages, Tag, FileText, BarChart3,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
@@ -34,6 +34,7 @@ function buildCrmNav(t: (key: any) => string): CrmNavItem[] {
   return [
     { label: 'Pipeline', icon: Kanban, path: '/crm' },
     { label: 'Leads', icon: Users2, path: '/crm/leads' },
+    { label: 'Analytics', icon: BarChart3, path: '/crm/analytics' },
     { label: 'Webhooks', icon: Webhook, path: '/crm/webhooks' },
     { label: 'Settings', icon: Settings, path: '/crm/settings' },
   ];
