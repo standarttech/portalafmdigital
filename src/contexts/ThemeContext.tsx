@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 export type BaseTheme = 'dark' | 'light';
-export type ColorScheme = 'default' | 'midnight-blue' | 'clean-light';
+export type ColorScheme = 'default' | 'midnight-blue' | 'clean-light' | 'midnight-red';
 
 interface ThemeContextType {
   theme: BaseTheme;
@@ -44,17 +44,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>(() => {
     const saved = localStorage.getItem('app-color-scheme');
-    if (saved === 'midnight-blue' || saved === 'clean-light' || saved === 'default') return saved;
+    if (saved === 'midnight-blue' || saved === 'clean-light' || saved === 'midnight-red' || saved === 'default') return saved;
     return 'default';
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('dark', 'futuristic', 'scheme-midnight-blue', 'scheme-clean-light');
+    root.classList.remove('dark', 'futuristic', 'scheme-midnight-blue', 'scheme-clean-light', 'scheme-midnight-red');
 
     // Color scheme determines the base theme automatically
     if (colorScheme === 'midnight-blue') {
       root.classList.add('dark', 'scheme-midnight-blue');
+    } else if (colorScheme === 'midnight-red') {
+      root.classList.add('dark', 'scheme-midnight-red');
     } else if (colorScheme === 'clean-light') {
       root.classList.add('scheme-clean-light');
     } else {
@@ -80,7 +82,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const toggleFx = useCallback(() => setFxEnabledState(prev => !prev), []);
   const setColorScheme = useCallback((s: ColorScheme) => {
     setColorSchemeState(s);
-    if (s === 'midnight-blue') setThemeState('dark');
+    if (s === 'midnight-blue' || s === 'midnight-red') setThemeState('dark');
     else if (s === 'clean-light') setThemeState('light');
   }, []);
 

@@ -15,6 +15,14 @@ interface Particle {
 
 // FIX #23-#26: Theme-specific particle colors with better visibility per theme
 function getParticleColors(colorScheme: string, baseTheme: string): { hues: number[]; sat: number; light: number; connHue: number; connSat: number; connLight: number; globalOpacity: number } {
+  if (colorScheme === 'midnight-red') {
+    return {
+      hues: [0, 15, 340],
+      sat: 70, light: 50,
+      connHue: 0, connSat: 65, connLight: 45,
+      globalOpacity: 0.45,
+    };
+  }
   if (colorScheme === 'midnight-blue') {
     return {
       hues: [207, 220, 190],

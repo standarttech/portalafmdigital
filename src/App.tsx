@@ -50,6 +50,7 @@ import AfmIncomePlan from "@/pages/afm/AfmIncomePlan";
 import AfmFinancialPlanning from "@/pages/afm/AfmFinancialPlanning";
 import AfmStats from "@/pages/afm/AfmStats";
 import NotFound from "./pages/NotFound";
+import CrmPage from "@/pages/CrmPage";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -280,6 +281,7 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/branding" element={<BrandingPage />} />
+        <Route path="/crm" element={<CrmPage />} />
       </Route>
       <Route element={<AfmInternalLayout />}>
         <Route path="/afm-internal" element={<AfmDashboard />} />
