@@ -1206,8 +1206,10 @@ export type Database = {
           color: string
           created_at: string
           id: string
+          is_booked_stage: boolean
           is_closed_stage: boolean
           is_lost_stage: boolean
+          is_qualified_stage: boolean
           is_won_stage: boolean
           name: string
           pipeline_id: string
@@ -1218,8 +1220,10 @@ export type Database = {
           color?: string
           created_at?: string
           id?: string
+          is_booked_stage?: boolean
           is_closed_stage?: boolean
           is_lost_stage?: boolean
+          is_qualified_stage?: boolean
           is_won_stage?: boolean
           name: string
           pipeline_id: string
@@ -1230,8 +1234,10 @@ export type Database = {
           color?: string
           created_at?: string
           id?: string
+          is_booked_stage?: boolean
           is_closed_stage?: boolean
           is_lost_stage?: boolean
+          is_qualified_stage?: boolean
           is_won_stage?: boolean
           name?: string
           pipeline_id?: string
