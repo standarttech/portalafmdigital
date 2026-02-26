@@ -56,7 +56,7 @@ const TESTIMONIALS = [
 
 
 const WHAT_COVERED = [
-{ title: "Full performance breakdown", desc: "of your current Meta & TikTok ad accounts — what's working, what's leaking budget." },
+{ title: "Full performance breakdown", desc: "of your current Meta ad accounts — what's working, what's leaking budget." },
 { title: "Custom scaling roadmap", desc: "showing exactly how to increase spend while maintaining or improving ROAS." },
 { title: "Tracking & attribution audit", desc: "to fix pixel issues, UTM gaps, and data blind spots so you can trust your numbers." }];
 
@@ -85,10 +85,7 @@ const ScalingStackLanding2: React.FC = () => {
 
         <div className="relative z-10 max-w-2xl mx-auto px-5 pt-12 sm:pt-16 pb-10 sm:pb-14 text-center">
           {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-8">
-            
-            <span className="text-[15px] font-bold tracking-tight text-center" style={{ color: "#1a1a2e" }}>AFM Digital</span>
-          </div>
+          <div className="mb-8" />
 
           {/* Badge */}
           <p className="inline-block text-[12px] sm:text-[13px] font-semibold uppercase tracking-wider mb-5 px-4 py-1.5 rounded-full"
@@ -98,26 +95,26 @@ const ScalingStackLanding2: React.FC = () => {
 
           {/* Heading */}
           <h1 className="text-[clamp(28px,7vw,52px)] font-black leading-[1.08] tracking-tight mb-4" style={{ color: "#1a1a2e" }}>
-            Get a Free Breakdown of Your{" "}
-            <span style={{ color: "#3182ce" }}>Ad Performance</span>
+            Get the '8-Figure' Scaling Framework: Built and tested on a{" "}
+            <span style={{ color: "#3182ce" }}>$12M Meta budget</span>
           </h1>
 
           {/* Sub */}
           <p className="text-[15px] sm:text-[17px] leading-relaxed max-w-lg mx-auto mb-8" style={{ color: "#64748b" }}>
-            We'll walk through your current Meta & TikTok setup, find the gaps, and show you exactly how to scale profitably — on a free strategy call.
+            Stop guessing with your budget. We'll show you the exact account structure, bidding strategies, and creative framework we used to manage $12,000,000 in spend—tailored to your brand on a free strategy call.
           </p>
 
           {/* CTA */}
           <button onClick={goToForm}
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-[16px] sm:text-[17px] font-bold transition-all hover:-translate-y-0.5 active:scale-[0.98]"
           style={{ background: "#3182ce", color: "#fff", boxShadow: "0 4px 14px rgba(49,130,206,0.4)" }}>
-            Book Your Free Audit
+            Book Your Demo Call
             <span className="text-[18px]">→</span>
           </button>
 
           {/* Social proof line */}
           <div className="flex flex-col items-center gap-2 mt-6">
-            <p className="text-[13px] italic" style={{ color: "#94a3b8" }}>"We scaled to $100k/mo in 3 months"</p>
+            <p className="text-[13px] italic" style={{ color: "#94a3b8" }}>"This is the exact system we used to generate over $42,000,000 in revenue for our clients"</p>
             <div className="flex items-center gap-2">
               <span className="text-[13px] font-semibold" style={{ color: "#1e293b" }}>4.9 rating from</span>
               <span className="text-[13px]" style={{ color: "#64748b" }}>80+ brands</span>
@@ -164,7 +161,7 @@ const ScalingStackLanding2: React.FC = () => {
           <button onClick={goToForm}
           className="mt-8 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-[16px] font-bold transition-all hover:-translate-y-0.5"
           style={{ background: "#3182ce", color: "#fff", boxShadow: "0 4px 14px rgba(49,130,206,0.4)" }}>
-            Get Your Free Audit →
+            Book Your Demo Call →
           </button>
         </div>
       </section>
@@ -226,10 +223,10 @@ const ScalingStackLanding2: React.FC = () => {
           <button onClick={goToForm}
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-10 py-5 rounded-xl text-[17px] font-bold transition-all hover:-translate-y-0.5"
           style={{ background: "#3182ce", color: "#fff", boxShadow: "0 4px 20px rgba(49,130,206,0.4)" }}>
-            Book Your Free Audit
+            Book Your Demo Call
             <span className="text-[20px]">→</span>
           </button>
-          <p className="mt-4 text-[13px]" style={{ color: "#94a3b8" }}>No commitment · Takes 2 minutes</p>
+          <p className="mt-4 text-[13px]" style={{ color: "#94a3b8" }}>Takes 2 minutes to book a call</p>
         </div>
       </section>
 
