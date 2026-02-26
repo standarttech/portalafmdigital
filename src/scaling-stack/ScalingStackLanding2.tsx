@@ -47,7 +47,7 @@ function Stars({ size = 20 }: {size?: number;}) {
 const TESTIMONIALS = [
 { quote: "AFM brought structure to our testing. CPA stabilized and we finally had a repeatable way to scale.", name: "Sarah M.", role: "DTC Skincare Founder", initials: "SM" },
 { quote: "We scaled from $15k/mo to $80k/mo in three months without killing our ROAS. The system just works.", name: "Marcus D.", role: "Supplements Brand", initials: "MD" },
-{ quote: "Our ROAS jumped from 1.8x to 4.2x in 60 days. They found leaks we didn't even know existed.", name: "Ava S.", role: "Beauty Brand CEO", initials: "AS" },
+{ quote: "Our ROAS jumped from 1.8x to 4.3x in 60 days. They found leaks we didn't even know existed.", name: "Ava S.", role: "Beauty Brand CEO", initials: "AS" },
 { quote: "Best investment we've made. The audit alone saved us $8k/month in wasted spend.", name: "Daniel L.", role: "Info Product Creator", initials: "DL" },
 { quote: "Tracking cleanup + better creative iteration made our Meta spend predictable again.", name: "Jason R.", role: "E-commerce Brand Owner", initials: "JR" },
 { quote: "Pixel setup was a mess. After their attribution cleanup we could finally trust our numbers.", name: "Chris B.", role: "D2C Brand Operator", initials: "CB" },
