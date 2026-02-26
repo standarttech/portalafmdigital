@@ -174,6 +174,7 @@ export const translations = {
   'nav.profile': t('Profile', 'Профиль', 'Profilo', 'Perfil', 'الملف الشخصي', 'Profil'),
   'nav.glossary': t('Glossary', 'Словарь', 'Glossario', 'Glosario', 'المسرد', 'Glossaire'),
   'nav.analyticsSection': t('Analytics', 'Аналитика', 'Analisi', 'Analítica', 'التحليلات', 'Analytique'),
+  'nav.crm': t('CRM', 'CRM', 'CRM', 'CRM', 'CRM', 'CRM'),
   'nav.workspaceSection': t('Workspace', 'Рабочее пространство', 'Spazio di lavoro', 'Espacio de trabajo', 'مساحة العمل', 'Espace de travail'),
   'nav.dataSection': t('Data', 'Данные', 'Dati', 'Datos', 'البيانات', 'Données'),
   'nav.adminSection': t('Administration', 'Администрирование', 'Amministrazione', 'Administración', 'الإدارة', 'Administration'),

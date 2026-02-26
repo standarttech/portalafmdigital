@@ -892,6 +892,499 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_custom_fields: {
+        Row: {
+          client_id: string
+          created_at: string
+          field_type: string
+          id: string
+          is_required: boolean
+          key: string
+          name: string
+          options: Json | null
+          pipeline_id: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          key: string
+          name: string
+          options?: Json | null
+          pipeline_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          key?: string
+          name?: string
+          options?: Json | null
+          pipeline_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_custom_fields_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_custom_fields_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_activities: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          payload: Json
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          payload?: Json
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          payload?: Json
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_custom_field_values: {
+        Row: {
+          created_at: string
+          custom_field_id: string
+          id: string
+          lead_id: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_field_id: string
+          id?: string
+          lead_id: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_field_id?: string
+          id?: string
+          lead_id?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_custom_field_values_custom_field_id_fkey"
+            columns: ["custom_field_id"]
+            isOneToOne: false
+            referencedRelation: "crm_custom_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_custom_field_values_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_notes: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          note: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          note: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          ad_name: string | null
+          adset_name: string | null
+          assignee_id: string | null
+          campaign_name: string | null
+          client_id: string
+          company: string
+          created_at: string
+          duplicate_of: string | null
+          email: string
+          external_lead_id: string | null
+          first_name: string
+          form_name: string | null
+          full_name: string
+          id: string
+          is_duplicate: boolean
+          landing_page: string | null
+          last_name: string
+          lost_at: string | null
+          lost_reason: string | null
+          notes_summary: string
+          phone: string
+          pipeline_id: string
+          priority: string
+          raw_payload: Json | null
+          source: string
+          stage_id: string
+          status: string
+          tags: string[]
+          updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          value: number
+          won_at: string | null
+          won_reason: string | null
+        }
+        Insert: {
+          ad_name?: string | null
+          adset_name?: string | null
+          assignee_id?: string | null
+          campaign_name?: string | null
+          client_id: string
+          company?: string
+          created_at?: string
+          duplicate_of?: string | null
+          email?: string
+          external_lead_id?: string | null
+          first_name?: string
+          form_name?: string | null
+          full_name?: string
+          id?: string
+          is_duplicate?: boolean
+          landing_page?: string | null
+          last_name?: string
+          lost_at?: string | null
+          lost_reason?: string | null
+          notes_summary?: string
+          phone?: string
+          pipeline_id: string
+          priority?: string
+          raw_payload?: Json | null
+          source?: string
+          stage_id: string
+          status?: string
+          tags?: string[]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          value?: number
+          won_at?: string | null
+          won_reason?: string | null
+        }
+        Update: {
+          ad_name?: string | null
+          adset_name?: string | null
+          assignee_id?: string | null
+          campaign_name?: string | null
+          client_id?: string
+          company?: string
+          created_at?: string
+          duplicate_of?: string | null
+          email?: string
+          external_lead_id?: string | null
+          first_name?: string
+          form_name?: string | null
+          full_name?: string
+          id?: string
+          is_duplicate?: boolean
+          landing_page?: string | null
+          last_name?: string
+          lost_at?: string | null
+          lost_reason?: string | null
+          notes_summary?: string
+          phone?: string
+          pipeline_id?: string
+          priority?: string
+          raw_payload?: Json | null
+          source?: string
+          stage_id?: string
+          status?: string
+          tags?: string[]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          value?: number
+          won_at?: string | null
+          won_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipeline_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_closed_stage: boolean
+          is_lost_stage: boolean
+          is_won_stage: boolean
+          name: string
+          pipeline_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_closed_stage?: boolean
+          is_lost_stage?: boolean
+          is_won_stage?: boolean
+          name: string
+          pipeline_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_closed_stage?: boolean
+          is_lost_stage?: boolean
+          is_won_stage?: boolean
+          name?: string
+          pipeline_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pipelines: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipelines_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_webhook_endpoints: {
+        Row: {
+          client_id: string
+          created_at: string
+          default_stage_id: string | null
+          endpoint_slug: string
+          field_mapping: Json
+          id: string
+          is_active: boolean
+          name: string
+          pipeline_id: string
+          secret_key: string
+          source_label: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          default_stage_id?: string | null
+          endpoint_slug?: string
+          field_mapping?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          pipeline_id: string
+          secret_key?: string
+          source_label?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          default_stage_id?: string | null
+          endpoint_slug?: string
+          field_mapping?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          pipeline_id?: string
+          secret_key?: string
+          source_label?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_webhook_endpoints_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_webhook_endpoints_default_stage_id_fkey"
+            columns: ["default_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_webhook_endpoints_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_webhook_logs: {
+        Row: {
+          created_at: string
+          endpoint_id: string
+          id: string
+          request_payload: Json | null
+          response_message: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint_id: string
+          id?: string
+          request_payload?: Json | null
+          response_message?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint_id?: string
+          id?: string
+          request_payload?: Json | null
+          response_message?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_webhook_logs_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "crm_webhook_endpoints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_metrics: {
         Row: {
           add_to_cart: number | null
