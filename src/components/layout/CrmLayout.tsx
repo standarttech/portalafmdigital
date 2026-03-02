@@ -5,32 +5,32 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { ArrowLeftCircle, Menu, LogOut, Kanban, Users2, Webhook, Settings, BarChart3 } from 'lucide-react';
+import { ArrowLeftCircle, Menu, LogOut, Kanban, Users2, Webhook, Settings, BarChart3, Link2 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
 import AppHeader from '@/components/layout/AppHeader';
+import type { TranslationKey } from '@/i18n/translations';
 
 interface CrmNavItem {
-  label: string;
+  labelKey: TranslationKey;
   icon: React.ComponentType<{ className?: string }>;
   path: string;
 }
 
-function buildCrmNav(): CrmNavItem[] {
-  return [
-    { label: 'Pipeline', icon: Kanban, path: '/crm' },
-    { label: 'Leads', icon: Users2, path: '/crm/leads' },
-    { label: 'Analytics', icon: BarChart3, path: '/crm/analytics' },
-    { label: 'Webhooks', icon: Webhook, path: '/crm/webhooks' },
-    { label: 'Settings', icon: Settings, path: '/crm/settings' },
-  ];
-}
+const crmNavItems: CrmNavItem[] = [
+  { labelKey: 'crm.pipeline', icon: Kanban, path: '/crm' },
+  { labelKey: 'crm.leads', icon: Users2, path: '/crm/leads' },
+  { labelKey: 'crm.analytics', icon: BarChart3, path: '/crm/analytics' },
+  { labelKey: 'crm.integrations', icon: Link2, path: '/crm/integrations' },
+  { labelKey: 'crm.webhooks', icon: Webhook, path: '/crm/webhooks' },
+  { labelKey: 'crm.settings', icon: Settings, path: '/crm/settings' },
+];
 
 function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { signOut } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
-  const navItems = buildCrmNav();
 
   return (
     <div className="flex flex-col h-full">
@@ -40,7 +40,7 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
         <div className="flex flex-col">
           <span className="font-bold text-sidebar-foreground text-xs tracking-widest">CRM</span>
-          <span className="text-[9px] tracking-[0.2em] text-primary font-medium -mt-0.5">MODULE</span>
+          <span className="text-[9px] tracking-[0.2em] text-primary font-medium -mt-0.5">{t('crm.module')}</span>
         </div>
       </div>
 
@@ -52,14 +52,14 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           className="w-full justify-start gap-2.5 px-3 text-sidebar-muted hover:text-primary hover:bg-primary/10 text-xs"
         >
           <ArrowLeftCircle className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">Back to Platform</span>
+          <span className="truncate">{t('crm.backToPlatform')}</span>
         </Button>
       </div>
 
       <div className="mx-3 mb-2 border-t border-sidebar-border/50" />
 
       <nav className="flex-1 py-1 px-2 overflow-y-auto min-h-0 space-y-0.5">
-        {navItems.map(item => {
+        {crmNavItems.map(item => {
           const isActive = item.path === '/crm'
             ? location.pathname === '/crm'
             : location.pathname.startsWith(item.path);
@@ -77,7 +77,7 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <ItemIcon className={cn('h-4 w-4 flex-shrink-0', isActive && 'text-primary')} />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t(item.labelKey)}</span>
             </Link>
           );
         })}
@@ -91,7 +91,7 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           className="w-full justify-start gap-3 px-3 text-sidebar-muted hover:text-destructive hover:bg-destructive/10"
         >
           <LogOut className="h-4 w-4" />
-          <span className="text-sm">Logout</span>
+          <span className="text-sm">{t('auth.logout')}</span>
         </Button>
       </div>
     </div>
@@ -137,4 +137,3 @@ export default function CrmLayout() {
     </div>
   );
 }
-

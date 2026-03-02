@@ -6,13 +6,6 @@ export default function GradientOrbs() {
   const { theme, colorScheme } = useTheme();
 
   const getOrbs = () => {
-    if (colorScheme === 'midnight-red') {
-      return {
-        primary: 'radial-gradient(circle, hsla(0, 72%, 51%, 0.12) 0%, transparent 70%)',
-        secondary: 'radial-gradient(circle, hsla(340, 65%, 40%, 0.08) 0%, transparent 70%)',
-        accent: 'radial-gradient(circle, hsla(30, 80%, 50%, 0.06) 0%, transparent 70%)',
-      };
-    }
     if (colorScheme === 'midnight-blue') {
       return {
         primary: 'radial-gradient(circle, hsla(207, 68%, 60%, 0.10) 0%, transparent 70%)',

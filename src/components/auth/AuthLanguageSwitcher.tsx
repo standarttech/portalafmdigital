@@ -21,7 +21,6 @@ const themeOptions: { id: ColorScheme | 'dark' | 'light'; label: string; icon: s
   { id: 'dark', label: 'Dark', icon: '🌙' },
   { id: 'light', label: 'Light', icon: '☀️' },
   { id: 'midnight-blue', label: 'Midnight Blue', icon: '🌊' },
-  { id: 'midnight-red', label: 'Midnight Red', icon: '🔥' },
   { id: 'clean-light', label: 'Clean Light', icon: '💎' },
 ];
 

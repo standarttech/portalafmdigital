@@ -56,6 +56,7 @@ import CrmLeadsPage from "@/pages/crm/CrmLeadsPage";
 import CrmWebhooksPage from "@/pages/crm/CrmWebhooksPage";
 import CrmSettingsPage from "@/pages/crm/CrmSettingsPage";
 import CrmAnalyticsPage from "@/pages/crm/CrmAnalyticsPage";
+import CrmIntegrationsPage from "@/pages/crm/CrmIntegrationsPage";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -291,6 +292,7 @@ function AppRoutes() {
         <Route path="/crm" element={<CrmPage />} />
         <Route path="/crm/leads" element={<CrmLeadsPage />} />
         <Route path="/crm/analytics" element={<CrmAnalyticsPage />} />
+        <Route path="/crm/integrations" element={<CrmIntegrationsPage />} />
         <Route path="/crm/webhooks" element={<CrmWebhooksPage />} />
         <Route path="/crm/settings" element={<CrmSettingsPage />} />
       </Route>

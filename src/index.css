@@ -222,59 +222,7 @@
     --info-foreground: 0 0% 100%;
   }
 
-  /* ── Midnight Red scheme ── */
-  .scheme-midnight-red {
-    --background: 8 24% 8%;
-    --foreground: 16 28% 94%;
-
-    --card: 8 22% 11%;
-    --card-foreground: 16 28% 94%;
-
-    --popover: 8 22% 11%;
-    --popover-foreground: 16 28% 94%;
-
-    --primary: 3 82% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 8 18% 16%;
-    --secondary-foreground: 16 28% 94%;
-
-    --muted: 8 18% 16%;
-    --muted-foreground: 12 14% 68%;
-
-    --accent: 12 22% 22%;
-    --accent-foreground: 16 28% 94%;
-
-    --destructive: 350 88% 62%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 8 18% 20%;
-    --input: 8 18% 20%;
-    --ring: 3 82% 60%;
-
-    --sidebar-background: 8 30% 6%;
-    --sidebar-foreground: 16 28% 94%;
-    --sidebar-primary: 3 82% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 8 22% 14%;
-    --sidebar-accent-foreground: 16 28% 94%;
-    --sidebar-border: 8 20% 16%;
-    --sidebar-ring: 3 82% 60%;
-    --sidebar-muted: 12 10% 56%;
-
-    --chart-1: 3 82% 60%;
-    --chart-2: 22 92% 58%;
-    --chart-3: 345 76% 62%;
-    --chart-4: 28 88% 62%;
-    --chart-5: 190 66% 58%;
-
-    --success: 155 65% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 32 92% 58%;
-    --warning-foreground: 0 0% 0%;
-    --info: 205 78% 62%;
-    --info-foreground: 0 0% 100%;
-  }
+  /* Midnight Red removed */
 
   /* FIX #19: Futuristic glass-card - use CSS variables for theme-adaptive glow */
   .futuristic .glass-card {
