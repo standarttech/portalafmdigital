@@ -1,28 +1,14 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import {
-  ArrowLeftCircle, Menu, LogOut, Kanban, Users2, Webhook, Settings, LayoutGrid,
-  Sun, Moon, Sparkles, Languages, Tag, FileText, BarChart3,
-} from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ArrowLeftCircle, Menu, LogOut, Kanban, Users2, Webhook, Settings, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
-import type { Language } from '@/i18n/translations';
-
-const LANGUAGES: { code: Language; label: string; flag: string }[] = [
-  { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-];
+import AppHeader from '@/components/layout/AppHeader';
 
 interface CrmNavItem {
   label: string;
@@ -30,7 +16,7 @@ interface CrmNavItem {
   path: string;
 }
 
-function buildCrmNav(t: (key: any) => string): CrmNavItem[] {
+function buildCrmNav(): CrmNavItem[] {
   return [
     { label: 'Pipeline', icon: Kanban, path: '/crm' },
     { label: 'Leads', icon: Users2, path: '/crm/leads' },
@@ -44,12 +30,10 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useLanguage();
-  const navItems = buildCrmNav(t);
+  const navItems = buildCrmNav();
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border gap-3 flex-shrink-0">
         <div className="h-9 w-9 flex-shrink-0 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))' }}>
           <Kanban className="h-5 w-5 text-primary-foreground" />
@@ -60,7 +44,6 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
 
-      {/* Back to portal */}
       <div className="px-2 pt-3 pb-2">
         <Button
           variant="ghost"
@@ -75,7 +58,6 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="mx-3 mb-2 border-t border-sidebar-border/50" />
 
-      {/* Nav items */}
       <nav className="flex-1 py-1 px-2 overflow-y-auto min-h-0 space-y-0.5">
         {navItems.map(item => {
           const isActive = item.path === '/crm'
@@ -101,7 +83,6 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      {/* Logout */}
       <div className="p-2 border-t border-sidebar-border flex-shrink-0">
         <Button
           variant="ghost"
@@ -113,56 +94,6 @@ function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <span className="text-sm">Logout</span>
         </Button>
       </div>
-    </div>
-  );
-}
-
-function CrmHeaderControls() {
-  const { language, setLanguage } = useLanguage();
-  const { theme, toggleTheme, fxEnabled, toggleFx } = useTheme();
-  const currentLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <button
-        onClick={toggleFx}
-        title="Futuristic FX"
-        className={cn(
-          'p-1.5 rounded-md text-xs transition-colors',
-          fxEnabled ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-        )}
-      >
-        <Sparkles className="h-3.5 w-3.5" />
-      </button>
-      <button
-        onClick={toggleTheme}
-        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-        title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
-      >
-        {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-      </button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors text-xs font-medium">
-            <Languages className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{currentLang.flag} {currentLang.code.toUpperCase()}</span>
-            <span className="sm:hidden">{currentLang.flag}</span>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[140px]">
-          {LANGUAGES.map(lang => (
-            <DropdownMenuItem
-              key={lang.code}
-              onClick={() => setLanguage(lang.code)}
-              className={cn('flex items-center gap-2 text-sm cursor-pointer', language === lang.code && 'text-primary font-medium')}
-            >
-              <span>{lang.flag}</span>
-              <span>{lang.label}</span>
-              {language === lang.code && <span className="ml-auto text-primary text-xs">✓</span>}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   );
 }
@@ -198,21 +129,7 @@ export default function CrmLayout() {
         'flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10 h-screen',
         isMobile ? 'ml-0' : 'ml-56'
       )}>
-        <header className={cn(
-          'h-14 flex items-center px-3 sm:px-4 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0 gap-2',
-          isMobile && 'pl-14'
-        )}>
-          <div className="flex items-center gap-2 min-w-0">
-            <Kanban className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="font-semibold text-foreground text-sm tracking-wide truncate">CRM</span>
-            <span className="text-muted-foreground text-xs hidden sm:block flex-shrink-0">— Pipeline & Leads</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-            <CrmHeaderControls />
-            <div className="h-2 w-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
-          </div>
-        </header>
-
+        <AppHeader />
         <main className="flex-1 p-2 sm:p-4 lg:p-6 overflow-auto flex flex-col min-h-0">
           <Outlet />
         </main>
@@ -220,3 +137,4 @@ export default function CrmLayout() {
     </div>
   );
 }
+

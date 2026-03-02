@@ -1,10 +1,16 @@
 import { useState, useCallback } from 'react';
 import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
-  DragStartEvent, DragEndEvent, DragOverEvent, DragOverlay,
+  DndContext,
+  closestCorners,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverlay,
+  useDroppable,
 } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { GripVertical, Phone, Mail, Tag, User, Calendar } from 'lucide-react';
@@ -40,10 +46,10 @@ function SortableLeadCard({ lead, onClick, agencyUsers }: { lead: CrmLead; onCli
       ref={setNodeRef}
       style={style}
       className={cn(
-        'bg-card border border-border/60 rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all group shadow-sm hover:shadow-md',
+        'bg-card border border-border/60 rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all group shadow-sm hover:shadow-md touch-none',
         isDragging && 'shadow-lg ring-2 ring-primary/30'
       )}
-      onClick={(e) => { if (!isDragging) onClick(); }}
+      onClick={() => { if (!isDragging) onClick(); }}
       {...attributes}
       {...listeners}
     >
@@ -105,6 +111,11 @@ function StageColumn({ stage, leads, onLeadClick, agencyUsers }: {
   onLeadClick: (lead: CrmLead) => void;
   agencyUsers?: { user_id: string; display_name: string | null }[];
 }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: stage.id,
+    data: { type: 'stage', stageId: stage.id },
+  });
+
   return (
     <div className="flex-shrink-0 w-[280px] flex flex-col max-h-full">
       <div className="flex items-center gap-2 mb-2 px-1">
@@ -112,8 +123,14 @@ function StageColumn({ stage, leads, onLeadClick, agencyUsers }: {
         <span className="text-sm font-semibold text-foreground truncate">{stage.name}</span>
         <span className="text-xs text-muted-foreground ml-auto bg-muted/60 px-1.5 py-0.5 rounded-full">{leads.length}</span>
       </div>
-      <div className="flex-1 bg-muted/20 rounded-lg p-2 overflow-y-auto min-h-[200px] space-y-2 border border-border/30">
-        <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
+      <div
+        ref={setNodeRef}
+        className={cn(
+          'flex-1 bg-muted/20 rounded-lg p-2 overflow-y-auto min-h-[200px] space-y-2 border border-border/30 transition-colors',
+          isOver && 'border-primary/50 bg-primary/5'
+        )}
+      >
+        <SortableContext id={stage.id} items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map(lead => (
             <SortableLeadCard
               key={lead.id}
@@ -136,7 +153,7 @@ function StageColumn({ stage, leads, onLeadClick, agencyUsers }: {
 export default function CrmKanbanBoard({ stages, leads, onMoveLead, onLeadClick, agencyUsers }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
   );
 
   const activeLead = activeId ? leads.find(l => l.id === activeId) : null;
@@ -154,19 +171,20 @@ export default function CrmKanbanBoard({ stages, leads, onMoveLead, onLeadClick,
     const lead = leads.find(l => l.id === leadId);
     if (!lead) return;
 
-    // Determine target stage
+    const overData = over.data.current as { type?: string; stageId?: string; sortable?: { containerId?: string } } | undefined;
     let targetStageId: string | null = null;
-    
-    // If dropped over another lead, use that lead's stage
-    const overLead = leads.find(l => l.id === over.id);
-    if (overLead) {
-      targetStageId = overLead.stage_id;
+
+    if (overData?.type === 'stage' && overData.stageId) {
+      targetStageId = overData.stageId;
+    } else if (overData?.type === 'lead') {
+      targetStageId = overData.stageId || overData.sortable?.containerId || null;
     }
-    
-    // If dropped over a stage column container
-    const overStage = stages.find(s => s.id === over.id);
-    if (overStage) {
-      targetStageId = overStage.id;
+
+    if (!targetStageId) {
+      const overLead = leads.find(l => l.id === over.id);
+      if (overLead) targetStageId = overLead.stage_id;
+      const overStage = stages.find(s => s.id === over.id);
+      if (overStage) targetStageId = overStage.id;
     }
 
     if (targetStageId && targetStageId !== lead.stage_id) {
@@ -174,22 +192,6 @@ export default function CrmKanbanBoard({ stages, leads, onMoveLead, onLeadClick,
     }
   }, [leads, stages, onMoveLead]);
 
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const leadId = active.id as string;
-    const lead = leads.find(l => l.id === leadId);
-    if (!lead) return;
-
-    // Check if over a lead in a different stage
-    const overLead = leads.find(l => l.id === over.id);
-    if (overLead && overLead.stage_id !== lead.stage_id) {
-      // Will be handled in dragEnd
-    }
-  }, [leads]);
-
-  // Group leads by stage
   const leadsByStage = stages.reduce<Record<string, CrmLead[]>>((acc, stage) => {
     acc[stage.id] = leads.filter(l => l.stage_id === stage.id);
     return acc;
@@ -198,22 +200,20 @@ export default function CrmKanbanBoard({ stages, leads, onMoveLead, onLeadClick,
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
     >
       <ScrollArea className="w-full">
         <div className="flex gap-3 pb-4 min-h-[400px]" style={{ minWidth: stages.length * 296 }}>
           {stages.map(stage => (
-            <SortableContext key={stage.id} items={[stage.id]} strategy={verticalListSortingStrategy}>
-              <StageColumn
-                stage={stage}
-                leads={leadsByStage[stage.id] || []}
-                onLeadClick={onLeadClick}
-                agencyUsers={agencyUsers}
-              />
-            </SortableContext>
+            <StageColumn
+              key={stage.id}
+              stage={stage}
+              leads={leadsByStage[stage.id] || []}
+              onLeadClick={onLeadClick}
+              agencyUsers={agencyUsers}
+            />
           ))}
         </div>
         <ScrollBar orientation="horizontal" />

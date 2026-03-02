@@ -1,29 +1,18 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
-  LayoutDashboard, TrendingUp, Globe, Settings, DollarSign,
-  ArrowLeftCircle, Zap, Menu, LogOut, BarChart3, BarChart2, Sun, Moon, Sparkles,
-  Languages, ChevronDown, Users, Wrench, LineChart, Banknote,
+  LayoutDashboard, TrendingUp, Globe, Settings,
+  ArrowLeftCircle, Zap, Menu, LogOut,
+  ChevronDown, Users, Wrench, LineChart, Banknote,
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
-import type { Language } from '@/i18n/translations';
-
-const LANGUAGES: { code: Language; label: string; flag: string }[] = [
-  { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-];
+import AppHeader from '@/components/layout/AppHeader';
 
 interface NavItem {
   label: string;
@@ -46,7 +35,7 @@ function buildNavGroups(t: (key: any) => string): NavGroup[] {
       icon: LayoutDashboard,
       items: [
         { label: t('afm.dashboard'), icon: LayoutDashboard, path: '/afm-internal' },
-        { label: t('afm.statsDashboard'), icon: BarChart3, path: '/afm-internal/stats' },
+        { label: t('afm.statsDashboard'), icon: LayoutDashboard, path: '/afm-internal/stats' },
       ],
     },
     {
@@ -63,7 +52,7 @@ function buildNavGroups(t: (key: any) => string): NavGroup[] {
       label: t('afm.salesGroup'),
       icon: Users,
       items: [
-        { label: t('afm.salesCrm'), icon: DollarSign, path: '/afm-internal/sales' },
+        { label: t('afm.salesCrm'), icon: Banknote, path: '/afm-internal/sales' },
       ],
     },
     {
@@ -72,7 +61,7 @@ function buildNavGroups(t: (key: any) => string): NavGroup[] {
       icon: Banknote,
       items: [
         { label: t('afm.incomePlan'), icon: LineChart, path: '/afm-internal/income-plan' },
-        { label: t('afm.financialPlanning'), icon: BarChart2, path: '/afm-internal/financial-planning' },
+        { label: t('afm.financialPlanning'), icon: Banknote, path: '/afm-internal/financial-planning' },
       ],
     },
     {
@@ -186,56 +175,6 @@ function AfmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function AfmHeaderControls() {
-  const { language, setLanguage } = useLanguage();
-  const { theme, toggleTheme, fxEnabled, toggleFx } = useTheme();
-  const currentLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <button
-        onClick={toggleFx}
-        title="Futuristic FX"
-        className={cn(
-          'p-1.5 rounded-md text-xs transition-colors',
-          fxEnabled ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-        )}
-      >
-        <Sparkles className="h-3.5 w-3.5" />
-      </button>
-      <button
-        onClick={toggleTheme}
-        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-        title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
-      >
-        {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-      </button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors text-xs font-medium">
-            <Languages className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{currentLang.flag} {currentLang.code.toUpperCase()}</span>
-            <span className="sm:hidden">{currentLang.flag}</span>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[140px]">
-          {LANGUAGES.map(lang => (
-            <DropdownMenuItem
-              key={lang.code}
-              onClick={() => setLanguage(lang.code)}
-              className={cn('flex items-center gap-2 text-sm cursor-pointer', language === lang.code && 'text-primary font-medium')}
-            >
-              <span>{lang.flag}</span>
-              <span>{lang.label}</span>
-              {language === lang.code && <span className="ml-auto text-primary text-xs">✓</span>}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}
-
 export default function AfmInternalLayout() {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -267,22 +206,7 @@ export default function AfmInternalLayout() {
         'flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10 h-screen',
         isMobile ? 'ml-0' : 'ml-56'
       )}>
-        <header className={cn(
-          'h-14 flex items-center px-3 sm:px-4 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0 gap-2',
-          isMobile && 'pl-14'
-        )}>
-          <div className="flex items-center gap-2 min-w-0">
-            <Zap className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="font-semibold text-foreground text-sm tracking-wide truncate">AFM Digital</span>
-            <span className="text-muted-foreground text-xs hidden sm:block flex-shrink-0">— Internal</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-            <AfmHeaderControls />
-            <div className="h-2 w-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
-            <span className="text-xs text-muted-foreground hidden lg:block">Team only</span>
-          </div>
-        </header>
-
+        <AppHeader />
         <main className="flex-1 p-2 sm:p-4 lg:p-6 overflow-auto flex flex-col min-h-0">
           <Outlet />
         </main>
@@ -290,3 +214,4 @@ export default function AfmInternalLayout() {
     </div>
   );
 }
+
