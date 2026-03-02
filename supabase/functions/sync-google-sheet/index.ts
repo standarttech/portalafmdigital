@@ -31,15 +31,32 @@ function normalizeHeader(h: string): string {
 }
 
 function findColumn(row: Record<string, string>, ...names: string[]): string {
-  for (const key of Object.keys(row)) {
+  const keys = Object.keys(row);
+  const normalizedNames = names.map(normalizeHeader);
+
+  // Pass 1: exact match (highest priority)
+  for (const key of keys) {
     const norm = normalizeHeader(key);
-    for (const n of names) {
-      const normName = normalizeHeader(n);
-      // Exact match OR column key STARTS WITH search name
-      // handles "Date February", "Date March" etc. from sheets with merged section headers
-      if (norm === normName || norm.startsWith(normName)) return row[key];
+    if (normalizedNames.includes(norm)) return row[key];
+  }
+
+  // Pass 2: startsWith match — but ONLY if the remaining chars are NOT alphanumeric
+  // e.g. "date january" matches "date", but "purchaserate" does NOT match "purchase"
+  for (const key of keys) {
+    const norm = normalizeHeader(key);
+    for (const normName of normalizedNames) {
+      if (norm.startsWith(normName)) {
+        const rest = norm.slice(normName.length);
+        // Allow match only if what follows is empty OR starts with a non-alpha char
+        // This prevents "purchaserate" matching "purchase" but allows "datejanuary" matching "date"
+        // We specifically allow date-like suffixes (month names after "date")
+        if (rest === "") return row[key];
+        // For "date" prefix specifically, allow month name suffixes
+        if (normName === "date" || normName === "дата") return row[key];
+      }
     }
   }
+
   return "";
 }
 
@@ -134,6 +151,20 @@ async function syncClient(supabase: any, clientId: string, platform: string = "g
   console.log("CSV headers:", Object.keys(rows[0]));
   console.log("First row values:", JSON.stringify(rows[0]));
 
+  // Debug: show what each metric maps to in the first data row
+  const debugRow = rows[0];
+  console.log("Column mapping debug:", JSON.stringify({
+    date: findColumn(debugRow, "date", "дата", "день"),
+    spend: findColumn(debugRow, "spend", "расход", "расходы", "cost", "затраты"),
+    impressions: findColumn(debugRow, "impressions", "показы", "reach", "охват"),
+    clicks: findColumn(debugRow, "clicks", "click", "клики", "клик", "linkclicks", "link_clicks"),
+    leads: findColumn(debugRow, "leads", "лиды", "лид", "conversions", "конверсии"),
+    purchases: findColumn(debugRow, "purchases", "покупки", "purchase"),
+    revenue: findColumn(debugRow, "revenue", "доход", "выручка", "amount", "сумма"),
+    addToCart: findColumn(debugRow, "addtocart", "add_to_cart", "add to cart", "корзина", "добавления в корзину", "atc"),
+    checkouts: findColumn(debugRow, "checkouts", "checkout", "чекаут", "оформление", "оформления", "initiatedcheckout"),
+  }));
+
   // Get or create ad_account for this SPECIFIC platform connection
   let { data: existingConns } = await supabase
     .from("platform_connections").select("id").eq("client_id", clientId).eq("platform", platform).limit(1);
@@ -181,13 +212,13 @@ async function syncClient(supabase: any, clientId: string, platform: string = "g
     const clicks = Math.round(cleanNumber(findColumn(row, "clicks", "click", "клики", "клик", "linkclicks", "link_clicks")));
     // Leads
     const leads = Math.round(cleanNumber(findColumn(row, "leads", "лиды", "лид", "conversions", "конверсии")));
-    // Revenue / Amount
+    // Revenue / Amount — exclude "profit" to avoid mismatch
     const revenue = cleanNumber(findColumn(row, "revenue", "доход", "выручка", "amount", "сумма"));
-    // Purchases
+    // Purchases — use specific full terms to avoid matching "purchase rate", "purchase count" etc.
     const purchases = Math.round(cleanNumber(findColumn(row, "purchases", "покупки", "purchase")));
     // Add to Cart
     const addToCart = Math.round(cleanNumber(findColumn(row, "addtocart", "add_to_cart", "add to cart", "корзина", "добавления в корзину", "atc", "добавлениевкорзину")));
-    // Checkouts
+    // Checkouts / Initiated Checkout
     const checkouts = Math.round(cleanNumber(findColumn(row, "checkouts", "checkout", "чекаут", "оформление", "оформления", "initiatedcheckout", "initiated_checkout", "initiated checkout")));
 
     if (!dateStr) continue;
