@@ -250,8 +250,9 @@ export default function ClientWebhooks({ clientId }: { clientId: string }) {
       {/* Info banner */}
       <motion.div variants={item}>
         <Card className="glass-card border-primary/10">
-          <CardContent className="p-3 text-xs text-muted-foreground">
+          <CardContent className="p-3 text-xs text-muted-foreground space-y-1.5">
             <p>Настройте вебхуки для автоматической отправки данных в CRM, Telegram-боты или другие сервисы. Каждый вебхук подписывается HMAC (SHA-256) для безопасности.</p>
+            <p>Быстрое подключение Telegram: укажите URL в формате <code className="px-1 py-0.5 rounded bg-muted text-foreground">telegram://CHAT_ID</code> (например, <code className="px-1 py-0.5 rounded bg-muted text-foreground">telegram://123456789</code>).</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -363,7 +364,7 @@ export default function ClientWebhooks({ clientId }: { clientId: string }) {
             </div>
             <div>
               <Label className="text-xs">URL эндпоинта</Label>
-              <Input placeholder="https://your-api.com/webhook" value={formUrl} onChange={e => setFormUrl(e.target.value)} className="mt-1" />
+              <Input placeholder="https://your-api.com/webhook или telegram://123456789" value={formUrl} onChange={e => setFormUrl(e.target.value)} className="mt-1" />
             </div>
             <div>
               <Label className="text-xs">Secret (для HMAC подписи, опционально)</Label>
