@@ -233,6 +233,37 @@ export default function ClientDetailPage() {
 
   const category: ClientCategory = useMemo(() => toClientCategory(client?.category), [client?.category]);
 
+  // Selectable chart lines
+  const ALL_CHART_OPTIONS = useMemo(() => [
+    { key: 'spend', color: 'hsl(42, 87%, 55%)', gradientId: 'spendG', labelKey: 'metric.spend' },
+    { key: 'leads', color: 'hsl(160, 84%, 39%)', gradientId: 'leadsG', labelKey: 'metric.leads' },
+    { key: 'clicks', color: 'hsl(280, 70%, 60%)', gradientId: 'clicksG', labelKey: 'metric.clicks' },
+    { key: 'impressions', color: 'hsl(190, 80%, 50%)', gradientId: 'impressionsG', labelKey: 'metric.impressions' },
+    { key: 'cpl', color: 'hsl(217, 91%, 60%)', gradientId: 'cplG', labelKey: 'metric.cpl' },
+    { key: 'ctr', color: 'hsl(340, 70%, 55%)', gradientId: 'ctrG', labelKey: 'metric.ctr' },
+    { key: 'revenue', color: 'hsl(120, 60%, 45%)', gradientId: 'revenueG', labelKey: 'metric.revenue' },
+    { key: 'purchases', color: 'hsl(30, 80%, 55%)', gradientId: 'purchasesG', labelKey: 'metric.purchases' },
+    { key: 'addToCart', color: 'hsl(260, 60%, 55%)', gradientId: 'atcG', labelKey: 'metric.addToCart' },
+    { key: 'roas', color: 'hsl(50, 90%, 50%)', gradientId: 'roasG', labelKey: 'metric.roas' },
+  ], []);
+
+  const defaultChartKeys = useMemo(() => {
+    return (CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other).map(m => m.key);
+  }, [category]);
+
+  const [activeChartLines, setActiveChartLines] = useState<string[]>(defaultChartKeys);
+  useEffect(() => { setActiveChartLines(defaultChartKeys); }, [defaultChartKeys]);
+
+  const activeChartMetrics = useMemo(() =>
+    ALL_CHART_OPTIONS.filter(m => activeChartLines.includes(m.key)),
+  [activeChartLines, ALL_CHART_OPTIONS]);
+
+  const toggleChartLine = (key: string) => {
+    setActiveChartLines(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
   // Visible columns
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   useEffect(() => {
@@ -293,28 +324,33 @@ export default function ClientDetailPage() {
   }, [dailyTableData]);
 
 
-  // Chart data
-  const chartMetrics = CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other;
+  // Chart data — use percentage-of-max normalization so all metrics fill chart proportionally
   const chartData = useMemo(() => {
     const raw = dailyTableData.map(r => {
       const point: Record<string, any> = { date: r.date.slice(5) };
-      chartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; point[`_raw_${m.key}`] = (r as any)[m.key] || 0; });
+      ALL_CHART_OPTIONS.forEach(m => {
+        point[m.key] = (r as any)[m.key] || 0;
+        point[`_raw_${m.key}`] = (r as any)[m.key] || 0;
+      });
       return point;
     });
     if (chartNormalized && raw.length > 0) {
-      const first = raw[0];
+      // Find max value for each metric across all days
+      const maxVals: Record<string, number> = {};
+      ALL_CHART_OPTIONS.forEach(m => {
+        maxVals[m.key] = Math.max(...raw.map(d => Math.abs(d[m.key] as number)), 1);
+      });
       return raw.map(d => {
         const norm: Record<string, any> = { date: d.date };
-        chartMetrics.forEach(m => {
-          const base = first[m.key] as number;
-          norm[m.key] = base > 0 ? Math.round((d[m.key] as number) / base * 100) : 0;
+        ALL_CHART_OPTIONS.forEach(m => {
+          norm[m.key] = Math.round((d[m.key] as number) / maxVals[m.key] * 100);
           norm[`_raw_${m.key}`] = d[`_raw_${m.key}`];
         });
         return norm;
       });
     }
     return raw;
-  }, [dailyTableData, chartNormalized, chartMetrics]);
+  }, [dailyTableData, chartNormalized, ALL_CHART_OPTIONS]);
 
   // KPI data
   const kpiKeys = CATEGORY_KPIS[category] || CATEGORY_KPIS.other;
@@ -661,11 +697,12 @@ export default function ClientDetailPage() {
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <CardTitle className="text-sm sm:text-base">{t('dashboard.performance')}</CardTitle>
                     <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      {chartMetrics.map(m => (
-                        <div key={m.key} className="flex items-center gap-1.5 text-xs">
+                      {ALL_CHART_OPTIONS.map(m => (
+                        <button key={m.key} onClick={() => toggleChartLine(m.key)}
+                          className={`flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition-opacity ${activeChartLines.includes(m.key) ? 'opacity-100' : 'opacity-30'}`}>
                           <div className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
-                          {t(ALL_METRIC_COLUMNS.find(c => c.key === m.key)?.labelKey as TranslationKey || 'common.noData')}
-                        </div>
+                          {t(m.labelKey as TranslationKey)}
+                        </button>
                       ))}
                       <div className="flex bg-secondary/50 rounded-md p-0.5 ml-2">
                         <Button variant="ghost" size="sm" onClick={() => setChartNormalized(false)}
@@ -688,26 +725,27 @@ export default function ClientDetailPage() {
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData}>
                           <defs>
-                            {chartMetrics.map(m => (
+                            {activeChartMetrics.map(m => (
                               <linearGradient key={m.gradientId} id={m.gradientId} x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor={m.color} stopOpacity={0.3} /><stop offset="95%" stopColor={m.color} stopOpacity={0} />
                               </linearGradient>
                             ))}
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
-                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" interval="preserveStartEnd" />
-                          <YAxis tick={{ fontSize: 9, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" width={35} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" interval="preserveStartEnd" />
+                          <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} stroke="hsl(var(--border))" width={35} />
                           <Tooltip
-                            contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px', color: 'hsl(40, 20%, 90%)' }}
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px', color: 'hsl(var(--foreground))' }}
                             formatter={(value: number, name: string, props: any) => {
                               const rawKey = `_raw_${name}`;
                               const rawVal = props.payload?.[rawKey];
                               const displayVal = chartNormalized && rawVal !== undefined ? rawVal : value;
                               const formatted = typeof displayVal === 'number' ? (displayVal % 1 === 0 ? displayVal.toLocaleString() : displayVal.toFixed(2)) : displayVal;
-                              return [formatted, name];
+                              const label = ALL_CHART_OPTIONS.find(o => o.key === name)?.labelKey;
+                              return [formatted, label ? t(label as TranslationKey) : name];
                             }}
                           />
-                          {chartMetrics.map(m => (
+                          {activeChartMetrics.map(m => (
                             <Area key={m.key} type="monotone" dataKey={m.key} stroke={m.color} fill={`url(#${m.gradientId})`} strokeWidth={2} />
                           ))}
                         </AreaChart>
