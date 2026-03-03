@@ -19,6 +19,7 @@ interface Props {
   onCustomDateRangeChange?: (range: { from: Date; to: Date }) => void;
   compareEnabled?: boolean;
   onCompareEnabledChange?: (enabled: boolean) => void;
+  // kept for backward compat but no longer used by DateRangePicker
 }
 
 const platformOptions: { value: PlatformFilter; label: string }[] = [

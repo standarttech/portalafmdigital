@@ -4,8 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import DateRangePicker from '@/components/dashboard/DateRangePicker';
-import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -15,12 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  Plus, Loader2, GripVertical, Calendar, User, MoreHorizontal,
-  CheckCircle2, Clock, PlayCircle, Trash2, Edit,
+  Plus, Loader2, Calendar, MoreHorizontal,
+  CheckCircle2, Clock, PlayCircle, Trash2, Archive, Eye, EyeOff,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
@@ -37,6 +34,7 @@ interface Task {
   assigned_to: string | null;
   due_date: string | null;
   created_at: string;
+  updated_at: string;
   client_name?: string;
   assignee_name?: string;
 }
@@ -49,6 +47,29 @@ const statusColumns: { key: Task['status']; labelRu: string; labelEn: string; ic
   { key: 'in_progress', labelRu: 'В работе', labelEn: 'In Progress', icon: PlayCircle, color: 'border-t-blue-500' },
   { key: 'completed', labelRu: 'Выполнено', labelEn: 'Done', icon: CheckCircle2, color: 'border-t-emerald-500' },
 ];
+
+/** Parse a date-only string (YYYY-MM-DD) without timezone shift */
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatLocalDate(dateStr: string, fmt: 'short' | 'full' = 'short'): string {
+  const d = parseLocalDate(dateStr);
+  if (fmt === 'short') {
+    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+}
+
+/** Check if a completed task should be auto-archived (completed > 3 days ago) */
+function isAutoArchived(task: Task): boolean {
+  if (task.status !== 'completed') return false;
+  const completedAt = new Date(task.updated_at);
+  const threeDaysAgo = new Date();
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+  return completedAt < threeDaysAgo;
+}
 
 export default function TaskBoardPage() {
   const { language } = useLanguage();
@@ -64,10 +85,7 @@ export default function TaskBoardPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [saving, setSaving] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>('30d');
-  const [comparison, setComparison] = useState<Comparison>('none');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
-  const [compareEnabled, setCompareEnabled] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -139,9 +157,8 @@ export default function TaskBoardPage() {
       const { error } = await supabase.from('tasks').insert(payload);
       if (error) { toast.error(error.message); setSaving(false); return; }
 
-      // Send notification for assignee via send-notification (in-app + email)
       if (formAssignee) {
-        const notifMessage = `${formTitle}${formDueDate ? ` · ${isRu ? 'до' : 'due'} ${format(new Date(formDueDate), 'dd.MM.yy')}` : ''}`;
+        const notifMessage = `${formTitle}${formDueDate ? ` · ${isRu ? 'до' : 'due'} ${formatLocalDate(formDueDate, 'full')}` : ''}`;
         await supabase.functions.invoke('send-notification', {
           body: {
             user_id: formAssignee,
@@ -163,7 +180,16 @@ export default function TaskBoardPage() {
 
   const handleStatusChange = async (taskId: string, newStatus: Task['status']) => {
     await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId);
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus, updated_at: new Date().toISOString() } : t));
+  };
+
+  const handleArchiveTask = async (taskId: string) => {
+    // Move to completed + set updated_at to 4 days ago to trigger auto-archive
+    const fourDaysAgo = new Date();
+    fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+    await supabase.from('tasks').update({ status: 'completed' as any, updated_at: fourDaysAgo.toISOString() } as any).eq('id', taskId);
+    fetchData();
+    toast.success(isRu ? 'Задача архивирована' : 'Task archived');
   };
 
   const handleDelete = async (taskId: string) => {
@@ -172,12 +198,18 @@ export default function TaskBoardPage() {
     toast.success(isRu ? 'Удалено' : 'Deleted');
   };
 
-  const tasksByStatus = useMemo(() => {
-    const map: Record<string, Task[]> = { pending: [], in_progress: [], completed: [] };
+  const { activeTasks, archivedTasks, tasksByStatus } = useMemo(() => {
+    const active: Task[] = [];
+    const archived: Task[] = [];
     tasks.forEach(t => {
+      if (isAutoArchived(t)) archived.push(t);
+      else active.push(t);
+    });
+    const map: Record<string, Task[]> = { pending: [], in_progress: [], completed: [] };
+    active.forEach(t => {
       if (map[t.status]) map[t.status].push(t);
     });
-    return map;
+    return { activeTasks: active, archivedTasks: archived, tasksByStatus: map };
   }, [tasks]);
 
   if (!isAgency) return <div className="p-8 text-center text-muted-foreground">Access restricted</div>;
@@ -194,16 +226,15 @@ export default function TaskBoardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <DateRangePicker
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-            comparison={comparison}
-            onComparisonChange={setComparison}
-            customDateRange={customDateRange}
-            onCustomDateRangeChange={setCustomDateRange}
-            compareEnabled={compareEnabled}
-            onCompareEnabledChange={setCompareEnabled}
-          />
+          <Button
+            variant={showArchive ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowArchive(!showArchive)}
+          >
+            {showArchive ? <EyeOff className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+            {isRu ? `Архив (${archivedTasks.length})` : `Archive (${archivedTasks.length})`}
+          </Button>
           <Button size="sm" className="gap-1.5" onClick={() => openNewDialog()}>
             <Plus className="h-4 w-4" />
             {isRu ? 'Новая задача' : 'New Task'}
@@ -214,93 +245,78 @@ export default function TaskBoardPage() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {statusColumns.map(col => {
-            const Icon = col.icon;
-            const columnTasks = tasksByStatus[col.key] || [];
-            return (
-              <motion.div key={col.key} variants={item}>
-                <Card className={cn('glass-card border-t-2', col.color)}>
-                  <CardHeader className="py-3 px-4">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <Icon className="h-3.5 w-3.5" />
-                        {isRu ? col.labelRu : col.labelEn}
-                        <Badge variant="secondary" className="text-[10px] ml-1">{columnTasks.length}</Badge>
-                      </CardTitle>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openNewDialog(col.key)}>
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-3 pb-3 pt-0 space-y-2 min-h-[200px]">
-                    {columnTasks.map(task => (
-                      <div
-                        key={task.id}
-                        className="bg-secondary/30 border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors cursor-pointer group"
-                        onClick={() => openEditDialog(task)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium text-foreground leading-tight">{task.title}</p>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                              {statusColumns.filter(s => s.key !== task.status).map(s => (
-                                <DropdownMenuItem key={s.key} onClick={() => handleStatusChange(task.id, s.key)}>
-                                  <s.icon className="h-3.5 w-3.5 mr-2" />
-                                  {isRu ? s.labelRu : s.labelEn}
-                                </DropdownMenuItem>
-                              ))}
-                              <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive">
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                {isRu ? 'Удалить' : 'Delete'}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        {task.description && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-2">{task.description}</p>
-                        )}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {task.client_id === null ? (
-                            <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">{isRu ? '🏢 Агентство' : '🏢 Agency'}</Badge>
-                          ) : task.client_name ? (
-                            <Badge variant="outline" className="text-[10px]">{task.client_name}</Badge>
-                          ) : null}
-                          {task.due_date && (
-                            <span className={cn(
-                              'text-[10px] flex items-center gap-0.5',
-                              new Date(task.due_date) < new Date() && task.status !== 'completed'
-                                ? 'text-destructive font-medium'
-                                : 'text-muted-foreground'
-                            )}>
-                              <Calendar className="h-2.5 w-2.5" />
-                              {format(new Date(task.due_date), 'dd.MM')}
-                            </span>
-                          )}
-                          {task.assignee_name && (
-                            <div className="flex items-center gap-1 ml-auto">
-                              <Avatar className="h-4 w-4">
-                                <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
-                                  {task.assignee_name.slice(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-[10px] text-muted-foreground">{task.assignee_name}</span>
-                            </div>
-                          )}
-                        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {statusColumns.map(col => {
+              const Icon = col.icon;
+              const columnTasks = tasksByStatus[col.key] || [];
+              return (
+                <motion.div key={col.key} variants={item}>
+                  <Card className={cn('glass-card border-t-2', col.color)}>
+                    <CardHeader className="py-3 px-4">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Icon className="h-3.5 w-3.5" />
+                          {isRu ? col.labelRu : col.labelEn}
+                          <Badge variant="secondary" className="text-[10px] ml-1">{columnTasks.length}</Badge>
+                        </CardTitle>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openNewDialog(col.key)}>
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
+                    </CardHeader>
+                    <CardContent className="px-3 pb-3 pt-0 space-y-2 min-h-[200px]">
+                      {columnTasks.map(task => (
+                        <TaskCard
+                          key={task.id}
+                          task={task}
+                          isRu={isRu}
+                          onEdit={() => openEditDialog(task)}
+                          onStatusChange={handleStatusChange}
+                          onDelete={handleDelete}
+                          onArchive={handleArchiveTask}
+                          statusColumns={statusColumns}
+                        />
+                      ))}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Archive section */}
+          {showArchive && archivedTasks.length > 0 && (
+            <motion.div variants={item}>
+              <Card className="glass-card border-t-2 border-t-muted-foreground/30">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Archive className="h-3.5 w-3.5" />
+                    {isRu ? 'Архив' : 'Archive'}
+                    <Badge variant="secondary" className="text-[10px] ml-1">{archivedTasks.length}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 pt-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {archivedTasks.map(task => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        isRu={isRu}
+                        onEdit={() => openEditDialog(task)}
+                        onStatusChange={handleStatusChange}
+                        onDelete={handleDelete}
+                        onArchive={handleArchiveTask}
+                        statusColumns={statusColumns}
+                        isArchived
+                      />
                     ))}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </>
       )}
 
       {/* Create / Edit Dialog */}
@@ -375,5 +391,88 @@ export default function TaskBoardPage() {
         </DialogContent>
       </Dialog>
     </motion.div>
+  );
+}
+
+interface TaskCardProps {
+  task: Task;
+  isRu: boolean;
+  onEdit: () => void;
+  onStatusChange: (id: string, status: Task['status']) => void;
+  onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
+  statusColumns: typeof import('./TaskBoardPage').default extends never ? never : { key: Task['status']; labelRu: string; labelEn: string; icon: any }[];
+  isArchived?: boolean;
+}
+
+function TaskCard({ task, isRu, onEdit, onStatusChange, onDelete, onArchive, statusColumns, isArchived }: TaskCardProps) {
+  return (
+    <div
+      className={cn(
+        "bg-secondary/30 border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors cursor-pointer group",
+        isArchived && "opacity-60"
+      )}
+      onClick={onEdit}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-medium text-foreground leading-tight">{task.title}</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+            {statusColumns.filter(s => s.key !== task.status).map(s => (
+              <DropdownMenuItem key={s.key} onClick={() => onStatusChange(task.id, s.key)}>
+                <s.icon className="h-3.5 w-3.5 mr-2" />
+                {isRu ? s.labelRu : s.labelEn}
+              </DropdownMenuItem>
+            ))}
+            {task.status === 'completed' && !isArchived && (
+              <DropdownMenuItem onClick={() => onArchive(task.id)}>
+                <Archive className="h-3.5 w-3.5 mr-2" />
+                {isRu ? 'В архив' : 'Archive'}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => onDelete(task.id)} className="text-destructive">
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              {isRu ? 'Удалить' : 'Delete'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {task.description && (
+        <p className="text-[11px] text-muted-foreground line-clamp-2">{task.description}</p>
+      )}
+      <div className="flex items-center gap-2 flex-wrap">
+        {task.client_id === null ? (
+          <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">{isRu ? '🏢 Агентство' : '🏢 Agency'}</Badge>
+        ) : task.client_name ? (
+          <Badge variant="outline" className="text-[10px]">{task.client_name}</Badge>
+        ) : null}
+        {task.due_date && (
+          <span className={cn(
+            'text-[10px] flex items-center gap-0.5',
+            parseLocalDate(task.due_date) < new Date() && task.status !== 'completed'
+              ? 'text-destructive font-medium'
+              : 'text-muted-foreground'
+          )}>
+            <Calendar className="h-2.5 w-2.5" />
+            {formatLocalDate(task.due_date)}
+          </span>
+        )}
+        {task.assignee_name && (
+          <div className="flex items-center gap-1 ml-auto">
+            <Avatar className="h-4 w-4">
+              <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                {task.assignee_name.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-[10px] text-muted-foreground">{task.assignee_name}</span>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
