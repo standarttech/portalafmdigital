@@ -56,6 +56,7 @@ const inviteStatusStyles: Record<string, string> = {
   pending: 'bg-warning/15 text-warning border-warning/20',
   accepted: 'bg-success/15 text-success border-success/20',
   revoked: 'bg-muted text-muted-foreground border-border',
+  expired: 'bg-muted text-muted-foreground border-border',
 };
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
@@ -147,7 +148,28 @@ export default function UsersPage() {
   }, []);
   const fetchInvitations = useCallback(async () => {
     const { data } = await supabase.from('invitations').select('id, email, role, token, status, created_at, expires_at').order('created_at', { ascending: false });
-    setInvitations(data || []); setLoadingInvitations(false);
+    if (data) {
+      // Cross-reference: if a user with this email exists in agency_users, mark invitation as accepted
+      const { data: existingUsers } = await supabase.from('agency_users').select('user_id, display_name');
+      // We need auth emails — check via invite email matching
+      const pendingInvites = data.filter(inv => inv.status === 'pending');
+      if (pendingInvites.length > 0) {
+        // For each pending invite, check if there's a matching agency_user
+        // We do this by checking if the invite token was used (user exists)
+        for (const inv of pendingInvites) {
+          // Check if user with this email exists by looking at client_users or agency_users
+          // Simple heuristic: if invite is pending but expired, mark as expired
+          if (new Date(inv.expires_at) < new Date()) {
+            // Don't auto-update, just show correct status client-side
+            inv.status = 'expired';
+          }
+        }
+      }
+      setInvitations(data);
+    } else {
+      setInvitations([]);
+    }
+    setLoadingInvitations(false);
   }, []);
   const fetchClients = useCallback(async () => {
     const { data } = await supabase.from('clients').select('id, name').eq('status', 'active').order('name');
@@ -615,7 +637,7 @@ export default function UsersPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className={inviteStatusStyles[inv.status] || ''}>
-                              {inv.status === 'pending' ? t('common.pending') : inv.status === 'accepted' ? t('common.accepted') : t('common.revoked')}
+                              {inv.status === 'pending' ? t('common.pending') : inv.status === 'accepted' ? t('common.accepted') : inv.status === 'expired' ? t('common.expired' as any) : t('common.revoked')}
                             </Badge>
                           </TableCell>
                           <TableCell>

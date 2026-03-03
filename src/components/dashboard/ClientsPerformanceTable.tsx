@@ -13,15 +13,20 @@ interface Props {
   clientsData: ClientMetric[];
 }
 
-type SortKey = 'name' | 'spend' | 'leads' | 'cpl' | 'ctr' | 'deltaCpl';
+type SortKey = 'name' | 'spend' | 'leads' | 'cpl' | 'ctr' | 'deltaCpl' | 'revenue' | 'purchases' | 'roas';
 
 export default function ClientsPerformanceTable({ clientsData }: Props) {
   const { t, formatCurrency, formatNumber } = useLanguage();
   const navigate = useNavigate();
-  const [sortKey, setSortKey] = useState<SortKey>('cpl');
+  const [sortKey, setSortKey] = useState<SortKey>('spend');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
+
+  // Determine which columns to show based on actual data
+  const hasLeads = clientsData.some(c => c.leads > 0);
+  const hasRevenue = clientsData.some(c => c.revenue > 0);
+  const hasPurchases = clientsData.some(c => c.purchases > 0);
 
   const filtered = useMemo(() => {
     let result = statusFilter === 'all' ? clientsData : clientsData.filter(c => c.status === statusFilter);
@@ -30,8 +35,10 @@ export default function ClientsPerformanceTable({ clientsData }: Props) {
       result = result.filter(c => c.name.toLowerCase().includes(q));
     }
     return [...result].sort((a, b) => {
-      const vA = a[sortKey];
-      const vB = b[sortKey];
+      let vA: any = a[sortKey as keyof ClientMetric];
+      let vB: any = b[sortKey as keyof ClientMetric];
+      // Compute derived values
+      if (sortKey === 'roas') { vA = a.spend > 0 ? a.revenue / a.spend : 0; vB = b.spend > 0 ? b.revenue / b.spend : 0; }
       const cmp = typeof vA === 'string' ? (vA as string).localeCompare(vB as string) : (vA as number) - (vB as number);
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -47,14 +54,19 @@ export default function ClientsPerformanceTable({ clientsData }: Props) {
     return sortDir === 'asc' ? <ArrowUp className="h-3 w-3 ml-1 text-primary" /> : <ArrowDown className="h-3 w-3 ml-1 text-primary" />;
   };
 
-  const columns: { key: SortKey; label: string; right?: boolean }[] = [
-    { key: 'name', label: t('dashboard.clientName') },
-    { key: 'spend', label: t('dashboard.spend'), right: true },
-    { key: 'leads', label: t('dashboard.leads'), right: true },
-    { key: 'cpl', label: t('dashboard.cpl'), right: true },
-    { key: 'ctr', label: t('dashboard.ctr'), right: true },
-    { key: 'deltaCpl', label: t('dashboard.deltaCpl'), right: true },
+  // Dynamic columns based on data
+  const columns: { key: SortKey; label: string; right?: boolean; show: boolean }[] = [
+    { key: 'name', label: t('dashboard.clientName'), show: true },
+    { key: 'spend', label: t('dashboard.spend'), right: true, show: true },
+    { key: 'leads', label: t('dashboard.leads'), right: true, show: hasLeads },
+    { key: 'cpl', label: t('dashboard.cpl'), right: true, show: hasLeads },
+    { key: 'purchases', label: t('metric.purchases'), right: true, show: hasPurchases },
+    { key: 'revenue', label: t('metric.revenue'), right: true, show: hasRevenue },
+    { key: 'roas', label: 'ROAS', right: true, show: hasRevenue },
+    { key: 'ctr', label: t('dashboard.ctr'), right: true, show: true },
   ];
+
+  const visibleColumns = columns.filter(c => c.show);
 
   const statusButtons = ['all', 'active', 'paused', 'inactive'] as const;
 
@@ -84,7 +96,7 @@ export default function ClientsPerformanceTable({ clientsData }: Props) {
           <table className="spreadsheet-table">
             <thead>
               <tr>
-                {columns.map(col => (
+                {visibleColumns.map(col => (
                   <th key={col.key} onClick={() => handleSort(col.key)} className={cn('cursor-pointer select-none', col.right && 'text-right')}>
                     <span className="inline-flex items-center">{col.label}<SortIcon column={col.key} /></span>
                   </th>
@@ -94,29 +106,32 @@ export default function ClientsPerformanceTable({ clientsData }: Props) {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-6 text-muted-foreground font-sans">{t('common.noData')}</td></tr>
-              ) : filtered.map(client => (
-                <tr key={client.id} onClick={() => navigate(`/clients/${client.id}`)} className="cursor-pointer">
-                  <td className="font-sans font-medium text-foreground">{client.name}</td>
-                  <td className="text-right">{formatCurrency(client.spend)}</td>
-                  <td className="text-right">{formatNumber(client.leads)}</td>
-                  <td className={cn('text-right', client.cpl === 0 && 'text-muted-foreground')}>{client.cpl > 0 ? formatCurrency(client.cpl) : '—'}</td>
-                  <td className="text-right">{client.ctr.toFixed(2)}%</td>
-                  <td className={cn('text-right', client.deltaCpl < 0 ? 'text-success' : client.deltaCpl > 0 ? 'text-destructive' : 'text-muted-foreground')}>
-                    {client.deltaCpl !== 0 ? `${client.deltaCpl > 0 ? '+' : ''}${client.deltaCpl.toFixed(1)}%` : '—'}
-                  </td>
-                  <td className="text-right">
-                    <span className={cn(
-                      'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium',
-                      client.status === 'active' && 'bg-success/15 text-success',
-                      client.status === 'paused' && 'bg-warning/15 text-warning',
-                      client.status === 'inactive' && 'bg-muted text-muted-foreground',
-                    )}>
-                      {t(`common.${client.status}` as TranslationKey)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                <tr><td colSpan={visibleColumns.length + 1} className="text-center py-6 text-muted-foreground font-sans">{t('common.noData')}</td></tr>
+              ) : filtered.map(client => {
+                const roas = client.spend > 0 ? client.revenue / client.spend : 0;
+                return (
+                  <tr key={client.id} onClick={() => navigate(`/clients/${client.id}`)} className="cursor-pointer">
+                    <td className="font-sans font-medium text-foreground">{client.name}</td>
+                    <td className="text-right">{formatCurrency(client.spend)}</td>
+                    {hasLeads && <td className="text-right">{formatNumber(client.leads)}</td>}
+                    {hasLeads && <td className={cn('text-right', client.cpl === 0 && 'text-muted-foreground')}>{client.cpl > 0 ? formatCurrency(client.cpl) : '—'}</td>}
+                    {hasPurchases && <td className="text-right">{client.purchases > 0 ? formatNumber(client.purchases) : '—'}</td>}
+                    {hasRevenue && <td className="text-right">{client.revenue > 0 ? formatCurrency(client.revenue) : '—'}</td>}
+                    {hasRevenue && <td className={cn('text-right', roas > 1 ? 'text-success' : roas > 0 ? 'text-warning' : 'text-muted-foreground')}>{roas > 0 ? `${roas.toFixed(2)}x` : '—'}</td>}
+                    <td className="text-right">{client.ctr.toFixed(2)}%</td>
+                    <td className="text-right">
+                      <span className={cn(
+                        'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium',
+                        client.status === 'active' && 'bg-success/15 text-success',
+                        client.status === 'paused' && 'bg-warning/15 text-warning',
+                        client.status === 'inactive' && 'bg-muted text-muted-foreground',
+                      )}>
+                        {t(`common.${client.status}` as TranslationKey)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
