@@ -64,7 +64,31 @@ function findColumn(row: Record<string, string>, ...names: string[]): string {
 function cleanNumber(val: string): number {
   if (!val) return 0;
   // Remove $, €, ₽, spaces, % signs
-  const cleaned = val.replace(/[$€₽%\s]/g, "").replace(",", ".");
+  let cleaned = val.replace(/[$€₽%\s]/g, "");
+  
+  // Smart comma handling:
+  // "26,843" or "1,234,567" → thousands separator (comma followed by exactly 3 digits)
+  // "26,84" → decimal separator (European format)
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(cleaned)) {
+    // US format with thousands commas: "1,234,567" or "1,234.56"
+    cleaned = cleaned.replace(/,/g, "");
+  } else if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(cleaned)) {
+    // European format with period thousands: "1.234.567" or "1.234,56"
+    cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+  } else {
+    // Single comma → treat as decimal if followed by 1-2 digits, otherwise thousands
+    const commaMatch = cleaned.match(/^(\d+),(\d+)$/);
+    if (commaMatch) {
+      if (commaMatch[2].length === 3) {
+        // Likely thousands separator: "26,843" → 26843
+        cleaned = cleaned.replace(",", "");
+      } else {
+        // Likely decimal: "26,84" → 26.84
+        cleaned = cleaned.replace(",", ".");
+      }
+    }
+  }
+  
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }

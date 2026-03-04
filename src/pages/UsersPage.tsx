@@ -147,25 +147,18 @@ export default function UsersPage() {
     setRequests(data || []); setLoadingRequests(false);
   }, []);
   const fetchInvitations = useCallback(async () => {
-    const { data } = await supabase.from('invitations').select('id, email, role, token, status, created_at, expires_at').order('created_at', { ascending: false });
+    const { data } = await supabase.from('invitations').select('id, email, role, token, status, created_at, expires_at, accepted_at').order('created_at', { ascending: false });
     if (data) {
-      // Cross-reference: if a user with this email exists in agency_users, mark invitation as accepted
-      const { data: existingUsers } = await supabase.from('agency_users').select('user_id, display_name');
-      // We need auth emails — check via invite email matching
-      const pendingInvites = data.filter(inv => inv.status === 'pending');
-      if (pendingInvites.length > 0) {
-        // For each pending invite, check if there's a matching agency_user
-        // We do this by checking if the invite token was used (user exists)
-        for (const inv of pendingInvites) {
-          // Check if user with this email exists by looking at client_users or agency_users
-          // Simple heuristic: if invite is pending but expired, mark as expired
-          if (new Date(inv.expires_at) < new Date()) {
-            // Don't auto-update, just show correct status client-side
+      for (const inv of data) {
+        if (inv.status === 'pending') {
+          if ((inv as any).accepted_at) {
+            inv.status = 'accepted';
+          } else if (new Date(inv.expires_at) < new Date()) {
             inv.status = 'expired';
           }
         }
       }
-      setInvitations(data);
+      setInvitations(data as Invitation[]);
     } else {
       setInvitations([]);
     }
