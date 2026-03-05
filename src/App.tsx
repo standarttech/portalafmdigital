@@ -57,6 +57,11 @@ import CrmWebhooksPage from "@/pages/crm/CrmWebhooksPage";
 import CrmSettingsPage from "@/pages/crm/CrmSettingsPage";
 import CrmAnalyticsPage from "@/pages/crm/CrmAnalyticsPage";
 import CrmIntegrationsPage from "@/pages/crm/CrmIntegrationsPage";
+import AdminScaleLayout from "@/components/layout/AdminScaleLayout";
+import AdminScaleHome from "@/pages/adminscale/AdminScaleHome";
+import AdminScaleEditor from "@/pages/adminscale/AdminScaleEditor";
+import AdminScaleOverview from "@/pages/adminscale/AdminScaleOverview";
+import AdminScaleReference from "@/pages/adminscale/AdminScaleReference";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -307,6 +312,12 @@ function AppRoutes() {
         <Route path="/afm-internal/income-plan" element={<AfmIncomePlan />} />
         <Route path="/afm-internal/financial-planning" element={<AfmFinancialPlanning />} />
         <Route path="/afm-internal/settings" element={<AfmSettings />} />
+      </Route>
+      <Route element={<AdminScaleLayout />}>
+        <Route path="/adminscale" element={<AdminScaleHome />} />
+        <Route path="/adminscale/editor" element={<AdminScaleEditor />} />
+        <Route path="/adminscale/overview" element={<AdminScaleOverview />} />
+        <Route path="/adminscale/reference" element={<AdminScaleReference />} />
       </Route>
       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
