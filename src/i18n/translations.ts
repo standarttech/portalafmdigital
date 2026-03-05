@@ -562,6 +562,7 @@ export const translations = {
   'nav.internalSection': t('Internal', 'Внутреннее', 'Interno', 'Interno', 'داخلي', 'Interne'),
   'nav.branding': t('Branding', 'Брендинг', 'Branding', 'Branding', 'العلامة التجارية', 'Branding'),
   'nav.afmInternal': t('AFM Internal', 'AFM Внутренний', 'AFM Interno', 'AFM Interno', 'AFM داخلي', 'AFM Interne'),
+  'nav.adminScale': t('AdminScale Pro', 'AdminScale Pro', 'AdminScale Pro', 'AdminScale Pro', 'AdminScale Pro', 'AdminScale Pro'),
 
   // AFM Internal navigation group labels
   'afm.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),

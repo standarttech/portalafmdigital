@@ -42,6 +42,14 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    id: 'adminscale',
+    labelKey: 'nav.adminScale' as TranslationKey,
+    adminOnly: true,
+    items: [
+      { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', adminOnly: true },
+    ],
+  },
+  {
     id: 'analytics',
     labelKey: 'nav.dashboard' as TranslationKey,
     items: [
@@ -168,7 +176,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
   const renderNavItem = (item: NavItem) => {
     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     const badgeCount = item.badgeKey ? (badges[item.badgeKey] || 0) : 0;
-    const isModuleEntry = item.path === '/afm-internal' || item.path === '/crm';
+    const isModuleEntry = item.path === '/afm-internal' || item.path === '/crm' || item.path === '/adminscale';
 
     return (
       <Link
@@ -182,6 +190,10 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
               ? isActive
                 ? 'bg-accent/20 text-accent-foreground border border-accent/40 shadow-sm'
                 : 'bg-accent/10 text-accent-foreground border border-accent/20 hover:bg-accent/20 hover:border-accent/40'
+              : item.path === '/adminscale'
+                ? isActive
+                  ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30 shadow-sm'
+                  : 'bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40'
               : isActive
                 ? 'bg-primary/20 text-primary border border-primary/30'
                 : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/40'
@@ -192,7 +204,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         title={collapsed ? t(item.key) : undefined}
       >
         <div className="relative flex-shrink-0">
-          <item.icon className={cn('h-4 w-4', isModuleEntry && 'text-primary')} />
+          <item.icon className={cn('h-4 w-4', isModuleEntry && (item.path === '/adminscale' ? 'text-amber-500' : 'text-primary'))} />
           {badgeCount > 0 && collapsed && (
             <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-0.5">
               {badgeCount > 9 ? '9+' : badgeCount}
