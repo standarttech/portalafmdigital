@@ -466,10 +466,40 @@ export default function ClientDetailPage() {
 
   const [allClientsLoaded, setAllClientsLoaded] = useState(false);
   const fetchAllClients = useCallback(async () => {
-    const { data } = await supabase.from('clients').select('id, name').order('name');
+    if (isAdmin) {
+      const { data } = await supabase.from('clients').select('id, name').order('name');
+      setAllClients(data || []);
+      setAllClientsLoaded(true);
+      return;
+    }
+
+    if (!targetUserId) {
+      setAllClients([]);
+      setAllClientsLoaded(true);
+      return;
+    }
+
+    const { data: assignments } = await supabase
+      .from('client_users')
+      .select('client_id')
+      .eq('user_id', targetUserId);
+
+    const scopedClientIds = (assignments || []).map((a) => a.client_id);
+    if (scopedClientIds.length === 0) {
+      setAllClients([]);
+      setAllClientsLoaded(true);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('clients')
+      .select('id, name')
+      .in('id', scopedClientIds)
+      .order('name');
+
     setAllClients(data || []);
     setAllClientsLoaded(true);
-  }, []);
+  }, [isAdmin, targetUserId]);
 
   const fetchProjectHistory = useCallback(async () => {
     if (!id) return;
