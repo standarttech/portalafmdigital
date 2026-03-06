@@ -492,10 +492,26 @@ export default function ChatPage() {
                     {isClient && (
                       <p className="text-[10px] text-muted-foreground">{t('chat.supportSubtitle' as TranslationKey)}</p>
                     )}
+                    {selectedRoomData?.type === 'voice' && (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-primary/30 text-primary">
+                        <Mic className="h-3 w-3" /> Голосовой
+                      </Badge>
+                    )}
                   </div>
                 </div>
-                {isAdmin && (
-                  <div className="flex gap-1">
+                <div className="flex gap-1">
+                  {/* Join meeting button for voice rooms */}
+                  {selectedRoomData?.type === 'voice' && (() => {
+                    const meetMsg = messages.find(m => m.content.includes('Ссылка на встречу:'));
+                    const meetUrl = meetMsg?.content.match(/https?:\/\/\S+/)?.[0];
+                    return meetUrl ? (
+                      <a href={meetUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 border-primary/30 text-primary hover:bg-primary/10">
+                          <Video className="h-3.5 w-3.5" /> Присоединиться
+                        </Button>
+                      </a>
+                    ) : null;
+                  })()}
                     <Button variant="ghost" size="sm" onClick={() => openManageMembers(selectedRoom)} className="h-8 w-8 p-0">
                       <Settings className="h-4 w-4" />
                     </Button>
