@@ -406,7 +406,7 @@ export default function AfmDashboard() {
         />
         <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5 sm:ml-auto">
           {(['all', 'meta', 'google', 'tiktok'] as PlatformKey[]).map(p => {
-            const hasData = p === 'all' || platformHasData[p as keyof typeof platformHasData];
+            const hasData = p === 'all' || platformHasData[p as 'meta' | 'google' | 'tiktok'];
             return (
               <Button
                 key={p}
@@ -489,13 +489,13 @@ export default function AfmDashboard() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <BarChart3 className="h-3.5 w-3.5" /> {t('clients.overview')}
+              <BarChart3 className="h-3.5 w-3.5" /> {t('common.overview')}
             </TabsTrigger>
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <Table2 className="h-3.5 w-3.5" /> {t('clients.dailyStats')}
+              <Table2 className="h-3.5 w-3.5" /> {t('clients.daily')}
             </TabsTrigger>
             <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <Link2 className="h-3.5 w-3.5" /> {t('clients.connections')}
+              <Link2 className="h-3.5 w-3.5" /> {t('dashboard.dataSources')}
             </TabsTrigger>
           </TabsList>
 
@@ -521,11 +521,11 @@ export default function AfmDashboard() {
                       <div className="flex bg-secondary/50 rounded-md p-0.5 ml-1">
                         <Button variant="ghost" size="sm" onClick={() => setChartNormalized(false)}
                           className={`h-5 px-2 text-[10px] rounded-sm ${!chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
-                          {t('clients.absolute')}
+                          Absolute
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setChartNormalized(true)}
                           className={`h-5 px-2 text-[10px] rounded-sm ${chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
-                          {t('clients.normalized')}
+                          Normalized
                         </Button>
                       </div>
                     </div>
@@ -614,11 +614,11 @@ export default function AfmDashboard() {
           {/* DAILY STATS TAB */}
           <TabsContent value="daily" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold">{t('clients.dailyStats')}</h3>
+              <h3 className="text-base sm:text-lg font-semibold">{t('clients.daily')}</h3>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
-                    <Settings2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t('clients.columns')}</span>
+                    <Settings2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Columns</span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-3" align="end">
@@ -632,7 +632,7 @@ export default function AfmDashboard() {
                     ))}
                   </div>
                   <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setVisibleColumns(CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.other)}>
-                    {t('common.resetDefaults')}
+                    Reset
                   </Button>
                 </PopoverContent>
               </Popover>
