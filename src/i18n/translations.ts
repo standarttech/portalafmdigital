@@ -258,6 +258,7 @@ export const translations = {
   'clients.sheetUrlSaved': t('Sheet URL saved', 'URL таблицы сохранён', 'URL del foglio salvato', 'URL de la hoja guardada', 'تم حفظ رابط الجدول', 'URL du sheet enregistré'),
   'clients.rowsSynced': t('rows synced', 'строк синхронизировано', 'righe sincronizzate', 'filas sincronizadas', 'صفوف تمت مزامنتها', 'lignes synchronisées'),
   'clients.connections': t('Connections', 'Подключения', 'Connessioni', 'Conexiones', 'الاتصالات', 'Connexions'),
+  'clients.info': t('Client Info', 'Информация', 'Info cliente', 'Info del cliente', 'معلومات العميل', 'Info client'),
   'clients.autoSync': t('Auto Sync', 'Автоматическая синхронизация', 'Sincronizzazione automatica', 'Sincronización automática', 'المزامنة التلقائية', 'Synchronisation auto'),
   'clients.autoSyncDesc': t('Data will be fetched every hour automatically', 'Данные будут подтягиваться каждый час автоматически', 'I dati verranno recuperati automaticamente ogni ora', 'Los datos se obtendrán cada hora automáticamente', 'سيتم جلب البيانات تلقائيًا كل ساعة', 'Les données seront récupérées automatiquement toutes les heures'),
   'clients.autoSyncEnabled': t('Auto sync enabled', 'Автосинхронизация включена', 'Sincronizzazione automatica abilitata', 'Sincronización automática activada', 'تم تفعيل المزامنة التلقائية', 'Synchronisation auto activée'),
