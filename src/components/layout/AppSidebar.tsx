@@ -6,8 +6,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import logoAfm from '@/assets/logo-afm-new.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
-  ChevronLeft, ChevronRight, UserCircle, LogOut, Menu, BookOpen, Calculator, DollarSign, Calendar, MessageSquare, ClipboardList,
-  ChevronDown, Megaphone, Zap, Palette, ContactIcon,
+  ChevronLeft, ChevronRight, LogOut, Menu, BookOpen, Calculator, DollarSign, Calendar, MessageSquare, ClipboardList,
+  ChevronDown, Megaphone, Zap, Palette, ContactIcon, UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,43 @@ import type { TranslationKey } from '@/i18n/translations';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+/* ── Module entries (rendered as premium cards) ── */
+interface ModuleEntry {
+  key: TranslationKey;
+  icon: typeof Zap;
+  path: string;
+  color: 'violet' | 'amber' | 'emerald';
+  adminOnly: boolean;
+}
+
+const moduleEntries: ModuleEntry[] = [
+  { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal', color: 'violet', adminOnly: true },
+  { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', color: 'amber', adminOnly: true },
+  { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'emerald', adminOnly: true },
+];
+
+const moduleColorMap = {
+  violet: {
+    idle: 'bg-gradient-to-r from-violet-500/8 to-purple-500/8 text-violet-400 border-violet-500/20 hover:from-violet-500/15 hover:to-purple-500/15 hover:border-violet-500/35',
+    active: 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-300 border-violet-500/40 shadow-[0_0_20px_rgba(139,92,246,0.12)]',
+    icon: 'text-violet-400',
+    dot: 'bg-violet-400',
+  },
+  amber: {
+    idle: 'bg-gradient-to-r from-amber-500/8 to-yellow-500/8 text-amber-400 border-amber-500/20 hover:from-amber-500/15 hover:to-yellow-500/15 hover:border-amber-500/35',
+    active: 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.12)]',
+    icon: 'text-amber-400',
+    dot: 'bg-amber-400',
+  },
+  emerald: {
+    idle: 'bg-gradient-to-r from-emerald-500/8 to-teal-500/8 text-emerald-400 border-emerald-500/20 hover:from-emerald-500/15 hover:to-teal-500/15 hover:border-emerald-500/35',
+    active: 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.12)]',
+    icon: 'text-emerald-400',
+    dot: 'bg-emerald-400',
+  },
+};
+
+/* ── Regular nav sections ── */
 interface NavItem {
   key: TranslationKey;
   icon: typeof LayoutDashboard;
@@ -34,24 +71,7 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
-    id: 'internal',
-    labelKey: 'nav.afmInternal' as TranslationKey,
-    adminOnly: true,
-    items: [
-      { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal', adminOnly: true },
-    ],
-  },
-  {
-    id: 'adminscale',
-    labelKey: 'nav.adminScale' as TranslationKey,
-    adminOnly: true,
-    items: [
-      { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', adminOnly: true },
-    ],
-  },
-  {
-    id: 'analytics',
-    labelKey: 'nav.dashboard' as TranslationKey,
+    id: 'analytics', labelKey: 'nav.dashboard' as TranslationKey,
     items: [
       { key: 'nav.dashboard', icon: LayoutDashboard, path: '/dashboard' },
       { key: 'nav.clients', icon: Building2, path: '/clients' },
@@ -59,16 +79,7 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    id: 'crm',
-    labelKey: 'nav.crm' as TranslationKey,
-    adminOnly: true,
-    items: [
-      { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm' },
-    ],
-  },
-  {
-    id: 'workspace',
-    labelKey: 'nav.calendar' as TranslationKey,
+    id: 'workspace', labelKey: 'nav.calendar' as TranslationKey,
     items: [
       { key: 'nav.calendar', icon: Calendar, path: '/calendar' },
       { key: 'nav.tasks' as TranslationKey, icon: ClipboardList, path: '/tasks' },
@@ -76,18 +87,14 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    id: 'data',
-    labelKey: 'nav.dataSection' as TranslationKey,
-    adminOnly: true,
+    id: 'data', labelKey: 'nav.dataSection' as TranslationKey, adminOnly: true,
     items: [
       { key: 'nav.sync', icon: RefreshCw, path: '/sync', adminOnly: true },
       { key: 'nav.audit', icon: Shield, path: '/audit', adminOnly: true },
     ],
   },
   {
-    id: 'admin',
-    labelKey: 'nav.users' as TranslationKey,
-    adminOnly: true,
+    id: 'admin', labelKey: 'nav.users' as TranslationKey, adminOnly: true,
     items: [
       { key: 'nav.users', icon: Users, path: '/users', adminOnly: true, badgeKey: 'accessRequests' },
       { key: 'nav.broadcasts' as TranslationKey, icon: Megaphone, path: '/broadcasts', adminOnly: true },
@@ -97,8 +104,7 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    id: 'account',
-    labelKey: 'nav.profile' as TranslationKey,
+    id: 'account', labelKey: 'nav.profile' as TranslationKey,
     items: [
       { key: 'nav.glossary', icon: BookOpen, path: '/glossary' },
       { key: 'nav.profile', icon: UserCircle, path: '/profile' },
@@ -116,7 +122,6 @@ const sectionLabels: Record<string, TranslationKey> = {
 
 function useSidebarBadges(isAdmin: boolean) {
   const [badges, setBadges] = useState<Record<string, number>>({});
-
   const fetchBadges = useCallback(async () => {
     if (!isAdmin) return;
     const [{ count: reqCount }, { count: unreadCount }] = await Promise.all([
@@ -125,43 +130,39 @@ function useSidebarBadges(isAdmin: boolean) {
     ]);
     setBadges({ accessRequests: reqCount || 0, unreadChats: unreadCount || 0 });
   }, [isAdmin]);
-
-  useEffect(() => {
-    fetchBadges();
-    const interval = setInterval(fetchBadges, 30000);
-    return () => clearInterval(interval);
-  }, [fetchBadges]);
-
+  useEffect(() => { fetchBadges(); const i = setInterval(fetchBadges, 30000); return () => clearInterval(i); }, [fetchBadges]);
   return badges;
 }
 
 function useSidebarLogo() {
-  const [sidebarLogoUrl, setSidebarLogoUrl] = useState('');
+  const [url, setUrl] = useState('');
   useEffect(() => {
     const load = () => supabase.from('platform_settings').select('value').eq('key', 'sidebar_logo_url').maybeSingle()
-      .then(({ data }) => { setSidebarLogoUrl(data?.value ? String(data.value) : ''); });
+      .then(({ data }) => setUrl(data?.value ? String(data.value) : ''));
     load();
-    // Re-fetch when storage changes (branding page saves)
-    const channel = supabase.channel('sidebar-logo-refresh')
+    const ch = supabase.channel('sidebar-logo-refresh')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_settings' }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase.removeChannel(ch); };
   }, []);
-  return sidebarLogoUrl;
+  return url;
 }
 
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { t } = useLanguage();
-  const { signOut } = useAuth();
-  const { agencyRole } = useAuth();
+  const { signOut, effectiveRole } = useAuth();
   const location = useLocation();
-  const isAdmin = agencyRole === 'AgencyAdmin';
-  const isClient = agencyRole === 'Client';
+  const isAdmin = effectiveRole === 'AgencyAdmin';
+  const isClient = effectiveRole === 'Client';
   const badges = useSidebarBadges(isAdmin);
   const sidebarLogoUrl = useSidebarLogo();
 
   const clientAllowedPaths = ['/dashboard', '/chat', '/glossary', '/profile'];
 
+  // Filter modules by role
+  const visibleModules = moduleEntries.filter(m => !m.adminOnly || isAdmin);
+
+  // Filter regular sections
   const filteredSections = navSections
     .filter(s => !s.adminOnly || isAdmin)
     .map(s => ({
@@ -173,38 +174,48 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
     }))
     .filter(s => s.items.length > 0);
 
+  const renderModuleButton = (mod: ModuleEntry) => {
+    const isActive = location.pathname === mod.path || location.pathname.startsWith(mod.path + '/');
+    const colors = moduleColorMap[mod.color];
+    const Icon = mod.icon;
+
+    if (collapsed) {
+      return (
+        <Link key={mod.path} to={mod.path} onClick={onNavigate} title={t(mod.key)}
+          className={cn(
+            'flex items-center justify-center w-10 h-10 rounded-xl border transition-all duration-200 mx-auto',
+            isActive ? colors.active : colors.idle,
+          )}>
+          <Icon className={cn('h-4.5 w-4.5', colors.icon)} />
+        </Link>
+      );
+    }
+
+    return (
+      <Link key={mod.path} to={mod.path} onClick={onNavigate}
+        className={cn(
+          'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-200 text-sm font-semibold',
+          isActive ? colors.active : colors.idle,
+        )}>
+        <Icon className={cn('h-4.5 w-4.5 flex-shrink-0', colors.icon)} />
+        <span className="truncate">{t(mod.key)}</span>
+      </Link>
+    );
+  };
+
   const renderNavItem = (item: NavItem) => {
     const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     const badgeCount = item.badgeKey ? (badges[item.badgeKey] || 0) : 0;
-    const isModuleEntry = item.path === '/afm-internal' || item.path === '/crm' || item.path === '/adminscale';
 
     return (
-      <Link
-        key={item.path}
-        to={item.path}
-        onClick={onNavigate}
+      <Link key={item.path} to={item.path} onClick={onNavigate}
         className={cn(
           'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative',
-          isModuleEntry
-            ? item.path === '/crm'
-              ? isActive
-                ? 'bg-accent/20 text-accent-foreground border border-accent/40 shadow-sm'
-                : 'bg-accent/10 text-accent-foreground border border-accent/20 hover:bg-accent/20 hover:border-accent/40'
-              : item.path === '/adminscale'
-                ? isActive
-                  ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30 shadow-sm'
-                  : 'bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/40'
-              : isActive
-                ? 'bg-primary/20 text-primary border border-primary/30'
-                : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/40'
-            : isActive
-              ? 'bg-primary/15 text-primary'
-              : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+          isActive ? 'bg-primary/15 text-primary' : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50',
         )}
-        title={collapsed ? t(item.key) : undefined}
-      >
+        title={collapsed ? t(item.key) : undefined}>
         <div className="relative flex-shrink-0">
-          <item.icon className={cn('h-4 w-4', isModuleEntry && (item.path === '/adminscale' ? 'text-amber-500' : 'text-primary'))} />
+          <item.icon className="h-4 w-4" />
           {badgeCount > 0 && collapsed && (
             <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-destructive text-[9px] font-bold text-white flex items-center justify-center px-0.5">
               {badgeCount > 9 ? '9+' : badgeCount}
@@ -237,26 +248,29 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
       </div>
 
       {/* Nav - scrollable */}
-      <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-2 min-h-0">
+      <nav className="flex-1 py-2 px-2 overflow-y-auto space-y-1.5 min-h-0">
+        {/* Module Cards */}
+        {visibleModules.length > 0 && (
+          <>
+            <div className={cn('space-y-1.5', collapsed && 'space-y-2')}>
+              {visibleModules.map(renderModuleButton)}
+            </div>
+            <div className="mx-2 my-2.5 border-t border-sidebar-border/30" />
+          </>
+        )}
+
+        {/* Regular Sections */}
         {filteredSections.map((section) => {
           const sectionActive = section.items.some(
             item => location.pathname === item.path || location.pathname.startsWith(item.path + '/')
           );
 
           if (collapsed) {
-            return (
-              <div key={section.id} className="space-y-0.5">
-                {section.items.map(renderNavItem)}
-              </div>
-            );
+            return <div key={section.id} className="space-y-0.5">{section.items.map(renderNavItem)}</div>;
           }
 
           if (section.items.length === 1) {
-            return (
-              <div key={section.id}>
-                {section.items.map(renderNavItem)}
-              </div>
-            );
+            return <div key={section.id}>{section.items.map(renderNavItem)}</div>;
           }
 
           return (
@@ -273,17 +287,14 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         })}
       </nav>
 
-      {/* Logout - pinned to bottom */}
+      {/* Logout */}
       <div className="p-2 border-t border-sidebar-border flex-shrink-0 mt-auto">
-        <Button
-          variant="ghost"
-          size="sm"
+        <Button variant="ghost" size="sm"
           onClick={() => { signOut(); onNavigate?.(); }}
           className={cn(
             'w-full text-sidebar-muted hover:text-destructive hover:bg-destructive/10',
             collapsed ? 'justify-center' : 'justify-start gap-3 px-3'
-          )}
-        >
+          )}>
           <LogOut className="h-4 w-4" />
           {!collapsed && <span className="text-sm">{t('auth.logout')}</span>}
         </Button>
@@ -317,22 +328,16 @@ export default function AppSidebar() {
   }
 
   return (
-    <aside
-      className={cn(
-        'fixed top-0 left-0 h-screen z-30 bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300',
-        collapsed ? 'w-16' : 'w-60'
-      )}
-    >
+    <aside className={cn(
+      'fixed top-0 left-0 h-screen z-30 bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300',
+      collapsed ? 'w-16' : 'w-60'
+    )}>
       <div className="flex-1 flex flex-col min-h-0">
         <SidebarContent collapsed={collapsed} />
       </div>
       <div className="p-2 border-t border-sidebar-border flex-shrink-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggle}
-          className="w-full justify-center text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-        >
+        <Button variant="ghost" size="sm" onClick={toggle}
+          className="w-full justify-center text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50">
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>

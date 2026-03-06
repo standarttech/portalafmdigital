@@ -85,12 +85,17 @@ GlossaryPageWrapper.displayName = 'GlossaryPageWrapper';
 
 function AppRoutes() {
   const { user, loading, adminExists, signOut, agencyRole } = useAuth();
-  const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(null);
+  const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(() => {
+    return sessionStorage.getItem('afm_fpc_checked') === '1' ? false : null;
+  });
   const [checkingFpc, setCheckingFpc] = useState(false);
   const [mfaPending, setMfaPending] = useState(false);
-  const [checkingMfa, setCheckingMfa] = useState(false);
-
-  const [needsPasswordSetup, setNeedsPasswordSetup] = useState<boolean | null>(null);
+  const [checkingMfa, setCheckingMfa] = useState(() => {
+    return sessionStorage.getItem('afm_mfa_checked') !== '1';
+  });
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState<boolean | null>(() => {
+    return sessionStorage.getItem('afm_fpc_checked') === '1' ? false : null;
+  });
 
   const checkForcePasswordChange = useCallback(async () => {
     if (!user) {
@@ -119,6 +124,7 @@ function AppRoutes() {
     }
 
     setNeedsPasswordSetup(false);
+    sessionStorage.setItem('afm_fpc_checked', '1');
 
     if (data?.force_password_change) {
       if (data.temp_password_expires_at && new Date(data.temp_password_expires_at) < new Date()) {
@@ -129,6 +135,7 @@ function AppRoutes() {
       }
     } else {
       setForcePasswordChange(false);
+      sessionStorage.setItem('afm_fpc_checked', '1');
     }
     setCheckingFpc(false);
   }, [user]);
@@ -145,13 +152,16 @@ function AppRoutes() {
         if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
           setMfaPending(true);
         } else {
-          setMfaPending(false);
+        setMfaPending(false);
+        sessionStorage.setItem('afm_mfa_checked', '1');
         }
       } else {
         setMfaPending(false);
+        sessionStorage.setItem('afm_mfa_checked', '1');
       }
     } catch {
       setMfaPending(false);
+      sessionStorage.setItem('afm_mfa_checked', '1');
     }
     setCheckingMfa(false);
   }, [user]);
