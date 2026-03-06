@@ -14,9 +14,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Plus, Loader2, Calendar, MoreHorizontal,
-  CheckCircle2, Clock, PlayCircle, Trash2, Archive, Eye, EyeOff,
+  CheckCircle2, Clock, PlayCircle, Trash2, Archive, Eye, EyeOff, GripVertical,
 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
+  DragOverlay, type DragStartEvent, useDroppable,
+} from '@dnd-kit/core';
+import { useDraggable } from '@dnd-kit/core';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +57,6 @@ const statusColumns: { key: Task['status']; labelRu: string; labelEn: string; ic
   { key: 'completed', labelRu: 'Выполнено', labelEn: 'Done', icon: CheckCircle2, color: 'border-t-emerald-500' },
 ];
 
-/** Parse a date-only string (YYYY-MM-DD) without timezone shift */
 function parseLocalDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -57,19 +64,48 @@ function parseLocalDate(dateStr: string): Date {
 
 function formatLocalDate(dateStr: string, fmt: 'short' | 'full' = 'short'): string {
   const d = parseLocalDate(dateStr);
-  if (fmt === 'short') {
-    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }
+  if (fmt === 'short') return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 }
 
-/** Check if a completed task should be auto-archived (completed > 3 days ago) */
 function isAutoArchived(task: Task): boolean {
   if (task.status !== 'completed') return false;
   const completedAt = new Date(task.updated_at);
   const threeDaysAgo = new Date();
   threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
   return completedAt < threeDaysAgo;
+}
+
+/* ── Droppable Column ── */
+function DroppableColumn({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className={cn('min-h-[200px] transition-colors rounded-lg', isOver && 'bg-primary/5')}>
+      {children}
+    </div>
+  );
+}
+
+/* ── Draggable Task Card ── */
+function DraggableTaskCard({ task, ...props }: TaskCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id });
+
+  return (
+    <div ref={setNodeRef} style={{ opacity: isDragging ? 0.3 : 1 }}>
+      <div className="flex gap-1">
+        <button
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none pt-3 px-0.5 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <TaskCardInner task={task} {...props} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function TaskBoardPage() {
@@ -87,8 +123,8 @@ export default function TaskBoardPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [saving, setSaving] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Form state
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formClient, setFormClient] = useState('');
@@ -99,6 +135,10 @@ export default function TaskBoardPage() {
   const toggleFormAssignee = (userId: string) => {
     setFormAssignees(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
 
   const fetchData = useCallback(async () => {
     const [{ data: t }, { data: c }, { data: au }, { data: taskAssignees }] = await Promise.all([
@@ -173,7 +213,6 @@ export default function TaskBoardPage() {
     if (editingTask) {
       const { error } = await supabase.from('tasks').update(payload).eq('id', editingTask.id);
       if (error) { toast.error(error.message); setSaving(false); return; }
-
       await supabase.from('task_assignees').delete().eq('task_id', editingTask.id);
       if (assigneeIds.length > 0) {
         await supabase.from('task_assignees').insert(assigneeIds.map(userId => ({ task_id: editingTask.id, user_id: userId })));
@@ -181,22 +220,13 @@ export default function TaskBoardPage() {
     } else {
       const { data: createdTask, error } = await supabase.from('tasks').insert(payload).select('id').single();
       if (error) { toast.error(error.message); setSaving(false); return; }
-
       if (createdTask && assigneeIds.length > 0) {
         await supabase.from('task_assignees').insert(assigneeIds.map(userId => ({ task_id: createdTask.id, user_id: userId })));
       }
-
       if (assigneeIds.length > 0) {
         const notifMessage = `${formTitle}${formDueDate ? ` · ${isRu ? 'до' : 'due'} ${formatLocalDate(formDueDate, 'full')}` : ''}`;
         await Promise.all(assigneeIds.map(assigneeId => supabase.functions.invoke('send-notification', {
-          body: {
-            user_id: assigneeId,
-            type: 'task',
-            title: isRu ? 'Новая задача назначена' : 'New task assigned',
-            message: notifMessage,
-            link: '/tasks',
-            force_channels: ['in_app', 'email'],
-          },
+          body: { user_id: assigneeId, type: 'task', title: isRu ? 'Новая задача назначена' : 'New task assigned', message: notifMessage, link: '/tasks', force_channels: ['in_app', 'email'] },
         })));
       }
     }
@@ -213,7 +243,6 @@ export default function TaskBoardPage() {
   };
 
   const handleArchiveTask = async (taskId: string) => {
-    // Move to completed + set updated_at to 4 days ago to trigger auto-archive
     const fourDaysAgo = new Date();
     fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
     await supabase.from('tasks').update({ status: 'completed' as any, updated_at: fourDaysAgo.toISOString() } as any).eq('id', taskId);
@@ -227,6 +256,27 @@ export default function TaskBoardPage() {
     toast.success(isRu ? 'Удалено' : 'Deleted');
   };
 
+  // Drag and drop between columns
+  const handleDragStart = (event: DragStartEvent) => setActiveId(event.active.id as string);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const overId = over.id as string;
+
+    // Check if dropped over a column
+    const targetStatus = statusColumns.find(c => c.key === overId)?.key;
+    if (targetStatus) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task && task.status !== targetStatus) {
+        handleStatusChange(taskId, targetStatus);
+      }
+    }
+  };
+
   const { activeTasks, archivedTasks, tasksByStatus } = useMemo(() => {
     const active: Task[] = [];
     const archived: Task[] = [];
@@ -235,11 +285,11 @@ export default function TaskBoardPage() {
       else active.push(t);
     });
     const map: Record<string, Task[]> = { pending: [], in_progress: [], completed: [] };
-    active.forEach(t => {
-      if (map[t.status]) map[t.status].push(t);
-    });
+    active.forEach(t => { if (map[t.status]) map[t.status].push(t); });
     return { activeTasks: active, archivedTasks: archived, tasksByStatus: map };
   }, [tasks]);
+
+  const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
 
   if (!isAgency) return <div className="p-8 text-center text-muted-foreground">Access restricted</div>;
 
@@ -251,16 +301,11 @@ export default function TaskBoardPage() {
             📋 {isRu ? 'Доска задач' : 'Task Board'}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {isRu ? 'Управление задачами команды' : 'Manage team tasks'}
+            {isRu ? 'Перетаскивайте задачи между колонками' : 'Drag tasks between columns'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant={showArchive ? 'default' : 'outline'}
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setShowArchive(!showArchive)}
-          >
+          <Button variant={showArchive ? 'default' : 'outline'} size="sm" className="gap-1.5" onClick={() => setShowArchive(!showArchive)}>
             {showArchive ? <EyeOff className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
             {isRu ? `Архив (${archivedTasks.length})` : `Archive (${archivedTasks.length})`}
           </Button>
@@ -274,7 +319,7 @@ export default function TaskBoardPage() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : (
-        <>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {statusColumns.map(col => {
               const Icon = col.icon;
@@ -294,19 +339,27 @@ export default function TaskBoardPage() {
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="px-3 pb-3 pt-0 space-y-2 min-h-[200px]">
-                      {columnTasks.map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          isRu={isRu}
-                          onEdit={() => openEditDialog(task)}
-                          onStatusChange={handleStatusChange}
-                          onDelete={handleDelete}
-                          onArchive={handleArchiveTask}
-                          statusColumns={statusColumns}
-                        />
-                      ))}
+                    <CardContent className="px-3 pb-3 pt-0 space-y-2">
+                      <DroppableColumn id={col.key}>
+                        {columnTasks.map(task => (
+                          <div key={task.id} className="mb-2 group">
+                            <DraggableTaskCard
+                              task={task}
+                              isRu={isRu}
+                              onEdit={() => openEditDialog(task)}
+                              onStatusChange={handleStatusChange}
+                              onDelete={handleDelete}
+                              onArchive={handleArchiveTask}
+                              statusColumns={statusColumns}
+                            />
+                          </div>
+                        ))}
+                        {columnTasks.length === 0 && (
+                          <div className="py-8 text-center text-xs text-muted-foreground/50">
+                            {isRu ? 'Перетащите задачу сюда' : 'Drop tasks here'}
+                          </div>
+                        )}
+                      </DroppableColumn>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -314,41 +367,42 @@ export default function TaskBoardPage() {
             })}
           </div>
 
-          {/* Archive section */}
-          {showArchive && archivedTasks.length > 0 && (
-            <motion.div variants={item}>
-              <Card className="glass-card border-t-2 border-t-muted-foreground/30">
-                <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Archive className="h-3.5 w-3.5" />
-                    {isRu ? 'Архив' : 'Archive'}
-                    <Badge variant="secondary" className="text-[10px] ml-1">{archivedTasks.length}</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-3 pb-3 pt-0">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {archivedTasks.map(task => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        isRu={isRu}
-                        onEdit={() => openEditDialog(task)}
-                        onStatusChange={handleStatusChange}
-                        onDelete={handleDelete}
-                        onArchive={handleArchiveTask}
-                        statusColumns={statusColumns}
-                        isArchived
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </>
+          <DragOverlay>
+            {activeTask && (
+              <div className="bg-card border border-primary/30 rounded-lg p-3 shadow-xl opacity-90 max-w-xs">
+                <p className="text-sm font-medium">{activeTask.title}</p>
+                {activeTask.client_name && <Badge variant="outline" className="text-[10px] mt-1">{activeTask.client_name}</Badge>}
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       )}
 
-      {/* Create / Edit Dialog */}
+      {/* Archive */}
+      {showArchive && archivedTasks.length > 0 && (
+        <motion.div variants={item}>
+          <Card className="glass-card border-t-2 border-t-muted-foreground/30">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Archive className="h-3.5 w-3.5" />
+                {isRu ? 'Архив' : 'Archive'}
+                <Badge variant="secondary" className="text-[10px] ml-1">{archivedTasks.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {archivedTasks.map(task => (
+                  <TaskCardInner key={task.id} task={task} isRu={isRu} onEdit={() => openEditDialog(task)}
+                    onStatusChange={handleStatusChange} onDelete={handleDelete} onArchive={handleArchiveTask}
+                    statusColumns={statusColumns} isArchived />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -382,7 +436,7 @@ export default function TaskBoardPage() {
                       <span className="truncate">
                         {formAssignees.length === 0
                           ? (isRu ? 'Выбрать' : 'Select')
-                          : `${isRu ? 'Выбрано' : 'Selected'}: ${formAssignees.length}`}
+                          : `${formAssignees.length} ${isRu ? 'чел.' : 'ppl'}`}
                       </span>
                     </Button>
                   </DropdownMenuTrigger>
@@ -392,11 +446,7 @@ export default function TaskBoardPage() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {agencyUsers.map(u => (
-                      <DropdownMenuCheckboxItem
-                        key={u.user_id}
-                        checked={formAssignees.includes(u.user_id)}
-                        onCheckedChange={() => toggleFormAssignee(u.user_id)}
-                      >
+                      <DropdownMenuCheckboxItem key={u.user_id} checked={formAssignees.includes(u.user_id)} onCheckedChange={() => toggleFormAssignee(u.user_id)}>
                         {u.display_name || 'User'}
                       </DropdownMenuCheckboxItem>
                     ))}
@@ -404,6 +454,19 @@ export default function TaskBoardPage() {
                 </DropdownMenu>
               </div>
             </div>
+            {/* Show selected assignees */}
+            {formAssignees.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {formAssignees.map(id => {
+                  const name = agencyUsers.find(u => u.user_id === id)?.display_name || 'User';
+                  return (
+                    <Badge key={id} variant="secondary" className="text-xs gap-1 cursor-pointer" onClick={() => toggleFormAssignee(id)}>
+                      {name} ✕
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>{isRu ? 'Дедлайн' : 'Due Date'}</Label>
@@ -441,6 +504,7 @@ export default function TaskBoardPage() {
   );
 }
 
+/* ── Task Card Props ── */
 interface TaskCardProps {
   task: Task;
   isRu: boolean;
@@ -452,11 +516,11 @@ interface TaskCardProps {
   isArchived?: boolean;
 }
 
-function TaskCard({ task, isRu, onEdit, onStatusChange, onDelete, onArchive, statusColumns, isArchived }: TaskCardProps) {
+function TaskCardInner({ task, isRu, onEdit, onStatusChange, onDelete, onArchive, statusColumns, isArchived }: TaskCardProps) {
   return (
     <div
       className={cn(
-        "bg-secondary/30 border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors cursor-pointer group",
+        "bg-secondary/30 border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors cursor-pointer",
         isArchived && "opacity-60"
       )}
       onClick={onEdit}
@@ -489,9 +553,7 @@ function TaskCard({ task, isRu, onEdit, onStatusChange, onDelete, onArchive, sta
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {task.description && (
-        <p className="text-[11px] text-muted-foreground line-clamp-2">{task.description}</p>
-      )}
+      {task.description && <p className="text-[11px] text-muted-foreground line-clamp-2">{task.description}</p>}
       <div className="flex items-center gap-2 flex-wrap">
         {task.client_id === null ? (
           <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">{isRu ? '🏢 Агентство' : '🏢 Agency'}</Badge>
@@ -501,9 +563,7 @@ function TaskCard({ task, isRu, onEdit, onStatusChange, onDelete, onArchive, sta
         {task.due_date && (
           <span className={cn(
             'text-[10px] flex items-center gap-0.5',
-            parseLocalDate(task.due_date) < new Date() && task.status !== 'completed'
-              ? 'text-destructive font-medium'
-              : 'text-muted-foreground'
+            parseLocalDate(task.due_date) < new Date() && task.status !== 'completed' ? 'text-destructive font-medium' : 'text-muted-foreground'
           )}>
             <Calendar className="h-2.5 w-2.5" />
             {formatLocalDate(task.due_date)}
@@ -519,9 +579,7 @@ function TaskCard({ task, isRu, onEdit, onStatusChange, onDelete, onArchive, sta
               </Avatar>
             ))}
             <span className="text-[10px] text-muted-foreground">
-              {task.assignee_names.length === 1
-                ? task.assignee_names[0]
-                : (isRu ? `${task.assignee_names.length} исп.` : `${task.assignee_names.length} assignees`)}
+              {task.assignee_names.length === 1 ? task.assignee_names[0] : (isRu ? `${task.assignee_names.length} исп.` : `${task.assignee_names.length} assignees`)}
             </span>
           </div>
         )}

@@ -5,21 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Trash2, Save, Download, Upload, ChevronDown, ChevronRight, BookOpen, FileJson, FileText, FileDown } from 'lucide-react';
+import { Plus, Trash2, Save, Download, Upload, ChevronDown, ChevronRight, BookOpen, FileJson, FileText, FileDown, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import AdminScaleReferencePanel from './AdminScaleReferencePanel';
@@ -27,16 +19,8 @@ import AdminScaleReferencePanel from './AdminScaleReferencePanel';
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 
-interface Step {
-  type: string;
-  text: string;
-  assignee: string;
-}
-
-interface Program {
-  name: string;
-  steps: Step[];
-}
+interface Step { type: string; text: string; assignee: string; }
+interface Program { name: string; steps: Step[]; }
 
 export interface ScaleData {
   name: string;
@@ -72,12 +56,8 @@ function ListEditor({ items, onChange, placeholder }: { items: string[]; onChang
       {items.map((val, i) => (
         <div key={i} className="flex gap-2 items-center">
           <span className="text-xs text-muted-foreground w-5 text-right flex-shrink-0">{i + 1}.</span>
-          <Input
-            value={val}
-            onChange={e => { const n = [...items]; n[i] = e.target.value; onChange(n); }}
-            placeholder={placeholder}
-            className="h-8 text-sm"
-          />
+          <Input value={val} onChange={e => { const n = [...items]; n[i] = e.target.value; onChange(n); }}
+            placeholder={placeholder} className="h-8 text-sm" />
           {items.length > 1 && (
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
               onClick={() => onChange(items.filter((_, j) => j !== i))}>
@@ -99,10 +79,7 @@ function ProgramEditor({ program, onChange, onRemove, label }: {
 }) {
   const [open, setOpen] = useState(true);
 
-  const addStep = () => onChange({
-    ...program,
-    steps: [...program.steps, { type: 'operating', text: '', assignee: '' }],
-  });
+  const addStep = () => onChange({ ...program, steps: [...program.steps, { type: 'operating', text: '', assignee: '' }] });
 
   const updateStep = (i: number, patch: Partial<Step>) => {
     const steps = [...program.steps];
@@ -130,12 +107,8 @@ function ProgramEditor({ program, onChange, onRemove, label }: {
       </div>
       {open && (
         <CardContent className="pt-0 space-y-3">
-          <Input
-            value={program.name}
-            onChange={e => onChange({ ...program, name: e.target.value })}
-            placeholder="Название программы / проекта"
-            className="h-8 text-sm font-medium"
-          />
+          <Input value={program.name} onChange={e => onChange({ ...program, name: e.target.value })}
+            placeholder="Название программы / проекта" className="h-8 text-sm font-medium" />
           <div className="space-y-2">
             {program.steps.map((step, i) => (
               <div key={i} className="flex gap-2 items-start p-2 rounded-lg bg-secondary/30 border border-border">
@@ -145,9 +118,7 @@ function ProgramEditor({ program, onChange, onRemove, label }: {
                     <Select value={step.type} onValueChange={v => updateStep(i, { type: v })}>
                       <SelectTrigger className="h-7 text-xs w-48"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {stepTypes.map(t => (
-                          <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>
-                        ))}
+                        {stepTypes.map(t => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <Input value={step.assignee} onChange={e => updateStep(i, { assignee: e.target.value })}
@@ -252,6 +223,14 @@ export default function AdminScaleEditor() {
     } catch {}
   }, []);
 
+  // Auto-save on change (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.setItem('adminscale_current', JSON.stringify(scale));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [scale]);
+
   const save = () => {
     localStorage.setItem('adminscale_current', JSON.stringify(scale));
     try {
@@ -260,7 +239,7 @@ export default function AdminScaleEditor() {
       if (history.length > 20) history.length = 20;
       localStorage.setItem('adminscale_history', JSON.stringify(history));
     } catch {}
-    toast.success('Шкала сохранена');
+    toast.success('Шкала сохранена в историю');
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -280,13 +259,10 @@ export default function AdminScaleEditor() {
             toast.error('Неверный формат JSON');
           }
         } else {
-          // Try to parse plain text
           toast.info('Импорт текста: загружено как цель шкалы');
           setScale(prev => ({ ...prev, name: file.name.replace(/\.\w+$/, ''), goal: text }));
         }
-      } catch {
-        toast.error('Ошибка при импорте файла');
-      }
+      } catch { toast.error('Ошибка при импорте файла'); }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -300,17 +276,21 @@ export default function AdminScaleEditor() {
   const addProject = () => update('projects', [...scale.projects, { name: '', steps: [{ type: 'operating', text: '', assignee: '' }] }]);
 
   return (
-    <div className="flex gap-0 h-full">
-      <motion.div variants={container} initial="hidden" animate="show" className="space-y-4 max-w-3xl mx-auto pb-8 flex-1 min-w-0">
+    <div className="flex gap-0 h-full relative">
+      {/* Main editor - shrinks when reference is open */}
+      <motion.div variants={container} initial="hidden" animate="show"
+        className={cn("space-y-4 pb-8 flex-1 min-w-0 transition-all duration-300", refOpen ? 'mr-[380px]' : 'max-w-3xl mx-auto')}>
         {/* Top bar */}
         <motion.div variants={item} className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-xl font-bold text-foreground">Редактор шкалы</h1>
-            <p className="text-xs text-muted-foreground">Заполните все 10 уровней административной шкалы</p>
+            <p className="text-xs text-muted-foreground">Заполните все 10 уровней. Автосохранение включено.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setRefOpen(true)}>
-              <BookOpen className="h-3.5 w-3.5" /> Справочник
+            <Button variant={refOpen ? 'default' : 'outline'} size="sm" className="gap-1.5 text-xs"
+              onClick={() => setRefOpen(o => !o)}>
+              {refOpen ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
+              Справочник
             </Button>
             <input ref={fileInputRef} type="file" accept=".json,.txt,.md" className="hidden" onChange={handleImport} />
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => fileInputRef.current?.click()}>
@@ -335,7 +315,7 @@ export default function AdminScaleEditor() {
               </DropdownMenuContent>
             </DropdownMenu>
             <Button size="sm" className="gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white" onClick={save}>
-              <Save className="h-3.5 w-3.5" /> Сохранить
+              <Save className="h-3.5 w-3.5" /> В историю
             </Button>
           </div>
         </motion.div>
@@ -346,7 +326,7 @@ export default function AdminScaleEditor() {
             placeholder="Название шкалы" className="text-lg font-semibold h-11 border-amber-500/30 focus-visible:ring-amber-500/40" />
         </motion.div>
 
-        {/* Level 1: Goal */}
+        {/* Level 1-10 */}
         <motion.div variants={item}>
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">
             <span className="text-amber-500">🎯 1.</span> Цель</CardTitle></CardHeader>
@@ -354,28 +334,24 @@ export default function AdminScaleEditor() {
               placeholder="Зачем играть? Абстрактно и долгосрочно" className="min-h-[60px] text-sm" /></CardContent></Card>
         </motion.div>
 
-        {/* Level 2: Intentions */}
         <motion.div variants={item}>
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">
             <span className="text-amber-500">💡 2.</span> Замыслы</CardTitle></CardHeader>
             <CardContent><ListEditor items={scale.intentions} onChange={v => update('intentions', v)} placeholder="Намерение для конкретного вида деятельности" /></CardContent></Card>
         </motion.div>
 
-        {/* Level 3: Policies */}
         <motion.div variants={item}>
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">
             <span className="text-amber-500">📜 3.</span> Политика</CardTitle></CardHeader>
             <CardContent><ListEditor items={scale.policies} onChange={v => update('policies', v)} placeholder="Неизменное правило" /></CardContent></Card>
         </motion.div>
 
-        {/* Level 4: Plans */}
         <motion.div variants={item}>
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">
             <span className="text-amber-500">📋 4.</span> Планы</CardTitle></CardHeader>
             <CardContent><ListEditor items={scale.plans} onChange={v => update('plans', v)} placeholder="Широкое краткосрочное намерение" /></CardContent></Card>
         </motion.div>
 
-        {/* Level 5: Programs */}
         <motion.div variants={item}>
           <Card className="border-amber-500/20">
             <CardHeader className="pb-2">
@@ -394,7 +370,6 @@ export default function AdminScaleEditor() {
           </Card>
         </motion.div>
 
-        {/* Level 6: Projects */}
         <motion.div variants={item}>
           <Card>
             <CardHeader className="pb-2">
@@ -418,14 +393,12 @@ export default function AdminScaleEditor() {
           </Card>
         </motion.div>
 
-        {/* Level 7: Orders */}
         <motion.div variants={item}>
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">
             <span className="text-amber-500">📢 7.</span> Приказы</CardTitle></CardHeader>
             <CardContent><ListEditor items={scale.orders} onChange={v => update('orders', v)} placeholder="«Сделай это сейчас» — тактика на местах" /></CardContent></Card>
         </motion.div>
 
-        {/* Level 8: Ideal Picture */}
         <motion.div variants={item}>
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">
             <span className="text-amber-500">🌟 8.</span> Идеальная картина</CardTitle></CardHeader>
@@ -433,14 +406,12 @@ export default function AdminScaleEditor() {
               placeholder="Как должна выглядеть область в идеале" className="min-h-[60px] text-sm" /></CardContent></Card>
         </motion.div>
 
-        {/* Level 9: Statistics */}
         <motion.div variants={item}>
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">
             <span className="text-amber-500">📈 9.</span> Статистики</CardTitle></CardHeader>
             <CardContent><ListEditor items={scale.statistics} onChange={v => update('statistics', v)} placeholder="Количественный показатель выполненной работы" /></CardContent></Card>
         </motion.div>
 
-        {/* Level 10: VFP */}
         <motion.div variants={item}>
           <Card className="border-amber-500/20">
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">
@@ -451,19 +422,22 @@ export default function AdminScaleEditor() {
         </motion.div>
       </motion.div>
 
-      {/* Right-side reference panel (Sheet) */}
-      <Sheet open={refOpen} onOpenChange={setRefOpen}>
-        <SheetContent side="right" className="w-[420px] sm:w-[480px] overflow-y-auto p-0">
-          <SheetHeader className="px-6 pt-6 pb-2">
-            <SheetTitle className="flex items-center gap-2 text-lg">
-              <BookOpen className="h-5 w-5 text-amber-500" /> Справочник
-            </SheetTitle>
-          </SheetHeader>
-          <div className="px-6 pb-8">
+      {/* Right-side inline reference panel (not a Sheet — doesn't block content) */}
+      {refOpen && (
+        <div className="fixed right-0 top-14 bottom-0 w-[380px] bg-sidebar border-l border-sidebar-border overflow-y-auto z-20 shadow-lg">
+          <div className="sticky top-0 bg-sidebar border-b border-sidebar-border px-4 py-3 flex items-center justify-between z-10">
+            <h2 className="text-sm font-bold flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-amber-500" /> Справочник
+            </h2>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRefOpen(false)}>
+              <PanelRightClose className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="px-4 pb-8">
             <AdminScaleReferencePanel />
           </div>
-        </SheetContent>
-      </Sheet>
+        </div>
+      )}
     </div>
   );
 }
