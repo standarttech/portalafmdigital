@@ -325,7 +325,8 @@ export default function ChatPage() {
   const supportRooms = rooms.filter(r => r.type === 'support');
   const clientRooms = rooms.filter(r => r.type === 'client');
   const teamRooms = rooms.filter(r => r.type === 'team' || r.type === 'custom');
-  const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : type === 'support' ? Headphones : Hash;
+  const voiceRooms = rooms.filter(r => r.type === 'voice');
+  const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : type === 'support' ? Headphones : type === 'voice' ? Mic : Hash;
 
   const renderRoomItem = (room: ChatRoom) => {
     const RoomIcon = roomTypeIcon(room.type);
