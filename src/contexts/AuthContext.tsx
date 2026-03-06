@@ -8,6 +8,9 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   agencyRole: AgencyRole;
+  effectiveRole: AgencyRole;
+  viewAsRole: AgencyRole;
+  setViewAsRole: (role: AgencyRole) => void;
   loading: boolean;
   adminExists: boolean | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -21,28 +24,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [agencyRole, setAgencyRole] = useState<AgencyRole>(null);
   const [loading, setLoading] = useState(true);
-  const [adminExists, setAdminExists] = useState<boolean | null>(null);
+
+  // Initialize from localStorage cache to prevent reload flash
+  const [agencyRole, setAgencyRole] = useState<AgencyRole>(() => {
+    return (localStorage.getItem('afm_cached_role') as AgencyRole) || null;
+  });
+  const [adminExists, setAdminExists] = useState<boolean | null>(() => {
+    const cached = localStorage.getItem('afm_admin_exists');
+    return cached !== null ? cached === 'true' : null;
+  });
+
+  // Role preview for admins
+  const [viewAsRole, setViewAsRole] = useState<AgencyRole>(null);
+  const effectiveRole = viewAsRole || agencyRole;
 
   const checkAdminExists = useCallback(async () => {
     try {
-      // Use the SECURITY DEFINER RPC function — works for anon/unauthenticated users
       const { data, error } = await supabase.rpc('no_admin_exists');
-      
       if (error) {
         console.error('Error checking admin exists:', error);
-        // Fallback: assume admin exists to prevent showing setup page inappropriately
         setAdminExists(true);
+        localStorage.setItem('afm_admin_exists', 'true');
         return;
       }
-      
-      // no_admin_exists returns TRUE when no admin → adminExists = false
-      // no_admin_exists returns FALSE when admin exists → adminExists = true
-      setAdminExists(!data);
+      const exists = !data;
+      setAdminExists(exists);
+      localStorage.setItem('afm_admin_exists', String(exists));
     } catch {
-      // Fallback: assume admin exists to prevent showing setup page inappropriately
       setAdminExists(true);
+      localStorage.setItem('afm_admin_exists', 'true');
     }
   }, []);
 
@@ -53,14 +64,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('agency_role')
         .eq('user_id', userId)
         .maybeSingle();
-      
-      if (data) {
-        setAgencyRole(data.agency_role as AgencyRole);
+
+      const role = data ? (data.agency_role as AgencyRole) : null;
+      setAgencyRole(role);
+      if (role) {
+        localStorage.setItem('afm_cached_role', role);
       } else {
-        setAgencyRole(null);
+        localStorage.removeItem('afm_cached_role');
       }
     } catch {
       setAgencyRole(null);
+      localStorage.removeItem('afm_cached_role');
     }
   }, []);
 
@@ -69,17 +83,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
-          setTimeout(() => {
-            fetchRole(session.user.id);
-          }, 0);
+          setTimeout(() => fetchRole(session.user.id), 0);
         } else {
           setAgencyRole(null);
+          localStorage.removeItem('afm_cached_role');
         }
-        
+
         if (event === 'SIGNED_OUT') {
           setAgencyRole(null);
+          setViewAsRole(null);
+          localStorage.removeItem('afm_cached_role');
         }
       }
     );
@@ -89,6 +104,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchRole(session.user.id);
+      } else {
+        // No session — clear cached role so we don't show stale UI
+        localStorage.removeItem('afm_cached_role');
+        setAgencyRole(null);
       }
       setLoading(false);
     });
@@ -105,99 +124,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setupAdmin = async (email: string, password: string, displayName: string) => {
-    // Sign up the first user
     const redirectUrl = `${window.location.origin}/`;
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { display_name: displayName },
-      },
+      email, password,
+      options: { emailRedirectTo: redirectUrl, data: { display_name: displayName } },
     });
-    
     if (signUpError) return { error: signUpError.message };
-    
     if (!signUpData.user) return { error: 'Failed to create user' };
-    
-    // Try to sign in immediately (in case auto-confirm is on)
+
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (signInError) {
-      // User needs to confirm email
-      return { error: null };
-    }
+    if (signInError) return { error: null };
 
-    // Create agency_users record as admin
-    const { error: roleError } = await supabase
-      .from('agency_users')
-      .insert({
-        user_id: signUpData.user.id,
-        agency_role: 'AgencyAdmin',
-        display_name: displayName,
-      });
+    const { error: roleError } = await supabase.from('agency_users').insert({
+      user_id: signUpData.user.id, agency_role: 'AgencyAdmin', display_name: displayName,
+    });
+    if (roleError) return { error: roleError.message };
 
-    if (roleError) {
-      return { error: roleError.message };
-    }
-
-    // Create full permissions for admin
-    const { error: permError } = await supabase
-      .from('user_permissions')
-      .insert({
-        user_id: signUpData.user.id,
-        can_add_clients: true,
-        can_edit_clients: true,
-        can_assign_clients_to_users: true,
-        can_connect_integrations: true,
-        can_run_manual_sync: true,
-        can_edit_metrics_override: true,
-        can_manage_tasks: true,
-        can_publish_reports: true,
-        can_view_audit_log: true,
-      });
-
-    if (permError) {
-      console.error('Permission setup error:', permError);
-    }
-
-    // Create default user settings
-    await supabase.from('user_settings').insert({
+    await supabase.from('user_permissions').insert({
       user_id: signUpData.user.id,
-      language: 'ru',
-      theme: 'dark',
+      can_add_clients: true, can_edit_clients: true, can_assign_clients_to_users: true,
+      can_connect_integrations: true, can_run_manual_sync: true, can_edit_metrics_override: true,
+      can_manage_tasks: true, can_publish_reports: true, can_view_audit_log: true,
+    });
+
+    await supabase.from('user_settings').insert({
+      user_id: signUpData.user.id, language: 'ru', theme: 'dark',
     });
 
     setAgencyRole('AgencyAdmin');
+    localStorage.setItem('afm_cached_role', 'AgencyAdmin');
     setAdminExists(true);
+    localStorage.setItem('afm_admin_exists', 'true');
 
     return { error: null };
   };
 
   const signOut = async () => {
+    localStorage.removeItem('afm_cached_role');
+    localStorage.removeItem('afm_admin_exists');
+    sessionStorage.removeItem('afm_fpc_checked');
+    sessionStorage.removeItem('afm_mfa_checked');
+    setViewAsRole(null);
     await supabase.auth.signOut();
   };
 
   const refreshRole = useCallback(() => {
-    if (user) {
-      fetchRole(user.id);
-    }
+    if (user) fetchRole(user.id);
   }, [user, fetchRole]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        agencyRole,
-        loading,
-        adminExists,
-        signIn,
-        signOut,
-        setupAdmin,
-        refreshRole,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user, session, agencyRole, effectiveRole, viewAsRole, setViewAsRole,
+      loading, adminExists, signIn, signOut, setupAdmin, refreshRole,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -205,8 +184,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

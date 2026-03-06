@@ -4,11 +4,13 @@ import AppSidebar from './AppSidebar';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
 import { useSidebarState } from '@/contexts/SidebarContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePresence } from '@/hooks/usePresence';
 import { cn } from '@/lib/utils';
 
 export default function MainLayout() {
   const { collapsed } = useSidebarState();
   const isMobile = useIsMobile();
+  usePresence();
 
   return (
     <div className="flex min-h-screen w-full bg-background">
