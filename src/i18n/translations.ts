@@ -866,7 +866,6 @@ export const translations = {
   'admin.recentActivity': t('Recent Activity', 'Последняя активность', 'Attività recente', 'Actividad reciente', 'النشاط الأخير', 'Activité récente'),
   'admin.activityFor': t('Activity for', 'Активность для', 'Attività per', 'Actividad de', 'نشاط لـ', 'Activité de'),
   'nav.presence': t('Presence', 'Присутствие', 'Presenza', 'Presencia', 'الحضور', 'Présence'),
-  'role.client': t('Client', 'Клиент', 'Cliente', 'Cliente', 'عميل', 'Client'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
