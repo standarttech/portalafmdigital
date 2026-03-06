@@ -177,6 +177,7 @@ export default function ClientsPage() {
   };
 
   const filtered = clients
+    .filter((c) => c.category !== 'agency') // Hide AFM Digital from clients list
     .filter((c) => statusFilter === 'all' || c.status === statusFilter)
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
