@@ -83,6 +83,7 @@ export default function ChatPage() {
   const [roomName, setRoomName] = useState('');
   const [roomType, setRoomType] = useState('custom');
   const [roomClientId, setRoomClientId] = useState('');
+  const [roomMeetingLink, setRoomMeetingLink] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
 
