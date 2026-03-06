@@ -232,6 +232,8 @@ export default function ClientDetailPage() {
   const isAgency = effectiveRole === 'AgencyAdmin' || effectiveRole === 'MediaBuyer';
   const isAdmin = effectiveRole === 'AgencyAdmin';
 
+  const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
+
   const category: ClientCategory = useMemo(() => toClientCategory(client?.category), [client?.category]);
 
   // Selectable chart lines
