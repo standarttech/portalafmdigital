@@ -325,6 +325,10 @@ export const translations = {
   'perm.can_manage_tasks': t('Manage Tasks', 'Управлять задачами', 'Gestisci attività', 'Gestionar tareas', 'إدارة المهام', 'Gérer les tâches'),
   'perm.can_publish_reports': t('Publish Reports', 'Публиковать отчёты', 'Pubblica report', 'Publicar informes', 'نشر التقارير', 'Publier des rapports'),
   'perm.can_view_audit_log': t('View Audit Log', 'Просматривать аудит', 'Visualizza registro audit', 'Ver registro de auditoría', 'عرض سجل التدقيق', "Voir le journal d'audit"),
+  'perm.can_access_afm_internal': t('Access AFM Internal', 'Доступ к AFM Internal', 'Accesso AFM Interno', 'Acceso AFM Interno', 'الوصول إلى AFM الداخلي', 'Accès AFM Interne'),
+  'perm.can_access_adminscale': t('Access AdminScale', 'Доступ к AdminScale', 'Accesso AdminScale', 'Acceso AdminScale', 'الوصول إلى AdminScale', 'Accès AdminScale'),
+  'perm.can_access_crm': t('Access CRM', 'Доступ к CRM', 'Accesso CRM', 'Acceso CRM', 'الوصول إلى CRM', 'Accès CRM'),
+  'perm.can_manage_crm_integrations': t('Manage CRM Integrations', 'Управлять интеграциями CRM', 'Gestisci integrazioni CRM', 'Gestionar integraciones CRM', 'إدارة تكاملات CRM', 'Gérer les intégrations CRM'),
 
   // Roles
   'role.agencyAdmin': t('Agency Admin', 'Администратор агентства', "Amministratore dell'agenzia", 'Administrador de agencia', 'مسؤول الوكالة', "Administrateur d'agence"),
