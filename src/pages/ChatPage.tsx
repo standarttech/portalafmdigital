@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   MessageSquare, Send, Plus, Trash2, Loader2, Users, Building2, Hash, Settings, Crown, Shield, Headphones, ImageIcon, X,
+  Video, ExternalLink, Mic,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
@@ -53,8 +54,8 @@ interface Client {
   name: string;
 }
 
-const ROLE_ICON: Record<string, typeof Crown> = { AgencyAdmin: Crown, MediaBuyer: Shield, Client: Building2 };
-const ROLE_COLOR: Record<string, string> = { AgencyAdmin: 'text-primary', MediaBuyer: 'text-amber-400', Client: 'text-emerald-400' };
+const ROLE_ICON: Record<string, typeof Crown> = { AgencyAdmin: Crown, MediaBuyer: Shield, Client: Building2, Manager: Shield, SalesManager: Shield };
+const ROLE_COLOR: Record<string, string> = { AgencyAdmin: 'text-primary', MediaBuyer: 'text-amber-400', Client: 'text-emerald-400', Manager: 'text-blue-400', SalesManager: 'text-orange-400' };
 
 // Detect if content is an image URL stored in our bucket
 const isImageMessage = (content: string) =>
@@ -82,6 +83,7 @@ export default function ChatPage() {
   const [roomName, setRoomName] = useState('');
   const [roomType, setRoomType] = useState('custom');
   const [roomClientId, setRoomClientId] = useState('');
+  const [roomMeetingLink, setRoomMeetingLink] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
 
@@ -276,7 +278,14 @@ export default function ChatPage() {
     if (membersToAdd.length > 0) {
       await supabase.from('chat_members').insert(membersToAdd.map(uid => ({ room_id: room.id, user_id: uid, can_write: true })));
     }
-    setCreating(false); setCreateOpen(false); setRoomName(''); setSelectedMembers([]); setRoomType('custom'); setRoomClientId('');
+    // For voice rooms, post the meeting link as the first message
+    if (roomType === 'voice' && roomMeetingLink.trim()) {
+      await supabase.from('chat_messages').insert({
+        room_id: room.id, user_id: user.id,
+        content: `🔗 Ссылка на встречу: ${roomMeetingLink.trim()}`,
+      });
+    }
+    setCreating(false); setCreateOpen(false); setRoomName(''); setSelectedMembers([]); setRoomType('custom'); setRoomClientId(''); setRoomMeetingLink('');
     toast.success(t('chat.roomCreated' as TranslationKey));
     fetchRooms(); setSelectedRoom(room.id);
   };
@@ -324,7 +333,8 @@ export default function ChatPage() {
   const supportRooms = rooms.filter(r => r.type === 'support');
   const clientRooms = rooms.filter(r => r.type === 'client');
   const teamRooms = rooms.filter(r => r.type === 'team' || r.type === 'custom');
-  const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : type === 'support' ? Headphones : Hash;
+  const voiceRooms = rooms.filter(r => r.type === 'voice');
+  const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : type === 'support' ? Headphones : type === 'voice' ? Mic : Hash;
 
   const renderRoomItem = (room: ChatRoom) => {
     const RoomIcon = roomTypeIcon(room.type);
@@ -411,11 +421,45 @@ export default function ChatPage() {
                      <>
                        <div className="px-3 pt-3 pb-1">
                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                           <Users className="h-3 w-3" />
-                           Команда ({teamRooms.length})
+                           <Hash className="h-3 w-3" />
+                           Каналы ({teamRooms.length})
                          </p>
                        </div>
                        {teamRooms.map(renderRoomItem)}
+                     </>
+                   )}
+                   {voiceRooms.length > 0 && (
+                     <>
+                       <div className="px-3 pt-3 pb-1">
+                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                           <Mic className="h-3 w-3" />
+                           Голосовые ({voiceRooms.length})
+                         </p>
+                       </div>
+                       {voiceRooms.map(room => {
+                         const isActive = selectedRoom === room.id;
+                         return (
+                           <div key={room.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive ? 'bg-primary/15' : 'hover:bg-secondary/50'}`}>
+                             <div className="h-9 w-9 rounded-lg bg-secondary/50 flex items-center justify-center flex-shrink-0">
+                               <Video className="h-4 w-4 text-muted-foreground" />
+                             </div>
+                             <button
+                               onClick={() => { setSelectedRoom(room.id); setMobileShowMessages(true); }}
+                               className="flex-1 text-left min-w-0"
+                             >
+                               <span className="text-sm font-medium truncate block">{room.name}</span>
+                               <span className="text-[10px] text-muted-foreground">Нажмите чтобы открыть чат</span>
+                             </button>
+                             {room.name.includes('http') ? (
+                               <a href={room.name} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                                 <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1">
+                                   <ExternalLink className="h-3 w-3" /> Join
+                                 </Button>
+                               </a>
+                             ) : null}
+                           </div>
+                         );
+                       })}
                      </>
                    )}
                 </div>
@@ -448,20 +492,38 @@ export default function ChatPage() {
                     {isClient && (
                       <p className="text-[10px] text-muted-foreground">{t('chat.supportSubtitle' as TranslationKey)}</p>
                     )}
-                  </div>
-                </div>
-                {isAdmin && (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => openManageMembers(selectedRoom)} className="h-8 w-8 p-0">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                    {selectedRoomData?.type !== 'support' && (
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteRoom(selectedRoom)} className="h-8 w-8 p-0 text-destructive/60 hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    {selectedRoomData?.type === 'voice' && (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-primary/30 text-primary">
+                        <Mic className="h-3 w-3" /> Голосовой
+                      </Badge>
                     )}
                   </div>
-                )}
+                </div>
+                <div className="flex gap-1">
+                  {selectedRoomData?.type === 'voice' && (() => {
+                    const meetMsg = messages.find(m => m.content.includes('Ссылка на встречу:'));
+                    const meetUrl = meetMsg?.content.match(/https?:\/\/\S+/)?.[0];
+                    return meetUrl ? (
+                      <a href={meetUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 border-primary/30 text-primary hover:bg-primary/10">
+                          <Video className="h-3.5 w-3.5" /> Присоединиться
+                        </Button>
+                      </a>
+                    ) : null;
+                  })()}
+                  {isAdmin && (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={() => openManageMembers(selectedRoom)} className="h-8 w-8 p-0">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                      {selectedRoomData?.type !== 'support' && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteRoom(selectedRoom)} className="h-8 w-8 p-0 text-destructive/60 hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Messages */}
@@ -579,9 +641,10 @@ export default function ChatPage() {
               <Select value={roomType} onValueChange={setRoomType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="team">{t('chat.typeTeam' as TranslationKey)}</SelectItem>
-                  <SelectItem value="client">{t('chat.typeClient' as TranslationKey)}</SelectItem>
-                  <SelectItem value="custom">{t('chat.typeCustom' as TranslationKey)}</SelectItem>
+                  <SelectItem value="team">💬 Текстовый канал</SelectItem>
+                  <SelectItem value="voice">🎙️ Голосовой канал (Zoom/Meet)</SelectItem>
+                  <SelectItem value="client">🏢 Клиентский</SelectItem>
+                  <SelectItem value="custom">📌 Произвольный</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -594,6 +657,18 @@ export default function ChatPage() {
                     {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {roomType === 'voice' && (
+              <div>
+                <Label className="flex items-center gap-1.5"><Video className="h-3.5 w-3.5" /> Ссылка на Zoom / Google Meet</Label>
+                <Input
+                  value={roomMeetingLink}
+                  onChange={(e) => setRoomMeetingLink(e.target.value)}
+                  placeholder="https://meet.google.com/xxx или https://zoom.us/j/xxx"
+                  className="mt-1"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Участники смогут присоединиться к звонку по этой ссылке</p>
               </div>
             )}
             <div>

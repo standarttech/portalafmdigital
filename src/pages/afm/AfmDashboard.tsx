@@ -701,6 +701,33 @@ export default function AfmDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">{t('clients.syncSheetDesc')}</p>
+
+                {/* Auto-sync toggle */}
+                <div className="rounded-lg border border-border/50 p-3 bg-secondary/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4 text-primary" />
+                        Автосинхронизация
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Автоматически синхронизировать данные каждый час</p>
+                    </div>
+                    <Switch
+                      checked={agencyClient.auto_sync_enabled}
+                      onCheckedChange={async (v) => {
+                        await supabase.from('clients').update({ auto_sync_enabled: v }).eq('id', agencyClient.id);
+                        setAgencyClient(prev => prev ? { ...prev, auto_sync_enabled: v } : prev);
+                        toast.success(v ? 'Автосинхронизация включена' : 'Автосинхронизация отключена');
+                      }}
+                    />
+                  </div>
+                  {agencyClient.auto_sync_enabled && (
+                    <p className="text-[10px] text-success mt-2 flex items-center gap-1">
+                      ✓ Данные будут обновляться каждый час автоматически
+                    </p>
+                  )}
+                </div>
+
                 <PlatformSheetRow clientId={agencyClient.id} platform="meta" label="Meta Ads" fieldName="meta_sheet_url" />
                 <PlatformSheetRow clientId={agencyClient.id} platform="google" label="Google Ads" fieldName="google_sheet_url" />
                 <PlatformSheetRow clientId={agencyClient.id} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" />

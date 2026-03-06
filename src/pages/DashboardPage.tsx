@@ -71,7 +71,7 @@ function SortableSection({ id, children, isAdmin }: { id: string; children: Reac
 
 export default function DashboardPage() {
   const { t } = useLanguage();
-  const { user, agencyRole } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
 
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [comparison, setComparison] = useState<Comparison>('none');
@@ -79,6 +79,7 @@ export default function DashboardPage() {
   const [displayName, setDisplayName] = useState<string>('');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [compareEnabled, setCompareEnabled] = useState(false);
+  const [simulatedClientIds, setSimulatedClientIds] = useState<string[] | null>(null);
 
   const filters: DashboardFilters = useMemo(
     () => ({ dateRange, comparison, platform }),
@@ -88,10 +89,12 @@ export default function DashboardPage() {
   const { kpis, chartData, platformData, clientsData, loading: metricsLoading } = useDashboardMetrics({
     ...filters,
     customDateRange,
+    clientIds: simulatedClientIds,
   });
 
-  const isAdmin = agencyRole === 'AgencyAdmin';
-  const isBuyer = agencyRole === 'MediaBuyer';
+  const isAdmin = effectiveRole === 'AgencyAdmin';
+  const isBuyer = effectiveRole === 'MediaBuyer' || effectiveRole === 'Manager' || effectiveRole === 'SalesManager' || effectiveRole === 'AccountManager' || effectiveRole === 'Designer' || effectiveRole === 'Copywriter';
+  const isClient = effectiveRole === 'Client';
   const isAgencyMember = isAdmin || isBuyer;
 
   // Draggable section order
@@ -123,17 +126,47 @@ export default function DashboardPage() {
 
   const fetchDisplayName = useCallback(async () => {
     if (!user) return;
+    // If simulating a specific user, show their name
+    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
     const { data } = await supabase
       .from('agency_users')
       .select('display_name')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .maybeSingle();
     if (data?.display_name) {
       setDisplayName(data.display_name);
+    } else if (simulatedUser) {
+      setDisplayName(simulatedUser.displayName);
     } else {
       setDisplayName(user.user_metadata?.display_name || user.email?.split('@')[0] || 'Admin');
     }
-  }, [user]);
+  }, [user, simulatedUser]);
+
+  // Load simulated user's client assignments when simulating
+  useEffect(() => {
+    if (!simulatedUser) {
+      setSimulatedClientIds(null);
+      return;
+    }
+    // For simulated client users, load their assigned clients
+    if (simulatedUser.role === 'Client') {
+      supabase.from('client_users').select('client_id').eq('user_id', simulatedUser.userId)
+        .then(({ data }) => {
+          setSimulatedClientIds(data?.map(d => d.client_id) || []);
+        });
+    } else {
+      // Non-client agency members see all (or their assigned clients)
+      supabase.from('client_users').select('client_id').eq('user_id', simulatedUser.userId)
+        .then(({ data }) => {
+          // If they have specific assignments, filter; otherwise show all
+          if (data && data.length > 0) {
+            setSimulatedClientIds(data.map(d => d.client_id));
+          } else {
+            setSimulatedClientIds(null); // Show all
+          }
+        });
+    }
+  }, [simulatedUser]);
 
   useEffect(() => { fetchDisplayName(); }, [fetchDisplayName]);
 
