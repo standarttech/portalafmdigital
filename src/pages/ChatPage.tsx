@@ -278,7 +278,14 @@ export default function ChatPage() {
     if (membersToAdd.length > 0) {
       await supabase.from('chat_members').insert(membersToAdd.map(uid => ({ room_id: room.id, user_id: uid, can_write: true })));
     }
-    setCreating(false); setCreateOpen(false); setRoomName(''); setSelectedMembers([]); setRoomType('custom'); setRoomClientId('');
+    // For voice rooms, post the meeting link as the first message
+    if (roomType === 'voice' && roomMeetingLink.trim()) {
+      await supabase.from('chat_messages').insert({
+        room_id: room.id, user_id: user.id,
+        content: `🔗 Ссылка на встречу: ${roomMeetingLink.trim()}`,
+      });
+    }
+    setCreating(false); setCreateOpen(false); setRoomName(''); setSelectedMembers([]); setRoomType('custom'); setRoomClientId(''); setRoomMeetingLink('');
     toast.success(t('chat.roomCreated' as TranslationKey));
     fetchRooms(); setSelectedRoom(room.id);
   };
