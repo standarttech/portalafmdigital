@@ -375,8 +375,33 @@ export default function ClientDetailPage() {
   // Data fetching
   const fetchClient = useCallback(async () => {
     if (!id) return;
-    const { data, error } = await supabase.from('clients').select('id, name, status, currency, timezone, notes, category, visible_columns, google_sheet_url, meta_sheet_url, tiktok_sheet_url').eq('id', id).single();
-    if (error || !data) { navigate('/clients'); return; }
+
+    if (!isAdmin && targetUserId) {
+      const { data: access } = await supabase
+        .from('client_users')
+        .select('id')
+        .eq('user_id', targetUserId)
+        .eq('client_id', id)
+        .maybeSingle();
+
+      if (!access) {
+        toast.error(t('common.accessDenied' as TranslationKey));
+        navigate('/clients');
+        return;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('clients')
+      .select('id, name, status, currency, timezone, notes, category, visible_columns, google_sheet_url, meta_sheet_url, tiktok_sheet_url')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      navigate('/clients');
+      return;
+    }
+
     setClient({
       ...data,
       google_sheet_url: (data as any).google_sheet_url || null,
@@ -385,7 +410,7 @@ export default function ClientDetailPage() {
       visible_columns: data.visible_columns ? (Array.isArray(data.visible_columns) ? data.visible_columns : JSON.parse(data.visible_columns as any)) : null,
     } as ClientData);
     setLoading(false);
-  }, [id, navigate]);
+  }, [id, isAdmin, navigate, t, targetUserId]);
 
   const fetchDailyMetrics = useCallback(async () => {
     if (!id) return;
