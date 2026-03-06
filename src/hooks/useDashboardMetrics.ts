@@ -180,6 +180,7 @@ export function useDashboardMetrics(
           });
           setChartData([]);
           setClientsData([]);
+          setPlatformData([]);
           setLoading(false);
           return;
         }
