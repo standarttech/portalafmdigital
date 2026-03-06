@@ -54,8 +54,8 @@ interface Client {
   name: string;
 }
 
-const ROLE_ICON: Record<string, typeof Crown> = { AgencyAdmin: Crown, MediaBuyer: Shield, Client: Building2 };
-const ROLE_COLOR: Record<string, string> = { AgencyAdmin: 'text-primary', MediaBuyer: 'text-amber-400', Client: 'text-emerald-400' };
+const ROLE_ICON: Record<string, typeof Crown> = { AgencyAdmin: Crown, MediaBuyer: Shield, Client: Building2, Manager: Shield, SalesManager: Shield };
+const ROLE_COLOR: Record<string, string> = { AgencyAdmin: 'text-primary', MediaBuyer: 'text-amber-400', Client: 'text-emerald-400', Manager: 'text-blue-400', SalesManager: 'text-orange-400' };
 
 // Detect if content is an image URL stored in our bucket
 const isImageMessage = (content: string) =>
