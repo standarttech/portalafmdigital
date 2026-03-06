@@ -76,7 +76,7 @@ export default function UserPresencePage() {
       .order('created_at', { ascending: false })
       .limit(100);
 
-    setActivities(acts || []);
+    setActivities((acts as any[]) || []);
     setLoading(false);
   }, []);
 
