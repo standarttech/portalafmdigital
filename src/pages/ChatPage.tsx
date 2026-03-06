@@ -146,10 +146,27 @@ export default function ChatPage() {
 
   const fetchRooms = useCallback(async () => {
     if (isClient) return;
-    const { data } = await supabase.from('chat_rooms').select('*').order('updated_at', { ascending: false });
-    if (!data) { setLoadingRooms(false); return; }
 
-    const supportRooms = data.filter(r => r.type === 'support' && r.client_id);
+    let roomsData: any[] = [];
+
+    if (isAdmin) {
+      // Admins see all rooms
+      const { data } = await supabase.from('chat_rooms').select('*').order('updated_at', { ascending: false });
+      roomsData = data || [];
+    } else {
+      // Non-admins: only see rooms where they are a member
+      const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
+      if (!targetUserId) { setLoadingRooms(false); return; }
+
+      const { data: memberships } = await supabase.from('chat_members').select('room_id').eq('user_id', targetUserId);
+      const memberRoomIds = memberships?.map(m => m.room_id) || [];
+      if (memberRoomIds.length === 0) { setRooms([]); setLoadingRooms(false); return; }
+
+      const { data } = await supabase.from('chat_rooms').select('*').in('id', memberRoomIds).order('updated_at', { ascending: false });
+      roomsData = data || [];
+    }
+
+    const supportRooms = roomsData.filter(r => r.type === 'support' && r.client_id);
     const clientIdsToFetch = [...new Set(supportRooms.map(r => r.client_id!))];
     let clientNameMap: Record<string, string> = {};
     if (clientIdsToFetch.length > 0) {
@@ -157,14 +174,14 @@ export default function ChatPage() {
       if (cls) clientNameMap = Object.fromEntries(cls.map(c => [c.id, c.name]));
     }
 
-    const enriched: ChatRoom[] = data.map(r => ({
+    const enriched: ChatRoom[] = roomsData.map(r => ({
       ...r as ChatRoom,
       client_name: r.client_id ? clientNameMap[r.client_id] || undefined : undefined,
     }));
 
     setRooms(enriched);
     setLoadingRooms(false);
-  }, [isClient]);
+  }, [isClient, isAdmin, user, simulatedUser]);
 
   const fetchUsersAndClients = useCallback(async () => {
     const [{ data: users }, { data: cls }] = await Promise.all([

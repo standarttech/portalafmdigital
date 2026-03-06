@@ -158,7 +158,7 @@ export default function TaskBoardPage() {
       assigneesByTask.set(entry.task_id, list);
     });
 
-    setTasks((t || []).map(task => {
+    let allTasks = (t || []).map(task => {
       const assigneeIds = assigneesByTask.get(task.id) || (task.assigned_to ? [task.assigned_to] : []);
       const assigneeNames = assigneeIds.map(id => userMap.get(id)).filter(Boolean) as string[];
       return {
@@ -168,11 +168,20 @@ export default function TaskBoardPage() {
         assignee_ids: assigneeIds,
         assignee_names: assigneeNames,
       };
-    }));
+    });
+
+    // Non-admins only see tasks assigned to them
+    if (!isAdmin && user) {
+      allTasks = allTasks.filter(task =>
+        task.assigned_to === user.id || task.assignee_ids.includes(user.id)
+      );
+    }
+
+    setTasks(allTasks);
     setClients(c || []);
     setAgencyUsers(au || []);
     setLoading(false);
-  }, []);
+  }, [isAdmin, user]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
