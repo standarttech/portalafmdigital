@@ -9,8 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Send, MessageSquare, Webhook, HelpCircle, ChevronDown, ExternalLink, BookOpen } from 'lucide-react';
+import { Send, MessageSquare, Webhook, ChevronDown, ExternalLink, BookOpen, CheckCircle, AlertTriangle, Copy } from 'lucide-react';
 
 interface ClientNotificationConfig {
   client_id: string;
@@ -32,6 +33,7 @@ export default function CrmIntegrationsPage() {
   const [config, setConfig] = useState<ClientNotificationConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -47,6 +49,7 @@ export default function CrmIntegrationsPage() {
 
   useEffect(() => {
     if (!selectedClientId) { setConfig(null); return; }
+    setTestResult(null);
     (async () => {
       const { data } = await supabase
         .from('client_webhooks')
@@ -76,7 +79,7 @@ export default function CrmIntegrationsPage() {
     if (!config || !selectedClientId) return;
     setSaving(true);
 
-    const events = ['new_lead'];
+    const events = ['new_lead', 'test'];
     if (config.notify_stage_change) events.push('stage_changed');
     if (config.notify_won) events.push('won');
     if (config.notify_lost) events.push('lost');
@@ -107,16 +110,48 @@ export default function CrmIntegrationsPage() {
   const handleTestTelegram = async () => {
     if (!config?.telegram_chat_id || !selectedClientId) return;
     setTesting(true);
+    setTestResult(null);
+
+    // First ensure config is saved with 'test' event included
+    await handleSave();
+
     try {
-      const { error } = await supabase.functions.invoke('trigger-webhooks', {
-        body: { client_id: selectedClientId, event_type: 'test', data: { full_name: 'Test Lead', phone: '+1234567890', email: 'test@example.com', source: 'Test' } },
+      const { data, error } = await supabase.functions.invoke('trigger-webhooks', {
+        body: {
+          client_id: selectedClientId,
+          event_type: 'test',
+          data: {
+            full_name: 'Test Lead (Проверка)',
+            phone: '+7 999 123-45-67',
+            email: 'test@afmdigital.com',
+            source: 'CRM Integration Test',
+          },
+        },
       });
+
       if (error) throw error;
-      toast({ title: '✅ Test sent', description: t('crm.checkTelegram') });
+
+      const results = data?.results || {};
+      const anySuccess = Object.values(results).some((r: any) => r.success);
+      const anyFailed = Object.values(results).some((r: any) => !r.success);
+
+      if (data?.triggered === 0) {
+        setTestResult({ ok: false, message: 'Нет активных вебхуков для этого клиента. Сначала сохраните настройки.' });
+      } else if (anySuccess && !anyFailed) {
+        setTestResult({ ok: true, message: '✅ Тестовое сообщение успешно отправлено в Telegram!' });
+      } else if (anyFailed) {
+        const failedResult = Object.values(results).find((r: any) => !r.success) as any;
+        setTestResult({ ok: false, message: `Ошибка доставки (код ${failedResult?.status || 0}). Проверьте Chat ID и что бот добавлен в чат.` });
+      }
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      setTestResult({ ok: false, message: `Ошибка: ${e.message}` });
     }
     setTesting(false);
+  };
+
+  const copyBotToken = () => {
+    navigator.clipboard.writeText('/start');
+    toast({ title: 'Скопировано', description: 'Команда /start скопирована' });
   };
 
   if (loadingClients) return <Skeleton className="h-[400px] w-full" />;
@@ -131,61 +166,96 @@ export default function CrmIntegrationsPage() {
         </Select>
       </div>
 
-      {/* ===================== TELEGRAM SETUP GUIDE ===================== */}
-      <Collapsible>
+      {/* ===================== TELEGRAM FULL GUIDE ===================== */}
+      <Collapsible defaultOpen>
         <Card className="border-primary/20 bg-primary/5">
           <CollapsibleTrigger asChild>
             <CardHeader className="pb-2 cursor-pointer hover:bg-primary/10 transition-colors rounded-t-lg">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base">{t('crm.telegramGuideTitle')}</CardTitle>
+                <CardTitle className="text-base">📖 Полная инструкция: Telegram-бот для уведомлений</CardTitle>
                 <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
               </div>
-              <CardDescription className="text-xs">{t('crm.telegramGuideDesc')}</CardDescription>
+              <CardDescription className="text-xs">Пошаговая настройка от создания бота до получения первого уведомления</CardDescription>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="space-y-4 text-sm">
-              <div className="space-y-3">
+              <div className="space-y-4">
+                {/* Step 1 */}
                 <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
-                  <div>
-                    <p className="font-medium">{t('crm.tgStep1Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.tgStep1Desc')}</p>
-                    <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary text-xs inline-flex items-center gap-1 mt-1 hover:underline">
-                      @BotFather <ExternalLink className="h-3 w-3" />
-                    </a>
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
+                  <div className="flex-1">
+                    <p className="font-medium">Создайте бота через @BotFather</p>
+                    <ol className="text-xs text-muted-foreground mt-1 space-y-1 list-decimal list-inside">
+                      <li>Откройте Telegram и найдите <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">@BotFather <ExternalLink className="h-2.5 w-2.5" /></a></li>
+                      <li>Отправьте команду <code className="bg-secondary px-1 rounded">/newbot</code></li>
+                      <li>Введите имя бота (например: <code className="bg-secondary px-1 rounded">AFM CRM Notifications</code>)</li>
+                      <li>Введите username бота (например: <code className="bg-secondary px-1 rounded">afm_crm_notify_bot</code>)</li>
+                      <li>Скопируйте полученный <strong className="text-foreground">токен бота</strong> (формат: <code className="bg-secondary px-1 rounded text-[10px]">1234567890:AAH...</code>)</li>
+                    </ol>
+                    <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                      <p className="text-[10px] text-amber-500 font-medium">⚠️ Токен бота уже настроен в системе. Если вы хотите использовать СВОЕГО бота — передайте токен администратору для обновления в настройках.</p>
+                    </div>
                   </div>
                 </div>
+
+                {/* Step 2 */}
                 <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
-                  <div>
-                    <p className="font-medium">{t('crm.tgStep2Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.tgStep2Desc')}</p>
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
+                  <div className="flex-1">
+                    <p className="font-medium">Получите Chat ID</p>
+                    <p className="text-xs text-muted-foreground mt-1">Есть 2 способа получить Chat ID:</p>
+                    <div className="mt-2 space-y-2">
+                      <div className="p-2 rounded bg-secondary/50 border border-border">
+                        <p className="text-xs font-medium text-foreground">Способ A: Личные сообщения</p>
+                        <ol className="text-[11px] text-muted-foreground mt-1 space-y-0.5 list-decimal list-inside">
+                          <li>Отправьте любое сообщение вашему боту в Telegram</li>
+                          <li>Откройте в браузере: <code className="bg-secondary px-1 rounded break-all">https://api.telegram.org/bot{'<TOKEN>'}/getUpdates</code></li>
+                          <li>Найдите <code className="bg-secondary px-1 rounded">"chat":{"{"}"id":123456789{"}"}</code> — это ваш Chat ID</li>
+                        </ol>
+                      </div>
+                      <div className="p-2 rounded bg-secondary/50 border border-border">
+                        <p className="text-xs font-medium text-foreground">Способ B: Через @RawDataBot</p>
+                        <ol className="text-[11px] text-muted-foreground mt-1 space-y-0.5 list-decimal list-inside">
+                          <li>Найдите <a href="https://t.me/RawDataBot" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@RawDataBot</a> в Telegram</li>
+                          <li>Отправьте <code className="bg-secondary px-1 rounded">/start</code></li>
+                          <li>Бот ответит вашими данными — найдите <code className="bg-secondary px-1 rounded">Chat ID</code></li>
+                        </ol>
+                      </div>
+                      <div className="p-2 rounded bg-secondary/50 border border-border">
+                        <p className="text-xs font-medium text-foreground">Способ C: Для группового чата</p>
+                        <ol className="text-[11px] text-muted-foreground mt-1 space-y-0.5 list-decimal list-inside">
+                          <li>Добавьте вашего бота в группу</li>
+                          <li>Отправьте любое сообщение в группу</li>
+                          <li>Используйте <code className="bg-secondary px-1 rounded break-all">getUpdates</code> API выше — Chat ID группы начинается с <code className="bg-secondary px-1 rounded">-100...</code></li>
+                        </ol>
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                {/* Step 3 */}
                 <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
-                  <div>
-                    <p className="font-medium">{t('crm.tgStep3Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.tgStep3Desc')}</p>
-                    <a href="https://t.me/RawDataBot" target="_blank" rel="noopener noreferrer" className="text-primary text-xs inline-flex items-center gap-1 mt-1 hover:underline">
-                      @RawDataBot <ExternalLink className="h-3 w-3" />
-                    </a>
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
+                  <div className="flex-1">
+                    <p className="font-medium">Вставьте Chat ID ниже и сохраните</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Вставьте полученный Chat ID в поле ниже, включите интеграцию и нажмите «Сохранить». 
+                      Затем нажмите «Отправить тест» для проверки.
+                    </p>
                   </div>
                 </div>
+
+                {/* Step 4 */}
                 <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">4</span>
-                  <div>
-                    <p className="font-medium">{t('crm.tgStep4Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.tgStep4Desc')}</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">5</span>
-                  <div>
-                    <p className="font-medium">{t('crm.tgStep5Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.tgStep5Desc')}</p>
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">4</span>
+                  <div className="flex-1">
+                    <p className="font-medium">Важно: бот должен быть «запущен»</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Для личных сообщений: откройте бота и нажмите <strong>Start</strong> (или отправьте <code className="bg-secondary px-1 rounded">/start</code>). 
+                      Для групп: добавьте бота в группу как участника.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -196,11 +266,11 @@ export default function CrmIntegrationsPage() {
 
       {/* ===================== EXTERNAL CRM GUIDE ===================== */}
       <Collapsible>
-        <Card className="border-info/20 bg-info/5">
+        <Card className="border-border/40">
           <CollapsibleTrigger asChild>
-            <CardHeader className="pb-2 cursor-pointer hover:bg-info/10 transition-colors rounded-t-lg">
+            <CardHeader className="pb-2 cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-lg">
               <div className="flex items-center gap-2">
-                <Webhook className="h-5 w-5 text-info" />
+                <Webhook className="h-5 w-5 text-muted-foreground" />
                 <CardTitle className="text-base">{t('crm.externalCrmGuideTitle')}</CardTitle>
                 <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
               </div>
@@ -210,34 +280,20 @@ export default function CrmIntegrationsPage() {
           <CollapsibleContent>
             <CardContent className="space-y-4 text-sm">
               <div className="space-y-3">
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-info text-info-foreground flex items-center justify-center text-xs font-bold">1</span>
-                  <div>
-                    <p className="font-medium">{t('crm.extStep1Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.extStep1Desc')}</p>
+                {[
+                  { n: 1, title: t('crm.extStep1Title'), desc: t('crm.extStep1Desc') },
+                  { n: 2, title: t('crm.extStep2Title'), desc: t('crm.extStep2Desc') },
+                  { n: 3, title: t('crm.extStep3Title'), desc: t('crm.extStep3Desc') },
+                  { n: 4, title: t('crm.extStep4Title'), desc: t('crm.extStep4Desc') },
+                ].map(s => (
+                  <div key={s.n} className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-secondary text-foreground flex items-center justify-center text-xs font-bold">{s.n}</span>
+                    <div>
+                      <p className="font-medium">{s.title}</p>
+                      <p className="text-muted-foreground text-xs">{s.desc}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-info text-info-foreground flex items-center justify-center text-xs font-bold">2</span>
-                  <div>
-                    <p className="font-medium">{t('crm.extStep2Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.extStep2Desc')}</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-info text-info-foreground flex items-center justify-center text-xs font-bold">3</span>
-                  <div>
-                    <p className="font-medium">{t('crm.extStep3Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.extStep3Desc')}</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-info text-info-foreground flex items-center justify-center text-xs font-bold">4</span>
-                  <div>
-                    <p className="font-medium">{t('crm.extStep4Title')}</p>
-                    <p className="text-muted-foreground text-xs">{t('crm.extStep4Desc')}</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </CollapsibleContent>
@@ -261,16 +317,24 @@ export default function CrmIntegrationsPage() {
                 <div>
                   <Label className="text-xs">Chat ID</Label>
                   <Input
-                    placeholder="e.g. -1001234567890 or 123456789"
+                    placeholder="Например: -1001234567890 или 123456789"
                     value={config.telegram_chat_id}
                     onChange={e => setConfig({ ...config, telegram_chat_id: e.target.value })}
                     className="text-sm h-9 mt-1 font-mono"
                   />
-                  <p className="text-[10px] text-muted-foreground mt-1">{t('crm.chatIdHint')}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Личный чат: числовой ID. Группа: начинается с -100</p>
                 </div>
-                <Button size="sm" variant="outline" className="text-xs" onClick={handleTestTelegram} disabled={testing || !config.telegram_chat_id}>
-                  <Send className="h-3 w-3 mr-1" />{testing ? t('common.loading') : t('crm.sendTest')}
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={handleTestTelegram} disabled={testing || !config.telegram_chat_id}>
+                    <Send className="h-3 w-3" />{testing ? 'Отправка...' : 'Отправить тест'}
+                  </Button>
+                </div>
+                {testResult && (
+                  <div className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
+                    {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
+                    <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
+                  </div>
+                )}
               </CardContent>
             )}
           </Card>
@@ -289,12 +353,9 @@ export default function CrmIntegrationsPage() {
               <CardContent className="space-y-3">
                 <div>
                   <Label className="text-xs">{t('crm.destinationUrl')}</Label>
-                  <Input
-                    placeholder="https://hooks.zapier.com/..."
-                    value={config.webhook_url}
+                  <Input placeholder="https://hooks.zapier.com/..." value={config.webhook_url}
                     onChange={e => setConfig({ ...config, webhook_url: e.target.value })}
-                    className="text-sm h-9 mt-1 font-mono"
-                  />
+                    className="text-sm h-9 mt-1 font-mono" />
                 </div>
               </CardContent>
             )}
