@@ -413,11 +413,45 @@ export default function ChatPage() {
                      <>
                        <div className="px-3 pt-3 pb-1">
                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                           <Users className="h-3 w-3" />
-                           Команда ({teamRooms.length})
+                           <Hash className="h-3 w-3" />
+                           Каналы ({teamRooms.length})
                          </p>
                        </div>
                        {teamRooms.map(renderRoomItem)}
+                     </>
+                   )}
+                   {voiceRooms.length > 0 && (
+                     <>
+                       <div className="px-3 pt-3 pb-1">
+                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                           <Mic className="h-3 w-3" />
+                           Голосовые ({voiceRooms.length})
+                         </p>
+                       </div>
+                       {voiceRooms.map(room => {
+                         const isActive = selectedRoom === room.id;
+                         return (
+                           <div key={room.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive ? 'bg-primary/15' : 'hover:bg-secondary/50'}`}>
+                             <div className="h-9 w-9 rounded-lg bg-secondary/50 flex items-center justify-center flex-shrink-0">
+                               <Video className="h-4 w-4 text-muted-foreground" />
+                             </div>
+                             <button
+                               onClick={() => { setSelectedRoom(room.id); setMobileShowMessages(true); }}
+                               className="flex-1 text-left min-w-0"
+                             >
+                               <span className="text-sm font-medium truncate block">{room.name}</span>
+                               <span className="text-[10px] text-muted-foreground">Нажмите чтобы открыть чат</span>
+                             </button>
+                             {room.name.includes('http') ? (
+                               <a href={room.name} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                                 <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1">
+                                   <ExternalLink className="h-3 w-3" /> Join
+                                 </Button>
+                               </a>
+                             ) : null}
+                           </div>
+                         );
+                       })}
                      </>
                    )}
                 </div>
@@ -581,9 +615,10 @@ export default function ChatPage() {
               <Select value={roomType} onValueChange={setRoomType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="team">{t('chat.typeTeam' as TranslationKey)}</SelectItem>
-                  <SelectItem value="client">{t('chat.typeClient' as TranslationKey)}</SelectItem>
-                  <SelectItem value="custom">{t('chat.typeCustom' as TranslationKey)}</SelectItem>
+                  <SelectItem value="team">💬 Текстовый канал</SelectItem>
+                  <SelectItem value="voice">🎙️ Голосовой канал (Zoom/Meet)</SelectItem>
+                  <SelectItem value="client">🏢 Клиентский</SelectItem>
+                  <SelectItem value="custom">📌 Произвольный</SelectItem>
                 </SelectContent>
               </Select>
             </div>
