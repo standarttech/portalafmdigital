@@ -65,11 +65,11 @@ const getImageUrl = (content: string) =>
 
 export default function ChatPage() {
   const { t } = useLanguage();
-  const { user, agencyRole } = useAuth();
-  const isAdmin = agencyRole === 'AgencyAdmin';
-  const isBuyer = agencyRole === 'MediaBuyer';
-  const isClient = agencyRole === 'Client';
-  const isAgencyMember = isAdmin || isBuyer;
+  const { user, agencyRole, effectiveRole, simulatedUser } = useAuth();
+  const isAdmin = effectiveRole === 'AgencyAdmin';
+  const isBuyer = effectiveRole === 'MediaBuyer';
+  const isClient = effectiveRole === 'Client';
+  const isAgencyMember = !isClient;
 
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
@@ -102,7 +102,9 @@ export default function ChatPage() {
   // Client: ensure support room exists and client is a member, then show it
   const ensureClientSupportRoom = useCallback(async () => {
     if (!user || !isClient) return;
-    const { data: assignments } = await supabase.from('client_users').select('client_id').eq('user_id', user.id);
+    // Use the simulated user's ID if simulating, otherwise the real user
+    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
+    const { data: assignments } = await supabase.from('client_users').select('client_id').eq('user_id', targetUserId);
     const assignedClientIds = assignments?.map(a => a.client_id) || [];
     if (assignedClientIds.length === 0) { setLoadingRooms(false); return; }
 
