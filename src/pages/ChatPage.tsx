@@ -500,7 +500,6 @@ export default function ChatPage() {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  {/* Join meeting button for voice rooms */}
                   {selectedRoomData?.type === 'voice' && (() => {
                     const meetMsg = messages.find(m => m.content.includes('Ссылка на встречу:'));
                     const meetUrl = meetMsg?.content.match(/https?:\/\/\S+/)?.[0];
@@ -512,16 +511,19 @@ export default function ChatPage() {
                       </a>
                     ) : null;
                   })()}
-                    <Button variant="ghost" size="sm" onClick={() => openManageMembers(selectedRoom)} className="h-8 w-8 p-0">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                    {selectedRoomData?.type !== 'support' && (
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteRoom(selectedRoom)} className="h-8 w-8 p-0 text-destructive/60 hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
+                  {isAdmin && (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={() => openManageMembers(selectedRoom)} className="h-8 w-8 p-0">
+                        <Settings className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
-                )}
+                      {selectedRoomData?.type !== 'support' && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteRoom(selectedRoom)} className="h-8 w-8 p-0 text-destructive/60 hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Messages */}
