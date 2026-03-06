@@ -126,17 +126,47 @@ export default function DashboardPage() {
 
   const fetchDisplayName = useCallback(async () => {
     if (!user) return;
+    // If simulating a specific user, show their name
+    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
     const { data } = await supabase
       .from('agency_users')
       .select('display_name')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .maybeSingle();
     if (data?.display_name) {
       setDisplayName(data.display_name);
+    } else if (simulatedUser) {
+      setDisplayName(simulatedUser.displayName);
     } else {
       setDisplayName(user.user_metadata?.display_name || user.email?.split('@')[0] || 'Admin');
     }
-  }, [user]);
+  }, [user, simulatedUser]);
+
+  // Load simulated user's client assignments when simulating
+  useEffect(() => {
+    if (!simulatedUser) {
+      setSimulatedClientIds(null);
+      return;
+    }
+    // For simulated client users, load their assigned clients
+    if (simulatedUser.role === 'Client') {
+      supabase.from('client_users').select('client_id').eq('user_id', simulatedUser.userId)
+        .then(({ data }) => {
+          setSimulatedClientIds(data?.map(d => d.client_id) || []);
+        });
+    } else {
+      // Non-client agency members see all (or their assigned clients)
+      supabase.from('client_users').select('client_id').eq('user_id', simulatedUser.userId)
+        .then(({ data }) => {
+          // If they have specific assignments, filter; otherwise show all
+          if (data && data.length > 0) {
+            setSimulatedClientIds(data.map(d => d.client_id));
+          } else {
+            setSimulatedClientIds(null); // Show all
+          }
+        });
+    }
+  }, [simulatedUser]);
 
   useEffect(() => { fetchDisplayName(); }, [fetchDisplayName]);
 
