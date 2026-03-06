@@ -633,6 +633,107 @@ export type Database = {
           },
         ]
       }
+      client_info: {
+        Row: {
+          additional_notes: string | null
+          brand_guidelines_url: string | null
+          brief_url: string | null
+          business_niche: string | null
+          client_id: string
+          contact_email: string | null
+          contact_person: string | null
+          contact_phone: string | null
+          contract_end: string | null
+          contract_start: string | null
+          created_at: string
+          crm_system: string | null
+          facebook_url: string | null
+          geo_targeting: string | null
+          id: string
+          instagram_url: string | null
+          key_competitors: string | null
+          landing_pages: string | null
+          linkedin_url: string | null
+          monthly_budget: number | null
+          payment_terms: string | null
+          target_audience: string | null
+          telegram_url: string | null
+          tiktok_url: string | null
+          twitter_url: string | null
+          updated_at: string
+          website_url: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          additional_notes?: string | null
+          brand_guidelines_url?: string | null
+          brief_url?: string | null
+          business_niche?: string | null
+          client_id: string
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          created_at?: string
+          crm_system?: string | null
+          facebook_url?: string | null
+          geo_targeting?: string | null
+          id?: string
+          instagram_url?: string | null
+          key_competitors?: string | null
+          landing_pages?: string | null
+          linkedin_url?: string | null
+          monthly_budget?: number | null
+          payment_terms?: string | null
+          target_audience?: string | null
+          telegram_url?: string | null
+          tiktok_url?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          additional_notes?: string | null
+          brand_guidelines_url?: string | null
+          brief_url?: string | null
+          business_niche?: string | null
+          client_id?: string
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          created_at?: string
+          crm_system?: string | null
+          facebook_url?: string | null
+          geo_targeting?: string | null
+          id?: string
+          instagram_url?: string | null
+          key_competitors?: string | null
+          landing_pages?: string | null
+          linkedin_url?: string | null
+          monthly_budget?: number | null
+          payment_terms?: string | null
+          target_audience?: string | null
+          telegram_url?: string | null
+          tiktok_url?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_info_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_status_history: {
         Row: {
           changed_at: string

@@ -577,7 +577,7 @@ export default function CrmIntegrationsPage() {
         {/* ── Notifications Tab ── */}
         <TabsContent value="notifications" className="space-y-4">
           {/* Telegram Guide */}
-          <Collapsible defaultOpen>
+          <Collapsible>
             <Card className="border-primary/20 bg-primary/5">
               <CollapsibleTrigger asChild>
                 <CardHeader className="pb-2 cursor-pointer hover:bg-primary/10 transition-colors rounded-t-lg">

@@ -215,7 +215,8 @@ export function useDashboardMetrics(
       const { count: clientCount } = await supabase
         .from('clients')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .neq('category', 'agency');
 
       const { count: campaignCount } = await supabase
         .from('campaigns')
