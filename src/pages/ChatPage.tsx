@@ -641,6 +641,18 @@ export default function ChatPage() {
                 </Select>
               </div>
             )}
+            {roomType === 'voice' && (
+              <div>
+                <Label className="flex items-center gap-1.5"><Video className="h-3.5 w-3.5" /> Ссылка на Zoom / Google Meet</Label>
+                <Input
+                  value={roomMeetingLink}
+                  onChange={(e) => setRoomMeetingLink(e.target.value)}
+                  placeholder="https://meet.google.com/xxx или https://zoom.us/j/xxx"
+                  className="mt-1"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Участники смогут присоединиться к звонку по этой ссылке</p>
+              </div>
+            )}
             <div>
               <Label>{t('chat.members' as TranslationKey)}</Label>
               <ScrollArea className="h-[200px] border border-border rounded-md p-2 mt-1">
