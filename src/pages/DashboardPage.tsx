@@ -71,7 +71,7 @@ function SortableSection({ id, children, isAdmin }: { id: string; children: Reac
 
 export default function DashboardPage() {
   const { t } = useLanguage();
-  const { user, agencyRole } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
 
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [comparison, setComparison] = useState<Comparison>('none');
@@ -79,6 +79,7 @@ export default function DashboardPage() {
   const [displayName, setDisplayName] = useState<string>('');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [compareEnabled, setCompareEnabled] = useState(false);
+  const [simulatedClientIds, setSimulatedClientIds] = useState<string[] | null>(null);
 
   const filters: DashboardFilters = useMemo(
     () => ({ dateRange, comparison, platform }),
@@ -88,10 +89,12 @@ export default function DashboardPage() {
   const { kpis, chartData, platformData, clientsData, loading: metricsLoading } = useDashboardMetrics({
     ...filters,
     customDateRange,
+    clientIds: simulatedClientIds,
   });
 
-  const isAdmin = agencyRole === 'AgencyAdmin';
-  const isBuyer = agencyRole === 'MediaBuyer';
+  const isAdmin = effectiveRole === 'AgencyAdmin';
+  const isBuyer = effectiveRole === 'MediaBuyer' || effectiveRole === 'Manager' || effectiveRole === 'SalesManager' || effectiveRole === 'AccountManager' || effectiveRole === 'Designer' || effectiveRole === 'Copywriter';
+  const isClient = effectiveRole === 'Client';
   const isAgencyMember = isAdmin || isBuyer;
 
   // Draggable section order
