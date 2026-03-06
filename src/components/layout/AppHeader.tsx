@@ -1,18 +1,22 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import type { SimulatedUser } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ColorScheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { Languages, LogOut, User, ChevronDown, Sparkles, Palette, UserCircle, Eye, X } from 'lucide-react';
+import { Languages, LogOut, User, ChevronDown, Sparkles, Palette, UserCircle, Eye, X, Users } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Language } from '@/i18n/translations';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const languageOptions: { code: Language; flag: string; label: string }[] = [
   { code: 'en', flag: '🇺🇸', label: 'English' },
@@ -30,20 +34,25 @@ const themeOptions: { id: ColorScheme | 'dark' | 'light'; label: string; icon: s
   { id: 'clean-light', label: 'Clean Light', icon: '💎' },
 ];
 
-const previewRoles = [
-  { role: null as any, labelKey: 'role.agencyAdmin', emoji: '👑', descKey: 'admin.fullAccess' },
-  { role: 'MediaBuyer' as const, labelKey: 'role.mediaBuyer', emoji: '📊', descKey: 'admin.clientAccess' },
-  { role: 'Client' as const, labelKey: 'role.client', emoji: '👤', descKey: 'admin.minimalAccess' },
+const ALL_PREVIEW_ROLES = [
+  { role: null as any, label: 'Agency Admin', emoji: '👑' },
+  { role: 'MediaBuyer', label: 'Media Buyer', emoji: '📊' },
+  { role: 'Manager', label: 'Manager', emoji: '📋' },
+  { role: 'SalesManager', label: 'Sales Manager', emoji: '💼' },
+  { role: 'AccountManager', label: 'Account Manager', emoji: '🤝' },
+  { role: 'Designer', label: 'Designer', emoji: '🎨' },
+  { role: 'Copywriter', label: 'Copywriter', emoji: '✍️' },
+  { role: 'Client', label: 'Client', emoji: '👤' },
 ];
 
 export default function AppHeader() {
   const { language, setLanguage, t } = useLanguage();
-  const { user, agencyRole, effectiveRole, viewAsRole, setViewAsRole, signOut } = useAuth();
+  const { user, agencyRole, effectiveRole, viewAsRole, setViewAsRole, simulatedUser, setSimulatedUser, signOut } = useAuth();
   const { theme, setTheme, fxEnabled, toggleFx, colorScheme, setColorScheme } = useTheme();
   const navigate = useNavigate();
   const isFuturistic = fxEnabled;
   const isRealAdmin = agencyRole === 'AgencyAdmin';
-  const isPreviewing = viewAsRole && viewAsRole !== agencyRole;
+  const isPreviewing = (viewAsRole && viewAsRole !== agencyRole) || simulatedUser;
 
   const activeThemeId = colorScheme !== 'default' ? colorScheme : theme;
 
@@ -51,6 +60,39 @@ export default function AppHeader() {
     if (id === 'dark' || id === 'light') setTheme(id);
     else setColorScheme(id as ColorScheme);
   };
+
+  // Load all users for "View as specific user" option
+  const [allUsers, setAllUsers] = useState<{ user_id: string; display_name: string | null; agency_role: string }[]>([]);
+  useEffect(() => {
+    if (!isRealAdmin) return;
+    supabase.from('agency_users').select('user_id, display_name, agency_role').order('display_name')
+      .then(({ data }) => setAllUsers(data || []));
+  }, [isRealAdmin]);
+
+  const handleSelectRole = (role: any) => {
+    setSimulatedUser(null);
+    setViewAsRole(role);
+  };
+
+  const handleSelectUser = (u: { user_id: string; display_name: string | null; agency_role: string }) => {
+    setViewAsRole(null);
+    setSimulatedUser({
+      userId: u.user_id,
+      displayName: u.display_name || u.user_id.slice(0, 8),
+      role: u.agency_role as any,
+    });
+  };
+
+  const handleExitSimulation = () => {
+    setViewAsRole(null);
+    setSimulatedUser(null);
+  };
+
+  const previewLabel = simulatedUser
+    ? `${simulatedUser.displayName} (${simulatedUser.role})`
+    : viewAsRole === 'MediaBuyer' ? t('role.mediaBuyer')
+    : viewAsRole === 'Client' ? (t('role.client' as any) || 'Client')
+    : viewAsRole || '';
 
   return (
     <div className="flex flex-col relative z-10">
@@ -60,10 +102,10 @@ export default function AppHeader() {
           <div className="flex items-center gap-2">
             <Eye className="h-3.5 w-3.5 text-amber-500" />
             <span className="text-xs text-amber-500 font-medium">
-              {t('admin.viewingAs' as any) || 'Viewing as'}: <strong>{viewAsRole === 'MediaBuyer' ? t('role.mediaBuyer') : viewAsRole === 'Client' ? t('role.client' as any) || 'Client' : viewAsRole}</strong>
+              {simulatedUser ? '👁 Просмотр как' : (t('admin.viewingAs' as any) || 'Viewing as')}: <strong>{previewLabel}</strong>
             </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setViewAsRole(null)}
+          <Button variant="ghost" size="sm" onClick={handleExitSimulation}
             className="h-6 text-xs text-amber-500 hover:text-amber-400 gap-1 px-2">
             <X className="h-3 w-3" /> {t('common.back')}
           </Button>
@@ -77,7 +119,7 @@ export default function AppHeader() {
       )}>
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <span className="text-[10px] sm:text-xs text-muted-foreground font-mono uppercase tracking-wider truncate">
-            {effectiveRole === 'AgencyAdmin' ? t('role.agencyAdmin') : effectiveRole === 'MediaBuyer' ? t('role.mediaBuyer') : effectiveRole === 'Client' ? (t('role.client' as any) || 'Client') : ''}
+            {effectiveRole || ''}
           </span>
         </div>
 
@@ -147,7 +189,7 @@ export default function AppHeader() {
                 <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{user?.email}</p>
                 <p className="text-xs text-muted-foreground capitalize">{agencyRole || 'User'}</p>
@@ -163,21 +205,45 @@ export default function AppHeader() {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <Eye className="h-3 w-3" /> {t('admin.viewAsRole' as any) || 'View as role'}
+                    <Eye className="h-3 w-3" /> Симуляция роли
                   </DropdownMenuLabel>
-                  {previewRoles.map(pr => {
-                    const isActive = pr.role === null ? !viewAsRole : viewAsRole === pr.role;
+                  {ALL_PREVIEW_ROLES.map(pr => {
+                    const isActive = !simulatedUser && (pr.role === null ? !viewAsRole : viewAsRole === pr.role);
                     return (
                       <DropdownMenuItem
                         key={pr.role || 'admin'}
-                        onClick={() => setViewAsRole(pr.role)}
-                        className={cn('flex flex-col items-start gap-0', isActive && 'bg-primary/10')}
+                        onClick={() => handleSelectRole(pr.role)}
+                        className={cn('text-sm gap-2', isActive && 'bg-primary/10')}
                       >
-                        <span className="text-sm">{pr.emoji} {t(pr.labelKey as any) || pr.labelKey}</span>
-                        <span className="text-[10px] text-muted-foreground">{t(pr.descKey as any) || pr.descKey}</span>
+                        <span>{pr.emoji}</span> {pr.label}
                       </DropdownMenuItem>
                     );
                   })}
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="gap-2 text-sm">
+                      <Users className="h-3.5 w-3.5" /> Просмотр как пользователь
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto w-56">
+                      {allUsers.filter(u => u.user_id !== user?.id).map(u => (
+                        <DropdownMenuItem
+                          key={u.user_id}
+                          onClick={() => handleSelectUser(u)}
+                          className={cn(
+                            'flex flex-col items-start gap-0',
+                            simulatedUser?.userId === u.user_id && 'bg-primary/10'
+                          )}
+                        >
+                          <span className="text-sm font-medium">{u.display_name || u.user_id.slice(0, 8)}</span>
+                          <span className="text-[10px] text-muted-foreground">{u.agency_role}</span>
+                        </DropdownMenuItem>
+                      ))}
+                      {allUsers.length <= 1 && (
+                        <div className="px-2 py-3 text-xs text-muted-foreground text-center">Нет других пользователей</div>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 </>
               )}
 

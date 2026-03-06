@@ -2,7 +2,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | 'Client' | null;
+type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | 'Manager' | 'SalesManager' | 'AccountManager' | 'Designer' | 'Copywriter' | 'Client' | null;
+
+export interface SimulatedUser {
+  userId: string;
+  displayName: string;
+  role: AgencyRole;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +17,8 @@ interface AuthContextType {
   effectiveRole: AgencyRole;
   viewAsRole: AgencyRole;
   setViewAsRole: (role: AgencyRole) => void;
+  simulatedUser: SimulatedUser | null;
+  setSimulatedUser: (u: SimulatedUser | null) => void;
   loading: boolean;
   adminExists: boolean | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -26,7 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize from localStorage cache to prevent reload flash
   const [agencyRole, setAgencyRole] = useState<AgencyRole>(() => {
     return (localStorage.getItem('afm_cached_role') as AgencyRole) || null;
   });
@@ -35,15 +42,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return cached !== null ? cached === 'true' : null;
   });
 
-  // Role preview for admins
   const [viewAsRole, setViewAsRole] = useState<AgencyRole>(null);
-  const effectiveRole = viewAsRole || agencyRole;
+  const [simulatedUser, setSimulatedUser] = useState<SimulatedUser | null>(null);
+
+  // If simulating a specific user, use their role; otherwise use viewAsRole or real role
+  const effectiveRole = simulatedUser ? simulatedUser.role : (viewAsRole || agencyRole);
 
   const checkAdminExists = useCallback(async () => {
     try {
       const { data, error } = await supabase.rpc('no_admin_exists');
       if (error) {
-        console.error('Error checking admin exists:', error);
         setAdminExists(true);
         localStorage.setItem('afm_admin_exists', 'true');
         return;
@@ -94,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'SIGNED_OUT') {
           setAgencyRole(null);
           setViewAsRole(null);
+          setSimulatedUser(null);
           localStorage.removeItem('afm_cached_role');
         }
       }
@@ -105,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchRole(session.user.id);
       } else {
-        // No session — clear cached role so we don't show stale UI
         localStorage.removeItem('afm_cached_role');
         setAgencyRole(null);
       }
@@ -165,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('afm_fpc_checked');
     sessionStorage.removeItem('afm_mfa_checked');
     setViewAsRole(null);
+    setSimulatedUser(null);
     await supabase.auth.signOut();
   };
 
@@ -175,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, session, agencyRole, effectiveRole, viewAsRole, setViewAsRole,
+      simulatedUser, setSimulatedUser,
       loading, adminExists, signIn, signOut, setupAdmin, refreshRole,
     }}>
       {children}

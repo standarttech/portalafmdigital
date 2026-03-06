@@ -5,27 +5,35 @@ import { supabase } from '@/integrations/supabase/client';
 const MODULE_KEYS = ['can_access_afm_internal', 'can_access_adminscale', 'can_access_crm'] as const;
 
 export function useModuleAccess() {
-  const { user, effectiveRole } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
   const [permissions, setPermissions] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user) return;
+
+    // Admin always has full access
     if (effectiveRole === 'AgencyAdmin') {
       setPermissions({ can_access_afm_internal: true, can_access_adminscale: true, can_access_crm: true });
       return;
     }
+
+    // If simulating a specific user, load THEIR permissions
+    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
+
     supabase.from('user_permissions')
       .select(MODULE_KEYS.join(','))
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
           const p: Record<string, boolean> = {};
           MODULE_KEYS.forEach(k => { p[k] = !!(data as any)[k]; });
           setPermissions(p);
+        } else {
+          setPermissions({ can_access_afm_internal: false, can_access_adminscale: false, can_access_crm: false });
         }
       });
-  }, [user, effectiveRole]);
+  }, [user, effectiveRole, simulatedUser]);
 
   return {
     canAccessAfmInternal: permissions.can_access_afm_internal ?? false,

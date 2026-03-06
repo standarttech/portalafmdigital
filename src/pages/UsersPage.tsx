@@ -280,9 +280,13 @@ export default function UsersPage() {
   // Permissions
   const openPermissions = async (u: AgencyUser) => {
     setPermUser(u);
+    const isAdmin = u.agency_role === 'AgencyAdmin';
     const { data } = await supabase.from('user_permissions').select('*').eq('user_id', u.user_id).maybeSingle();
     const p: Record<string, boolean> = {};
-    PERM_KEYS.forEach(k => { p[k] = data ? (data as any)[k] ?? false : false; });
+    PERM_KEYS.forEach(k => {
+      // AgencyAdmin defaults to true for everything
+      p[k] = data ? (data as any)[k] ?? isAdmin : isAdmin;
+    });
     setPerms(p);
     setPermOpen(true);
   };
