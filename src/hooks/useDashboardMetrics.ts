@@ -80,7 +80,7 @@ function getDateRange(range: DateRange, custom?: { from: Date; to: Date }): { fr
 }
 
 export function useDashboardMetrics(
-  filters: DashboardFilters & { customDateRange?: { from: Date; to: Date } }
+  filters: DashboardFilters & { customDateRange?: { from: Date; to: Date }; clientIds?: string[] | null }
 ) {
   const [kpis, setKpis] = useState<KpiData | null>(null);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
