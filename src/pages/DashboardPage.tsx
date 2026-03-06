@@ -142,31 +142,29 @@ export default function DashboardPage() {
     }
   }, [user, simulatedUser]);
 
-  // Load simulated user's client assignments when simulating
+  // Load target user's client assignments for fully accurate scope
   useEffect(() => {
-    if (!simulatedUser) {
+    if (!user) {
       setSimulatedClientIds(null);
       return;
     }
-    // For simulated client users, load their assigned clients
-    if (simulatedUser.role === 'Client') {
-      supabase.from('client_users').select('client_id').eq('user_id', simulatedUser.userId)
-        .then(({ data }) => {
-          setSimulatedClientIds(data?.map(d => d.client_id) || []);
-        });
-    } else {
-      // Non-client agency members see all (or their assigned clients)
-      supabase.from('client_users').select('client_id').eq('user_id', simulatedUser.userId)
-        .then(({ data }) => {
-          // If they have specific assignments, filter; otherwise show all
-          if (data && data.length > 0) {
-            setSimulatedClientIds(data.map(d => d.client_id));
-          } else {
-            setSimulatedClientIds(null); // Show all
-          }
-        });
+
+    const role = effectiveRole;
+    if (role === 'AgencyAdmin') {
+      setSimulatedClientIds(null);
+      return;
     }
-  }, [simulatedUser]);
+
+    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
+
+    supabase
+      .from('client_users')
+      .select('client_id')
+      .eq('user_id', targetUserId)
+      .then(({ data }) => {
+        setSimulatedClientIds((data || []).map(d => d.client_id));
+      });
+  }, [user, effectiveRole, simulatedUser]);
 
   useEffect(() => { fetchDisplayName(); }, [fetchDisplayName]);
 
