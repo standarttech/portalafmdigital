@@ -10,8 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Send, MessageSquare, Webhook, ChevronDown, ExternalLink, BookOpen, CheckCircle, AlertTriangle, Copy } from 'lucide-react';
+import {
+  Send, MessageSquare, Webhook, ChevronDown, ExternalLink, BookOpen,
+  CheckCircle, AlertTriangle, Copy, Bot, Plus, Trash2, Settings, Loader2,
+  ArrowRight, Shield, Globe, Zap,
+} from 'lucide-react';
+
+/* ── Types ── */
+interface BotProfile {
+  id: string;
+  client_id: string;
+  bot_name: string;
+  bot_token_ref: string | null;
+  is_active: boolean;
+  created_at: string;
+}
 
 interface ClientNotificationConfig {
   client_id: string;
@@ -25,6 +41,399 @@ interface ClientNotificationConfig {
   notify_lost: boolean;
 }
 
+/* ── Bot Management Dialog ── */
+function BotManagementDialog({
+  open, onOpenChange, clientId, onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  clientId: string;
+  onSaved: () => void;
+}) {
+  const [bots, setBots] = useState<BotProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addMode, setAddMode] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newToken, setNewToken] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
+
+  const fetchBots = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('crm_bot_profiles')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+    setBots(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (open && clientId) fetchBots();
+  }, [open, clientId]);
+
+  const handleAdd = async () => {
+    if (!newName.trim() || !newToken.trim()) return;
+    setSaving(true);
+    // Validate token format
+    if (!/^\d+:[A-Za-z0-9_-]+$/.test(newToken.trim())) {
+      toast({ title: 'Ошибка', description: 'Неверный формат токена. Ожидается: 1234567890:AAH...', variant: 'destructive' });
+      setSaving(false);
+      return;
+    }
+
+    // Store token in vault via RPC
+    const { data: tokenRef, error: vaultErr } = await supabase.rpc('store_social_token', {
+      _secret_value: newToken.trim(),
+      _secret_name: `crm_bot_${clientId}_${Date.now()}`,
+    });
+
+    if (vaultErr) {
+      toast({ title: 'Ошибка', description: vaultErr.message, variant: 'destructive' });
+      setSaving(false);
+      return;
+    }
+
+    // Deactivate other bots for this client
+    await supabase.from('crm_bot_profiles').update({ is_active: false }).eq('client_id', clientId);
+
+    const { error } = await supabase.from('crm_bot_profiles').insert({
+      client_id: clientId,
+      bot_name: newName.trim(),
+      bot_token_ref: tokenRef,
+      is_active: true,
+    });
+
+    if (error) {
+      toast({ title: 'Ошибка', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Бот добавлен', description: `${newName} подключён и активирован` });
+      setNewName('');
+      setNewToken('');
+      setAddMode(false);
+      fetchBots();
+      onSaved();
+    }
+    setSaving(false);
+  };
+
+  const handleActivate = async (botId: string) => {
+    await supabase.from('crm_bot_profiles').update({ is_active: false }).eq('client_id', clientId);
+    await supabase.from('crm_bot_profiles').update({ is_active: true }).eq('id', botId);
+    fetchBots();
+    onSaved();
+    toast({ title: 'Бот активирован' });
+  };
+
+  const handleDelete = async (bot: BotProfile) => {
+    if (bot.bot_token_ref) {
+      await supabase.rpc('delete_social_token', { _token_reference: bot.bot_token_ref });
+    }
+    await supabase.from('crm_bot_profiles').delete().eq('id', bot.id);
+    fetchBots();
+    onSaved();
+    toast({ title: 'Бот удалён' });
+  };
+
+  const handleTest = async (bot: BotProfile) => {
+    if (!bot.bot_token_ref) return;
+    setTesting(bot.id);
+    try {
+      const { data: token } = await supabase.rpc('get_social_token', { _token_reference: bot.bot_token_ref });
+      if (!token) throw new Error('Токен не найден');
+
+      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const json = await res.json();
+      if (json.ok) {
+        toast({ title: '✅ Бот доступен', description: `@${json.result.username} — ${json.result.first_name}` });
+      } else {
+        toast({ title: '❌ Ошибка', description: json.description || 'Бот недоступен', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: '❌ Ошибка', description: e.message, variant: 'destructive' });
+    }
+    setTesting(null);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            Управление Telegram-ботами
+          </DialogTitle>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
+        ) : (
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {bots.length === 0 && !addMode && (
+              <div className="text-center py-6 text-muted-foreground text-sm">
+                <Bot className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p>Нет подключённых ботов</p>
+                <p className="text-xs mt-1">Добавьте бота для отправки уведомлений</p>
+              </div>
+            )}
+
+            {bots.map(bot => (
+              <div key={bot.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${bot.is_active ? 'border-primary/40 bg-primary/5' : 'border-border/50'}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground truncate">{bot.bot_name}</span>
+                    {bot.is_active && <Badge className="text-[9px] h-4 bg-primary/20 text-primary border-primary/30">Активен</Badge>}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Добавлен: {new Date(bot.created_at).toLocaleDateString('ru-RU')}
+                  </p>
+                </div>
+                <div className="flex gap-1.5">
+                  <Button variant="outline" size="sm" className="h-7 text-xs px-2"
+                    onClick={() => handleTest(bot)} disabled={testing === bot.id}>
+                    {testing === bot.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Тест'}
+                  </Button>
+                  {!bot.is_active && (
+                    <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => handleActivate(bot.id)}>
+                      Активировать
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDelete(bot)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {addMode ? (
+              <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+                <div className="space-y-2">
+                  <Label className="text-xs">Имя бота</Label>
+                  <Input value={newName} onChange={e => setNewName(e.target.value)}
+                    placeholder="Например: AFM CRM Bot" className="h-8 text-sm" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Токен бота (от @BotFather)</Label>
+                  <Input value={newToken} onChange={e => setNewToken(e.target.value)}
+                    placeholder="1234567890:AAH..." className="h-8 text-sm font-mono" type="password" />
+                  <p className="text-[10px] text-muted-foreground">Токен хранится в зашифрованном виде (Vault)</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="text-xs" onClick={handleAdd} disabled={saving || !newName.trim() || !newToken.trim()}>
+                    {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                    Добавить бота
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs" onClick={() => { setAddMode(false); setNewName(''); setNewToken(''); }}>
+                    Отмена
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs" onClick={() => setAddMode(true)}>
+                <Plus className="h-3.5 w-3.5" /> Добавить нового бота
+              </Button>
+            )}
+
+            <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-xs space-y-1">
+              <p className="font-medium text-foreground">💡 Как это работает</p>
+              <p className="text-muted-foreground">Активный бот будет использоваться для всех Telegram-уведомлений этого клиента. Можно добавить несколько ботов и переключаться между ними.</p>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Закрыть</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ── External CRM Connectors Section ── */
+function ExternalCrmConnectors({ clientId }: { clientId: string }) {
+  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!clientId) return;
+    supabase.from('crm_webhook_endpoints').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
+      .then(({ data }) => { setEndpoints(data || []); setLoading(false); });
+  }, [clientId]);
+
+  const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL || ''}/functions/v1/crm-webhook`;
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Скопировано' });
+  };
+
+  if (loading) return <Skeleton className="h-32" />;
+
+  return (
+    <div className="space-y-4">
+      {/* Active endpoints */}
+      {endpoints.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-foreground">Активные входящие вебхуки</h3>
+          {endpoints.map(ep => (
+            <div key={ep.id} className="p-3 rounded-lg border border-border/50 bg-secondary/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{ep.name}</span>
+                <Badge variant={ep.is_active ? 'default' : 'secondary'} className="text-[9px]">
+                  {ep.is_active ? 'Активен' : 'Отключён'}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="text-[10px] bg-secondary p-1.5 rounded flex-1 break-all font-mono">
+                  {webhookBaseUrl}/{ep.endpoint_slug}
+                </code>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(`${webhookBaseUrl}/${ep.endpoint_slug}`)}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Secret: <code className="bg-secondary px-1 rounded">{ep.secret_key?.slice(0, 8)}...</code>
+                <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 ml-1" onClick={() => copyToClipboard(ep.secret_key)}>
+                  <Copy className="h-2.5 w-2.5" />
+                </Button>
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Popular CRM Integration Guides */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Globe className="h-4 w-4 text-primary" />
+          Интеграции с внешними CRM
+        </h3>
+
+        {[
+          {
+            name: 'GoHighLevel',
+            icon: '🟠',
+            desc: 'Автоматическая передача лидов, статусов и конверсий',
+            steps: [
+              'Перейдите в Settings → Webhooks в GoHighLevel',
+              'Нажмите "Add Webhook"',
+              `Вставьте URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
+              'Добавьте Header: X-Webhook-Secret: <ваш_secret_key>',
+              'Выберите события: Contact Created, Pipeline Stage Changed, Opportunity Won',
+              'Сохраните и отправьте тестовый запрос',
+            ],
+            payload: '{\n  "first_name": "{{contact.first_name}}",\n  "last_name": "{{contact.last_name}}",\n  "email": "{{contact.email}}",\n  "phone": "{{contact.phone}}",\n  "source": "gohighlevel"\n}',
+          },
+          {
+            name: 'HubSpot',
+            icon: '🟧',
+            desc: 'Синхронизация контактов и сделок через вебхуки',
+            steps: [
+              'Перейдите в Settings → Integrations → Webhooks',
+              'Создайте новую подписку на события',
+              `URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
+              'Выберите: contact.creation, deal.creation, deal.propertyChange',
+              'В маппинге полей укажите соответствия (firstname→first_name, email→email)',
+            ],
+            payload: '{\n  "first_name": "{{firstname}}",\n  "email": "{{email}}",\n  "phone": "{{phone}}",\n  "company": "{{company}}",\n  "source": "hubspot"\n}',
+          },
+          {
+            name: 'Bitrix24',
+            icon: '🔵',
+            desc: 'Лиды и сделки из Bitrix24 через исходящие вебхуки',
+            steps: [
+              'Откройте CRM → Настройки → Роботы и триггеры',
+              'Добавьте робот "Вебхук" на нужном этапе воронки',
+              `URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
+              'Метод: POST, Формат: JSON',
+              'В теле передайте: first_name, email, phone, source',
+              'Добавьте заголовок X-Webhook-Secret',
+            ],
+            payload: '{\n  "first_name": "{{NAME}}",\n  "email": "{{EMAIL}}",\n  "phone": "{{PHONE}}",\n  "company": "{{COMPANY_TITLE}}",\n  "source": "bitrix24"\n}',
+          },
+          {
+            name: 'AmoCRM',
+            icon: '🔷',
+            desc: 'Передача лидов через Digital Pipeline или виджеты',
+            steps: [
+              'Перейдите в Настройки → Интеграции',
+              'Создайте виджет с Webhook или используйте Digital Pipeline',
+              `Webhook URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
+              'Настройте маппинг: lead[name]→full_name, lead[main_contact][email]→email',
+              'Добавьте заголовок авторизации',
+            ],
+            payload: '{\n  "full_name": "{{lead.name}}",\n  "email": "{{lead.email}}",\n  "phone": "{{lead.phone}}",\n  "value": "{{lead.price}}",\n  "source": "amocrm"\n}',
+          },
+          {
+            name: 'Универсальный Webhook (Zapier, Make, n8n)',
+            icon: '⚡',
+            desc: 'Подключите любой источник данных через HTTP POST',
+            steps: [
+              'Создайте новый Zap/Scenario/Workflow',
+              'Добавьте действие "HTTP Request" / "Webhook"',
+              `URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
+              'Метод: POST, Content-Type: application/json',
+              'Headers: X-Webhook-Secret: <ваш_secret_key>',
+              'Body: JSON с полями first_name, email, phone, source',
+            ],
+            payload: '{\n  "first_name": "John",\n  "last_name": "Doe",\n  "email": "john@example.com",\n  "phone": "+1234567890",\n  "source": "landing_page",\n  "utm_source": "google",\n  "utm_campaign": "brand"\n}',
+          },
+        ].map(crm => (
+          <Collapsible key={crm.name}>
+            <Card className="border-border/40">
+              <CollapsibleTrigger asChild>
+                <CardHeader className="pb-2 cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-lg py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{crm.icon}</span>
+                    <div className="flex-1">
+                      <CardTitle className="text-sm">{crm.name}</CardTitle>
+                      <CardDescription className="text-[10px]">{crm.desc}</CardDescription>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-3 text-xs">
+                  <div className="space-y-2">
+                    <p className="font-semibold text-foreground">Пошаговая инструкция:</p>
+                    {crm.steps.map((step, i) => (
+                      <div key={i} className="flex gap-2 items-start">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">{i + 1}</span>
+                        <p className="text-muted-foreground">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-semibold text-foreground">Пример JSON-тела запроса:</p>
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => copyToClipboard(crm.payload)}>
+                        <Copy className="h-2.5 w-2.5" /> Копировать
+                      </Button>
+                    </div>
+                    <pre className="bg-secondary/50 p-2.5 rounded-lg text-[10px] font-mono overflow-x-auto border border-border/30 whitespace-pre">
+                      {crm.payload}
+                    </pre>
+                  </div>
+                  <div className="p-2 rounded bg-emerald-500/5 border border-emerald-500/20 flex items-start gap-2">
+                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-emerald-600 text-[10px]">После настройки отправьте тестовый запрос и проверьте, что лид появился во вкладке Leads</p>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Page ── */
 export default function CrmIntegrationsPage() {
   const { t } = useLanguage();
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
@@ -34,19 +443,14 @@ export default function CrmIntegrationsPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
-
-  const AFM_DIGITAL_ID = '00000000-0000-0000-0000-000000000001';
+  const [botDialogOpen, setBotDialogOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
       setLoadingClients(true);
       const { data } = await supabase.from('clients').select('id, name').eq('status', 'active').order('name');
-      if (data) {
-        // Ensure AFM Digital appears first
-        const sorted = data.sort((a, b) => a.id === AFM_DIGITAL_ID ? -1 : b.id === AFM_DIGITAL_ID ? 1 : 0);
-        setClients(sorted);
-        if (sorted.length > 0) setSelectedClientId(sorted[0].id);
-      }
+      setClients(data || []);
+      if (data && data.length > 0) setSelectedClientId(data[0].id);
       setLoadingClients(false);
     })();
   }, []);
@@ -115,8 +519,6 @@ export default function CrmIntegrationsPage() {
     if (!config?.telegram_chat_id || !selectedClientId) return;
     setTesting(true);
     setTestResult(null);
-
-    // First ensure config is saved with 'test' event included
     await handleSave();
 
     try {
@@ -124,23 +526,17 @@ export default function CrmIntegrationsPage() {
         body: {
           client_id: selectedClientId,
           event_type: 'test',
-          data: {
-            full_name: 'Test Lead (Проверка)',
-            phone: '+7 999 123-45-67',
-            email: 'test@afmdigital.com',
-            source: 'CRM Integration Test',
-          },
+          data: { full_name: 'Test Lead (Проверка)', phone: '+7 999 123-45-67', email: 'test@afmdigital.com', source: 'CRM Integration Test' },
         },
       });
 
       if (error) throw error;
-
       const results = data?.results || {};
       const anySuccess = Object.values(results).some((r: any) => r.success);
       const anyFailed = Object.values(results).some((r: any) => !r.success);
 
       if (data?.triggered === 0) {
-        setTestResult({ ok: false, message: 'Нет активных вебхуков для этого клиента. Сначала сохраните настройки.' });
+        setTestResult({ ok: false, message: 'Нет активных вебхуков. Сначала сохраните настройки.' });
       } else if (anySuccess && !anyFailed) {
         setTestResult({ ok: true, message: '✅ Тестовое сообщение успешно отправлено в Telegram!' });
       } else if (anyFailed) {
@@ -151,11 +547,6 @@ export default function CrmIntegrationsPage() {
       setTestResult({ ok: false, message: `Ошибка: ${e.message}` });
     }
     setTesting(false);
-  };
-
-  const copyBotToken = () => {
-    navigator.clipboard.writeText('/start');
-    toast({ title: 'Скопировано', description: 'Команда /start скопирована' });
   };
 
   if (loadingClients) return <Skeleton className="h-[400px] w-full" />;
@@ -170,231 +561,314 @@ export default function CrmIntegrationsPage() {
         </Select>
       </div>
 
-      {/* ===================== TELEGRAM FULL GUIDE ===================== */}
-      <Collapsible defaultOpen>
-        <Card className="border-primary/20 bg-primary/5">
-          <CollapsibleTrigger asChild>
-            <CardHeader className="pb-2 cursor-pointer hover:bg-primary/10 transition-colors rounded-t-lg">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base">📖 Полная инструкция: Telegram-бот для уведомлений</CardTitle>
-                <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
-              </div>
-              <CardDescription className="text-xs">Пошаговая настройка от создания бота до получения первого уведомления</CardDescription>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="space-y-4 text-sm">
-              <div className="space-y-4">
-                {/* Step 1 */}
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
-                  <div className="flex-1">
-                    <p className="font-medium">Создайте бота через @BotFather</p>
-                    <ol className="text-xs text-muted-foreground mt-1 space-y-1 list-decimal list-inside">
-                      <li>Откройте Telegram и найдите <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">@BotFather <ExternalLink className="h-2.5 w-2.5" /></a></li>
-                      <li>Отправьте команду <code className="bg-secondary px-1 rounded">/newbot</code></li>
-                      <li>Введите имя бота (например: <code className="bg-secondary px-1 rounded">AFM CRM Notifications</code>)</li>
-                      <li>Введите username бота (например: <code className="bg-secondary px-1 rounded">afm_crm_notify_bot</code>)</li>
-                      <li>Скопируйте полученный <strong className="text-foreground">токен бота</strong> (формат: <code className="bg-secondary px-1 rounded text-[10px]">1234567890:AAH...</code>)</li>
-                    </ol>
-                    <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
-                      <p className="text-[10px] text-amber-500 font-medium">⚠️ Токен бота уже настроен в системе. Если вы хотите использовать СВОЕГО бота — передайте токен администратору для обновления в настройках.</p>
+      <Tabs defaultValue="notifications" className="space-y-4">
+        <TabsList className="h-9">
+          <TabsTrigger value="notifications" className="text-xs gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5" /> Уведомления
+          </TabsTrigger>
+          <TabsTrigger value="bots" className="text-xs gap-1.5">
+            <Bot className="h-3.5 w-3.5" /> Управление ботами
+          </TabsTrigger>
+          <TabsTrigger value="external" className="text-xs gap-1.5">
+            <Globe className="h-3.5 w-3.5" /> Внешние CRM
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ── Notifications Tab ── */}
+        <TabsContent value="notifications" className="space-y-4">
+          {/* Telegram Guide */}
+          <Collapsible defaultOpen>
+            <Card className="border-primary/20 bg-primary/5">
+              <CollapsibleTrigger asChild>
+                <CardHeader className="pb-2 cursor-pointer hover:bg-primary/10 transition-colors rounded-t-lg">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-base">📖 Инструкция: Telegram-уведомления</CardTitle>
+                    <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-3 text-sm">
+                  {[
+                    { n: 1, title: 'Создайте бота через @BotFather', desc: 'Отправьте /newbot, задайте имя и username, скопируйте токен' },
+                    { n: 2, title: 'Добавьте бота во вкладке "Управление ботами"', desc: 'Введите имя и токен — он будет зашифрован и сохранён' },
+                    { n: 3, title: 'Получите Chat ID', desc: 'Напишите боту /start, затем откройте api.telegram.org/bot<TOKEN>/getUpdates' },
+                    { n: 4, title: 'Вставьте Chat ID ниже и сохраните', desc: 'Включите интеграцию и отправьте тестовое сообщение' },
+                  ].map(s => (
+                    <div key={s.n} className="flex gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">{s.n}</span>
+                      <div><p className="font-medium text-xs">{s.title}</p><p className="text-[10px] text-muted-foreground">{s.desc}</p></div>
                     </div>
-                  </div>
-                </div>
+                  ))}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
 
-                {/* Step 2 */}
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
-                  <div className="flex-1">
-                    <p className="font-medium">Получите Chat ID</p>
-                    <p className="text-xs text-muted-foreground mt-1">Есть 2 способа получить Chat ID:</p>
-                    <div className="mt-2 space-y-2">
-                      <div className="p-2 rounded bg-secondary/50 border border-border">
-                        <p className="text-xs font-medium text-foreground">Способ A: Личные сообщения</p>
-                        <ol className="text-[11px] text-muted-foreground mt-1 space-y-0.5 list-decimal list-inside">
-                          <li>Отправьте любое сообщение вашему боту в Telegram</li>
-                          <li>Откройте в браузере: <code className="bg-secondary px-1 rounded break-all">https://api.telegram.org/bot{'<TOKEN>'}/getUpdates</code></li>
-                          <li>Найдите <code className="bg-secondary px-1 rounded">"chat":{"{"}"id":123456789{"}"}</code> — это ваш Chat ID</li>
-                        </ol>
-                      </div>
-                      <div className="p-2 rounded bg-secondary/50 border border-border">
-                        <p className="text-xs font-medium text-foreground">Способ B: Через @RawDataBot</p>
-                        <ol className="text-[11px] text-muted-foreground mt-1 space-y-0.5 list-decimal list-inside">
-                          <li>Найдите <a href="https://t.me/RawDataBot" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@RawDataBot</a> в Telegram</li>
-                          <li>Отправьте <code className="bg-secondary px-1 rounded">/start</code></li>
-                          <li>Бот ответит вашими данными — найдите <code className="bg-secondary px-1 rounded">Chat ID</code></li>
-                        </ol>
-                      </div>
-                      <div className="p-2 rounded bg-secondary/50 border border-border">
-                        <p className="text-xs font-medium text-foreground">Способ C: Для группового чата</p>
-                        <ol className="text-[11px] text-muted-foreground mt-1 space-y-0.5 list-decimal list-inside">
-                          <li>Добавьте вашего бота в группу</li>
-                          <li>Отправьте любое сообщение в группу</li>
-                          <li>Используйте <code className="bg-secondary px-1 rounded break-all">getUpdates</code> API выше — Chat ID группы начинается с <code className="bg-secondary px-1 rounded">-100...</code></li>
-                        </ol>
-                      </div>
-                    </div>
+          {config && (
+            <>
+              <Card className="border-border/40">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-base">Telegram Bot</CardTitle>
+                    <Switch checked={config.telegram_enabled} onCheckedChange={v => setConfig({ ...config, telegram_enabled: v })} className="ml-auto" />
                   </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
-                  <div className="flex-1">
-                    <p className="font-medium">Вставьте Chat ID ниже и сохраните</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Вставьте полученный Chat ID в поле ниже, включите интеграцию и нажмите «Сохранить». 
-                      Затем нажмите «Отправить тест» для проверки.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Step 4 */}
-                <div className="flex gap-3">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">4</span>
-                  <div className="flex-1">
-                    <p className="font-medium">Важно: бот должен быть «запущен»</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Для личных сообщений: откройте бота и нажмите <strong>Start</strong> (или отправьте <code className="bg-secondary px-1 rounded">/start</code>). 
-                      Для групп: добавьте бота в группу как участника.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-
-      {/* ===================== EXTERNAL CRM GUIDE ===================== */}
-      <Collapsible>
-        <Card className="border-border/40">
-          <CollapsibleTrigger asChild>
-            <CardHeader className="pb-2 cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-lg">
-              <div className="flex items-center gap-2">
-                <Webhook className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-base">{t('crm.externalCrmGuideTitle')}</CardTitle>
-                <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
-              </div>
-              <CardDescription className="text-xs">{t('crm.externalCrmGuideDesc')}</CardDescription>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="space-y-4 text-sm">
-              <div className="space-y-3">
-                {[
-                  { n: 1, title: t('crm.extStep1Title'), desc: t('crm.extStep1Desc') },
-                  { n: 2, title: t('crm.extStep2Title'), desc: t('crm.extStep2Desc') },
-                  { n: 3, title: t('crm.extStep3Title'), desc: t('crm.extStep3Desc') },
-                  { n: 4, title: t('crm.extStep4Title'), desc: t('crm.extStep4Desc') },
-                ].map(s => (
-                  <div key={s.n} className="flex gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-secondary text-foreground flex items-center justify-center text-xs font-bold">{s.n}</span>
+                </CardHeader>
+                {config.telegram_enabled && (
+                  <CardContent className="space-y-3">
                     <div>
-                      <p className="font-medium">{s.title}</p>
-                      <p className="text-muted-foreground text-xs">{s.desc}</p>
+                      <Label className="text-xs">Chat ID</Label>
+                      <Input placeholder="-1001234567890 или 123456789" value={config.telegram_chat_id}
+                        onChange={e => setConfig({ ...config, telegram_chat_id: e.target.value })}
+                        className="text-sm h-9 mt-1 font-mono" />
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-
-      {config && (
-        <>
-          {/* Telegram Integration */}
-          <Card className="border-border/40">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base">Telegram Bot</CardTitle>
-                <Switch checked={config.telegram_enabled} onCheckedChange={v => setConfig({ ...config, telegram_enabled: v })} className="ml-auto" />
-              </div>
-              <CardDescription className="text-xs">{t('crm.telegramTip')}</CardDescription>
-            </CardHeader>
-            {config.telegram_enabled && (
-              <CardContent className="space-y-3">
-                <div>
-                  <Label className="text-xs">Chat ID</Label>
-                  <Input
-                    placeholder="Например: -1001234567890 или 123456789"
-                    value={config.telegram_chat_id}
-                    onChange={e => setConfig({ ...config, telegram_chat_id: e.target.value })}
-                    className="text-sm h-9 mt-1 font-mono"
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-1">Личный чат: числовой ID. Группа: начинается с -100</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={handleTestTelegram} disabled={testing || !config.telegram_chat_id}>
-                    <Send className="h-3 w-3" />{testing ? 'Отправка...' : 'Отправить тест'}
-                  </Button>
-                </div>
-                {testResult && (
-                  <div className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
-                    {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
-                    <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
-                  </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={handleTestTelegram} disabled={testing || !config.telegram_chat_id}>
+                        <Send className="h-3 w-3" />{testing ? 'Отправка...' : 'Отправить тест'}
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => setBotDialogOpen(true)}>
+                        <Settings className="h-3 w-3" /> Управление ботами
+                      </Button>
+                    </div>
+                    {testResult && (
+                      <div className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
+                        {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
+                        <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
+                      </div>
+                    )}
+                  </CardContent>
                 )}
-              </CardContent>
-            )}
-          </Card>
+              </Card>
 
-          {/* Generic Webhook */}
-          <Card className="border-border/40">
-            <CardHeader className="pb-3">
+              <Card className="border-border/40">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Webhook className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-base">Webhook</CardTitle>
+                    <Switch checked={config.webhook_enabled} onCheckedChange={v => setConfig({ ...config, webhook_enabled: v })} className="ml-auto" />
+                  </div>
+                </CardHeader>
+                {config.webhook_enabled && (
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label className="text-xs">URL</Label>
+                      <Input placeholder="https://hooks.zapier.com/..." value={config.webhook_url}
+                        onChange={e => setConfig({ ...config, webhook_url: e.target.value })}
+                        className="text-sm h-9 mt-1 font-mono" />
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              <Card className="border-border/40">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{t('crm.eventTriggers')}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { label: t('crm.newLeadCreated'), key: 'notify_new_lead' as const },
+                    { label: t('crm.stageChanged'), key: 'notify_stage_change' as const },
+                    { label: t('crm.dealWon'), key: 'notify_won' as const },
+                    { label: t('crm.dealLost'), key: 'notify_lost' as const },
+                  ].map(ev => (
+                    <label key={ev.key} className="flex items-center justify-between">
+                      <span className="text-sm">{ev.label}</span>
+                      <Switch checked={config[ev.key]} onCheckedChange={v => setConfig({ ...config, [ev.key]: v })} />
+                    </label>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Button onClick={handleSave} disabled={saving} className="w-full">
+                {saving ? t('common.loading') : t('common.save')}
+              </Button>
+            </>
+          )}
+        </TabsContent>
+
+        {/* ── Bots Tab ── */}
+        <TabsContent value="bots" className="space-y-4">
+          {selectedClientId && (
+            <BotManagementInline clientId={selectedClientId} />
+          )}
+        </TabsContent>
+
+        {/* ── External CRM Tab ── */}
+        <TabsContent value="external" className="space-y-4">
+          {selectedClientId && <ExternalCrmConnectors clientId={selectedClientId} />}
+        </TabsContent>
+      </Tabs>
+
+      {selectedClientId && (
+        <BotManagementDialog
+          open={botDialogOpen}
+          onOpenChange={setBotDialogOpen}
+          clientId={selectedClientId}
+          onSaved={() => {}}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Inline Bot Management (for Bots tab) ── */
+function BotManagementInline({ clientId }: { clientId: string }) {
+  const [bots, setBots] = useState<BotProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addMode, setAddMode] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newToken, setNewToken] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
+
+  const fetchBots = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('crm_bot_profiles').select('*').eq('client_id', clientId).order('created_at', { ascending: false });
+    setBots(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchBots(); }, [clientId]);
+
+  const handleAdd = async () => {
+    if (!newName.trim() || !newToken.trim()) return;
+    setSaving(true);
+    if (!/^\d+:[A-Za-z0-9_-]+$/.test(newToken.trim())) {
+      toast({ title: 'Ошибка', description: 'Неверный формат токена', variant: 'destructive' });
+      setSaving(false);
+      return;
+    }
+
+    const { data: tokenRef, error: vaultErr } = await supabase.rpc('store_social_token', {
+      _secret_value: newToken.trim(),
+      _secret_name: `crm_bot_${clientId}_${Date.now()}`,
+    });
+
+    if (vaultErr) { toast({ title: 'Ошибка', description: vaultErr.message, variant: 'destructive' }); setSaving(false); return; }
+
+    await supabase.from('crm_bot_profiles').update({ is_active: false }).eq('client_id', clientId);
+
+    const { error } = await supabase.from('crm_bot_profiles').insert({
+      client_id: clientId, bot_name: newName.trim(), bot_token_ref: tokenRef, is_active: true,
+    });
+
+    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); }
+    else {
+      toast({ title: 'Бот добавлен', description: `${newName} подключён` });
+      setNewName(''); setNewToken(''); setAddMode(false); fetchBots();
+    }
+    setSaving(false);
+  };
+
+  const handleActivate = async (botId: string) => {
+    await supabase.from('crm_bot_profiles').update({ is_active: false }).eq('client_id', clientId);
+    await supabase.from('crm_bot_profiles').update({ is_active: true }).eq('id', botId);
+    fetchBots();
+    toast({ title: 'Бот активирован' });
+  };
+
+  const handleDelete = async (bot: BotProfile) => {
+    if (bot.bot_token_ref) await supabase.rpc('delete_social_token', { _token_reference: bot.bot_token_ref });
+    await supabase.from('crm_bot_profiles').delete().eq('id', bot.id);
+    fetchBots();
+    toast({ title: 'Бот удалён' });
+  };
+
+  const handleTest = async (bot: BotProfile) => {
+    if (!bot.bot_token_ref) return;
+    setTesting(bot.id);
+    try {
+      const { data: token } = await supabase.rpc('get_social_token', { _token_reference: bot.bot_token_ref });
+      if (!token) throw new Error('Токен не найден');
+      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const json = await res.json();
+      if (json.ok) {
+        toast({ title: '✅ Бот доступен', description: `@${json.result.username} — ${json.result.first_name}` });
+      } else {
+        toast({ title: '❌ Ошибка', description: json.description || 'Бот недоступен', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: '❌ Ошибка', description: e.message, variant: 'destructive' });
+    }
+    setTesting(null);
+  };
+
+  if (loading) return <Skeleton className="h-32" />;
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            <p className="text-sm font-semibold">Telegram-боты для уведомлений</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Добавьте одного или нескольких ботов. Активный бот будет отправлять уведомления о лидах в указанный чат. 
+            Токен хранится зашифрованным в Vault.
+          </p>
+        </CardContent>
+      </Card>
+
+      {bots.length === 0 && !addMode && (
+        <div className="text-center py-8 text-muted-foreground">
+          <Bot className="h-12 w-12 mx-auto mb-3 opacity-20" />
+          <p className="text-sm">Нет подключённых ботов</p>
+        </div>
+      )}
+
+      {bots.map(bot => (
+        <Card key={bot.id} className={bot.is_active ? 'border-primary/30' : 'border-border/40'}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <Bot className={`h-5 w-5 ${bot.is_active ? 'text-primary' : 'text-muted-foreground'}`} />
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <Webhook className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base">Webhook</CardTitle>
-                <Switch checked={config.webhook_enabled} onCheckedChange={v => setConfig({ ...config, webhook_enabled: v })} className="ml-auto" />
+                <span className="text-sm font-medium">{bot.bot_name}</span>
+                {bot.is_active && <Badge className="text-[9px] h-4 bg-primary/20 text-primary border-primary/30">Активен</Badge>}
               </div>
-              <CardDescription className="text-xs">{t('crm.webhookDesc')}</CardDescription>
-            </CardHeader>
-            {config.webhook_enabled && (
-              <CardContent className="space-y-3">
-                <div>
-                  <Label className="text-xs">{t('crm.destinationUrl')}</Label>
-                  <Input placeholder="https://hooks.zapier.com/..." value={config.webhook_url}
-                    onChange={e => setConfig({ ...config, webhook_url: e.target.value })}
-                    className="text-sm h-9 mt-1 font-mono" />
-                </div>
-              </CardContent>
-            )}
-          </Card>
+              <p className="text-[10px] text-muted-foreground">{new Date(bot.created_at).toLocaleDateString('ru-RU')}</p>
+            </div>
+            <div className="flex gap-1.5">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleTest(bot)} disabled={testing === bot.id}>
+                {testing === bot.id ? <Loader2 className="h-3 w-3 animate-spin" /> : '🔍 Тест'}
+              </Button>
+              {!bot.is_active && (
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleActivate(bot.id)}>✅ Активировать</Button>
+              )}
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(bot)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
 
-          {/* Event Toggles */}
-          <Card className="border-border/40">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t('crm.eventTriggers')}</CardTitle>
-              <CardDescription className="text-xs">{t('crm.eventTriggersDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <label className="flex items-center justify-between">
-                <span className="text-sm">{t('crm.newLeadCreated')}</span>
-                <Switch checked={config.notify_new_lead} onCheckedChange={v => setConfig({ ...config, notify_new_lead: v })} />
-              </label>
-              <label className="flex items-center justify-between">
-                <span className="text-sm">{t('crm.stageChanged')}</span>
-                <Switch checked={config.notify_stage_change} onCheckedChange={v => setConfig({ ...config, notify_stage_change: v })} />
-              </label>
-              <label className="flex items-center justify-between">
-                <span className="text-sm">{t('crm.dealWon')}</span>
-                <Switch checked={config.notify_won} onCheckedChange={v => setConfig({ ...config, notify_won: v })} />
-              </label>
-              <label className="flex items-center justify-between">
-                <span className="text-sm">{t('crm.dealLost')}</span>
-                <Switch checked={config.notify_lost} onCheckedChange={v => setConfig({ ...config, notify_lost: v })} />
-              </label>
-            </CardContent>
-          </Card>
-
-          <Button onClick={handleSave} disabled={saving} className="w-full">
-            {saving ? t('common.loading') : t('common.save')}
-          </Button>
-        </>
+      {addMode ? (
+        <Card className="border-primary/30">
+          <CardContent className="p-4 space-y-3">
+            <div className="space-y-2">
+              <Label className="text-xs">Имя бота</Label>
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="AFM CRM Bot" className="h-8 text-sm" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Токен от @BotFather</Label>
+              <Input value={newToken} onChange={e => setNewToken(e.target.value)} placeholder="1234567890:AAH..." className="h-8 text-sm font-mono" type="password" />
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Shield className="h-3 w-3" /> Хранится зашифрованным</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" className="text-xs" onClick={handleAdd} disabled={saving || !newName.trim() || !newToken.trim()}>
+                {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />} Добавить
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => { setAddMode(false); setNewName(''); setNewToken(''); }}>Отмена</Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Button variant="outline" className="w-full gap-1.5" onClick={() => setAddMode(true)}>
+          <Plus className="h-4 w-4" /> Добавить бота
+        </Button>
       )}
     </div>
   );
