@@ -66,6 +66,7 @@ const PERM_KEYS = [
   'can_add_clients', 'can_edit_clients', 'can_assign_clients_to_users',
   'can_connect_integrations', 'can_run_manual_sync', 'can_edit_metrics_override',
   'can_manage_tasks', 'can_publish_reports', 'can_view_audit_log',
+  'can_access_afm_internal', 'can_access_adminscale', 'can_access_crm', 'can_manage_crm_integrations',
 ] as const;
 
 interface AgencyUser {
@@ -780,15 +781,33 @@ export default function UsersPage() {
 
       {/* Permissions Dialog */}
       <Dialog open={permOpen} onOpenChange={setPermOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{t('users.editPermissions')}: {permUser?.display_name}</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
-            {PERM_KEYS.map(k => (
-              <label key={k} className="flex items-center gap-3 cursor-pointer">
-                <Switch checked={perms[k] ?? false} onCheckedChange={(v) => setPerms(p => ({ ...p, [k]: v }))} />
-                <span className="text-sm">{t(`perm.${k}` as any)}</span>
-              </label>
-            ))}
+          <div className="space-y-4 py-2">
+            {/* Module Access Section */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('users.moduleAccess' as any) || 'Module Access'}</p>
+              <div className="space-y-2 rounded-lg border border-border/50 p-3 bg-secondary/20">
+                {(['can_access_afm_internal', 'can_access_adminscale', 'can_access_crm', 'can_manage_crm_integrations'] as const).map(k => (
+                  <label key={k} className="flex items-center gap-3 cursor-pointer">
+                    <Switch checked={perms[k] ?? false} onCheckedChange={(v) => setPerms(p => ({ ...p, [k]: v }))} />
+                    <span className="text-sm">{t(`perm.${k}` as any)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {/* Feature Permissions */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('users.featurePermissions' as any) || 'Feature Permissions'}</p>
+              <div className="space-y-2">
+                {(['can_add_clients', 'can_edit_clients', 'can_assign_clients_to_users', 'can_connect_integrations', 'can_run_manual_sync', 'can_edit_metrics_override', 'can_manage_tasks', 'can_publish_reports', 'can_view_audit_log'] as const).map(k => (
+                  <label key={k} className="flex items-center gap-3 cursor-pointer">
+                    <Switch checked={perms[k] ?? false} onCheckedChange={(v) => setPerms(p => ({ ...p, [k]: v }))} />
+                    <span className="text-sm">{t(`perm.${k}` as any)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
