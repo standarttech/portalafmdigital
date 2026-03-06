@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Settings, Shield, Globe, Bell, Users, Sun, Moon, Sparkles, Check, Languages, Edit2, Save } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Settings, Shield, Globe, Bell, Sun, Moon, Sparkles, Check, Languages, Edit2, Save, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { Language } from '@/i18n/translations';
 
@@ -33,26 +33,29 @@ const TIMEZONES = [
 
 type Role = 'AgencyAdmin' | 'MediaBuyer' | 'Manager' | 'SalesManager' | 'AccountManager' | 'Designer' | 'Copywriter';
 
-interface Permission {
+// Map permission matrix keys to actual DB column names in user_permissions
+interface PermissionDef {
   key: string;
+  dbKey: string; // column in user_permissions
   label: string;
   desc: string;
-  roles: Role[];
+  defaultRoles: Role[];
 }
 
-const PERMISSIONS: Permission[] = [
-  { key: 'add_clients',       label: 'Добавлять клиентов',      desc: 'Создание новых клиентов',            roles: ['AgencyAdmin', 'Manager'] },
-  { key: 'edit_clients',      label: 'Редактировать клиентов',   desc: 'Изменение данных клиентов',           roles: ['AgencyAdmin', 'Manager', 'AccountManager'] },
-  { key: 'view_finance',      label: 'Финансы',                  desc: 'Просмотр финансового планирования',   roles: ['AgencyAdmin'] },
-  { key: 'view_salary',       label: 'Зарплаты',                 desc: 'Просмотр зарплат команды',            roles: ['AgencyAdmin'] },
-  { key: 'manage_users',      label: 'Управление пользователями', desc: 'Добавление/удаление пользователей',  roles: ['AgencyAdmin'] },
-  { key: 'manage_tasks',      label: 'Задачи',                   desc: 'Создание и управление задачами',      roles: ['AgencyAdmin', 'Manager', 'AccountManager', 'MediaBuyer'] },
-  { key: 'publish_reports',   label: 'Публикация отчётов',       desc: 'Публиковать отчёты для клиентов',     roles: ['AgencyAdmin', 'Manager', 'AccountManager'] },
-  { key: 'run_sync',          label: 'Ручная синхронизация',      desc: 'Запуск синхронизации данных',         roles: ['AgencyAdmin', 'MediaBuyer'] },
-  { key: 'view_audit',        label: 'Аудит-лог',                desc: 'Просмотр журнала действий',           roles: ['AgencyAdmin'] },
-  { key: 'manage_crm',        label: 'CRM (Sales)',               desc: 'Управление лидами и сделками',        roles: ['AgencyAdmin', 'SalesManager', 'Manager'] },
-  { key: 'edit_metrics',      label: 'Правка метрик',             desc: 'Ручное изменение показателей',        roles: ['AgencyAdmin', 'MediaBuyer'] },
-  { key: 'branding',          label: 'Брендинг',                 desc: 'Настройка логотипов платформы',       roles: ['AgencyAdmin'] },
+const PERMISSIONS: PermissionDef[] = [
+  { key: 'add_clients',       dbKey: 'can_add_clients',             label: 'Добавлять клиентов',       desc: 'Создание новых клиентов',            defaultRoles: ['AgencyAdmin', 'Manager'] },
+  { key: 'edit_clients',      dbKey: 'can_edit_clients',            label: 'Редактировать клиентов',    desc: 'Изменение данных клиентов',           defaultRoles: ['AgencyAdmin', 'Manager', 'AccountManager'] },
+  { key: 'manage_tasks',      dbKey: 'can_manage_tasks',            label: 'Задачи',                   desc: 'Создание и управление задачами',      defaultRoles: ['AgencyAdmin', 'Manager', 'AccountManager', 'MediaBuyer'] },
+  { key: 'publish_reports',   dbKey: 'can_publish_reports',         label: 'Публикация отчётов',       desc: 'Публиковать отчёты для клиентов',     defaultRoles: ['AgencyAdmin', 'Manager', 'AccountManager'] },
+  { key: 'run_sync',          dbKey: 'can_run_manual_sync',         label: 'Ручная синхронизация',     desc: 'Запуск синхронизации данных',         defaultRoles: ['AgencyAdmin', 'MediaBuyer'] },
+  { key: 'view_audit',        dbKey: 'can_view_audit_log',          label: 'Аудит-лог',                desc: 'Просмотр журнала действий',           defaultRoles: ['AgencyAdmin'] },
+  { key: 'edit_metrics',      dbKey: 'can_edit_metrics_override',   label: 'Правка метрик',            desc: 'Ручное изменение показателей',        defaultRoles: ['AgencyAdmin', 'MediaBuyer'] },
+  { key: 'connect_integrations', dbKey: 'can_connect_integrations', label: 'Интеграции',               desc: 'Подключение платформ и синков',       defaultRoles: ['AgencyAdmin'] },
+  { key: 'assign_clients',    dbKey: 'can_assign_clients_to_users', label: 'Назначение клиентов',      desc: 'Привязка клиентов к пользователям',   defaultRoles: ['AgencyAdmin'] },
+  { key: 'access_afm',        dbKey: 'can_access_afm_internal',     label: 'AFM Internal',             desc: 'Доступ к внутреннему модулю агентства', defaultRoles: ['AgencyAdmin'] },
+  { key: 'access_adminscale', dbKey: 'can_access_adminscale',       label: 'AdminScale Pro',           desc: 'Доступ к модулю админ-шкал',          defaultRoles: ['AgencyAdmin'] },
+  { key: 'access_crm',        dbKey: 'can_access_crm',              label: 'CRM',                     desc: 'Доступ к CRM-модулю',                 defaultRoles: ['AgencyAdmin', 'SalesManager', 'Manager'] },
+  { key: 'manage_crm_int',    dbKey: 'can_manage_crm_integrations', label: 'CRM Интеграции',           desc: 'Управление интеграциями CRM',         defaultRoles: ['AgencyAdmin'] },
 ];
 
 const ALL_ROLES: Role[] = ['AgencyAdmin', 'MediaBuyer', 'Manager', 'SalesManager', 'AccountManager', 'Designer', 'Copywriter'];
@@ -67,29 +70,75 @@ const ROLE_LABELS: Record<Role, string> = {
   Copywriter: 'Copywriter',
 };
 
+interface UserRow {
+  user_id: string;
+  display_name: string | null;
+  agency_role: string;
+}
+
 export default function AfmSettings() {
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme, fxEnabled, setFxEnabled } = useTheme();
+  const { agencyRole } = useAuth();
 
   const [notifications, setNotifications] = useState({
-    newLead: true,
-    clientUpdate: true,
-    teamMessage: false,
-    weeklyReport: true,
+    newLead: true, clientUpdate: true, teamMessage: false, weeklyReport: true,
   });
-
   const [security, setSecurity] = useState({
-    mfaRequired: true,
-    sessionLog: true,
-    ipRestriction: false,
+    mfaRequired: true, sessionLog: true, ipRestriction: false,
   });
-
   const [timezone, setTimezone] = useState('Europe/Moscow');
   const [editingTz, setEditingTz] = useState(false);
 
+  // Permission matrix — role→dbKeys mapping, loaded from actual user_permissions
   const [permissions, setPermissions] = useState<Record<string, Role[]>>(
-    Object.fromEntries(PERMISSIONS.map(p => [p.key, p.roles]))
+    Object.fromEntries(PERMISSIONS.map(p => [p.key, [...p.defaultRoles]]))
   );
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [savingMatrix, setSavingMatrix] = useState(false);
+  const [matrixLoaded, setMatrixLoaded] = useState(false);
+
+  // Load users & their permissions to build the matrix
+  const loadMatrix = useCallback(async () => {
+    const { data: usersData } = await supabase
+      .from('agency_users')
+      .select('user_id, display_name, agency_role')
+      .order('created_at');
+    if (!usersData) return;
+    setUsers(usersData);
+
+    const userIds = usersData.map(u => u.user_id);
+    if (userIds.length === 0) { setMatrixLoaded(true); return; }
+
+    const { data: permsData } = await supabase
+      .from('user_permissions')
+      .select('*')
+      .in('user_id', userIds);
+
+    // Build role→permission map from actual DB data
+    const matrix: Record<string, Set<Role>> = {};
+    PERMISSIONS.forEach(p => { matrix[p.key] = new Set(['AgencyAdmin']); }); // Admin always has all
+
+    if (permsData) {
+      for (const row of permsData) {
+        const user = usersData.find(u => u.user_id === row.user_id);
+        if (!user || user.agency_role === 'AgencyAdmin') continue;
+        const role = user.agency_role as Role;
+        PERMISSIONS.forEach(p => {
+          if ((row as any)[p.dbKey]) {
+            matrix[p.key].add(role);
+          }
+        });
+      }
+    }
+
+    setPermissions(Object.fromEntries(
+      Object.entries(matrix).map(([k, v]) => [k, Array.from(v)])
+    ));
+    setMatrixLoaded(true);
+  }, []);
+
+  useEffect(() => { loadMatrix(); }, [loadMatrix]);
 
   const toggleRole = (permKey: string, role: Role) => {
     setPermissions(prev => {
@@ -97,6 +146,38 @@ export default function AfmSettings() {
       const has = current.includes(role);
       return { ...prev, [permKey]: has ? current.filter(r => r !== role) : [...current, role] };
     });
+  };
+
+  // Save the matrix: update user_permissions for each user based on their role
+  const saveMatrix = async () => {
+    setSavingMatrix(true);
+    try {
+      for (const user of users) {
+        if (user.agency_role === 'AgencyAdmin') continue; // Admin always has all
+        const role = user.agency_role as Role;
+        const updates: Record<string, boolean> = {};
+        PERMISSIONS.forEach(p => {
+          const roles = permissions[p.key] || [];
+          updates[p.dbKey] = roles.includes(role);
+        });
+
+        const { data: existing } = await supabase
+          .from('user_permissions')
+          .select('id')
+          .eq('user_id', user.user_id)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase.from('user_permissions').update(updates).eq('user_id', user.user_id);
+        } else {
+          await supabase.from('user_permissions').insert({ user_id: user.user_id, ...updates });
+        }
+      }
+      toast.success('Матрица доступа сохранена');
+    } catch (err: any) {
+      toast.error(err.message || 'Ошибка сохранения');
+    }
+    setSavingMatrix(false);
   };
 
   return (
@@ -178,7 +259,6 @@ export default function AfmSettings() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Timezone - editable */}
             <div className="flex items-center justify-between py-1.5 border-b border-border/30">
               <div>
                 <Label className="text-sm font-medium">Часовой пояс</Label>
@@ -187,12 +267,8 @@ export default function AfmSettings() {
               {editingTz ? (
                 <div className="flex items-center gap-2">
                   <Select value={timezone} onValueChange={setTimezone}>
-                    <SelectTrigger className="h-8 text-xs w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}
-                    </SelectContent>
+                    <SelectTrigger className="h-8 text-xs w-48"><SelectValue /></SelectTrigger>
+                    <SelectContent>{TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}</SelectContent>
                   </Select>
                   <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setEditingTz(false); toast.success('Часовой пояс сохранён'); }}>
                     <Save className="h-3 w-3" /> OK
@@ -221,67 +297,73 @@ export default function AfmSettings() {
         </Card>
       </motion.div>
 
-      {/* Access Permissions Matrix */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Shield className="h-4 w-4 text-primary" /> Матрица доступа по ролям
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Настройте, какие роли имеют доступ к каждой функции платформы
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse min-w-[700px]">
-                <thead>
-                  <tr className="bg-muted/40">
-                    <th className="text-left px-3 py-2 font-semibold text-foreground min-w-[180px]">Функция</th>
-                    {ALL_ROLES.map(role => (
-                      <th key={role} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">
-                        {ROLE_LABELS[role]}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {PERMISSIONS.map(perm => (
-                    <tr key={perm.key} className="border-b border-border/20 hover:bg-muted/10 transition-colors">
-                      <td className="px-3 py-2">
-                        <p className="font-medium text-foreground">{perm.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{perm.desc}</p>
-                      </td>
-                      {ALL_ROLES.map(role => {
-                        const hasAccess = (permissions[perm.key] || []).includes(role);
-                        const isAdmin = role === 'AgencyAdmin';
-                        return (
-                          <td key={role} className="px-2 py-2 text-center">
-                            <button
-                              onClick={() => !isAdmin && toggleRole(perm.key, role)}
-                              disabled={isAdmin}
-                              title={isAdmin ? 'Admin всегда имеет полный доступ' : hasAccess ? 'Убрать доступ' : 'Дать доступ'}
-                              className={`w-5 h-5 rounded border transition-all inline-flex items-center justify-center ${
-                                isAdmin
-                                  ? 'border-primary/40 bg-primary/20 cursor-not-allowed'
-                                  : hasAccess
-                                    ? 'border-primary bg-primary/20 hover:bg-primary/30 cursor-pointer'
-                                    : 'border-border/40 hover:border-border/70 cursor-pointer'
-                              }`}
-                            >
-                              {(hasAccess || isAdmin) && <Check className="h-3 w-3 text-primary" />}
-                            </button>
-                          </td>
-                        );
-                      })}
+      {/* Access Permissions Matrix — NOW SAVES TO DB */}
+      {agencyRole === 'AgencyAdmin' && (
+        <motion.div variants={item}>
+          <Card className="glass-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" /> Матрица доступа по ролям
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Настройте, какие роли имеют доступ к каждой функции. Изменения применяются ко всем пользователям с соответствующей ролью.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse min-w-[700px]">
+                  <thead>
+                    <tr className="bg-muted/40">
+                      <th className="text-left px-3 py-2 font-semibold text-foreground min-w-[180px]">Функция</th>
+                      {ALL_ROLES.map(role => (
+                        <th key={role} className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">
+                          {ROLE_LABELS[role]}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+                  </thead>
+                  <tbody>
+                    {PERMISSIONS.map(perm => (
+                      <tr key={perm.key} className="border-b border-border/20 hover:bg-muted/10 transition-colors">
+                        <td className="px-3 py-2">
+                          <p className="font-medium text-foreground">{perm.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{perm.desc}</p>
+                        </td>
+                        {ALL_ROLES.map(role => {
+                          const hasAccess = (permissions[perm.key] || []).includes(role);
+                          const isAdmin = role === 'AgencyAdmin';
+                          return (
+                            <td key={role} className="px-2 py-2 text-center">
+                              <button
+                                onClick={() => !isAdmin && toggleRole(perm.key, role)}
+                                disabled={isAdmin}
+                                title={isAdmin ? 'Admin всегда имеет полный доступ' : hasAccess ? 'Убрать доступ' : 'Дать доступ'}
+                                className={`w-5 h-5 rounded border transition-all inline-flex items-center justify-center ${
+                                  isAdmin
+                                    ? 'border-primary/40 bg-primary/20 cursor-not-allowed'
+                                    : hasAccess
+                                      ? 'border-primary bg-primary/20 hover:bg-primary/30 cursor-pointer'
+                                      : 'border-border/40 hover:border-border/70 cursor-pointer'
+                                }`}
+                              >
+                                {(hasAccess || isAdmin) && <Check className="h-3 w-3 text-primary" />}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Button onClick={saveMatrix} disabled={savingMatrix} className="gap-2">
+                {savingMatrix ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Сохранить матрицу доступа
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Notifications */}
       <motion.div variants={item}>
@@ -340,13 +422,6 @@ export default function AfmSettings() {
             ))}
           </CardContent>
         </Card>
-      </motion.div>
-
-      <motion.div variants={item}>
-        <Button onClick={() => toast.success('Настройки сохранены')} className="gap-2">
-          <Check className="h-4 w-4" />
-          Сохранить настройки
-        </Button>
       </motion.div>
     </motion.div>
   );
