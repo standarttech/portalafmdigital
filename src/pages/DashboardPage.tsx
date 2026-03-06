@@ -175,7 +175,7 @@ export default function DashboardPage() {
       case 'kpis':
         return (
           <motion.div variants={itemAnim}>
-            <KpiSection data={kpis} showComparison={compareEnabled && comparison !== 'none'} />
+            <KpiSection data={kpis} showComparison={compareEnabled && comparison !== 'none'} hideOperations={isClient} />
           </motion.div>
         );
       case 'categories':

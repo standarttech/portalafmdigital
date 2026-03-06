@@ -144,7 +144,7 @@ export default function ChatPage() {
       }
     }
     setLoadingRooms(false);
-  }, [user, isClient]);
+  }, [user, isClient, simulatedUser]);
 
   const fetchRooms = useCallback(async () => {
     if (isClient) return;
