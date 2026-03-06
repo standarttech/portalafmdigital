@@ -193,7 +193,7 @@ export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, formatCurrency, formatNumber } = useLanguage();
-  const { user, agencyRole } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
   const [client, setClient] = useState<ClientData | null>(null);
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -229,8 +229,8 @@ export default function ClientDetailPage() {
   // Chart normalization
   const [chartNormalized, setChartNormalized] = useState(true);
 
-  const isAgency = agencyRole === 'AgencyAdmin' || agencyRole === 'MediaBuyer';
-  const isAdmin = agencyRole === 'AgencyAdmin';
+  const isAgency = effectiveRole === 'AgencyAdmin' || effectiveRole === 'MediaBuyer';
+  const isAdmin = effectiveRole === 'AgencyAdmin';
 
   const category: ClientCategory = useMemo(() => toClientCategory(client?.category), [client?.category]);
 
