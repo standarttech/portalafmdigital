@@ -13,6 +13,7 @@ import {
 import ConversionFunnel from '@/components/client/ConversionFunnel';
 import ClientComments from '@/components/client/ClientComments';
 import ClientWebhooks from '@/components/client/ClientWebhooks';
+import ClientInfoTab from '@/components/client/ClientInfoTab';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import { MetricTooltip } from '@/components/shared/MetricTooltip';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
