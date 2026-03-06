@@ -57,7 +57,7 @@ const timezones = ['Europe/Moscow', 'Europe/London', 'America/New_York', 'Americ
 
 export default function ClientsPage() {
   const { t, formatCurrency, formatNumber } = useLanguage();
-  const { agencyRole } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -74,23 +74,52 @@ export default function ClientsPage() {
   const [formCategory, setFormCategory] = useState<string>('other');
   const [saving, setSaving] = useState(false);
 
-  const isAdmin = agencyRole === 'AgencyAdmin';
+  const isAdmin = effectiveRole === 'AgencyAdmin';
   const { requestApproval } = useAdminApproval();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const fetchClients = useCallback(async () => {
+    if (isAdmin) {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name, status, currency, timezone, notes, created_at, category')
+        .order('name');
+
+      if (error || !data || data.length === 0) setClients([]);
+      else setClients(data as Client[]);
+      setLoading(false);
+      return;
+    }
+
+    const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
+    if (!targetUserId) {
+      setClients([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: assignments } = await supabase
+      .from('client_users')
+      .select('client_id')
+      .eq('user_id', targetUserId);
+
+    const scopedClientIds = (assignments || []).map((a) => a.client_id);
+    if (scopedClientIds.length === 0) {
+      setClients([]);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('clients')
       .select('id, name, status, currency, timezone, notes, created_at, category')
+      .in('id', scopedClientIds)
       .order('name');
 
-    if (error || !data || data.length === 0) {
-      setClients([]);
-    } else {
-      setClients(data as Client[]);
-    }
+    if (error || !data || data.length === 0) setClients([]);
+    else setClients(data as Client[]);
     setLoading(false);
-  }, []);
+  }, [isAdmin, simulatedUser, user]);
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 

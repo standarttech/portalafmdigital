@@ -180,6 +180,7 @@ export function useDashboardMetrics(
           });
           setChartData([]);
           setClientsData([]);
+          setPlatformData([]);
           setLoading(false);
           return;
         }
@@ -194,6 +195,10 @@ export function useDashboardMetrics(
         .select('spend, leads, link_clicks, impressions, revenue, purchases')
         .gte('date', prevRange.from)
         .lte('date', prevRange.to);
+
+      if (filters.clientIds && filters.clientIds.length > 0) {
+        prevQuery = prevQuery.in('client_id', filters.clientIds);
+      }
 
       if (platformCampaignIds !== null && platformCampaignIds.length > 0) {
         prevQuery = prevQuery.in('campaign_id', platformCampaignIds);
@@ -226,17 +231,30 @@ export function useDashboardMetrics(
         { spend: 0, leads: 0, clicks: 0, impressions: 0, revenue: 0, purchases: 0 }
       );
 
-      // Counts
-      const { count: clientCount } = await supabase
+      // Counts scoped to visible clients
+      let activeClientsQuery = supabase
         .from('clients')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'active')
         .neq('category', 'agency');
 
-      const { count: campaignCount } = await supabase
+      if (filters.clientIds && filters.clientIds.length > 0) {
+        activeClientsQuery = activeClientsQuery.in('id', filters.clientIds);
+      }
+
+      let activeCampaignsQuery = supabase
         .from('campaigns')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'active');
+
+      if (filters.clientIds && filters.clientIds.length > 0) {
+        activeCampaignsQuery = activeCampaignsQuery.in('client_id', filters.clientIds);
+      }
+
+      const [{ count: clientCount }, { count: campaignCount }] = await Promise.all([
+        activeClientsQuery,
+        activeCampaignsQuery,
+      ]);
 
       setKpis({
         spend: cur.spend,

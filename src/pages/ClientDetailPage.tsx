@@ -193,7 +193,7 @@ export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, formatCurrency, formatNumber } = useLanguage();
-  const { user, agencyRole } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
   const [client, setClient] = useState<ClientData | null>(null);
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -229,8 +229,10 @@ export default function ClientDetailPage() {
   // Chart normalization
   const [chartNormalized, setChartNormalized] = useState(true);
 
-  const isAgency = agencyRole === 'AgencyAdmin' || agencyRole === 'MediaBuyer';
-  const isAdmin = agencyRole === 'AgencyAdmin';
+  const isAgency = effectiveRole === 'AgencyAdmin' || effectiveRole === 'MediaBuyer';
+  const isAdmin = effectiveRole === 'AgencyAdmin';
+
+  const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
 
   const category: ClientCategory = useMemo(() => toClientCategory(client?.category), [client?.category]);
 
@@ -373,8 +375,33 @@ export default function ClientDetailPage() {
   // Data fetching
   const fetchClient = useCallback(async () => {
     if (!id) return;
-    const { data, error } = await supabase.from('clients').select('id, name, status, currency, timezone, notes, category, visible_columns, google_sheet_url, meta_sheet_url, tiktok_sheet_url').eq('id', id).single();
-    if (error || !data) { navigate('/clients'); return; }
+
+    if (!isAdmin && targetUserId) {
+      const { data: access } = await supabase
+        .from('client_users')
+        .select('id')
+        .eq('user_id', targetUserId)
+        .eq('client_id', id)
+        .maybeSingle();
+
+      if (!access) {
+        toast.error(t('common.accessDenied' as TranslationKey));
+        navigate('/clients');
+        return;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('clients')
+      .select('id, name, status, currency, timezone, notes, category, visible_columns, google_sheet_url, meta_sheet_url, tiktok_sheet_url')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      navigate('/clients');
+      return;
+    }
+
     setClient({
       ...data,
       google_sheet_url: (data as any).google_sheet_url || null,
@@ -383,7 +410,7 @@ export default function ClientDetailPage() {
       visible_columns: data.visible_columns ? (Array.isArray(data.visible_columns) ? data.visible_columns : JSON.parse(data.visible_columns as any)) : null,
     } as ClientData);
     setLoading(false);
-  }, [id, navigate]);
+  }, [id, isAdmin, navigate, t, targetUserId]);
 
   const fetchDailyMetrics = useCallback(async () => {
     if (!id) return;
@@ -439,10 +466,40 @@ export default function ClientDetailPage() {
 
   const [allClientsLoaded, setAllClientsLoaded] = useState(false);
   const fetchAllClients = useCallback(async () => {
-    const { data } = await supabase.from('clients').select('id, name').order('name');
+    if (isAdmin) {
+      const { data } = await supabase.from('clients').select('id, name').order('name');
+      setAllClients(data || []);
+      setAllClientsLoaded(true);
+      return;
+    }
+
+    if (!targetUserId) {
+      setAllClients([]);
+      setAllClientsLoaded(true);
+      return;
+    }
+
+    const { data: assignments } = await supabase
+      .from('client_users')
+      .select('client_id')
+      .eq('user_id', targetUserId);
+
+    const scopedClientIds = (assignments || []).map((a) => a.client_id);
+    if (scopedClientIds.length === 0) {
+      setAllClients([]);
+      setAllClientsLoaded(true);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('clients')
+      .select('id, name')
+      .in('id', scopedClientIds)
+      .order('name');
+
     setAllClients(data || []);
     setAllClientsLoaded(true);
-  }, []);
+  }, [isAdmin, targetUserId]);
 
   const fetchProjectHistory = useCallback(async () => {
     if (!id) return;

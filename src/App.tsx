@@ -84,7 +84,7 @@ const GlossaryPageWrapper = React.forwardRef<HTMLDivElement>((_, ref) => (
 GlossaryPageWrapper.displayName = 'GlossaryPageWrapper';
 
 function AppRoutes() {
-  const { user, loading, adminExists, signOut, agencyRole } = useAuth();
+  const { user, loading, adminExists, signOut, agencyRole, effectiveRole } = useAuth();
   const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(() => {
     return sessionStorage.getItem('afm_fpc_checked') === '1' ? false : null;
   });
@@ -277,7 +277,7 @@ function AppRoutes() {
     );
   }
 
-  const isClient = agencyRole === 'Client';
+  const isClient = effectiveRole === 'Client';
 
   if (isClient) {
     return (

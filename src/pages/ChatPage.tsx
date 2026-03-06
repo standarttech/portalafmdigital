@@ -65,11 +65,9 @@ const getImageUrl = (content: string) =>
 
 export default function ChatPage() {
   const { t } = useLanguage();
-  const { user, agencyRole, effectiveRole, simulatedUser } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
   const isAdmin = effectiveRole === 'AgencyAdmin';
-  const isBuyer = effectiveRole === 'MediaBuyer';
   const isClient = effectiveRole === 'Client';
-  const isAgencyMember = !isClient;
 
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);

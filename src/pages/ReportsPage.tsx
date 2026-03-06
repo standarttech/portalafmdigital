@@ -37,7 +37,9 @@ const reportSections = [
 
 export default function ReportsPage() {
   const { t, formatCurrency, formatNumber } = useLanguage();
-  const { user } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
+  const isAdmin = effectiveRole === 'AgencyAdmin';
+  const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
   const [wizardOpen, setWizardOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [comparison, setComparison] = useState<Comparison>('none');
@@ -57,15 +59,77 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchClients = useCallback(async () => {
-    const { data } = await supabase.from('clients').select('id, name').order('name');
+    if (isAdmin) {
+      const { data } = await supabase.from('clients').select('id, name').order('name');
+      setClients(data || []);
+      return;
+    }
+
+    if (!targetUserId) {
+      setClients([]);
+      return;
+    }
+
+    const { data: assignments } = await supabase
+      .from('client_users')
+      .select('client_id')
+      .eq('user_id', targetUserId);
+
+    const scopedClientIds = (assignments || []).map((a) => a.client_id);
+    if (scopedClientIds.length === 0) {
+      setClients([]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('clients')
+      .select('id, name')
+      .in('id', scopedClientIds)
+      .order('name');
+
     setClients(data || []);
-  }, []);
+  }, [isAdmin, targetUserId]);
 
   const fetchReports = useCallback(async () => {
-    const { data } = await supabase.from('reports').select('*').order('created_at', { ascending: false }).limit(50);
+    if (isAdmin) {
+      const { data } = await supabase
+        .from('reports')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      setReports(data || []);
+      setLoading(false);
+      return;
+    }
+
+    if (!targetUserId) {
+      setReports([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: assignments } = await supabase
+      .from('client_users')
+      .select('client_id')
+      .eq('user_id', targetUserId);
+
+    const scopedClientIds = (assignments || []).map((a) => a.client_id);
+    if (scopedClientIds.length === 0) {
+      setReports([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('reports')
+      .select('*')
+      .in('client_id', scopedClientIds)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
     setReports(data || []);
     setLoading(false);
-  }, []);
+  }, [isAdmin, targetUserId]);
 
   useEffect(() => { fetchClients(); fetchReports(); }, [fetchClients, fetchReports]);
 

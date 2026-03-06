@@ -14,24 +14,25 @@ interface ModuleGuardProps {
  * Wraps a layout component — renders it directly so <Outlet> works.
  */
 export default function ModuleGuard({ module, children }: ModuleGuardProps) {
-  const { user, agencyRole } = useAuth();
+  const { user, effectiveRole, simulatedUser } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(
-    agencyRole === 'AgencyAdmin' ? true : null
+    effectiveRole === 'AgencyAdmin' ? true : null
   );
 
   useEffect(() => {
     if (!user) { setAllowed(false); return; }
-    if (agencyRole === 'AgencyAdmin') { setAllowed(true); return; }
+    if (effectiveRole === 'AgencyAdmin') { setAllowed(true); return; }
 
+    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
     const permKey = `can_access_${module}`;
     supabase.from('user_permissions')
       .select(permKey)
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .maybeSingle()
       .then(({ data }) => {
         setAllowed(data ? !!(data as any)[permKey] : false);
       });
-  }, [user, agencyRole, module]);
+  }, [user, effectiveRole, simulatedUser, module]);
 
   if (allowed === null) return null;
   if (!allowed) return <Navigate to="/dashboard" replace />;
