@@ -892,6 +892,47 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_bot_profiles: {
+        Row: {
+          bot_name: string
+          bot_token_ref: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          bot_name?: string
+          bot_token_ref?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          bot_name?: string
+          bot_token_ref?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_bot_profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_custom_fields: {
         Row: {
           client_id: string
@@ -2166,11 +2207,15 @@ export type Database = {
       }
       user_permissions: {
         Row: {
+          can_access_adminscale: boolean
+          can_access_afm_internal: boolean
+          can_access_crm: boolean
           can_add_clients: boolean
           can_assign_clients_to_users: boolean
           can_connect_integrations: boolean
           can_edit_clients: boolean
           can_edit_metrics_override: boolean
+          can_manage_crm_integrations: boolean
           can_manage_tasks: boolean
           can_publish_reports: boolean
           can_run_manual_sync: boolean
@@ -2181,11 +2226,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          can_access_adminscale?: boolean
+          can_access_afm_internal?: boolean
+          can_access_crm?: boolean
           can_add_clients?: boolean
           can_assign_clients_to_users?: boolean
           can_connect_integrations?: boolean
           can_edit_clients?: boolean
           can_edit_metrics_override?: boolean
+          can_manage_crm_integrations?: boolean
           can_manage_tasks?: boolean
           can_publish_reports?: boolean
           can_run_manual_sync?: boolean
@@ -2196,11 +2245,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          can_access_adminscale?: boolean
+          can_access_afm_internal?: boolean
+          can_access_crm?: boolean
           can_add_clients?: boolean
           can_assign_clients_to_users?: boolean
           can_connect_integrations?: boolean
           can_edit_clients?: boolean
           can_edit_metrics_override?: boolean
+          can_manage_crm_integrations?: boolean
           can_manage_tasks?: boolean
           can_publish_reports?: boolean
           can_run_manual_sync?: boolean

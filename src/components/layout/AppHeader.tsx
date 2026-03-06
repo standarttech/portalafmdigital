@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ColorScheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { Languages, LogOut, User, ChevronDown, Sparkles, Palette, UserCircle, Eye, EyeOff, X } from 'lucide-react';
+import { Languages, LogOut, User, ChevronDown, Sparkles, Palette, UserCircle, Eye, X } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -31,9 +31,9 @@ const themeOptions: { id: ColorScheme | 'dark' | 'light'; label: string; icon: s
 ];
 
 const previewRoles = [
-  { role: null as any, label: '👑 Админ (моя роль)', desc: 'Полный доступ' },
-  { role: 'MediaBuyer' as const, label: '📊 MediaBuyer', desc: 'Доступ к клиентам' },
-  { role: 'Client' as const, label: '👤 Клиент', desc: 'Минимальный доступ' },
+  { role: null as any, labelKey: 'role.agencyAdmin', emoji: '👑', descKey: 'admin.fullAccess' },
+  { role: 'MediaBuyer' as const, labelKey: 'role.mediaBuyer', emoji: '📊', descKey: 'admin.clientAccess' },
+  { role: 'Client' as const, labelKey: 'role.client', emoji: '👤', descKey: 'admin.minimalAccess' },
 ];
 
 export default function AppHeader() {
@@ -60,12 +60,12 @@ export default function AppHeader() {
           <div className="flex items-center gap-2">
             <Eye className="h-3.5 w-3.5 text-amber-500" />
             <span className="text-xs text-amber-500 font-medium">
-              Просмотр как: <strong>{viewAsRole === 'MediaBuyer' ? 'MediaBuyer' : viewAsRole === 'Client' ? 'Клиент' : viewAsRole}</strong>
+              {t('admin.viewingAs' as any) || 'Viewing as'}: <strong>{viewAsRole === 'MediaBuyer' ? t('role.mediaBuyer') : viewAsRole === 'Client' ? t('role.client' as any) || 'Client' : viewAsRole}</strong>
             </span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setViewAsRole(null)}
             className="h-6 text-xs text-amber-500 hover:text-amber-400 gap-1 px-2">
-            <X className="h-3 w-3" /> Вернуться
+            <X className="h-3 w-3" /> {t('common.back')}
           </Button>
         </div>
       )}
@@ -77,7 +77,7 @@ export default function AppHeader() {
       )}>
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <span className="text-[10px] sm:text-xs text-muted-foreground font-mono uppercase tracking-wider truncate">
-            {effectiveRole === 'AgencyAdmin' ? t('role.agencyAdmin') : effectiveRole === 'MediaBuyer' ? t('role.mediaBuyer') : effectiveRole === 'Client' ? 'Client' : ''}
+            {effectiveRole === 'AgencyAdmin' ? t('role.agencyAdmin') : effectiveRole === 'MediaBuyer' ? t('role.mediaBuyer') : effectiveRole === 'Client' ? (t('role.client' as any) || 'Client') : ''}
           </span>
         </div>
 
@@ -163,7 +163,7 @@ export default function AppHeader() {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <Eye className="h-3 w-3" /> Просмотр от лица роли
+                    <Eye className="h-3 w-3" /> {t('admin.viewAsRole' as any) || 'View as role'}
                   </DropdownMenuLabel>
                   {previewRoles.map(pr => {
                     const isActive = pr.role === null ? !viewAsRole : viewAsRole === pr.role;
@@ -173,8 +173,8 @@ export default function AppHeader() {
                         onClick={() => setViewAsRole(pr.role)}
                         className={cn('flex flex-col items-start gap-0', isActive && 'bg-primary/10')}
                       >
-                        <span className="text-sm">{pr.label}</span>
-                        <span className="text-[10px] text-muted-foreground">{pr.desc}</span>
+                        <span className="text-sm">{pr.emoji} {t(pr.labelKey as any) || pr.labelKey}</span>
+                        <span className="text-[10px] text-muted-foreground">{t(pr.descKey as any) || pr.descKey}</span>
                       </DropdownMenuItem>
                     );
                   })}
