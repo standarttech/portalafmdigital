@@ -35,13 +35,17 @@ export default function CrmIntegrationsPage() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
+  const AFM_DIGITAL_ID = '00000000-0000-0000-0000-000000000001';
+
   useEffect(() => {
     (async () => {
       setLoadingClients(true);
       const { data } = await supabase.from('clients').select('id, name').eq('status', 'active').order('name');
       if (data) {
-        setClients(data);
-        if (data.length > 0) setSelectedClientId(data[0].id);
+        // Ensure AFM Digital appears first
+        const sorted = data.sort((a, b) => a.id === AFM_DIGITAL_ID ? -1 : b.id === AFM_DIGITAL_ID ? 1 : 0);
+        setClients(sorted);
+        if (sorted.length > 0) setSelectedClientId(sorted[0].id);
       }
       setLoadingClients(false);
     })();

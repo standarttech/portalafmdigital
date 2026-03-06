@@ -852,6 +852,21 @@ export const translations = {
   'client.syncInterval': t('Sync Interval', 'Интервал синхронизации', 'Intervallo di sincronizzazione', 'Intervalo de sincronización', 'فترة المزامنة', 'Intervalle de synchronisation'),
   'client.lastSync': t('Last Sync', 'Последняя синхр.', 'Ultima sincr.', 'Última sincr.', 'آخر مزامنة', 'Dernière sync.'),
   'client.neverSynced': t('Never synced', 'Не синхронизировано', 'Mai sincronizzato', 'Nunca sincronizado', 'لم تتم المزامنة مطلقًا', 'Jamais synchronisé'),
+
+  // Admin tools
+  'admin.viewAsRole': t('View as role', 'Просмотр от лица роли', 'Visualizza come ruolo', 'Ver como rol', 'عرض كدور', 'Voir en tant que rôle'),
+  'admin.viewingAs': t('Viewing as', 'Просмотр как', 'Visualizzazione come', 'Viendo como', 'عرض كـ', 'Visualisation en tant que'),
+  'admin.fullAccess': t('Full access', 'Полный доступ', 'Accesso completo', 'Acceso completo', 'وصول كامل', 'Accès complet'),
+  'admin.clientAccess': t('Client access only', 'Доступ к клиентам', 'Solo accesso clienti', 'Solo acceso clientes', 'وصول العملاء فقط', 'Accès clients uniquement'),
+  'admin.minimalAccess': t('Minimal access', 'Минимальный доступ', 'Accesso minimo', 'Acceso mínimo', 'وصول محدود', 'Accès minimal'),
+  'admin.userPresence': t('User Presence & Activity', 'Присутствие и активность', 'Presenza e attività utenti', 'Presencia y actividad', 'حضور ونشاط المستخدمين', 'Présence et activité'),
+  'admin.onlineNow': t('online now', 'онлайн сейчас', 'online ora', 'en línea ahora', 'متصل الآن', 'en ligne maintenant'),
+  'admin.totalTracked': t('total tracked', 'всего отслеживается', 'totale monitorati', 'total rastreados', 'إجمالي المتتبعين', 'total suivis'),
+  'admin.whoIsOnline': t('Who is Online', 'Кто онлайн', 'Chi è online', 'Quién está en línea', 'من متصل', 'Qui est en ligne'),
+  'admin.recentActivity': t('Recent Activity', 'Последняя активность', 'Attività recente', 'Actividad reciente', 'النشاط الأخير', 'Activité récente'),
+  'admin.activityFor': t('Activity for', 'Активность для', 'Attività per', 'Actividad de', 'نشاط لـ', 'Activité de'),
+  'nav.presence': t('Presence', 'Присутствие', 'Presenza', 'Presencia', 'الحضور', 'Présence'),
+  'role.client': t('Client', 'Клиент', 'Cliente', 'Cliente', 'عميل', 'Client'),
 } as const;
 
 export type TranslationKey = keyof typeof translations;
