@@ -154,6 +154,21 @@ export function useDashboardMetrics(
         .gte('date', range.from)
         .lte('date', range.to);
 
+      // Filter by specific client IDs (for user simulation)
+      if (filters.clientIds && filters.clientIds.length > 0) {
+        query = query.in('client_id', filters.clientIds);
+      } else if (filters.clientIds && filters.clientIds.length === 0) {
+        // User has no clients assigned — empty result
+        setKpis({
+          spend: 0, leads: 0, clicks: 0, impressions: 0, cpl: 0, ctr: 0,
+          activeClients: 0, activeCampaigns: 0, revenue: 0, purchases: 0, roas: 0,
+          prevSpend: 0, prevLeads: 0, prevClicks: 0, prevImpressions: 0, prevCpl: 0, prevCtr: 0,
+          prevRevenue: 0, prevPurchases: 0, prevRoas: 0,
+        });
+        setChartData([]); setClientsData([]); setPlatformData([]); setLoading(false);
+        return;
+      }
+
       if (platformCampaignIds !== null) {
         if (platformCampaignIds.length === 0) {
           // No campaigns for this platform — empty result
@@ -363,7 +378,7 @@ export function useDashboardMetrics(
       console.error('Dashboard metrics error:', err);
     }
     setLoading(false);
-  }, [range, prevRange, filters.platform]);
+  }, [range, prevRange, filters.platform, filters.clientIds]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
