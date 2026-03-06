@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SidebarStateProvider } from "@/contexts/SidebarContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import MainLayout from "@/components/layout/MainLayout";
+import ModuleGuard from "@/components/guards/ModuleGuard";
 import AuthPage from "@/pages/AuthPage";
 import AdminSetupPage from "@/pages/AdminSetup";
 import RequestAccessPage from "@/pages/RequestAccessPage";
@@ -62,22 +63,21 @@ import AdminScaleHome from "@/pages/adminscale/AdminScaleHome";
 import AdminScaleEditor from "@/pages/adminscale/AdminScaleEditor";
 import AdminScaleOverview from "@/pages/adminscale/AdminScaleOverview";
 import AdminScaleReference from "@/pages/adminscale/AdminScaleReference";
+import UserPresencePage from "@/pages/admin/UserPresencePage";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// FIX #1: QueryClient with staleTime to prevent constant refetching/refreshes
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 min — prevents constant refetching
+      staleTime: 5 * 60 * 1000,
       gcTime: 10 * 60 * 1000,
-      refetchOnWindowFocus: false, // FIX #2: Stop refetch on tab switch
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },
 });
 
-// FIX #3: Wrap GlossaryPage in forwardRef to fix console warning
 const GlossaryPageWrapper = React.forwardRef<HTMLDivElement>((_, ref) => (
   <div ref={ref}><GlossaryPage /></div>
 ));
@@ -101,6 +101,13 @@ function AppRoutes() {
     if (!user) {
       setForcePasswordChange(false);
       setNeedsPasswordSetup(false);
+      return;
+    }
+    // Skip re-check if already passed in this session
+    if (sessionStorage.getItem('afm_fpc_checked') === '1') {
+      setForcePasswordChange(false);
+      setNeedsPasswordSetup(false);
+      setCheckingFpc(false);
       return;
     }
     if (sessionStorage.getItem('password_setup_done') === '1') {
@@ -143,6 +150,12 @@ function AppRoutes() {
   const checkMfa = useCallback(async () => {
     if (!user) {
       setMfaPending(false);
+      return;
+    }
+    // Skip if already checked this session
+    if (sessionStorage.getItem('afm_mfa_checked') === '1') {
+      setMfaPending(false);
+      setCheckingMfa(false);
       return;
     }
     setCheckingMfa(true);
@@ -290,6 +303,7 @@ function AppRoutes() {
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/clients/:id" element={<ClientDetailPage />} />
         <Route path="/users" element={<UsersPage />} />
+        <Route path="/presence" element={<UserPresencePage />} />
         <Route path="/sync" element={<SyncMonitorPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/audit" element={<AuditPage />} />
@@ -303,7 +317,8 @@ function AppRoutes() {
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/branding" element={<BrandingPage />} />
       </Route>
-      <Route element={<CrmLayout />}>
+      {/* CRM — guarded by module permission */}
+      <Route element={<ModuleGuard module="crm"><CrmLayout /></ModuleGuard>}>
         <Route path="/crm" element={<CrmPage />} />
         <Route path="/crm/leads" element={<CrmLeadsPage />} />
         <Route path="/crm/analytics" element={<CrmAnalyticsPage />} />
@@ -311,7 +326,8 @@ function AppRoutes() {
         <Route path="/crm/webhooks" element={<CrmWebhooksPage />} />
         <Route path="/crm/settings" element={<CrmSettingsPage />} />
       </Route>
-      <Route element={<AfmInternalLayout />}>
+      {/* AFM Internal — guarded */}
+      <Route element={<ModuleGuard module="afm_internal"><AfmInternalLayout /></ModuleGuard>}>
         <Route path="/afm-internal" element={<AfmDashboard />} />
         <Route path="/afm-internal/media" element={<AfmMediaBuying />} />
         <Route path="/afm-internal/social" element={<AfmSocialMedia />} />
@@ -323,7 +339,8 @@ function AppRoutes() {
         <Route path="/afm-internal/financial-planning" element={<AfmFinancialPlanning />} />
         <Route path="/afm-internal/settings" element={<AfmSettings />} />
       </Route>
-      <Route element={<AdminScaleLayout />}>
+      {/* AdminScale — guarded */}
+      <Route element={<ModuleGuard module="adminscale"><AdminScaleLayout /></ModuleGuard>}>
         <Route path="/adminscale" element={<AdminScaleHome />} />
         <Route path="/adminscale/editor" element={<AdminScaleEditor />} />
         <Route path="/adminscale/overview" element={<AdminScaleOverview />} />

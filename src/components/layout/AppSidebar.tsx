@@ -3,11 +3,12 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebarState } from '@/contexts/SidebarContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useModuleAccess } from '@/hooks/useModuleAccess';
 import logoAfm from '@/assets/logo-afm-new.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
   ChevronLeft, ChevronRight, LogOut, Menu, BookOpen, Calculator, DollarSign, Calendar, MessageSquare, ClipboardList,
-  ChevronDown, Megaphone, Zap, Palette, ContactIcon, UserCircle,
+  ChevronDown, Megaphone, Zap, Palette, ContactIcon, UserCircle, Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -23,13 +24,13 @@ interface ModuleEntry {
   icon: typeof Zap;
   path: string;
   color: 'violet' | 'amber' | 'emerald';
-  adminOnly: boolean;
+  permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm';
 }
 
 const moduleEntries: ModuleEntry[] = [
-  { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal', color: 'violet', adminOnly: true },
-  { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', color: 'amber', adminOnly: true },
-  { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'emerald', adminOnly: true },
+  { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal', color: 'violet', permissionKey: 'canAccessAfmInternal' },
+  { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', color: 'amber', permissionKey: 'canAccessAdminScale' },
+  { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'emerald', permissionKey: 'canAccessCrm' },
 ];
 
 const moduleColorMap = {
@@ -91,6 +92,7 @@ const navSections: NavSection[] = [
     items: [
       { key: 'nav.sync', icon: RefreshCw, path: '/sync', adminOnly: true },
       { key: 'nav.audit', icon: Shield, path: '/audit', adminOnly: true },
+      { key: 'nav.presence' as TranslationKey, icon: Activity, path: '/presence', adminOnly: true },
     ],
   },
   {
@@ -156,11 +158,12 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
   const isClient = effectiveRole === 'Client';
   const badges = useSidebarBadges(isAdmin);
   const sidebarLogoUrl = useSidebarLogo();
+  const moduleAccess = useModuleAccess();
 
   const clientAllowedPaths = ['/dashboard', '/chat', '/glossary', '/profile'];
 
-  // Filter modules by role
-  const visibleModules = moduleEntries.filter(m => !m.adminOnly || isAdmin);
+  // Filter modules by permission (admins see all, others by flags)
+  const visibleModules = moduleEntries.filter(m => moduleAccess[m.permissionKey]);
 
   // Filter regular sections
   const filteredSections = navSections
