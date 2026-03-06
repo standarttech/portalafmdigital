@@ -413,7 +413,7 @@ export default function AfmDashboard() {
                 variant={platformFilter === p ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => hasData && setPlatformFilter(p)}
-                className={`text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0 ${!hasData && p !== 'all' ? 'opacity-40 cursor-default' : ''}`}
+                className={`text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0 ${!hasData && (p as string) !== 'all' ? 'opacity-40 cursor-default' : ''}`}
               >
                 {p === 'all' ? t('common.all') : p === 'meta' ? 'Meta' : p === 'google' ? 'Google' : 'TikTok'}
               </Button>
@@ -489,10 +489,10 @@ export default function AfmDashboard() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <BarChart3 className="h-3.5 w-3.5" /> {t('common.overview')}
+              <BarChart3 className="h-3.5 w-3.5" /> Обзор
             </TabsTrigger>
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <Table2 className="h-3.5 w-3.5" /> {t('clients.daily')}
+              <Table2 className="h-3.5 w-3.5" /> Ежедневно
             </TabsTrigger>
             <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Link2 className="h-3.5 w-3.5" /> {t('dashboard.dataSources')}
@@ -614,7 +614,7 @@ export default function AfmDashboard() {
           {/* DAILY STATS TAB */}
           <TabsContent value="daily" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold">{t('clients.daily')}</h3>
+              <h3 className="text-base sm:text-lg font-semibold">Ежедневная статистика</h3>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
