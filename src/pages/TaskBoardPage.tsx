@@ -16,7 +16,7 @@ import {
   Plus, Loader2, Calendar, MoreHorizontal,
   CheckCircle2, Clock, PlayCircle, Trash2, Archive, Eye, EyeOff,
 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +36,8 @@ interface Task {
   created_at: string;
   updated_at: string;
   client_name?: string;
-  assignee_name?: string;
+  assignee_names: string[];
+  assignee_ids: string[];
 }
 
 interface AgencyUser { user_id: string; display_name: string | null; }
@@ -91,26 +92,43 @@ export default function TaskBoardPage() {
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formClient, setFormClient] = useState('');
-  const [formAssignee, setFormAssignee] = useState('');
+  const [formAssignees, setFormAssignees] = useState<string[]>([]);
   const [formDueDate, setFormDueDate] = useState('');
   const [formStatus, setFormStatus] = useState<Task['status']>('pending');
 
+  const toggleFormAssignee = (userId: string) => {
+    setFormAssignees(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
+  };
+
   const fetchData = useCallback(async () => {
-    const [{ data: t }, { data: c }, { data: au }] = await Promise.all([
+    const [{ data: t }, { data: c }, { data: au }, { data: taskAssignees }] = await Promise.all([
       supabase.from('tasks').select('*').order('created_at', { ascending: false }),
       supabase.from('clients').select('id, name').eq('status', 'active').order('name'),
       supabase.from('agency_users').select('user_id, display_name'),
+      supabase.from('task_assignees').select('task_id, user_id'),
     ]);
 
     const clientMap = new Map((c || []).map(cl => [cl.id, cl.name]));
     const userMap = new Map((au || []).map(u => [u.user_id, u.display_name || 'User']));
+    const assigneesByTask = new Map<string, string[]>();
 
-    setTasks((t || []).map(task => ({
-      ...task,
-      status: task.status as Task['status'],
-      client_name: task.client_id ? clientMap.get(task.client_id) : undefined,
-      assignee_name: task.assigned_to ? userMap.get(task.assigned_to) : undefined,
-    })));
+    (taskAssignees || []).forEach((entry: any) => {
+      const list = assigneesByTask.get(entry.task_id) || [];
+      list.push(entry.user_id);
+      assigneesByTask.set(entry.task_id, list);
+    });
+
+    setTasks((t || []).map(task => {
+      const assigneeIds = assigneesByTask.get(task.id) || (task.assigned_to ? [task.assigned_to] : []);
+      const assigneeNames = assigneeIds.map(id => userMap.get(id)).filter(Boolean) as string[];
+      return {
+        ...task,
+        status: task.status as Task['status'],
+        client_name: task.client_id ? clientMap.get(task.client_id) : undefined,
+        assignee_ids: assigneeIds,
+        assignee_names: assigneeNames,
+      };
+    }));
     setClients(c || []);
     setAgencyUsers(au || []);
     setLoading(false);
@@ -120,7 +138,7 @@ export default function TaskBoardPage() {
 
   const openNewDialog = (status: Task['status'] = 'pending') => {
     setEditingTask(null);
-    setFormTitle(''); setFormDesc(''); setFormClient(''); setFormAssignee(''); setFormDueDate('');
+    setFormTitle(''); setFormDesc(''); setFormClient(''); setFormAssignees([]); setFormDueDate('');
     setFormStatus(status);
     setDialogOpen(true);
   };
@@ -130,7 +148,7 @@ export default function TaskBoardPage() {
     setFormTitle(task.title);
     setFormDesc(task.description || '');
     setFormClient(task.client_id ?? AGENCY_SENTINEL);
-    setFormAssignee(task.assigned_to || '');
+    setFormAssignees(task.assignee_ids || (task.assigned_to ? [task.assigned_to] : []));
     setFormDueDate(task.due_date || '');
     setFormStatus(task.status);
     setDialogOpen(true);
@@ -140,11 +158,13 @@ export default function TaskBoardPage() {
     if (!formTitle || !formClient) return;
     setSaving(true);
 
+    const assigneeIds = Array.from(new Set(formAssignees.filter(Boolean)));
+
     const payload = {
       title: formTitle,
       description: formDesc || null,
       client_id: formClient === AGENCY_SENTINEL ? null : formClient,
-      assigned_to: formAssignee || null,
+      assigned_to: assigneeIds[0] || null,
       due_date: formDueDate || null,
       status: formStatus,
       created_by: user?.id || null,
@@ -153,22 +173,31 @@ export default function TaskBoardPage() {
     if (editingTask) {
       const { error } = await supabase.from('tasks').update(payload).eq('id', editingTask.id);
       if (error) { toast.error(error.message); setSaving(false); return; }
+
+      await supabase.from('task_assignees').delete().eq('task_id', editingTask.id);
+      if (assigneeIds.length > 0) {
+        await supabase.from('task_assignees').insert(assigneeIds.map(userId => ({ task_id: editingTask.id, user_id: userId })));
+      }
     } else {
-      const { error } = await supabase.from('tasks').insert(payload);
+      const { data: createdTask, error } = await supabase.from('tasks').insert(payload).select('id').single();
       if (error) { toast.error(error.message); setSaving(false); return; }
 
-      if (formAssignee) {
+      if (createdTask && assigneeIds.length > 0) {
+        await supabase.from('task_assignees').insert(assigneeIds.map(userId => ({ task_id: createdTask.id, user_id: userId })));
+      }
+
+      if (assigneeIds.length > 0) {
         const notifMessage = `${formTitle}${formDueDate ? ` · ${isRu ? 'до' : 'due'} ${formatLocalDate(formDueDate, 'full')}` : ''}`;
-        await supabase.functions.invoke('send-notification', {
+        await Promise.all(assigneeIds.map(assigneeId => supabase.functions.invoke('send-notification', {
           body: {
-            user_id: formAssignee,
+            user_id: assigneeId,
             type: 'task',
             title: isRu ? 'Новая задача назначена' : 'New task assigned',
             message: notifMessage,
             link: '/tasks',
             force_channels: ['in_app', 'email'],
           },
-        });
+        })));
       }
     }
 
@@ -346,15 +375,33 @@ export default function TaskBoardPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>{isRu ? 'Исполнитель' : 'Assignee'}</Label>
-                <Select value={formAssignee} onValueChange={setFormAssignee}>
-                  <SelectTrigger><SelectValue placeholder={isRu ? 'Выбрать' : 'Select'} /></SelectTrigger>
-                  <SelectContent>
+                <Label>{isRu ? 'Исполнители' : 'Assignees'}</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="truncate">
+                        {formAssignees.length === 0
+                          ? (isRu ? 'Выбрать' : 'Select')
+                          : `${isRu ? 'Выбрано' : 'Selected'}: ${formAssignees.length}`}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 max-h-72 overflow-y-auto" align="start">
+                    <DropdownMenuItem onClick={() => setFormAssignees([])}>
+                      {isRu ? 'Без исполнителей' : 'No assignees'}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     {agencyUsers.map(u => (
-                      <SelectItem key={u.user_id} value={u.user_id}>{u.display_name || 'User'}</SelectItem>
+                      <DropdownMenuCheckboxItem
+                        key={u.user_id}
+                        checked={formAssignees.includes(u.user_id)}
+                        onCheckedChange={() => toggleFormAssignee(u.user_id)}
+                      >
+                        {u.display_name || 'User'}
+                      </DropdownMenuCheckboxItem>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -462,14 +509,20 @@ function TaskCard({ task, isRu, onEdit, onStatusChange, onDelete, onArchive, sta
             {formatLocalDate(task.due_date)}
           </span>
         )}
-        {task.assignee_name && (
+        {task.assignee_names.length > 0 && (
           <div className="flex items-center gap-1 ml-auto">
-            <Avatar className="h-4 w-4">
-              <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
-                {task.assignee_name.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-[10px] text-muted-foreground">{task.assignee_name}</span>
+            {task.assignee_names.slice(0, 3).map((name, idx) => (
+              <Avatar key={`${name}-${idx}`} className="h-4 w-4">
+                <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                  {name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+            <span className="text-[10px] text-muted-foreground">
+              {task.assignee_names.length === 1
+                ? task.assignee_names[0]
+                : (isRu ? `${task.assignee_names.length} исп.` : `${task.assignee_names.length} assignees`)}
+            </span>
           </div>
         )}
       </div>
