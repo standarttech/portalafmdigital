@@ -2,8 +2,12 @@ import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, BookOpen, Building2, Heart, TrendingUp, Users } from 'lucide-react';
-import { useState } from 'react';
+import { Sparkles, BookOpen, Building2, Heart, TrendingUp, Users, Upload, History, Trash2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { toast } from 'sonner';
+import AdminScaleReferencePanel from './AdminScaleReferencePanel';
+import type { ScaleData } from './AdminScaleEditor';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
@@ -128,22 +132,18 @@ const examples = [
   },
 ];
 
-interface ScaleData {
-  name: string;
-  goal: string;
-  intentions: string[];
-  policies: string[];
-  plans: string[];
-  programs: { name: string; steps: { type: string; text: string; assignee: string }[] }[];
-  projects: { name: string; steps: { type: string; text: string; assignee: string }[] }[];
-  orders: string[];
-  idealPicture: string;
-  statistics: string[];
-  vfp: string;
-}
-
 export default function AdminScaleHome() {
   const navigate = useNavigate();
+  const [refOpen, setRefOpen] = useState(false);
+  const [history, setHistory] = useState<{ name: string; date: string; data: ScaleData }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const h = JSON.parse(localStorage.getItem('adminscale_history') || '[]');
+      setHistory(h);
+    } catch {}
+  }, []);
 
   const loadExample = (data: ScaleData) => {
     localStorage.setItem('adminscale_current', JSON.stringify(data));
@@ -152,20 +152,42 @@ export default function AdminScaleHome() {
 
   const createNew = () => {
     const blank: ScaleData = {
-      name: '',
-      goal: '',
-      intentions: [''],
-      policies: [''],
-      plans: [''],
+      name: '', goal: '', intentions: [''], policies: [''], plans: [''],
       programs: [{ name: '', steps: [{ type: 'operating', text: '', assignee: '' }] }],
-      projects: [],
-      orders: [''],
-      idealPicture: '',
-      statistics: [''],
-      vfp: '',
+      projects: [], orders: [''], idealPicture: '', statistics: [''], vfp: '',
     };
     localStorage.setItem('adminscale_current', JSON.stringify(blank));
     navigate('/adminscale/editor');
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target?.result as string;
+        const data = JSON.parse(text) as ScaleData;
+        if (data.goal !== undefined) {
+          localStorage.setItem('adminscale_current', JSON.stringify(data));
+          toast.success(`Шкала "${data.name || 'Без названия'}" импортирована`);
+          navigate('/adminscale/editor');
+        } else {
+          toast.error('Неверный формат JSON');
+        }
+      } catch {
+        toast.error('Ошибка при импорте файла');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const deleteHistoryItem = (index: number) => {
+    const updated = history.filter((_, i) => i !== index);
+    setHistory(updated);
+    localStorage.setItem('adminscale_history', JSON.stringify(updated));
+    toast.success('Удалено из истории');
   };
 
   return (
@@ -180,52 +202,76 @@ export default function AdminScaleHome() {
       </motion.div>
 
       {/* Action cards */}
-      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Card
-          className="cursor-pointer border-amber-500/30 hover:border-amber-500/60 transition-colors group"
-          onClick={createNew}
-        >
+      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Card className="cursor-pointer border-amber-500/30 hover:border-amber-500/60 transition-colors group" onClick={createNew}>
           <CardContent className="p-5 flex items-start gap-4">
             <div className="h-11 w-11 rounded-xl bg-amber-500/15 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/25 transition-colors">
               <Sparkles className="h-5 w-5 text-amber-500" />
             </div>
             <div>
               <p className="font-semibold text-foreground">Новая шкала</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Создайте административную шкалу — от Цели до ЦКП, с программами и задачами
-              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Создайте с нуля</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card
-          className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group"
-          onClick={() => navigate('/adminscale/reference')}
-        >
+        <Card className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group" onClick={() => setRefOpen(true)}>
           <CardContent className="p-5 flex items-start gap-4">
             <div className="h-11 w-11 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/15 transition-colors">
               <BookOpen className="h-5 w-5 text-muted-foreground group-hover:text-amber-500 transition-colors" />
             </div>
             <div>
               <p className="font-semibold text-foreground">Справочник</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Полное руководство: структура программ, типы задач, правила проектов
-              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Полное руководство</p>
             </div>
           </CardContent>
         </Card>
+
+        <Card className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group" onClick={() => fileInputRef.current?.click()}>
+          <CardContent className="p-5 flex items-start gap-4">
+            <div className="h-11 w-11 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/15 transition-colors">
+              <Upload className="h-5 w-5 text-muted-foreground group-hover:text-amber-500 transition-colors" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Импорт</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Загрузить JSON</p>
+            </div>
+          </CardContent>
+        </Card>
+        <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
       </motion.div>
+
+      {/* Saved history */}
+      {history.length > 0 && (
+        <motion.div variants={item} className="space-y-2">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <History className="h-4 w-4" /> Сохранённые шкалы
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {history.slice(0, 6).map((h, i) => (
+              <Card key={i} className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0" onClick={() => loadExample(h.data)}>
+                    <p className="text-sm font-medium text-foreground truncate">{h.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(h.date).toLocaleDateString('ru-RU')} {new Date(h.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => { e.stopPropagation(); deleteHistoryItem(i); }}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Examples */}
       <motion.div variants={item} className="space-y-2">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Примеры шкал</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {examples.map((ex, i) => (
-            <Card
-              key={i}
-              className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group"
-              onClick={() => loadExample(ex.data)}
-            >
+            <Card key={i} className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group" onClick={() => loadExample(ex.data)}>
               <CardContent className="p-4 flex items-start gap-3">
                 <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/10 transition-colors">
                   <ex.icon className="h-5 w-5 text-muted-foreground group-hover:text-amber-500 transition-colors" />
@@ -262,6 +308,20 @@ export default function AdminScaleHome() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Reference Sheet */}
+      <Sheet open={refOpen} onOpenChange={setRefOpen}>
+        <SheetContent side="right" className="w-[420px] sm:w-[480px] overflow-y-auto p-0">
+          <SheetHeader className="px-6 pt-6 pb-2">
+            <SheetTitle className="flex items-center gap-2 text-lg">
+              <BookOpen className="h-5 w-5 text-amber-500" /> Справочник
+            </SheetTitle>
+          </SheetHeader>
+          <div className="px-6 pb-8">
+            <AdminScaleReferencePanel />
+          </div>
+        </SheetContent>
+      </Sheet>
     </motion.div>
   );
 }

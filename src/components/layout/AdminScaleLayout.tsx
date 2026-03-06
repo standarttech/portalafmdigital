@@ -22,7 +22,6 @@ const navItems: NavItem[] = [
   { label: 'Главная', icon: Home, path: '/adminscale' },
   { label: 'Редактор', icon: PenLine, path: '/adminscale/editor' },
   { label: 'Обзор', icon: Eye, path: '/adminscale/overview' },
-  { label: 'Справочник', icon: BookOpen, path: '/adminscale/reference' },
 ];
 
 function AdminScaleSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
