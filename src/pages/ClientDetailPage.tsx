@@ -793,6 +793,11 @@ export default function ClientDetailPage() {
             </div>
           </TabsContent>
 
+          {/* CLIENT INFO TAB */}
+          <TabsContent value="info" className="space-y-4">
+            <ClientInfoTab clientId={id!} isAdmin={isAdmin} />
+          </TabsContent>
+
           {/* DAILY TABLE TAB */}
           <TabsContent value="daily" className="space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
