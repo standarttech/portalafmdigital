@@ -158,6 +158,7 @@ function AppRoutes() {
   const checkMfa = useCallback(async () => {
     if (!user) {
       setMfaPending(false);
+      setCheckingMfa(false);
       return;
     }
     if (sessionStorage.getItem('afm_mfa_checked') === '1') {
