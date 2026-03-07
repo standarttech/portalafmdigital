@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Shield, Zap, Headphones, Clock, Lock, TrendingUp } from 'lucide-react';
 import denisImg from '@/assets/denis.png';
 import danilImg from '@/assets/danil.jpg';
+import RoasCalculator from '@/components/website/RoasCalculator';
+import PlatformDemo from '@/components/website/PlatformDemo';
+import TrustSection from '@/components/website/TrustSection';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
@@ -107,6 +110,12 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Platform Demo ── */}
+      <PlatformDemo />
+
+      {/* ── ROAS Calculator ── */}
+      <RoasCalculator />
+
       {/* ── Verticals ── */}
       <section className="py-24 px-6 bg-white/[0.01]">
         <div className="max-w-5xl mx-auto">
@@ -153,6 +162,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Trust & Testimonials ── */}
+      <TrustSection />
+
       {/* ── Founders ── */}
       <section className="py-24 px-6 bg-white/[0.01]">
         <div className="max-w-4xl mx-auto">
@@ -163,7 +175,7 @@ export default function HomePage() {
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={1}
             className="bg-white/[0.03] border border-white/5 rounded-2xl p-8 sm:p-12">
             <div className="flex gap-4 mb-8">
-              <img src={denisImg} alt="Denis Ishimov" className="h-16 w-16 rounded-full object-cover border-2 border-[hsl(42,87%,55%)]/30" />
+              <img src={denisImg} alt="Denis Ishimov" className="h-16 w-16 rounded-full object-cover object-[center_20%] border-2 border-[hsl(42,87%,55%)]/30" />
               <img src={danilImg} alt="Danil Yussupov" className="h-16 w-16 rounded-full object-cover border-2 border-[hsl(42,87%,55%)]/30" />
             </div>
             <blockquote className="text-white/70 leading-relaxed space-y-4 text-sm sm:text-base">
