@@ -70,6 +70,9 @@ import AboutPage from "@/pages/website/AboutPage";
 import ServicesPage from "@/pages/website/ServicesPage";
 import CaseStudiesPage from "@/pages/website/CaseStudiesPage";
 import ContactPage from "@/pages/website/ContactPage";
+import PrivacyPolicyPage from "@/pages/website/PrivacyPolicyPage";
+import TermsPage from "@/pages/website/TermsPage";
+import CookiePolicyPage from "@/pages/website/CookiePolicyPage";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -205,7 +208,7 @@ function AppRoutes() {
   }
 
   // Public website pages (available regardless of auth state)
-  const publicWebsitePaths = ['/', '/home', '/about', '/services', '/case-studies', '/contact'];
+  const publicWebsitePaths = ['/', '/home', '/about', '/services', '/case-studies', '/contact', '/privacy', '/terms', '/cookies'];
   if (!user && publicWebsitePaths.includes(currentPath)) {
     return (
       <Routes>
@@ -216,6 +219,9 @@ function AppRoutes() {
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/case-studies" element={<CaseStudiesPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
         </Route>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/request-access" element={<RequestAccessPage />} />
@@ -264,6 +270,9 @@ function AppRoutes() {
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/case-studies" element={<CaseStudiesPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
         </Route>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/request-access" element={<RequestAccessPage />} />
@@ -326,6 +335,9 @@ function AppRoutes() {
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/case-studies" element={<CaseStudiesPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/cookies" element={<CookiePolicyPage />} />
         </Route>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<ClientDashboardPage />} />
@@ -349,6 +361,9 @@ function AppRoutes() {
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/case-studies" element={<CaseStudiesPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/cookies" element={<CookiePolicyPage />} />
       </Route>
       <Route element={<MainLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />

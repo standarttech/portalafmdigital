@@ -108,18 +108,19 @@ function Footer() {
             </div>
           </div>
           <div>
-            <h4 className="text-white font-semibold text-sm mb-4">Services</h4>
+            <h4 className="text-white font-semibold text-sm mb-4">Legal</h4>
             <div className="flex flex-col gap-2 text-white/50 text-sm">
-              <span>Coaches & Info Products</span>
-              <span>E-commerce</span>
-              <span>Local Business</span>
-              <span>Performance Marketing</span>
+              <Link to="/privacy" className="hover:text-[hsl(42,87%,55%)] transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-[hsl(42,87%,55%)] transition-colors">Terms of Service</Link>
+              <Link to="/cookies" className="hover:text-[hsl(42,87%,55%)] transition-colors">Cookie Policy</Link>
             </div>
           </div>
         </div>
         <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-white/30 text-xs">© {new Date().getFullYear()} AFM Digital. All rights reserved.</p>
           <div className="flex gap-6">
+            <Link to="/privacy" className="text-white/30 text-xs hover:text-white/60 transition-colors">Privacy</Link>
+            <Link to="/terms" className="text-white/30 text-xs hover:text-white/60 transition-colors">Terms</Link>
             <Link to="/contact" className="text-white/30 text-xs hover:text-white/60 transition-colors">Contact Us</Link>
           </div>
         </div>
