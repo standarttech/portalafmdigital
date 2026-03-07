@@ -37,27 +37,27 @@ export default function TrustSection() {
   return (
     <>
       {/* Trust grid */}
-      <section className="py-24 px-6">
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0}
-            className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            className="text-center mb-8 sm:mb-14">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
               Why Clients <span className="text-[hsl(42,87%,55%)]">Trust Us</span>
             </h2>
-            <p className="text-white/50 max-w-xl mx-auto">
+            <p className="text-white/50 max-w-xl mx-auto text-sm sm:text-base">
               We don't just run ads — we build growth systems backed by data, partnerships, and years of expertise.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
             {trustPoints.map((t, i) => (
               <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i}
-                className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 hover:border-[hsl(42,87%,55%)]/20 transition-colors group">
-                <div className="h-10 w-10 rounded-xl bg-[hsl(42,87%,55%)]/10 flex items-center justify-center mb-4 group-hover:bg-[hsl(42,87%,55%)]/20 transition-colors">
-                  <t.icon className="h-5 w-5 text-[hsl(42,87%,55%)]" />
+                className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 sm:p-6 hover:border-[hsl(42,87%,55%)]/20 transition-colors group">
+                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-[hsl(42,87%,55%)]/10 flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-[hsl(42,87%,55%)]/20 transition-colors">
+                  <t.icon className="h-4 w-4 sm:h-5 sm:w-5 text-[hsl(42,87%,55%)]" />
                 </div>
-                <h3 className="font-bold mb-1.5">{t.title}</h3>
-                <p className="text-white/50 text-sm leading-relaxed">{t.desc}</p>
+                <h3 className="font-bold text-sm sm:text-base mb-1 sm:mb-1.5">{t.title}</h3>
+                <p className="text-white/50 text-xs sm:text-sm leading-relaxed">{t.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -65,23 +65,23 @@ export default function TrustSection() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 px-6 bg-white/[0.01]">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white/[0.01]">
         <div className="max-w-5xl mx-auto">
           <motion.h2 initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0}
-            className="text-3xl sm:text-4xl font-bold text-center mb-14">
+            className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center mb-8 sm:mb-14">
             Client <span className="text-[hsl(42,87%,55%)]">Testimonials</span>
           </motion.h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             {testimonials.map((t, i) => (
               <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i}
-                className="bg-white/[0.03] border border-white/5 rounded-2xl p-7 flex flex-col">
-                <div className="flex gap-1 mb-4">
+                className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 sm:p-7 flex flex-col">
+                <div className="flex gap-1 mb-3 sm:mb-4">
                   {[...Array(5)].map((_, j) => (
-                    <Star key={j} className="h-4 w-4 fill-[hsl(42,87%,55%)] text-[hsl(42,87%,55%)]" />
+                    <Star key={j} className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-[hsl(42,87%,55%)] text-[hsl(42,87%,55%)]" />
                   ))}
                 </div>
-                <blockquote className="text-white/70 text-sm leading-relaxed flex-1 mb-4">"{t.quote}"</blockquote>
-                <div className="border-t border-white/5 pt-4">
+                <blockquote className="text-white/70 text-sm leading-relaxed flex-1 mb-3 sm:mb-4">"{t.quote}"</blockquote>
+                <div className="border-t border-white/5 pt-3 sm:pt-4">
                   <p className="text-white font-medium text-sm">{t.author}</p>
                   <p className="text-[hsl(42,87%,55%)] text-xs font-semibold mt-0.5">{t.result}</p>
                 </div>

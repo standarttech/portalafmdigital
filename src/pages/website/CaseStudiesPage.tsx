@@ -22,40 +22,40 @@ const cases = [
 export default function CaseStudiesPage() {
   return (
     <div>
-      <section className="py-32 px-6 text-center">
+      <section className="py-24 sm:py-32 px-4 sm:px-6 text-center">
         <motion.p initial="hidden" animate="visible" variants={fadeUp} custom={0}
-          className="text-[hsl(42,87%,55%)] text-sm font-semibold tracking-[0.3em] uppercase mb-4">Results</motion.p>
+          className="text-[hsl(42,87%,55%)] text-xs sm:text-sm font-semibold tracking-[0.2em] sm:tracking-[0.3em] uppercase mb-3 sm:mb-4">Results</motion.p>
         <motion.h1 initial="hidden" animate="visible" variants={fadeUp} custom={1}
-          className="text-4xl sm:text-5xl lg:text-6xl font-extrabold max-w-3xl mx-auto">
+          className="text-3xl sm:text-5xl lg:text-6xl font-extrabold max-w-3xl mx-auto">
           Paid Ads <span className="text-[hsl(42,87%,55%)]">Case Studies</span>
         </motion.h1>
       </section>
 
-      <section className="pb-24 px-6">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <section className="pb-16 sm:pb-24 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {cases.map((c, i) => (
             <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i % 3}
-              className="bg-white/[0.03] border border-white/5 rounded-2xl p-7 hover:border-[hsl(42,87%,55%)]/20 transition-all group">
-              <div className="flex items-center justify-between mb-4">
+              className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 sm:p-7 hover:border-[hsl(42,87%,55%)]/20 transition-all group">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <span className="text-white/30 text-xs font-semibold tracking-wider uppercase">{c.name}</span>
                 <span className="text-[hsl(42,87%,55%)]/60 text-[10px] font-semibold tracking-wider uppercase bg-[hsl(42,87%,55%)]/10 px-2 py-0.5 rounded-full">{c.category}</span>
               </div>
-              <p className="text-3xl font-extrabold bg-gradient-to-r from-[hsl(42,87%,55%)] to-[hsl(42,87%,70%)] bg-clip-text text-transparent mb-2">
+              <p className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-[hsl(42,87%,55%)] to-[hsl(42,87%,70%)] bg-clip-text text-transparent mb-1 sm:mb-2">
                 {c.metric}
               </p>
-              <p className="text-white/70 text-sm font-medium mb-3">{c.desc}</p>
+              <p className="text-white/70 text-sm font-medium mb-2 sm:mb-3">{c.desc}</p>
               <p className="text-white/40 text-xs leading-relaxed">{c.detail}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
-      <section className="py-20 px-6 text-center border-t border-white/5">
-        <h2 className="text-2xl font-bold mb-4">Want Results Like These?</h2>
-        <p className="text-white/50 mb-8 max-w-lg mx-auto text-sm">Book a free ads audit and discover untapped growth opportunities in your traffic.</p>
+      <section className="py-16 sm:py-20 px-4 sm:px-6 text-center border-t border-white/5">
+        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Want Results Like These?</h2>
+        <p className="text-white/50 mb-6 sm:mb-8 max-w-lg mx-auto text-sm">Book a free ads audit and discover untapped growth opportunities in your traffic.</p>
         <Link to="/contact"
-          className="inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-[hsl(42,87%,55%)] text-[hsl(228,30%,6%)] font-bold hover:bg-[hsl(42,87%,65%)] transition-all hover:shadow-[0_0_40px_rgba(217,170,58,0.3)]">
-          Book a Free Audit <ArrowRight className="h-5 w-5" />
+          className="inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-[hsl(42,87%,55%)] text-[hsl(228,30%,6%)] font-bold text-sm sm:text-base hover:bg-[hsl(42,87%,65%)] transition-all hover:shadow-[0_0_40px_rgba(217,170,58,0.3)]">
+          Book a Free Audit <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
         </Link>
       </section>
     </div>
