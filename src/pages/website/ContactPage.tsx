@@ -54,12 +54,12 @@ export default function ContactPage() {
 
   if (success) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-6">
+      <div className="min-h-[80vh] flex items-center justify-center px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
           className="text-center max-w-md">
-          <CheckCircle2 className="h-16 w-16 text-[hsl(42,87%,55%)] mx-auto mb-6" />
-          <h2 className="text-3xl font-bold mb-4">Thank You!</h2>
-          <p className="text-white/50">We've received your application. Our team will review it and get back to you within 24-48 hours.</p>
+          <CheckCircle2 className="h-12 w-12 sm:h-16 sm:w-16 text-[hsl(42,87%,55%)] mx-auto mb-4 sm:mb-6" />
+          <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">Thank You!</h2>
+          <p className="text-white/50 text-sm sm:text-base">We've received your application. Our team will review it and get back to you within 24-48 hours.</p>
         </motion.div>
       </div>
     );
@@ -69,24 +69,24 @@ export default function ContactPage() {
 
   return (
     <div>
-      <section className="py-32 px-6 text-center">
+      <section className="py-24 sm:py-32 px-4 sm:px-6 text-center">
         <motion.p initial="hidden" animate="visible" variants={fadeUp} custom={0}
-          className="text-[hsl(42,87%,55%)] text-sm font-semibold tracking-[0.3em] uppercase mb-4">Get Started</motion.p>
+          className="text-[hsl(42,87%,55%)] text-xs sm:text-sm font-semibold tracking-[0.2em] sm:tracking-[0.3em] uppercase mb-3 sm:mb-4">Get Started</motion.p>
         <motion.h1 initial="hidden" animate="visible" variants={fadeUp} custom={1}
-          className="text-4xl sm:text-5xl lg:text-6xl font-extrabold max-w-3xl mx-auto">
+          className="text-3xl sm:text-5xl lg:text-6xl font-extrabold max-w-3xl mx-auto">
           Book a <span className="text-[hsl(42,87%,55%)]">Free Audit</span>
         </motion.h1>
         <motion.p initial="hidden" animate="visible" variants={fadeUp} custom={2}
-          className="text-white/50 text-lg max-w-xl mx-auto mt-6">
+          className="text-white/50 text-base sm:text-lg max-w-xl mx-auto mt-4 sm:mt-6">
           Fill out the form below and our team will get in touch to discuss how we can scale your business.
         </motion.p>
       </section>
 
-      <section className="pb-24 px-6">
+      <section className="pb-16 sm:pb-24 px-4 sm:px-6">
         <motion.form initial="hidden" animate="visible" variants={fadeUp} custom={3}
           onSubmit={handleSubmit}
-          className="max-w-2xl mx-auto bg-white/[0.03] border border-white/5 rounded-2xl p-8 sm:p-10 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          className="max-w-2xl mx-auto bg-white/[0.03] border border-white/5 rounded-2xl p-5 sm:p-8 lg:p-10 space-y-4 sm:space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
               <label className="text-white/60 text-xs font-medium mb-1.5 block">Name *</label>
               <input className={inputClass} placeholder="Your name" value={form.name}
@@ -100,7 +100,7 @@ export default function ContactPage() {
               {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
               <label className="text-white/60 text-xs font-medium mb-1.5 block">Company</label>
               <input className={inputClass} placeholder="Company name" value={form.company}
@@ -124,12 +124,12 @@ export default function ContactPage() {
           </div>
           <div>
             <label className="text-white/60 text-xs font-medium mb-1.5 block">Message *</label>
-            <textarea className={inputClass + ' min-h-[120px] resize-none'} placeholder="Tell us about your business and goals..."
+            <textarea className={inputClass + ' min-h-[100px] sm:min-h-[120px] resize-none'} placeholder="Tell us about your business and goals..."
               value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} />
             {errors.message && <p className="text-red-400 text-xs mt-1">{errors.message}</p>}
           </div>
           <button type="submit" disabled={submitting}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[hsl(42,87%,55%)] text-[hsl(228,30%,6%)] font-bold hover:bg-[hsl(42,87%,65%)] transition-all disabled:opacity-60 hover:shadow-[0_0_30px_rgba(217,170,58,0.2)]">
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 sm:py-3.5 rounded-xl bg-[hsl(42,87%,55%)] text-[hsl(228,30%,6%)] font-bold text-sm sm:text-base hover:bg-[hsl(42,87%,65%)] transition-all disabled:opacity-60 hover:shadow-[0_0_30px_rgba(217,170,58,0.2)]">
             {submitting ? 'Submitting...' : <><Send className="h-4 w-4" /> Submit Application</>}
           </button>
         </motion.form>
