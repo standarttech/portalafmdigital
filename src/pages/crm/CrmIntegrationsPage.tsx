@@ -140,15 +140,14 @@ function BotManagementDialog({
     if (!bot.bot_token_ref) return;
     setTesting(bot.id);
     try {
-      const { data: token } = await supabase.rpc('get_social_token', { _token_reference: bot.bot_token_ref });
-      if (!token) throw new Error('Токен не найден');
-
-      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
-      const json = await res.json();
-      if (json.ok) {
-        toast({ title: '✅ Бот доступен', description: `@${json.result.username} — ${json.result.first_name}` });
+      const { data, error } = await supabase.functions.invoke('test-bot-token', {
+        body: { token_ref: bot.bot_token_ref },
+      });
+      if (error) throw new Error(error.message || 'Ошибка запроса');
+      if (data.ok) {
+        toast({ title: '✅ Бот доступен', description: `@${data.result.username} — ${data.result.first_name}` });
       } else {
-        toast({ title: '❌ Ошибка', description: json.description || 'Бот недоступен', variant: 'destructive' });
+        toast({ title: '❌ Ошибка', description: data.description || data.error || 'Бот недоступен', variant: 'destructive' });
       }
     } catch (e: any) {
       toast({ title: '❌ Ошибка', description: e.message, variant: 'destructive' });
@@ -780,14 +779,14 @@ function BotManagementInline({ clientId }: { clientId: string }) {
     if (!bot.bot_token_ref) return;
     setTesting(bot.id);
     try {
-      const { data: token } = await supabase.rpc('get_social_token', { _token_reference: bot.bot_token_ref });
-      if (!token) throw new Error('Токен не найден');
-      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
-      const json = await res.json();
-      if (json.ok) {
-        toast({ title: '✅ Бот доступен', description: `@${json.result.username} — ${json.result.first_name}` });
+      const { data, error } = await supabase.functions.invoke('test-bot-token', {
+        body: { token_ref: bot.bot_token_ref },
+      });
+      if (error) throw new Error(error.message || 'Ошибка запроса');
+      if (data.ok) {
+        toast({ title: '✅ Бот доступен', description: `@${data.result.username} — ${data.result.first_name}` });
       } else {
-        toast({ title: '❌ Ошибка', description: json.description || 'Бот недоступен', variant: 'destructive' });
+        toast({ title: '❌ Ошибка', description: data.description || data.error || 'Бот недоступен', variant: 'destructive' });
       }
     } catch (e: any) {
       toast({ title: '❌ Ошибка', description: e.message, variant: 'destructive' });
