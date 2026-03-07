@@ -6,7 +6,7 @@ import logoAfm from '@/assets/logo-afm-new.png';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navLinks = [
-  { label: 'Home', path: '/' },
+  { label: 'Home', path: '/home' },
   { label: 'About', path: '/about' },
   { label: 'Services', path: '/services' },
   { label: 'Case Studies', path: '/case-studies' },

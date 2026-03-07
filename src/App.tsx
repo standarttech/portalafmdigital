@@ -205,12 +205,13 @@ function AppRoutes() {
   }
 
   // Public website pages (available regardless of auth state)
-  const publicWebsitePaths = ['/', '/about', '/services', '/case-studies', '/contact'];
+  const publicWebsitePaths = ['/', '/home', '/about', '/services', '/case-studies', '/contact'];
   if (!user && publicWebsitePaths.includes(currentPath)) {
     return (
       <Routes>
         <Route element={<WebsiteLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/case-studies" element={<CaseStudiesPage />} />
@@ -258,6 +259,7 @@ function AppRoutes() {
       <Routes>
         <Route element={<WebsiteLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/case-studies" element={<CaseStudiesPage />} />
@@ -317,6 +319,14 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Public website pages accessible when logged in */}
+        <Route element={<WebsiteLayout />}>
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/case-studies" element={<CaseStudiesPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+        </Route>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<ClientDashboardPage />} />
           <Route path="/chat" element={<ChatPage />} />
@@ -332,6 +342,14 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Public website pages accessible when logged in */}
+      <Route element={<WebsiteLayout />}>
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/services" element={<ServicesPage />} />
+        <Route path="/case-studies" element={<CaseStudiesPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+      </Route>
       <Route element={<MainLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/clients" element={<ClientsPage />} />
