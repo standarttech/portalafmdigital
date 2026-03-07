@@ -59,7 +59,7 @@ export default function AboutPage() {
             ].map((f, i) => (
               <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i}
                 className="bg-white/[0.03] border border-white/5 rounded-2xl p-8 text-center">
-                <img src={f.img} alt={f.name} className="h-24 w-24 rounded-full object-cover mx-auto mb-5 border-2 border-[hsl(42,87%,55%)]/30" />
+                <img src={f.img} alt={f.name} className={`h-24 w-24 rounded-full object-cover mx-auto mb-5 border-2 border-[hsl(42,87%,55%)]/30 ${f.name === 'Denis Ishimov' ? 'object-[center_20%]' : ''}`} />
                 <h3 className="text-xl font-bold">{f.name}</h3>
                 <p className="text-[hsl(42,87%,55%)] text-sm font-medium mb-4">{f.role}</p>
                 <p className="text-white/50 text-sm leading-relaxed">{f.bio}</p>
