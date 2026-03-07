@@ -83,17 +83,17 @@ function BotManagementDialog({
       return;
     }
 
-    // Store token in vault via RPC
-    const { data: tokenRef, error: vaultErr } = await supabase.rpc('store_social_token', {
-      _secret_value: newToken.trim(),
-      _secret_name: `crm_bot_${clientId}_${Date.now()}`,
+    // Store token in vault via edge function (service role)
+    const { data: vaultData, error: vaultErr } = await supabase.functions.invoke('store-bot-token', {
+      body: { secret_name: `crm_bot_${clientId}_${Date.now()}`, secret_value: newToken.trim() },
     });
 
-    if (vaultErr) {
-      toast({ title: 'Ошибка', description: vaultErr.message, variant: 'destructive' });
+    if (vaultErr || vaultData?.error) {
+      toast({ title: 'Ошибка', description: vaultData?.error || vaultErr?.message || 'Не удалось сохранить токен', variant: 'destructive' });
       setSaving(false);
       return;
     }
+    const tokenRef = vaultData?.token_ref;
 
     // Deactivate other bots for this client
     await supabase.from('crm_bot_profiles').update({ is_active: false }).eq('client_id', clientId);
@@ -741,12 +741,12 @@ function BotManagementInline({ clientId }: { clientId: string }) {
       return;
     }
 
-    const { data: tokenRef, error: vaultErr } = await supabase.rpc('store_social_token', {
-      _secret_value: newToken.trim(),
-      _secret_name: `crm_bot_${clientId}_${Date.now()}`,
+    const { data: vaultData, error: vaultErr } = await supabase.functions.invoke('store-bot-token', {
+      body: { secret_name: `crm_bot_${clientId}_${Date.now()}`, secret_value: newToken.trim() },
     });
 
-    if (vaultErr) { toast({ title: 'Ошибка', description: vaultErr.message, variant: 'destructive' }); setSaving(false); return; }
+    if (vaultErr || vaultData?.error) { toast({ title: 'Ошибка', description: vaultData?.error || vaultErr?.message || 'Не удалось сохранить токен', variant: 'destructive' }); setSaving(false); return; }
+    const tokenRef = vaultData?.token_ref;
 
     await supabase.from('crm_bot_profiles').update({ is_active: false }).eq('client_id', clientId);
 
