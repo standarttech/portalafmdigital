@@ -205,12 +205,13 @@ function AppRoutes() {
   }
 
   // Public website pages (available regardless of auth state)
-  const publicWebsitePaths = ['/', '/about', '/services', '/case-studies', '/contact'];
+  const publicWebsitePaths = ['/', '/home', '/about', '/services', '/case-studies', '/contact'];
   if (!user && publicWebsitePaths.includes(currentPath)) {
     return (
       <Routes>
         <Route element={<WebsiteLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/case-studies" element={<CaseStudiesPage />} />
