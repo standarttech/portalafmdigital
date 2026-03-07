@@ -86,10 +86,10 @@ function Navbar() {
             </a>
           </div>
           <LanguageSwitcher />
-          <a href="https://app.afmdigital.com" target="_blank" rel="noopener noreferrer"
+          <Link to="/login"
             className="px-5 py-2 rounded-lg bg-[hsl(42,87%,55%)] text-[hsl(228,30%,6%)] text-sm font-bold hover:bg-[hsl(42,87%,65%)] transition-colors">
             {t('nav.clientPortal')}
-          </a>
+          </Link>
         </nav>
 
         {/* Mobile toggle */}
@@ -132,11 +132,10 @@ function Navbar() {
                   <Facebook className="h-4 w-4" /> Facebook
                 </a>
               </div>
-              <a href="https://app.afmdigital.com" target="_blank" rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
+              <Link to="/login" onClick={() => setOpen(false)}
                 className="mt-2 px-5 py-2.5 rounded-lg bg-[hsl(42,87%,55%)] text-[hsl(228,30%,6%)] text-sm font-bold text-center">
                 {t('nav.clientPortal')}
-              </a>
+              </Link>
             </div>
           </motion.nav>
         )}
@@ -203,8 +202,8 @@ function Footer() {
               <Link to="/cookies" className="hover:text-[hsl(42,87%,55%)] transition-colors">{t('footer.cookies')}</Link>
             </div>
             <h4 className="text-white font-semibold text-sm mt-6 mb-2">{t('footer.platform')}</h4>
-            <a href="https://app.afmdigital.com" target="_blank" rel="noopener noreferrer"
-              className="text-white/50 text-sm hover:text-[hsl(42,87%,55%)] transition-colors">{t('nav.clientPortal')} →</a>
+            <Link to="/login"
+              className="text-white/50 text-sm hover:text-[hsl(42,87%,55%)] transition-colors">{t('nav.clientPortal')} →</Link>
           </div>
 
           {/* Contact Info */}
