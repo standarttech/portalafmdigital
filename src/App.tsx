@@ -64,6 +64,12 @@ import AdminScaleEditor from "@/pages/adminscale/AdminScaleEditor";
 import AdminScaleOverview from "@/pages/adminscale/AdminScaleOverview";
 import AdminScaleReference from "@/pages/adminscale/AdminScaleReference";
 import UserPresencePage from "@/pages/admin/UserPresencePage";
+import WebsiteLayout from "@/pages/website/WebsiteLayout";
+import HomePage from "@/pages/website/HomePage";
+import AboutPage from "@/pages/website/AboutPage";
+import ServicesPage from "@/pages/website/ServicesPage";
+import CaseStudiesPage from "@/pages/website/CaseStudiesPage";
+import ContactPage from "@/pages/website/ContactPage";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -103,7 +109,6 @@ function AppRoutes() {
       setNeedsPasswordSetup(false);
       return;
     }
-    // Skip re-check if already passed in this session
     if (sessionStorage.getItem('afm_fpc_checked') === '1') {
       setForcePasswordChange(false);
       setNeedsPasswordSetup(false);
@@ -152,7 +157,6 @@ function AppRoutes() {
       setMfaPending(false);
       return;
     }
-    // Skip if already checked this session
     if (sessionStorage.getItem('afm_mfa_checked') === '1') {
       setMfaPending(false);
       setCheckingMfa(false);
@@ -184,8 +188,10 @@ function AppRoutes() {
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
 
-  // Public routes
-  if (typeof window !== "undefined" && window.location.pathname.startsWith("/scaling-stack")) {
+  // Public routes — always accessible
+  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+
+  if (currentPath.startsWith("/scaling-stack")) {
     return (
       <Routes>
         <Route path="/scaling-stack" element={<ScalingStackLanding />} />
@@ -194,6 +200,27 @@ function AppRoutes() {
         <Route path="/scaling-stack/apply/thanks" element={<ScalingStackThanks />} />
         <Route path="/scaling-stack/privacy" element={<ScalingStackPrivacy />} />
         <Route path="/scaling-stack/terms" element={<ScalingStackTerms />} />
+      </Routes>
+    );
+  }
+
+  // Public website pages (available regardless of auth state)
+  const publicWebsitePaths = ['/', '/about', '/services', '/case-studies', '/contact'];
+  if (!user && publicWebsitePaths.includes(currentPath)) {
+    return (
+      <Routes>
+        <Route element={<WebsiteLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/case-studies" element={<CaseStudiesPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+        </Route>
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/request-access" element={<RequestAccessPage />} />
+        <Route path="/invite" element={<InvitePage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -229,11 +256,18 @@ function AppRoutes() {
   if (!user) {
     return (
       <Routes>
+        <Route element={<WebsiteLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/case-studies" element={<CaseStudiesPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+        </Route>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/request-access" element={<RequestAccessPage />} />
         <Route path="/invite" element={<InvitePage />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
-        <Route path="*" element={<Navigate to="/auth" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }

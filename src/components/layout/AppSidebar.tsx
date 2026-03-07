@@ -23,34 +23,34 @@ interface ModuleEntry {
   key: TranslationKey;
   icon: typeof Zap;
   path: string;
-  color: 'violet' | 'amber' | 'emerald';
+  color: 'gold' | 'silver' | 'bronze';
   permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm';
 }
 
 const moduleEntries: ModuleEntry[] = [
-  { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal', color: 'violet', permissionKey: 'canAccessAfmInternal' },
-  { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', color: 'amber', permissionKey: 'canAccessAdminScale' },
-  { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'emerald', permissionKey: 'canAccessCrm' },
+  { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal', color: 'gold', permissionKey: 'canAccessAfmInternal' },
+  { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', color: 'silver', permissionKey: 'canAccessAdminScale' },
+  { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'bronze', permissionKey: 'canAccessCrm' },
 ];
 
 const moduleColorMap = {
-  violet: {
-    idle: 'bg-gradient-to-r from-violet-500/8 to-purple-500/8 text-violet-400 border-violet-500/20 hover:from-violet-500/15 hover:to-purple-500/15 hover:border-violet-500/35',
-    active: 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-300 border-violet-500/40 shadow-[0_0_20px_rgba(139,92,246,0.12)]',
-    icon: 'text-violet-400',
-    dot: 'bg-violet-400',
+  gold: {
+    idle: 'bg-[hsl(42,40%,12%)] text-[hsl(42,87%,55%)] border-[hsl(42,60%,25%)] hover:bg-[hsl(42,40%,15%)] hover:border-[hsl(42,70%,35%)]',
+    active: 'bg-[hsl(42,40%,16%)] text-[hsl(42,87%,65%)] border-[hsl(42,80%,40%)] shadow-[0_0_20px_rgba(217,170,58,0.1)]',
+    icon: 'text-[hsl(42,87%,55%)]',
+    dot: 'bg-[hsl(42,87%,55%)]',
   },
-  amber: {
-    idle: 'bg-gradient-to-r from-amber-500/8 to-yellow-500/8 text-amber-400 border-amber-500/20 hover:from-amber-500/15 hover:to-yellow-500/15 hover:border-amber-500/35',
-    active: 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.12)]',
-    icon: 'text-amber-400',
-    dot: 'bg-amber-400',
+  silver: {
+    idle: 'bg-[hsl(220,20%,12%)] text-[hsl(220,15%,70%)] border-[hsl(220,20%,22%)] hover:bg-[hsl(220,20%,15%)] hover:border-[hsl(220,20%,32%)]',
+    active: 'bg-[hsl(220,20%,16%)] text-[hsl(220,15%,80%)] border-[hsl(220,20%,38%)] shadow-[0_0_20px_rgba(148,163,184,0.08)]',
+    icon: 'text-[hsl(220,15%,70%)]',
+    dot: 'bg-[hsl(220,15%,70%)]',
   },
-  emerald: {
-    idle: 'bg-gradient-to-r from-emerald-500/8 to-teal-500/8 text-emerald-400 border-emerald-500/20 hover:from-emerald-500/15 hover:to-teal-500/15 hover:border-emerald-500/35',
-    active: 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.12)]',
-    icon: 'text-emerald-400',
-    dot: 'bg-emerald-400',
+  bronze: {
+    idle: 'bg-[hsl(25,30%,12%)] text-[hsl(25,60%,55%)] border-[hsl(25,40%,22%)] hover:bg-[hsl(25,30%,15%)] hover:border-[hsl(25,50%,32%)]',
+    active: 'bg-[hsl(25,30%,16%)] text-[hsl(25,60%,65%)] border-[hsl(25,50%,38%)] shadow-[0_0_20px_rgba(180,120,60,0.08)]',
+    icon: 'text-[hsl(25,60%,55%)]',
+    dot: 'bg-[hsl(25,60%,55%)]',
   },
 };
 
