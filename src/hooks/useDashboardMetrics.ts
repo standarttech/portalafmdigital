@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { subDays, format, differenceInDays } from 'date-fns';
+import { getAllAfmCampaignIds, isAfmCampaign } from '@/lib/afmCampaignFilter';
 import type { DashboardFilters, DateRange } from '@/components/dashboard/dashboardData';
 
 export interface KpiData {
