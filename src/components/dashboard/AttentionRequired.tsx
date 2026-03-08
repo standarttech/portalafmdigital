@@ -69,11 +69,17 @@ export default function AttentionRequired() {
         const clientMap: Record<string, { name: string; category: ClientCategory }> = {};
         activeClients.forEach(c => { clientMap[c.id] = { name: c.name, category: toClientCategory(c.category) }; });
 
-        const { data: recentMetrics } = await supabase
-          .from('daily_metrics')
-          .select('client_id, date, spend, leads, purchases, revenue')
-          .in('client_id', clientIds)
-          .gte('date', tenDaysAgo).lte('date', today);
+        // AFM FILTER: only AFM campaigns
+        const afmIds = await getAllAfmCampaignIds(clientIds);
+        const metricsQuery = afmIds.length > 0
+          ? supabase
+              .from('daily_metrics')
+              .select('client_id, date, spend, leads, purchases, revenue')
+              .in('campaign_id', afmIds)
+              .gte('date', tenDaysAgo).lte('date', today)
+          : null;
+
+        const recentMetrics = metricsQuery ? (await metricsQuery).data : [];
 
         if (recentMetrics) {
           const byClient: Record<string, {
