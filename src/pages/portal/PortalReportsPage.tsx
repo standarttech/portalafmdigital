@@ -76,7 +76,7 @@ export default function PortalReportsPage() {
       prevData = (pd as any[]) || [];
     }
 
-    const [sRes, lRes, aRes, rRes, fRes, pRes] = await Promise.all([
+    const [sRes, lRes, aRes, rRes, fRes] = await Promise.all([
       buildQ('campaign_performance_snapshots', 'synced_at').eq('entity_level', 'campaign').order('synced_at', { ascending: false }).limit(300),
       buildQ('launch_requests', 'executed_at').not('external_campaign_id', 'is', null).order('executed_at', { ascending: false }).limit(50),
       buildQ('optimization_actions', 'created_at').order('created_at', { ascending: false }).limit(100),
@@ -84,11 +84,10 @@ export default function PortalReportsPage() {
       clientId
         ? supabase.from('client_portal_files' as any).select('*').eq('client_id', clientId).eq('is_visible_in_portal', true).in('file_type', ['report', 'pdf']).order('created_at', { ascending: false }).limit(10)
         : Promise.resolve({ data: [] }),
-      prevPromise,
     ]);
 
     setSnapshots((sRes.data as any[]) || []);
-    setPrevSnapshots((pRes.data as any[]) || []);
+    setPrevSnapshots(prevData);
     setLaunches((lRes.data as any[]) || []);
     setActions((aRes.data as any[]) || []);
     setRecs((rRes.data as any[]) || []);

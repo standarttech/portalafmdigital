@@ -103,16 +103,15 @@ export default function PortalDashboardPage() {
       prevData = (pd as any[]) || [];
     }
 
-    const [sRes, lRes, rRes, aRes, pRes] = await Promise.all([
+    const [sRes, lRes, rRes, aRes] = await Promise.all([
       snapQ.order('synced_at', { ascending: false }).limit(200),
       launchQ.order('executed_at', { ascending: false }).limit(50),
       recQ.order('created_at', { ascending: false }).limit(100),
       actQ.order('created_at', { ascending: false }).limit(100),
-      prevPromise,
     ]);
 
     setSnapshots((sRes.data as any[]) || []);
-    setPrevSnapshots((pRes.data as any[]) || []);
+    setPrevSnapshots(prevData);
     setLaunches((lRes.data as any[]) || []);
     setRecs((rRes.data as any[]) || []);
     setActions((aRes.data as any[]) || []);
