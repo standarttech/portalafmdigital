@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Bot, MonitorSmartphone, BrainCircuit,
-  Lightbulb, FileStack, Rocket
+  Lightbulb, FileStack, Rocket, TrendingUp
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
