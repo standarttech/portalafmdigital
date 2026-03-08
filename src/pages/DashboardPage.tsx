@@ -34,12 +34,12 @@ import type { DateRange, Comparison, PlatformFilter, DashboardFilters } from '@/
 
 const containerAnim = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+  show: { opacity: 1, transition: { duration: 0.2 } },
 };
 
 const itemAnim = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0 },
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { duration: 0.15 } },
 };
 
 const STORAGE_KEY = 'dashboard-section-order';
