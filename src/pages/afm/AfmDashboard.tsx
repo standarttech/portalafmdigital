@@ -625,8 +625,8 @@ export default function AfmDashboard() {
               <h3 className="text-base sm:text-lg font-semibold">{t('afm.dash.dailyStats' as any)}</h3>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
-                    <Settings2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Columns</span>
+                   <Button variant="ghost" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
+                    <Settings2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t('afm.dash.columns' as any)}</span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-3" align="end">
