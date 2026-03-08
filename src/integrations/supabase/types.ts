@@ -1830,6 +1830,51 @@ export type Database = {
           },
         ]
       }
+      gos_audit_log: {
+        Row: {
+          action_type: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_summary: Json | null
+          before_summary: Json | null
+          client_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          action_type: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_summary?: Json | null
+          before_summary?: Json | null
+          client_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          action_type?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_summary?: Json | null
+          before_summary?: Json | null
+          client_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       gos_experiments: {
         Row: {
           created_at: string
