@@ -238,10 +238,12 @@ serve(async (req) => {
       }
 
       // For cron: only sync clients with meta_auto_sync enabled
-      let accountsToSync = adAccounts;
+      // Filter out Google Sheets-originated accounts (platform_account_id starts with "sheets-")
+      let accountsToSync = adAccounts.filter(a => !a.platform_account_id.startsWith("sheets-"));
+
       if (isCron && !targetClientId) {
         // Check which clients have meta auto-sync on
-        const clientIds = [...new Set(adAccounts.map(a => a.client_id))];
+        const clientIds = [...new Set(accountsToSync.map(a => a.client_id))];
         const { data: settings } = await supabase
           .from("platform_settings")
           .select("key, value")
@@ -258,7 +260,7 @@ serve(async (req) => {
           clientIds.forEach(id => enabledClients.add(id));
         }
 
-        accountsToSync = adAccounts.filter(a => enabledClients.has(a.client_id));
+        accountsToSync = accountsToSync.filter(a => enabledClients.has(a.client_id));
       }
 
       if (!accountsToSync.length) {
@@ -305,43 +307,37 @@ serve(async (req) => {
       // Update sync status for each client
       const clientIds = [...new Set(accountsToSync.map(a => a.client_id))];
       for (const clientId of clientIds) {
-        const clientErrors = errors.filter(e => {
-          const acc = accountsToSync.find(a => a.client_id === clientId);
-          return acc && e.includes(acc.platform_account_id);
-        });
+        const clientAccountIds = accountsToSync.filter(a => a.client_id === clientId).map(a => a.platform_account_id);
+        const clientErrors = errors.filter(e => clientAccountIds.some(id => e.includes(id)));
+
+        const syncStatus = clientErrors.length ? "error" : "synced";
+        const syncError = clientErrors.length ? clientErrors.join("; ") : null;
 
         await supabase
           .from("platform_connections")
           .update({
             last_sync_at: new Date().toISOString(),
-            sync_status: clientErrors.length ? "error" : "synced",
-          sync_error: clientErrors.length ? clientErrors.join("; ") : null,
-        })
-        .eq("client_id", clientId)
-        .eq("platform", "meta");
-
-      // Create admin notification on sync failure
-      if (clientErrors.length > 0) {
-        const { data: admins } = await supabase.from("agency_users").select("user_id").eq("agency_role", "AgencyAdmin");
-        const { data: clientRow } = await supabase.from("clients").select("name").eq("id", clientId).single();
-        const clientName = clientRow?.name || clientId;
-        for (const admin of (admins || [])) {
-          await supabase.from("notifications").insert({
-            user_id: admin.user_id,
-            title: "Sync Error",
-            message: `Meta Ads sync failed for ${clientName}: ${clientErrors.join("; ").substring(0, 200)}`,
-            type: "warning",
-            link: "/sync",
-          });
-        }
-      }
-
-      await supabase.from("platform_connections").update({
-          last_sync_at: new Date().toISOString(),
-          sync_status: "synced" as any,
-        })
-        .eq("client_id", clientId)
+            sync_status: syncStatus,
+            sync_error: syncError,
+          })
+          .eq("client_id", clientId)
           .eq("platform", "meta");
+
+        // Create admin notification on sync failure
+        if (clientErrors.length > 0) {
+          const { data: admins } = await supabase.from("agency_users").select("user_id").eq("agency_role", "AgencyAdmin");
+          const { data: clientRow } = await supabase.from("clients").select("name").eq("id", clientId).single();
+          const clientName = clientRow?.name || clientId;
+          for (const admin of (admins || [])) {
+            await supabase.from("notifications").insert({
+              user_id: admin.user_id,
+              title: "Sync Error",
+              message: `Meta Ads sync failed for ${clientName}: ${clientErrors.join("; ").substring(0, 200)}`,
+              type: "warning",
+              link: "/sync",
+            });
+          }
+        }
       }
 
       return new Response(JSON.stringify({
