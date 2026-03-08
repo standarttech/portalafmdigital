@@ -830,9 +830,10 @@ function BudgetTab({ draft, onSave, saving }: { draft: Draft; onSave: (u: Partia
 
 // ── Ad Set Editor ──
 
-function AdSetEditor({ item, onUpdate, onDelete, onAddAd, childAds }: {
+function AdSetEditor({ item, onUpdate, onDelete, onAddAd, childAds, metaPages }: {
   item: DraftItem; onUpdate: (id: string, u: Partial<DraftItem>) => void;
   onDelete: (id: string) => void; onAddAd: () => void; childAds: DraftItem[];
+  metaPages: MetaPage[];
 }) {
   const [expanded, setExpanded] = useState(true);
   const [cfg, setCfg] = useState(item.config || {});
