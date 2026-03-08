@@ -374,17 +374,22 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
 
   const saveDraft = async (updates: Partial<Draft>) => {
     setSaving(true);
-    const merged = { ...draft, ...updates };
-    const { error } = await supabase.from('campaign_drafts' as any).update({
-      campaign_name: merged.campaign_name, objective: merged.objective,
-      platform: merged.platform, budget_mode: merged.budget_mode,
-      total_budget: merged.total_budget, bid_strategy: merged.bid_strategy,
-      buying_type: merged.buying_type, notes: merged.notes,
-      ad_account_id: merged.ad_account_id, config: merged.config,
-      validation_status: merged.validation_status, validation_errors: merged.validation_errors,
-      preview_payload: merged.preview_payload,
-    }).eq('id', draft.id);
+    // Only send fields that are actually in updates to avoid overwriting with stale state
+    const payload: Record<string, any> = {};
+    const fieldMap: Record<string, string> = {
+      campaign_name: 'campaign_name', objective: 'objective', platform: 'platform',
+      budget_mode: 'budget_mode', total_budget: 'total_budget', bid_strategy: 'bid_strategy',
+      buying_type: 'buying_type', notes: 'notes', ad_account_id: 'ad_account_id',
+      config: 'config', validation_status: 'validation_status',
+      validation_errors: 'validation_errors', preview_payload: 'preview_payload',
+    };
+    for (const [key, col] of Object.entries(fieldMap)) {
+      if (key in updates) payload[col] = (updates as any)[key];
+    }
+    if (Object.keys(payload).length === 0) { setSaving(false); return; }
+    const { error } = await supabase.from('campaign_drafts' as any).update(payload).eq('id', draft.id);
     if (error) { toast.error('Save failed'); setSaving(false); return; }
+    const merged = { ...draft, ...updates };
     logGosAction('update', 'campaign_draft', draft.id, merged.campaign_name || draft.name, { clientId: draft.client_id });
     setDraft(merged);
     setSaving(false);
@@ -426,7 +431,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
     const hasWarnings = errors.some(e => e.severity === 'warning');
     const status = hasErrors ? 'invalid' : hasWarnings ? 'warning' : 'valid';
     setValidationErrors(errors);
-    saveDraft({ ...draft, validation_status: status, validation_errors: errors as any[] });
+    saveDraft({ validation_status: status, validation_errors: errors as any[] });
     logGosAction('validate', 'campaign_draft', draft.id, draft.campaign_name || draft.name, { metadata: { status, errorCount: errors.length } });
     if (status === 'valid') toast.success('Draft is valid and ready');
     else toast.warning(`Found ${errors.length} issue${errors.length > 1 ? 's' : ''}`);
@@ -434,7 +439,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
 
   const generatePreview = () => {
     const payload = buildPreviewPayload(draft, items);
-    saveDraft({ ...draft, preview_payload: payload });
+    saveDraft({ preview_payload: payload });
     logGosAction('preview', 'campaign_draft', draft.id, draft.campaign_name || draft.name);
     toast.success('Preview payload generated');
   };
@@ -609,7 +614,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
         <CardContent>
           <Textarea value={draft.notes || ''} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))}
             placeholder="Add notes about this campaign draft..." rows={3} className="text-sm"
-            onBlur={() => saveDraft({ ...draft })} maxLength={2000} />
+            onBlur={() => saveDraft({ notes: draft.notes })} maxLength={2000} />
         </CardContent>
       </Card>
     </div>
@@ -659,7 +664,10 @@ function CampaignSettingsTab({ draft, accounts, clients, onSave, saving }: {
             </div>
             <div><Label>Source</Label><Input value={local.source_type} disabled className="bg-muted/30" /></div>
           </div>
-          <Button size="sm" onClick={() => onSave(local)} disabled={saving}>
+          <Button size="sm" onClick={() => onSave({
+            campaign_name: local.campaign_name, objective: local.objective, platform: local.platform,
+            ad_account_id: local.ad_account_id, buying_type: local.buying_type,
+          })} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Campaign Settings
           </Button>
         </CardContent>
@@ -692,7 +700,9 @@ function BudgetTab({ draft, onSave, saving }: { draft: Draft; onSave: (u: Partia
             </Select>
           </div>
         </div>
-        <Button size="sm" onClick={() => onSave(local)} disabled={saving}>
+        <Button size="sm" onClick={() => onSave({
+          budget_mode: local.budget_mode, total_budget: local.total_budget, bid_strategy: local.bid_strategy,
+        })} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Budget Settings
         </Button>
       </CardContent>
