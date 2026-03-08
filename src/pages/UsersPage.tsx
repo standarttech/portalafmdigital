@@ -1,4 +1,5 @@
 import { useLanguage } from '@/i18n/LanguageContext';
+import AdminPortalManagement from '@/components/portal/AdminPortalManagement';
 import AdminApprovalsPanel from '@/components/shared/AdminApprovalsPanel';
 import { motion } from 'framer-motion';
 import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2, Building2, Camera, Loader2 as LoaderIcon } from 'lucide-react';
