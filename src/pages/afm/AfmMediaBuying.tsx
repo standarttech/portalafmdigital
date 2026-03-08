@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { supabase } from '@/integrations/supabase/client';
+import { isAfmCampaign, getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { useLanguage } from '@/i18n/LanguageContext';
