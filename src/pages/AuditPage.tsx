@@ -224,7 +224,7 @@ export default function AuditPage() {
 
         {/* Action Filter */}
         <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="h-8 w-[120px] text-xs">
+          <SelectTrigger className="h-8 w-[100px] sm:w-[120px] text-xs">
             <SelectValue placeholder={isRu ? 'Действие' : 'Action'} />
           </SelectTrigger>
           <SelectContent>
