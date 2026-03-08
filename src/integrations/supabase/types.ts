@@ -451,6 +451,184 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_analysis_runs: {
+        Row: {
+          ad_account_id: string | null
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          model_used: string | null
+          prompt: string
+          result_data: Json | null
+          result_summary: string | null
+          session_id: string
+          status: string
+        }
+        Insert: {
+          ad_account_id?: string | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          model_used?: string | null
+          prompt?: string
+          result_data?: Json | null
+          result_summary?: string | null
+          session_id: string
+          status?: string
+        }
+        Update: {
+          ad_account_id?: string | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          model_used?: string | null
+          prompt?: string
+          result_data?: Json | null
+          result_summary?: string | null
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analysis_runs_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_analysis_runs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_analysis_runs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_campaign_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_campaign_sessions: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          metadata: Json | null
+          session_type: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          metadata?: Json | null
+          session_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          metadata?: Json | null
+          session_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_campaign_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_recommendations: {
+        Row: {
+          acted_on_at: string | null
+          analysis_run_id: string | null
+          client_id: string
+          created_at: string
+          description: string
+          id: string
+          metadata: Json | null
+          priority: string
+          recommendation_type: string
+          session_id: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          acted_on_at?: string | null
+          analysis_run_id?: string | null
+          client_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          recommendation_type?: string
+          session_id?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          acted_on_at?: string | null
+          analysis_run_id?: string | null
+          client_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          recommendation_type?: string
+          session_id?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_recommendations_analysis_run_id_fkey"
+            columns: ["analysis_run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_analysis_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_recommendations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_recommendations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_campaign_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       annotations: {
         Row: {
           client_id: string
@@ -562,6 +740,130 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_draft_items: {
+        Row: {
+          config: Json | null
+          created_at: string
+          draft_id: string
+          id: string
+          item_type: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          draft_id: string
+          id?: string
+          item_type?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          draft_id?: string
+          id?: string
+          item_type?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_draft_items_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_drafts: {
+        Row: {
+          ad_account_id: string | null
+          client_id: string
+          config: Json | null
+          created_at: string
+          created_by: string
+          draft_type: string
+          id: string
+          metadata: Json | null
+          name: string
+          notes: string | null
+          platform: string
+          recommendation_id: string | null
+          session_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id?: string | null
+          client_id: string
+          config?: Json | null
+          created_at?: string
+          created_by: string
+          draft_type?: string
+          id?: string
+          metadata?: Json | null
+          name: string
+          notes?: string | null
+          platform?: string
+          recommendation_id?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string | null
+          client_id?: string
+          config?: Json | null
+          created_at?: string
+          created_by?: string
+          draft_type?: string
+          id?: string
+          metadata?: Json | null
+          name?: string
+          notes?: string | null
+          platform?: string
+          recommendation_id?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_drafts_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_drafts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_drafts_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_recommendations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_drafts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_campaign_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -2437,6 +2739,101 @@ export type Database = {
           },
         ]
       }
+      hypothesis_messages: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          metadata: Json | null
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          role?: string
+          thread_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hypothesis_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "hypothesis_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hypothesis_threads: {
+        Row: {
+          ad_account_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          linked_campaign_ids: string[] | null
+          metadata: Json | null
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id?: string | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          linked_campaign_ids?: string[] | null
+          metadata?: Json | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          linked_campaign_ids?: string[] | null
+          metadata?: Json | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hypothesis_threads_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hypothesis_threads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -2483,6 +2880,116 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      launch_execution_logs: {
+        Row: {
+          created_at: string
+          executed_by: string | null
+          id: string
+          launch_request_id: string
+          message: string | null
+          response_data: Json | null
+          status: string
+          step: string
+        }
+        Insert: {
+          created_at?: string
+          executed_by?: string | null
+          id?: string
+          launch_request_id: string
+          message?: string | null
+          response_data?: Json | null
+          status?: string
+          step?: string
+        }
+        Update: {
+          created_at?: string
+          executed_by?: string | null
+          id?: string
+          launch_request_id?: string
+          message?: string | null
+          response_data?: Json | null
+          status?: string
+          step?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "launch_execution_logs_launch_request_id_fkey"
+            columns: ["launch_request_id"]
+            isOneToOne: false
+            referencedRelation: "launch_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      launch_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string
+          created_at: string
+          draft_id: string
+          id: string
+          metadata: Json | null
+          notes: string | null
+          priority: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id: string
+          created_at?: string
+          draft_id: string
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          priority?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          requested_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string
+          created_at?: string
+          draft_id?: string
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          priority?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "launch_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "launch_requests_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_drafts"
             referencedColumns: ["id"]
           },
         ]
@@ -3184,6 +3691,7 @@ export type Database = {
         Row: {
           can_access_adminscale: boolean
           can_access_afm_internal: boolean
+          can_access_ai_ads: boolean
           can_access_crm: boolean
           can_access_growth_os: boolean
           can_add_clients: boolean
@@ -3204,6 +3712,7 @@ export type Database = {
         Insert: {
           can_access_adminscale?: boolean
           can_access_afm_internal?: boolean
+          can_access_ai_ads?: boolean
           can_access_crm?: boolean
           can_access_growth_os?: boolean
           can_add_clients?: boolean
@@ -3224,6 +3733,7 @@ export type Database = {
         Update: {
           can_access_adminscale?: boolean
           can_access_afm_internal?: boolean
+          can_access_ai_ads?: boolean
           can_access_crm?: boolean
           can_access_growth_os?: boolean
           can_add_clients?: boolean

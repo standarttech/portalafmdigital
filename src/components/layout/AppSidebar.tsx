@@ -8,7 +8,7 @@ import logoAfm from '@/assets/logo-afm-new.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
   ChevronLeft, ChevronRight, LogOut, Menu, BookOpen, Calculator, DollarSign, Calendar, MessageSquare, ClipboardList,
-  ChevronDown, Megaphone, Zap, Palette, ContactIcon, UserCircle, Activity,
+  ChevronDown, Megaphone, Zap, Palette, ContactIcon, UserCircle, Activity, Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ interface ModuleEntry {
   icon: typeof Zap;
   path: string;
   color: 'gold' | 'silver' | 'bronze';
-  permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm' | 'canAccessGrowthOs';
+  permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm' | 'canAccessGrowthOs' | 'canAccessAiAds';
 }
 
 const moduleEntries: ModuleEntry[] = [
@@ -32,6 +32,7 @@ const moduleEntries: ModuleEntry[] = [
   { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', color: 'silver', permissionKey: 'canAccessAdminScale' },
   { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'bronze', permissionKey: 'canAccessCrm' },
   { key: 'nav.growthOs' as TranslationKey, icon: Activity, path: '/growth-os', color: 'emerald' as any, permissionKey: 'canAccessGrowthOs' },
+  { key: 'nav.aiAds' as TranslationKey, icon: Bot, path: '/ai-ads', color: 'purple' as any, permissionKey: 'canAccessAiAds' },
 ];
 
 const moduleColorMap: Record<string, { idle: string; active: string; icon: string; dot: string }> = {
@@ -58,6 +59,12 @@ const moduleColorMap: Record<string, { idle: string; active: string; icon: strin
     active: 'bg-[hsl(160,30%,14%)] text-[hsl(160,70%,50%)] border-[hsl(160,50%,30%)]',
     icon: 'text-[hsl(160,70%,40%)]',
     dot: 'bg-[hsl(160,70%,40%)]',
+  },
+  purple: {
+    idle: 'text-[hsl(270,70%,50%)] border-[hsl(270,40%,18%)]/50 hover:bg-[hsl(270,30%,12%)] hover:border-[hsl(270,40%,25%)]',
+    active: 'bg-[hsl(270,30%,14%)] text-[hsl(270,70%,60%)] border-[hsl(270,50%,30%)]',
+    icon: 'text-[hsl(270,70%,50%)]',
+    dot: 'bg-[hsl(270,70%,50%)]',
   },
 };
 

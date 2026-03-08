@@ -92,6 +92,13 @@ const GosExperimentsPage = React.lazy(() => import("@/pages/growth-os/GosExperim
 const GosSystemHealthPage = React.lazy(() => import("@/pages/growth-os/GosSystemHealthPage"));
 const GosIntegrityChecksPage = React.lazy(() => import("@/pages/growth-os/GosIntegrityChecksPage"));
 const EmbedOnboardingPage = React.lazy(() => import("@/pages/embed/EmbedOnboardingPage"));
+const AiAdsOverviewPage = React.lazy(() => import("@/pages/ai-ads/AiAdsOverviewPage"));
+const AiAdsAccountsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsAccountsPage"));
+const AiAdsAnalysisPage = React.lazy(() => import("@/pages/ai-ads/AiAdsAnalysisPage"));
+const AiAdsHypothesesPage = React.lazy(() => import("@/pages/ai-ads/AiAdsHypothesesPage"));
+const AiAdsDraftsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsDraftsPage"));
+const AiAdsExecutionsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsExecutionsPage"));
+import AiAdsLayout from "@/components/layout/AiAdsLayout";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -456,6 +463,15 @@ function AppRoutes() {
         <Route path="/growth-os/experiments" element={<GosExperimentsPage />} />
         <Route path="/growth-os/health" element={<GosSystemHealthPage />} />
         <Route path="/growth-os/integrity" element={<GosIntegrityChecksPage />} />
+      </Route>
+      {/* AI Ads Copilot — guarded */}
+      <Route element={<ModuleGuard module="ai_ads"><AiAdsLayout /></ModuleGuard>}>
+        <Route path="/ai-ads" element={<AiAdsOverviewPage />} />
+        <Route path="/ai-ads/accounts" element={<AiAdsAccountsPage />} />
+        <Route path="/ai-ads/analysis" element={<AiAdsAnalysisPage />} />
+        <Route path="/ai-ads/hypotheses" element={<AiAdsHypothesesPage />} />
+        <Route path="/ai-ads/drafts" element={<AiAdsDraftsPage />} />
+        <Route path="/ai-ads/executions" element={<AiAdsExecutionsPage />} />
       </Route>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />

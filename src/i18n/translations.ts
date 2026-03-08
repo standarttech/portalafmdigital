@@ -1100,6 +1100,9 @@ export const translations = {
   'gos.leadRouting': t('Lead Routing', 'Маршрутизация лидов', 'Routing dei lead', 'Enrutamiento de leads', 'توجيه العملاء', 'Routage des leads'),
   'gos.leadRoutingDesc': t('Rule-based lead distribution to reps, pipelines, and automations', 'Распределение лидов по правилам между сотрудниками, воронками и автоматизациями', 'Distribuzione lead basata su regole', 'Distribución de leads basada en reglas', 'توزيع العملاء المحتملين بناءً على القواعد', 'Distribution de leads basée sur des règles'),
 
+  // AI Ads Copilot
+  'nav.aiAds': t('AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot'),
+
 } as const;
 
 export type TranslationKey = keyof typeof translations;
