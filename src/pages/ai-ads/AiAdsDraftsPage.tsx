@@ -163,6 +163,7 @@ function buildPreviewPayload(draft: Draft, items: DraftItem[]): any {
           creative_type: ad.config?.creative_type || 'text_only',
           creative_asset_url: ad.config?.creative_asset_url || null,
           creative_ref: ad.config?.creative_ref || null,
+          creative_asset_id: ad.creative_asset_id || null,
         },
       })),
     })),
