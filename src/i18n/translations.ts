@@ -929,9 +929,7 @@ export const translations = {
   'tasks.medium': t('Medium', 'Средний', 'Media', 'Media', 'متوسط', 'Moyenne'),
   'tasks.low': t('Low', 'Низкий', 'Bassa', 'Baja', 'منخفض', 'Basse'),
 
-  // Calendar
-  'calendar.title': t('Calendar', 'Календарь', 'Calendario', 'Calendario', 'التقويم', 'Calendrier'),
-  'calendar.subtitle': t('Tasks, annotations and events', 'Задачи, аннотации и события', 'Attività, annotazioni ed eventi', 'Tareas, anotaciones y eventos', 'المهام والتعليقات والأحداث', 'Tâches, annotations et événements'),
+  // Calendar extras
   'calendar.addEvent': t('Add Event', 'Добавить событие', 'Aggiungi evento', 'Añadir evento', 'إضافة حدث', 'Ajouter un événement'),
   'calendar.noEvents': t('No events', 'Нет событий', 'Nessun evento', 'Sin eventos', 'لا توجد أحداث', 'Aucun événement'),
   'calendar.selectDay': t('Select a day', 'Выберите день', 'Seleziona un giorno', 'Selecciona un día', 'اختر يومًا', 'Sélectionnez un jour'),
