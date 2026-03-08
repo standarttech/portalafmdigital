@@ -351,14 +351,17 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if this is a cron call (no auth header, has "cron" flag)
+    // Check if this is a cron call — validate via service_role key or x-cron-secret
     const authHeader = req.headers.get("Authorization");
+    const cronSecret = req.headers.get("x-cron-secret");
     let body: any = {};
     try { body = await req.json(); } catch {}
 
-    if (body.cron === true) {
-      // Cron mode called from pg_cron/pg_net — no strict auth needed
-      // verify_jwt=false in config.toml, cron flag validates internal origin
+    const isServiceRole = authHeader?.replace("Bearer ", "") === supabaseKey;
+    const isCronValid = cronSecret === Deno.env.get("CRON_SECRET");
+
+    if (body.cron === true && (isServiceRole || isCronValid)) {
+      // Cron mode: validated via service_role key or cron secret
       // Cron mode: sync all clients with auto_sync_enabled for all platforms
       const { data: clients } = await supabase
         .from("clients")
@@ -386,6 +389,13 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: true, clients_synced: (clients || []).length, rows_synced: totalSynced, errors }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Reject unauthenticated cron flag attempts
+    if (body.cron === true) {
+      return new Response(JSON.stringify({ error: "Unauthorized cron call" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Manual mode: requires auth
