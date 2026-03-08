@@ -32,6 +32,8 @@ import ScalingStackThanks from "@/scaling-stack/ScalingStackThanks";
 import ScalingStackPrivacy from "@/scaling-stack/ScalingStackPrivacy";
 import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
 import NotFound from "./pages/NotFound";
+const EmbedFormPage = React.lazy(() => import("@/pages/embed/EmbedFormPage"));
+const EmbedLandingPage = React.lazy(() => import("@/pages/embed/EmbedLandingPage"));
 import CrmLayout from "@/components/layout/CrmLayout";
 import AdminScaleLayout from "@/components/layout/AdminScaleLayout";
 import GrowthOsLayout from "@/components/layout/GrowthOsLayout";

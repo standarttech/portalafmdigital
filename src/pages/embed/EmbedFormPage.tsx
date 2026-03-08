@@ -53,7 +53,7 @@ export default function EmbedFormPage() {
       setForm(data);
       // Initialize form data with empty values
       const initial: Record<string, any> = {};
-      for (const field of (data.fields || []) as FormField[]) {
+      for (const field of (data.fields as unknown as FormField[]) || []) {
         initial[field.id] = field.type === 'checkbox' ? false : '';
       }
       setFormData(initial);
