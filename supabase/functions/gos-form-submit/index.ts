@@ -259,13 +259,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Write analytics: form_submit_success
+    // Write analytics: form_submit_success with variant_id
     await supabase.from('gos_analytics_events').insert({
       event_type: 'form_submit_success',
       entity_type: 'form',
       entity_id: formId,
       client_id: form.client_id,
       ip_hash: ipHash,
+      variant_id: variantId,
       user_agent: userAgent.substring(0, 500),
       referrer: referrer.substring(0, 500),
     });
