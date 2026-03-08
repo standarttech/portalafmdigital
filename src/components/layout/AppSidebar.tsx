@@ -33,6 +33,7 @@ const moduleEntries: ModuleEntry[] = [
   { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'bronze', permissionKey: 'canAccessCrm' },
   { key: 'nav.growthOs' as TranslationKey, icon: Activity, path: '/growth-os', color: 'emerald' as any, permissionKey: 'canAccessGrowthOs' },
   { key: 'nav.aiAds' as TranslationKey, icon: Bot, path: '/ai-ads', color: 'purple' as any, permissionKey: 'canAccessAiAds' },
+  { key: 'nav.aiInfra' as TranslationKey, icon: Cpu, path: '/ai-infra', color: 'cyan' as any, permissionKey: 'canManageAiInfra' },
 ];
 
 const moduleColorMap: Record<string, { idle: string; active: string; icon: string; dot: string }> = {
