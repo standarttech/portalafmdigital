@@ -372,10 +372,10 @@ export default function AfmDashboard() {
             <CardContent className="p-6 flex flex-col items-center text-center gap-3">
               <Zap className="h-10 w-10 text-warning" />
               <p className="text-sm font-medium text-foreground">
-                Для отслеживания внутреннего медиабаинга необходимо создать клиента «AFM Digital» с категорией «agency» в разделе Клиенты.
+                {t('afm.dash.setupRequired' as any)}
               </p>
               <p className="text-xs text-muted-foreground">
-                Этот клиент будет скрыт из общего списка клиентов и не будет учитываться в статистике. Все данные будут отображаться здесь.
+                {t('afm.dash.setupHidden' as any)}
               </p>
             </CardContent>
           </Card>
@@ -489,10 +489,10 @@ export default function AfmDashboard() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <BarChart3 className="h-3.5 w-3.5" /> Обзор
+              <BarChart3 className="h-3.5 w-3.5" /> {t('afm.dash.overview' as any)}
             </TabsTrigger>
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <Table2 className="h-3.5 w-3.5" /> Ежедневно
+              <Table2 className="h-3.5 w-3.5" /> {t('afm.dash.daily' as any)}
             </TabsTrigger>
             <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Link2 className="h-3.5 w-3.5" /> {t('dashboard.dataSources')}
@@ -614,7 +614,7 @@ export default function AfmDashboard() {
           {/* DAILY STATS TAB */}
           <TabsContent value="daily" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold">Ежедневная статистика</h3>
+              <h3 className="text-base sm:text-lg font-semibold">{t('afm.dash.dailyStats' as any)}</h3>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
@@ -708,22 +708,22 @@ export default function AfmDashboard() {
                     <div>
                       <p className="text-sm font-medium flex items-center gap-2">
                         <RefreshCw className="h-4 w-4 text-primary" />
-                        Автосинхронизация
+                        {t('afm.dash.autoSync' as any)}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Автоматически синхронизировать данные каждый час</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t('afm.dash.autoSyncDesc' as any)}</p>
                     </div>
                     <Switch
                       checked={agencyClient.auto_sync_enabled}
                       onCheckedChange={async (v) => {
                         await supabase.from('clients').update({ auto_sync_enabled: v }).eq('id', agencyClient.id);
                         setAgencyClient(prev => prev ? { ...prev, auto_sync_enabled: v } : prev);
-                        toast.success(v ? 'Автосинхронизация включена' : 'Автосинхронизация отключена');
+                        toast.success(v ? t('afm.dash.autoSyncOn' as any) : t('afm.dash.autoSyncOff' as any));
                       }}
                     />
                   </div>
                   {agencyClient.auto_sync_enabled && (
                     <p className="text-[10px] text-success mt-2 flex items-center gap-1">
-                      ✓ Данные будут обновляться каждый час автоматически
+                      ✓ {t('afm.dash.autoSyncHint' as any)}
                     </p>
                   )}
                 </div>

@@ -38,6 +38,7 @@ interface Task {
   title: string;
   description: string | null;
   status: 'pending' | 'in_progress' | 'completed';
+  priority: string;
   client_id: string | null;
   assigned_to: string | null;
   due_date: string | null;
@@ -47,6 +48,13 @@ interface Task {
   assignee_names: string[];
   assignee_ids: string[];
 }
+
+const PRIORITIES = [
+  { key: 'urgent', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  { key: 'high', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  { key: 'medium', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  { key: 'low', color: 'bg-muted text-muted-foreground border-border/30' },
+];
 
 interface AgencyUser { user_id: string; display_name: string | null; }
 interface Client { id: string; name: string; }
@@ -131,7 +139,7 @@ export default function TaskBoardPage() {
   const [formAssignees, setFormAssignees] = useState<string[]>([]);
   const [formDueDate, setFormDueDate] = useState('');
   const [formStatus, setFormStatus] = useState<Task['status']>('pending');
-
+  const [formPriority, setFormPriority] = useState('medium');
   const toggleFormAssignee = (userId: string) => {
     setFormAssignees(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
   };
@@ -188,7 +196,7 @@ export default function TaskBoardPage() {
   const openNewDialog = (status: Task['status'] = 'pending') => {
     setEditingTask(null);
     setFormTitle(''); setFormDesc(''); setFormClient(''); setFormAssignees([]); setFormDueDate('');
-    setFormStatus(status);
+    setFormStatus(status); setFormPriority('medium');
     setDialogOpen(true);
   };
 
@@ -199,7 +207,7 @@ export default function TaskBoardPage() {
     setFormClient(task.client_id ?? AGENCY_SENTINEL);
     setFormAssignees(task.assignee_ids || (task.assigned_to ? [task.assigned_to] : []));
     setFormDueDate(task.due_date || '');
-    setFormStatus(task.status);
+    setFormStatus(task.status); setFormPriority(task.priority || 'medium');
     setDialogOpen(true);
   };
 
@@ -216,6 +224,7 @@ export default function TaskBoardPage() {
       assigned_to: assigneeIds[0] || null,
       due_date: formDueDate || null,
       status: formStatus,
+      priority: formPriority,
       created_by: user?.id || null,
     };
 
@@ -564,6 +573,11 @@ function TaskCardInner({ task, isRu, onEdit, onStatusChange, onDelete, onArchive
       </div>
       {task.description && <p className="text-[11px] text-muted-foreground line-clamp-2">{task.description}</p>}
       <div className="flex items-center gap-2 flex-wrap">
+        {task.priority && task.priority !== 'medium' && (
+          <Badge variant="outline" className={cn('text-[10px] border', PRIORITIES.find(p => p.key === task.priority)?.color || '')}>
+            {t(`tasks.${task.priority}` as any)}
+          </Badge>
+        )}
         {task.client_id === null ? (
           <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">{isRu ? '🏢 Агентство' : '🏢 Agency'}</Badge>
         ) : task.client_name ? (
