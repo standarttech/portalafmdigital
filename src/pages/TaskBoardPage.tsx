@@ -196,7 +196,7 @@ export default function TaskBoardPage() {
   const openNewDialog = (status: Task['status'] = 'pending') => {
     setEditingTask(null);
     setFormTitle(''); setFormDesc(''); setFormClient(''); setFormAssignees([]); setFormDueDate('');
-    setFormStatus(status);
+    setFormStatus(status); setFormPriority('medium');
     setDialogOpen(true);
   };
 
