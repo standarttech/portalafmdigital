@@ -707,9 +707,9 @@ export default function AfmFinancePage() {
       <motion.div variants={item}>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <BarChart2 className="h-6 w-6 text-primary" />
-          Финансы
+          {t('afm.finance.title' as any)}
         </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Планирование доходов и финансовый контроль</p>
+        <p className="text-sm text-muted-foreground mt-0.5">{t('afm.finance.subtitle' as any)}</p>
       </motion.div>
 
       <motion.div variants={item}>
@@ -717,11 +717,11 @@ export default function AfmFinancePage() {
           <TabsList className="mb-4">
             <TabsTrigger value="income-plan" className="gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" />
-              План по доходу на год
+              {t('afm.finance.incomeTab' as any)}
             </TabsTrigger>
             <TabsTrigger value="financial-planning" className="gap-1.5">
               <DollarSign className="h-3.5 w-3.5" />
-              Финансовое планирование
+              {t('afm.finance.planningTab' as any)}
             </TabsTrigger>
           </TabsList>
 
@@ -730,10 +730,10 @@ export default function AfmFinancePage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
-                  План по доходу — 12 месяцев
+                  {t('afm.finance.incomeTitle' as any)}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Введите количество новых клиентов и продлений. Проценты редактируемые. Данные сохраняются автоматически.
+                  {t('afm.finance.incomeDesc' as any)}
                 </p>
               </CardHeader>
               <CardContent className="p-2 sm:p-4">
@@ -747,10 +747,10 @@ export default function AfmFinancePage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-primary" />
-                  Финансовое планирование
+                  {t('afm.finance.planningTitle' as any)}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Добавляйте клиентов, расходы и зарплаты. Фонды и дивиденды считаются автоматически. Всё сохраняется.
+                  {t('afm.finance.planningDesc' as any)}
                 </p>
               </CardHeader>
               <CardContent className="p-2 sm:p-4">
