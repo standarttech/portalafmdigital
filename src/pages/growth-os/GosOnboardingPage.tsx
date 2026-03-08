@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, ExternalLink, Copy } from 'lucide-react';
+import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, ExternalLink, Copy, Link2, Ban, Clock, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
@@ -29,6 +29,9 @@ export default function GosOnboardingPage() {
   const [startingSession, setStartingSession] = useState(false);
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedFlow, setSelectedFlow] = useState('');
+  const [managingTokens, setManagingTokens] = useState<string | null>(null);
+  const [sessionTokens, setSessionTokens] = useState<any[]>([]);
+  const [tokensLoading, setTokensLoading] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -113,6 +116,60 @@ export default function GosOnboardingPage() {
     setSelectedClient('');
     setSelectedFlow('');
     if (data) navigate(`/growth-os/onboarding/${data.id}`);
+  };
+
+  // --- Token management ---
+  const loadTokens = async (sessionId: string) => {
+    setManagingTokens(sessionId);
+    setTokensLoading(true);
+    const { data } = await supabase
+      .from('gos_onboarding_tokens')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false });
+    setSessionTokens(data || []);
+    setTokensLoading(false);
+  };
+
+  const generateToken = async (sessionId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // Find client name for label
+    const sess = sessions.find(s => s.id === sessionId);
+    const clientName = (sess as any)?.clients?.name || '';
+    const { data: token, error } = await supabase
+      .from('gos_onboarding_tokens')
+      .insert({ session_id: sessionId, created_by: user.id, client_label: clientName })
+      .select('token')
+      .single();
+    if (error) { toast.error('Failed to generate link'); return; }
+    if (token) {
+      const link = `${window.location.origin}/embed/onboarding/${token.token}`;
+      navigator.clipboard.writeText(link);
+      toast.success('Link generated and copied!');
+    }
+    loadTokens(sessionId);
+  };
+
+  const revokeToken = async (tokenId: string) => {
+    const { error } = await supabase
+      .from('gos_onboarding_tokens')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', tokenId);
+    if (error) { toast.error('Failed to revoke'); return; }
+    toast.success('Link revoked');
+    if (managingTokens) loadTokens(managingTokens);
+  };
+
+  const copyTokenLink = (tokenValue: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/embed/onboarding/${tokenValue}`);
+    toast.success('Link copied!');
+  };
+
+  const getTokenStatus = (token: any): { label: string; color: string; icon: React.ReactNode } => {
+    if (token.revoked_at) return { label: 'Revoked', color: 'bg-destructive/10 text-destructive', icon: <Ban className="h-3 w-3" /> };
+    if (new Date(token.expires_at) < new Date()) return { label: 'Expired', color: 'bg-muted text-muted-foreground', icon: <Clock className="h-3 w-3" /> };
+    return { label: 'Active', color: 'bg-emerald-500/10 text-emerald-400', icon: <CheckCircle2 className="h-3 w-3" /> };
   };
 
   // Step editor helpers
@@ -262,13 +319,8 @@ export default function GosOnboardingPage() {
                               <Button variant="outline" size="sm" className="h-6 text-xs gap-1" onClick={() => navigate(`/growth-os/onboarding/${s.id}`)}>
                                 <ExternalLink className="h-3 w-3" /> Continue
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={async () => {
-                                const { data: { user } } = await supabase.auth.getUser();
-                                if (!user) return;
-                                const { data: token } = await supabase.from('gos_onboarding_tokens').insert({ session_id: s.id, created_by: user.id }).select('token').single();
-                                if (token) { navigator.clipboard.writeText(`${window.location.origin}/embed/onboarding/${token.token}`); toast.success('Client link copied to clipboard!'); }
-                              }}>
-                                <Copy className="h-3 w-3" /> Client Link
+                              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => loadTokens(s.id)}>
+                                <Link2 className="h-3 w-3" /> Links
                               </Button>
                             </>
                           )}
@@ -294,6 +346,63 @@ export default function GosOnboardingPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Token Management Dialog */}
+      <Dialog open={!!managingTokens} onOpenChange={open => { if (!open) setManagingTokens(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Link2 className="h-5 w-5 text-primary" /> Client Access Links</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Button size="sm" onClick={() => managingTokens && generateToken(managingTokens)} className="gap-1.5 w-full">
+              <Plus className="h-4 w-4" /> Generate New Link
+            </Button>
+
+            {tokensLoading ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : sessionTokens.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No links generated yet</p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-auto">
+                {sessionTokens.map(tok => {
+                  const status = getTokenStatus(tok);
+                  return (
+                    <div key={tok.id} className="rounded-lg border border-border p-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <Badge className={`text-[10px] gap-1 ${status.color}`}>
+                          {status.icon} {status.label}
+                        </Badge>
+                        <div className="flex items-center gap-1">
+                          {status.label === 'Active' && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyTokenLink(tok.token)}>
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => revokeToken(tok.id)}>
+                                <Ban className="h-3 w-3" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <span>Created: {new Date(tok.created_at).toLocaleDateString()}</span>
+                        <span>Expires: {new Date(tok.expires_at).toLocaleDateString()}</span>
+                        {tok.revoked_at && <span className="text-destructive">Revoked: {new Date(tok.revoked_at).toLocaleDateString()}</span>}
+                      </div>
+                      {status.label === 'Active' && (
+                        <p className="text-[10px] text-muted-foreground/60 mt-1 truncate font-mono">
+                          .../{tok.token.slice(0, 12)}...
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Flow Editor */}
       {editingFlow && (
@@ -418,17 +527,22 @@ export default function GosOnboardingPage() {
                     {Object.entries(viewingSession.data as Record<string, unknown>).map(([k, v]) => (
                       <div key={k} className="flex justify-between text-xs">
                         <span className="text-muted-foreground">{k}:</span>
-                        <span className="text-foreground">{String(v)}</span>
+                        <span className="text-foreground">{typeof v === 'object' ? (v as any)?.name || JSON.stringify(v) : String(v)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-              {viewingSession.status === 'in_progress' && (
-                <Button className="w-full" onClick={() => { setViewingSession(null); navigate(`/growth-os/onboarding/${viewingSession.id}`); }}>
-                  <ExternalLink className="h-4 w-4 mr-2" /> Continue Onboarding
+              <div className="flex gap-2">
+                {viewingSession.status === 'in_progress' && (
+                  <Button className="flex-1" onClick={() => { setViewingSession(null); navigate(`/growth-os/onboarding/${viewingSession.id}`); }}>
+                    <ExternalLink className="h-4 w-4 mr-2" /> Continue Onboarding
+                  </Button>
+                )}
+                <Button variant="outline" className="flex-1" onClick={() => { setViewingSession(null); loadTokens(viewingSession.id); }}>
+                  <Link2 className="h-4 w-4 mr-2" /> Manage Links
                 </Button>
-              )}
+              </div>
             </div>
           )}
         </DialogContent>

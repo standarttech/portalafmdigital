@@ -2235,26 +2235,32 @@ export type Database = {
       }
       gos_onboarding_tokens: {
         Row: {
+          client_label: string | null
           created_at: string
           created_by: string | null
           expires_at: string
           id: string
+          revoked_at: string | null
           session_id: string
           token: string
         }
         Insert: {
+          client_label?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string
           id?: string
+          revoked_at?: string | null
           session_id: string
           token?: string
         }
         Update: {
+          client_label?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string
           id?: string
+          revoked_at?: string | null
           session_id?: string
           token?: string
         }

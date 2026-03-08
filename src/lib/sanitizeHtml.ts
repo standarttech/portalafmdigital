@@ -1,38 +1,44 @@
 /**
- * Simple HTML sanitizer for landing page custom_html sections.
- * Strips scripts, event handlers, and dangerous elements.
- * For production, consider a full library like DOMPurify.
+ * HTML sanitizer for landing page custom_html sections.
+ * Uses DOMPurify for production-grade sanitization.
+ * Allows a limited subset of HTML tags safe for content display.
  */
+import DOMPurify from 'dompurify';
 
-const DANGEROUS_TAGS = /(<script[\s>][\s\S]*?<\/script>|<iframe[\s>][\s\S]*?<\/iframe>|<object[\s>][\s\S]*?<\/object>|<embed[\s>][\s\S]*?<\/embed>|<applet[\s>][\s\S]*?<\/applet>|<form[\s>][\s\S]*?<\/form>|<link[\s>][\s\S]*?>|<meta[\s>][\s\S]*?>|<base[\s>][\s\S]*?>)/gi;
+// Allowed tags — restricted subset for landing page content
+const ALLOWED_TAGS = [
+  'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'a', 'img', 'br', 'hr', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'u',
+  'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  'blockquote', 'pre', 'code', 'section', 'article', 'header', 'footer', 'nav',
+  'figure', 'figcaption', 'details', 'summary', 'mark', 'small', 'sub', 'sup',
+  'video', 'source', 'picture',
+];
 
-const EVENT_HANDLERS = /\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+const ALLOWED_ATTR = [
+  'href', 'src', 'alt', 'title', 'class', 'id', 'style',
+  'target', 'rel', 'width', 'height', 'loading', 'decoding',
+  'type', 'controls', 'autoplay', 'muted', 'loop', 'poster',
+  'srcset', 'sizes', 'media',
+  'colspan', 'rowspan',
+  'open', // for <details>
+];
 
-const JAVASCRIPT_URLS = /(?:href|src|action)\s*=\s*["']javascript:/gi;
-
-const DATA_URLS = /(?:href|src)\s*=\s*["']data:(?!image\/)/gi;
-
-const STYLE_EXPRESSIONS = /expression\s*\(|url\s*\(\s*["']?javascript:/gi;
+/**
+ * Supported HTML tags for custom_html sections.
+ * Use this to display allowed tags in the builder UI.
+ */
+export const CUSTOM_HTML_ALLOWED_TAGS = ALLOWED_TAGS;
 
 export function sanitizeHtml(html: string): string {
   if (!html) return '';
   
-  let sanitized = html;
-  
-  // Remove dangerous tags and their content
-  sanitized = sanitized.replace(DANGEROUS_TAGS, '<!-- removed -->');
-  
-  // Remove event handlers (onclick, onload, onerror, etc.)
-  sanitized = sanitized.replace(EVENT_HANDLERS, '');
-  
-  // Remove javascript: URLs
-  sanitized = sanitized.replace(JAVASCRIPT_URLS, 'href="#"');
-  
-  // Remove non-image data: URLs
-  sanitized = sanitized.replace(DATA_URLS, 'href="#"');
-  
-  // Remove CSS expressions
-  sanitized = sanitized.replace(STYLE_EXPRESSIONS, '/* removed */');
-  
-  return sanitized;
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS,
+    ALLOWED_ATTR,
+    ALLOW_DATA_ATTR: false,
+    ADD_ATTR: ['target'],
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'applet', 'form', 'input', 'button', 'select', 'textarea', 'link', 'meta', 'base', 'style'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
+  });
 }
