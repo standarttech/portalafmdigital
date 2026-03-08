@@ -68,6 +68,7 @@ export default function AiAdsAnalysisPage() {
       session_type: 'analysis',
     }).select().single();
     if (error) { toast.error('Failed to create session'); return; }
+    logGosAction('create', 'ai_campaign_session', (data as any).id, (data as any).title, { clientId });
     setSessions(prev => [data as any, ...prev]);
     toast.success('Analysis session created');
   };
