@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Plus, GitBranch, Loader2, Activity, ArrowRight, Settings2, Trash2, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import type { TranslationKey } from '@/i18n/translations';
 
 const operators = ['equals', 'not_equals', 'contains', 'starts_with', 'greater_than', 'less_than'];
