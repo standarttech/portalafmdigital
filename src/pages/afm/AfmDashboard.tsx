@@ -114,7 +114,159 @@ function PlatformSheetRow({ clientId, platform, label, fieldName }: {
   );
 }
 
-export default function AfmDashboard() {
+/* ── Meta API Account Connection for AFM ── */
+function AfmMetaApiSection({ clientId }: { clientId: string }) {
+  const { t } = useLanguage();
+  const [metaAccounts, setMetaAccounts] = useState<{ id: string; platform_account_id: string; account_name: string | null; is_active: boolean }[]>([]);
+  const [availableAccounts, setAvailableAccounts] = useState<{ id: string; name: string; status?: string }[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [addingAccounts, setAddingAccounts] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => { loadLinkedAccounts(); }, [clientId]);
+
+  const loadLinkedAccounts = async () => {
+    const { data } = await supabase.from('ad_accounts').select('id, platform_account_id, account_name, is_active').eq('client_id', clientId);
+    setMetaAccounts(data || []);
+  };
+
+  const fetchAvailableAccounts = async () => {
+    setLoadingAccounts(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-meta-ads', { body: { action: 'list_accounts' } });
+      if (error) throw error;
+      setAvailableAccounts(data.accounts || []);
+    } catch { toast.error(t('clients.failedLoadAccounts' as any) || 'Failed to load accounts'); }
+    setLoadingAccounts(false);
+  };
+
+  const addSelectedAccounts = async () => {
+    if (selectedIds.length === 0) return;
+    setAddingAccounts(true);
+    let { data: conn } = await supabase.from('platform_connections').select('id').eq('client_id', clientId).eq('platform', 'meta').maybeSingle();
+    if (!conn) {
+      const { data: newConn } = await supabase.from('platform_connections').insert({ client_id: clientId, platform: 'meta' as any, account_name: 'Meta Ads API' }).select('id').single();
+      conn = newConn;
+    }
+    if (conn) {
+      for (const accId of selectedIds) {
+        const acc = availableAccounts.find(a => a.id === accId);
+        await supabase.from('ad_accounts').insert({ client_id: clientId, connection_id: conn.id, platform_account_id: accId, account_name: acc?.name || accId });
+      }
+      toast.success(`${t('clients.addSelected' as any)} (${selectedIds.length})`);
+      setSelectedIds([]);
+      loadLinkedAccounts();
+    }
+    setAddingAccounts(false);
+  };
+
+  const removeAccount = async (id: string) => {
+    await supabase.from('ad_accounts').delete().eq('id', id);
+    toast.success(t('clients.accountRemoved' as any) || 'Account removed');
+    loadLinkedAccounts();
+  };
+
+  const syncNow = async () => {
+    setSyncing(true);
+    const { data, error } = await supabase.functions.invoke('sync-meta-ads', { body: { action: 'sync', client_id: clientId } });
+    if (error) toast.error(t('afm.mb.syncError' as any));
+    else toast.success(`${t('afm.mb.synced' as any)}: ${data?.synced || 0} records`);
+    setSyncing(false);
+  };
+
+  const filteredAvailable = availableAccounts
+    .filter(a => !metaAccounts.some(m => m.platform_account_id === a.id))
+    .filter(a => !searchQuery || a.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.id.includes(searchQuery));
+
+  return (
+    <Card className="glass-card max-w-2xl border-primary/30">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Zap className="h-5 w-5 text-blue-500" /> Meta Ads API — {t('clients.directConnection' as any)}
+          </CardTitle>
+          {metaAccounts.length > 0 && <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">{t('clients.primarySource' as any)}</Badge>}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">{t('clients.metaApiDesc' as any)}</p>
+
+        {metaAccounts.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.linkedAccounts' as any)} ({metaAccounts.length})</p>
+            {metaAccounts.map(acc => (
+              <div key={acc.id} className="flex items-center justify-between rounded-lg border border-border/50 p-2.5 bg-secondary/20">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{acc.account_name || acc.platform_account_id}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono">ID: {acc.platform_account_id}</p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Badge variant={acc.is_active ? 'default' : 'secondary'} className="text-[9px] h-5">
+                    {acc.is_active ? t('common.active') : t('common.inactive')}
+                  </Badge>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeAccount(acc.id)}>
+                    <span className="text-xs">✕</span>
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={syncNow} disabled={syncing}>
+              {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              {t('clients.syncNow' as any)}
+            </Button>
+          </div>
+        )}
+
+        <div className="space-y-3 border-t border-border/50 pt-3">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.addAccounts' as any)}</p>
+          {availableAccounts.length === 0 ? (
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
+              {loadingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+              {t('clients.loadAccountsList' as any)}
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <Input placeholder={t('clients.searchAccounts' as any)} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="h-8 text-xs" />
+              <div className="max-h-[240px] overflow-y-auto space-y-1 border border-border/50 rounded-lg p-2 bg-secondary/10">
+                {filteredAvailable.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">{t('common.noResults' as any)}</p>
+                ) : (
+                  filteredAvailable.map(a => (
+                    <label key={a.id} className="flex items-center gap-2.5 p-2 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors">
+                      <Checkbox checked={selectedIds.includes(a.id)} onCheckedChange={() => setSelectedIds(prev => prev.includes(a.id) ? prev.filter(id => id !== a.id) : [...prev, a.id])} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{a.name}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">ID: {a.id}</p>
+                      </div>
+                      {a.status && (
+                        <Badge variant="outline" className={`text-[9px] flex-shrink-0 ${a.status === 'active' ? 'border-success/30 text-success' : 'border-muted text-muted-foreground'}`}>
+                          {a.status}
+                        </Badge>
+                      )}
+                    </label>
+                  ))
+                )}
+              </div>
+              {selectedIds.length > 0 && (
+                <Button size="sm" onClick={addSelectedAccounts} disabled={addingAccounts} className="gap-1.5 w-full">
+                  {addingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                  {t('clients.addSelected' as any)} ({selectedIds.length})
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
+                <RefreshCw className="h-3 w-3 mr-1.5" /> {t('clients.refreshList' as any)}
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
   const { t, formatCurrency, formatNumber } = useLanguage();
   const { agencyRole } = useAuth();
   const isAdmin = agencyRole === 'AgencyAdmin';
