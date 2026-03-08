@@ -1877,6 +1877,7 @@ export type Database = {
           is_active: boolean
           last_sync_at: string | null
           updated_at: string
+          vault_secret_ref: string | null
         }
         Insert: {
           client_id?: string | null
@@ -1889,6 +1890,7 @@ export type Database = {
           is_active?: boolean
           last_sync_at?: string | null
           updated_at?: string
+          vault_secret_ref?: string | null
         }
         Update: {
           client_id?: string | null
@@ -1901,6 +1903,7 @@ export type Database = {
           is_active?: boolean
           last_sync_at?: string | null
           updated_at?: string
+          vault_secret_ref?: string | null
         }
         Relationships: [
           {
@@ -3320,6 +3323,7 @@ export type Database = {
         Args: { _invitation_id: string }
         Returns: undefined
       }
+      delete_gos_secret: { Args: { _secret_ref: string }; Returns: undefined }
       delete_social_token: {
         Args: { _token_reference: string }
         Returns: undefined
@@ -3349,6 +3353,10 @@ export type Database = {
       is_agency_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agency_member: { Args: { _user_id: string }; Returns: boolean }
       no_admin_exists: { Args: never; Returns: boolean }
+      store_gos_secret: {
+        Args: { _secret_name: string; _secret_value: string }
+        Returns: string
+      }
       store_social_token: {
         Args: { _secret_name: string; _secret_value: string }
         Returns: string
