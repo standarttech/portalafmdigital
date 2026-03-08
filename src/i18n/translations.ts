@@ -1044,6 +1044,19 @@ export const translations = {
   'common.connected': t('Connected', 'Подключено', 'Connesso', 'Conectado', 'متصل', 'Connecté'),
   'common.notConnected': t('Not connected', 'Не подключено', 'Non connesso', 'No conectado', 'غير متصل', 'Non connecté'),
 
+  // Meta Ads connection
+  'clients.directConnection': t('Direct Connection', 'Прямое подключение', 'Connessione diretta', 'Conexión directa', 'اتصال مباشر', 'Connexion directe'),
+  'clients.primarySource': t('Primary Source', 'Основной источник', 'Fonte primaria', 'Fuente principal', 'المصدر الرئيسي', 'Source principale'),
+  'clients.metaApiDesc': t('Connect Meta ad accounts directly. Data syncs automatically every hour. This source has priority over Google Sheets.', 'Подключите рекламные аккаунты Meta напрямую. Данные синхронизируются автоматически каждый час. Этот источник имеет приоритет над Google Таблицами.', 'Collega gli account pubblicitari Meta direttamente. I dati si sincronizzano ogni ora. Questa fonte ha priorità su Google Sheets.', 'Conecta cuentas publicitarias de Meta directamente. Los datos se sincronizan cada hora. Esta fuente tiene prioridad sobre Google Sheets.', 'اربط حسابات إعلانات Meta مباشرة. تتم مزامنة البيانات كل ساعة. هذا المصدر له الأولوية.', 'Connectez les comptes publicitaires Meta directement. Les données se synchronisent chaque heure.'),
+  'clients.linkedAccounts': t('Linked Accounts', 'Привязанные аккаунты', 'Account collegati', 'Cuentas vinculadas', 'الحسابات المرتبطة', 'Comptes liés'),
+  'clients.syncNow': t('Sync Now', 'Синхронизировать', 'Sincronizza ora', 'Sincronizar ahora', 'مزامنة الآن', 'Synchroniser'),
+  'clients.metaAutoSync': t('Meta Auto-sync', 'Авто-синхронизация Meta', 'Sincronizzazione automatica Meta', 'Sincronización automática Meta', 'مزامنة تلقائية Meta', 'Synchronisation auto Meta'),
+  'clients.metaAutoSyncDesc': t('Data is pulled every hour for the last 3 days (covers Facebook attribution window). Manual sync — 30 days.', 'Данные загружаются каждый час за последние 3 дня (покрывает окно атрибуции Facebook). Ручная синхронизация — 30 дней.', 'I dati vengono estratti ogni ora per gli ultimi 3 giorni. Sincronizzazione manuale — 30 giorni.', 'Los datos se extraen cada hora durante los últimos 3 días. Sincronización manual — 30 días.', 'يتم سحب البيانات كل ساعة لآخر 3 أيام. المزامنة اليدوية — 30 يومًا.', 'Les données sont récupérées chaque heure pour les 3 derniers jours. Synchronisation manuelle — 30 jours.'),
+  'clients.metaAutoSyncEnabled': t('Meta auto-sync enabled', 'Авто-синхронизация Meta включена', 'Sincronizzazione automatica Meta attivata', 'Sincronización automática Meta activada', 'تم تفعيل المزامنة التلقائية', 'Synchronisation auto Meta activée'),
+  'clients.metaAutoSyncDisabled': t('Meta auto-sync disabled', 'Авто-синхронизация Meta отключена', 'Sincronizzazione automatica Meta disattivata', 'Sincronización automática Meta desactivada', 'تم تعطيل المزامنة التلقائية', 'Synchronisation auto Meta désactivée'),
+  'clients.addAccounts': t('Add Accounts', 'Добавить аккаунты', 'Aggiungi account', 'Añadir cuentas', 'إضافة حسابات', 'Ajouter des comptes'),
+  'clients.loadAccountsList': t('Load accounts list', 'Загрузить список аккаунтов', 'Carica lista account', 'Cargar lista de cuentas', 'تحميل قائمة الحسابات', 'Charger la liste des comptes'),
+
 } as const;
 
 export type TranslationKey = keyof typeof translations;
