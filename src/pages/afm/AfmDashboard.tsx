@@ -742,6 +742,11 @@ export default function AfmDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* API CONNECTION TAB */}
+          <TabsContent value="api" className="space-y-4">
+            <AfmMetaApiSection clientId={agencyClient.id} />
+          </TabsContent>
         </Tabs>
       </motion.div>
     </motion.div>
