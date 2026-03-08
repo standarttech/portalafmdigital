@@ -774,9 +774,11 @@ export default function ClientDetailPage() {
           </TabsContent>
 
           {/* CLIENT INFO TAB */}
-          <TabsContent value="info" className="space-y-4">
-            <ClientInfoTab clientId={id!} isAdmin={isAdmin} />
-          </TabsContent>
+          {isAgency && (
+            <TabsContent value="info" className="space-y-4">
+              <ClientInfoTab clientId={id!} isAdmin={isAdmin} />
+            </TabsContent>
+          )}
 
           {/* DAILY TABLE TAB */}
           <TabsContent value="daily" className="space-y-4">
