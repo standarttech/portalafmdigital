@@ -114,11 +114,7 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
 
   const u = (key: keyof ClientInfo, value: string | number) => setInfo(prev => ({ ...prev, [key]: value }));
 
-  // For client role: check if field is editable
-  const isFieldEditable = (key: keyof ClientInfo) => {
-    if (!isClient) return true; // Admins/MediaBuyers can edit everything
-    return CLIENT_EDITABLE_FIELDS.includes(key);
-  };
+  const isFieldEditable = (_key: keyof ClientInfo) => true;
 
   const renderField = (key: keyof ClientInfo, label: string, opts?: { type?: string; placeholder?: string; icon?: any; textarea?: boolean }) => {
     const editable = isFieldEditable(key);
