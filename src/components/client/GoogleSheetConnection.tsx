@@ -264,7 +264,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                     value: { enabled } as any,
                     updated_by: null,
                   }, { onConflict: 'key' });
-                  toast.success(enabled ? t('clients.metaAutoSyncEnabled' as TranslationKey) || 'Meta auto-sync enabled' : t('clients.metaAutoSyncDisabled' as TranslationKey) || 'Meta auto-sync disabled');
+                  toast.success(enabled ? t('clients.metaAutoSyncEnabled') : t('clients.metaAutoSyncDisabled'));
                 }} className="flex-shrink-0" />
               </div>
             </div>
