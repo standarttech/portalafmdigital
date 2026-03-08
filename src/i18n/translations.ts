@@ -477,8 +477,8 @@ export const translations = {
   'budget.plannedLeads': t('Planned Leads', 'План лидов', 'Lead pianificati', 'Leads planificados', 'العملاء المخططون', 'Leads prévus'),
 
   // Calendar
-  'calendar.title': t('Activity Calendar', 'Календарь активности', 'Calendario attività', 'Calendario de actividades', 'تقويم النشاط', "Calendrier d'activités"),
-  'calendar.subtitle': t('Tasks, annotations and campaign events', 'Задачи, аннотации и события кампаний', 'Attività, annotazioni ed eventi delle campagne', 'Tareas, anotaciones y eventos de campaña', 'المهام والتعليقات التوضيحية وأحداث الحملات', 'Tâches, annotations et événements de campagne'),
+  'calendar.title': t('Calendar', 'Календарь', 'Calendario', 'Calendario', 'التقويم', 'Calendrier'),
+  'calendar.subtitle': t('Tasks, annotations and events', 'Задачи, аннотации и события', 'Attività, annotazioni ed eventi', 'Tareas, anotaciones y eventos', 'المهام والتعليقات والأحداث', 'Tâches, annotations et événements'),
 
   // Chat
   'nav.chat': t('Chat', 'Чат', 'Chat', 'Chat', 'الدردشة', 'Chat'),
