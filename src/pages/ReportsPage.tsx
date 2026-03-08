@@ -3,7 +3,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
-import { FileText, Plus, Clock, Calendar, Send, Download, Trash2, Loader2 } from 'lucide-react';
+import { FileText, Plus, Clock, Calendar, Send, Download, Trash2, Loader2, Eye } from 'lucide-react';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import ReportPreviewDialog from '@/components/reports/ReportPreviewDialog';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -57,6 +58,7 @@ export default function ReportsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewReport, setPreviewReport] = useState<Report | null>(null);
 
   const fetchClients = useCallback(async () => {
     if (isAdmin) {
@@ -364,6 +366,9 @@ export default function ReportsPage() {
                         <Badge variant="outline" className={report.status === 'published' ? 'bg-success/15 text-success border-success/20' : 'bg-warning/15 text-warning border-warning/20'}>
                           {report.status === 'published' ? t('reports.published') : t('reports.draft')}
                         </Badge>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setPreviewReport(report)}>
+                          <Eye className="h-3.5 w-3.5" />{t('reports.preview' as any)}
+                        </Button>
                         {report.status === 'draft' && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handlePublish(report.id)}>
                             <Send className="h-3.5 w-3.5" />{t('reports.published')}
@@ -384,6 +389,12 @@ export default function ReportsPage() {
           </div>
         )}
       </motion.div>
+
+      <ReportPreviewDialog
+        open={!!previewReport}
+        onOpenChange={(open) => !open && setPreviewReport(null)}
+        report={previewReport}
+      />
     </motion.div>
   );
 }

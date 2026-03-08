@@ -1,0 +1,184 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { useLanguage } from '@/i18n/LanguageContext';
+import { DollarSign, MousePointerClick, Users, Eye, TrendingUp } from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
+} from 'recharts';
+
+interface ReportContent {
+  sections?: string[];
+  totals?: { spend: number; impressions: number; clicks: number; leads: number };
+  daily?: Array<{ date: string; spend: number; impressions: number; link_clicks: number; leads: number }>;
+  campaigns?: Array<{ id: string; campaign_name: string; status: string }>;
+  clientName?: string;
+}
+
+interface ReportPreviewDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  report: {
+    title: string;
+    date_from: string;
+    date_to: string;
+    status: string;
+    content: any;
+  } | null;
+}
+
+export default function ReportPreviewDialog({ open, onOpenChange, report }: ReportPreviewDialogProps) {
+  const { formatCurrency, formatNumber } = useLanguage();
+
+  if (!report) return null;
+
+  const content = report.content as ReportContent;
+  const totals = content?.totals;
+  const daily = content?.daily || [];
+  const campaigns = content?.campaigns || [];
+  const sections = content?.sections || [];
+
+  const cpl = totals && totals.leads > 0 ? totals.spend / totals.leads : 0;
+  const ctr = totals && totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+  const cpc = totals && totals.clicks > 0 ? totals.spend / totals.clicks : 0;
+
+  const kpis = [
+    { label: 'Spend', value: formatCurrency(totals?.spend || 0), icon: DollarSign, color: 'text-primary' },
+    { label: 'Impressions', value: formatNumber(totals?.impressions || 0), icon: Eye, color: 'text-blue-400' },
+    { label: 'Clicks', value: formatNumber(totals?.clicks || 0), icon: MousePointerClick, color: 'text-amber-400' },
+    { label: 'Leads', value: formatNumber(totals?.leads || 0), icon: Users, color: 'text-emerald-400' },
+    { label: 'CPL', value: formatCurrency(cpl), icon: TrendingUp, color: 'text-purple-400' },
+    { label: 'CTR', value: `${ctr.toFixed(2)}%`, icon: TrendingUp, color: 'text-rose-400' },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            {report.title}
+            <Badge variant="outline" className={report.status === 'published' ? 'border-emerald-500/30 text-emerald-500' : 'border-amber-500/30 text-amber-500'}>
+              {report.status}
+            </Badge>
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground">{report.date_from} → {report.date_to} · {content?.clientName}</p>
+        </DialogHeader>
+
+        <div className="space-y-6 mt-2">
+          {/* KPI Summary */}
+          {sections.includes('kpi_summary') && totals && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {kpis.map(kpi => (
+                <Card key={kpi.label} className="glass-card">
+                  <CardContent className="p-3 text-center">
+                    <kpi.icon className={`h-4 w-4 mx-auto mb-1 ${kpi.color}`} />
+                    <p className="text-lg font-bold text-foreground">{kpi.value}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Performance Chart */}
+          {sections.includes('performance_chart') && daily.length > 0 && (
+            <Card className="glass-card">
+              <CardContent className="p-4">
+                <p className="text-sm font-medium mb-3 text-foreground">Performance Over Time</p>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={daily}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} className="text-muted-foreground" />
+                      <YAxis tick={{ fontSize: 10 }} className="text-muted-foreground" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      />
+                      <Area type="monotone" dataKey="spend" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" name="Spend" />
+                      <Area type="monotone" dataKey="leads" stroke="hsl(142 76% 36%)" fill="hsl(142 76% 36% / 0.15)" name="Leads" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Daily Table */}
+          {sections.includes('daily_table') && daily.length > 0 && (
+            <Card className="glass-card">
+              <CardContent className="p-4">
+                <p className="text-sm font-medium mb-3 text-foreground">Daily Breakdown</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 px-2 text-muted-foreground font-medium">Date</th>
+                        <th className="text-right py-2 px-2 text-muted-foreground font-medium">Spend</th>
+                        <th className="text-right py-2 px-2 text-muted-foreground font-medium">Impr.</th>
+                        <th className="text-right py-2 px-2 text-muted-foreground font-medium">Clicks</th>
+                        <th className="text-right py-2 px-2 text-muted-foreground font-medium">Leads</th>
+                        <th className="text-right py-2 px-2 text-muted-foreground font-medium">CPL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {daily.map((row, i) => {
+                        const rowCpl = row.leads > 0 ? row.spend / row.leads : 0;
+                        return (
+                          <tr key={i} className="border-b border-border/50 hover:bg-secondary/30">
+                            <td className="py-1.5 px-2 text-foreground">{row.date}</td>
+                            <td className="py-1.5 px-2 text-right text-foreground">{formatCurrency(row.spend)}</td>
+                            <td className="py-1.5 px-2 text-right text-muted-foreground">{formatNumber(row.impressions)}</td>
+                            <td className="py-1.5 px-2 text-right text-muted-foreground">{formatNumber(row.link_clicks)}</td>
+                            <td className="py-1.5 px-2 text-right font-medium text-foreground">{row.leads}</td>
+                            <td className="py-1.5 px-2 text-right text-muted-foreground">{rowCpl > 0 ? formatCurrency(rowCpl) : '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-border font-semibold">
+                        <td className="py-2 px-2 text-foreground">Total</td>
+                        <td className="py-2 px-2 text-right text-foreground">{formatCurrency(totals?.spend || 0)}</td>
+                        <td className="py-2 px-2 text-right text-muted-foreground">{formatNumber(totals?.impressions || 0)}</td>
+                        <td className="py-2 px-2 text-right text-muted-foreground">{formatNumber(totals?.clicks || 0)}</td>
+                        <td className="py-2 px-2 text-right font-bold text-foreground">{totals?.leads || 0}</td>
+                        <td className="py-2 px-2 text-right text-muted-foreground">{cpl > 0 ? formatCurrency(cpl) : '—'}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Campaigns List */}
+          {sections.includes('campaigns_list') && campaigns.length > 0 && (
+            <Card className="glass-card">
+              <CardContent className="p-4">
+                <p className="text-sm font-medium mb-3 text-foreground">Campaigns ({campaigns.length})</p>
+                <div className="space-y-1.5">
+                  {campaigns.map(c => (
+                    <div key={c.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-secondary/30">
+                      <span className="text-sm text-foreground truncate">{c.campaign_name}</span>
+                      <Badge variant="outline" className="text-[10px]">{c.status}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Platform Breakdown placeholder */}
+          {sections.includes('platform_breakdown') && (
+            <Card className="glass-card">
+              <CardContent className="p-4 text-center text-sm text-muted-foreground py-8">
+                Platform Breakdown — available with multi-platform data
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
