@@ -187,23 +187,17 @@ export function useDashboardMetrics(
         return;
       }
 
-      if (platformCampaignIds !== null) {
-        if (platformCampaignIds.length === 0) {
-          // No campaigns for this platform — empty result
-          setKpis({
-            spend: 0, leads: 0, clicks: 0, impressions: 0, cpl: 0, ctr: 0,
-            activeClients: 0, activeCampaigns: 0, revenue: 0, purchases: 0, roas: 0,
-            prevSpend: 0, prevLeads: 0, prevClicks: 0, prevImpressions: 0, prevCpl: 0, prevCtr: 0,
-            prevRevenue: 0, prevPurchases: 0, prevRoas: 0,
-          });
-          setChartData([]);
-          setClientsData([]);
-          setPlatformData([]);
-          setLoading(false);
-          return;
-        }
-        query = query.in('campaign_id', platformCampaignIds);
+      if (filteredCampaignIds.length === 0) {
+        setKpis({
+          spend: 0, leads: 0, clicks: 0, impressions: 0, cpl: 0, ctr: 0,
+          activeClients: 0, activeCampaigns: 0, revenue: 0, purchases: 0, roas: 0,
+          prevSpend: 0, prevLeads: 0, prevClicks: 0, prevImpressions: 0, prevCpl: 0, prevCtr: 0,
+          prevRevenue: 0, prevPurchases: 0, prevRoas: 0,
+        });
+        setChartData([]); setClientsData([]); setPlatformData([]); setLoading(false);
+        return;
       }
+      query = query.in('campaign_id', filteredCampaignIds);
 
       const { data: currentMetrics } = await query;
 
