@@ -212,9 +212,7 @@ export function useDashboardMetrics(
         prevQuery = prevQuery.in('client_id', filters.clientIds);
       }
 
-      if (platformCampaignIds !== null && platformCampaignIds.length > 0) {
-        prevQuery = prevQuery.in('campaign_id', platformCampaignIds);
-      }
+      prevQuery = prevQuery.in('campaign_id', filteredCampaignIds);
 
       const { data: prevMetrics } = await prevQuery;
 
