@@ -162,6 +162,7 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [addingAccounts, setAddingAccounts] = useState(false);
+  const [metaAutoSync, setMetaAutoSync] = useState(true);
 
   useEffect(() => {
     supabase.from('clients').select('auto_sync_enabled').eq('id', clientId).single().then(({ data }) => {
@@ -170,6 +171,10 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
     // Load google tracking pref from platform_settings
     supabase.from('platform_settings').select('value').eq('key', `google_tracking_${clientId}`).maybeSingle().then(({ data }) => {
       if (data?.value !== null && data?.value !== undefined) setGoogleTrackingEnabled((data.value as any)?.enabled !== false);
+    });
+    // Load meta auto-sync pref
+    supabase.from('platform_settings').select('value').eq('key', `meta_auto_sync_${clientId}`).maybeSingle().then(({ data }) => {
+      if (data?.value !== null && data?.value !== undefined) setMetaAutoSync((data.value as any)?.enabled !== false);
     });
     loadLinkedAccounts();
   }, [clientId]);
@@ -318,9 +323,33 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
                   </div>
                 </div>
               ))}
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={syncNow}>
-                <RefreshCw className="h-3.5 w-3.5" /> Синхронизировать сейчас
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={syncNow}>
+                  <RefreshCw className="h-3.5 w-3.5" /> Синхронизировать сейчас
+                </Button>
+              </div>
+              {/* Meta Auto-sync toggle */}
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-secondary/10">
+                <div className="min-w-0 flex-1 mr-3">
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <CalendarClock className="h-3.5 w-3.5 text-primary" />
+                    Автосинхронизация Meta
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Данные подтягиваются каждый час за последние 3 дня (покрывает окно атрибуции Facebook). 
+                    Ручной синк — за 30 дней.
+                  </p>
+                </div>
+                <Switch checked={metaAutoSync} onCheckedChange={async (enabled) => {
+                  setMetaAutoSync(enabled);
+                  await supabase.from('platform_settings').upsert({
+                    key: `meta_auto_sync_${clientId}`,
+                    value: { enabled } as any,
+                    updated_by: null,
+                  }, { onConflict: 'key' });
+                  toast.success(enabled ? 'Автосинхронизация Meta включена' : 'Автосинхронизация Meta отключена');
+                }} className="flex-shrink-0" />
+              </div>
             </div>
           )}
 
