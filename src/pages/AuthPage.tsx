@@ -95,7 +95,7 @@ export default function AuthPage() {
                   onClick={() => navigate('/dashboard')}
                 >
                   <LogIn className="h-4 w-4" />
-                  {t('auth.enterDashboard') || 'Войти в панель'}
+                  {'Войти в панель'}
                 </Button>
                 <p className="text-xs text-muted-foreground">
                   {user.email}
