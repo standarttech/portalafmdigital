@@ -436,7 +436,9 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <AppRoutes />
+                <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+                  <AppRoutes />
+                </Suspense>
               </BrowserRouter>
             </TooltipProvider>
           </SidebarStateProvider>
