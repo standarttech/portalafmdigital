@@ -237,7 +237,7 @@ export default function AuditPage() {
 
         {/* User Filter */}
         <Select value={userFilter} onValueChange={setUserFilter}>
-          <SelectTrigger className="h-8 w-[150px] text-xs">
+          <SelectTrigger className="h-8 w-[110px] sm:w-[150px] text-xs">
             <SelectValue placeholder={isRu ? 'Пользователь' : 'User'} />
           </SelectTrigger>
           <SelectContent>
