@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,8 +8,45 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
-import { Plus, FlaskConical, Loader2, Trash2, Settings2, Trophy } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Plus, FlaskConical, Loader2, Trash2, Settings2, Trophy, BarChart3, Eye, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface VariantStats {
+  variantId: string;
+  views: number;
+  submissions: number;
+  convRate: number;
+}
+
+function useExperimentStats(experimentId: string | null, variants: any[]) {
+  return useQuery({
+    queryKey: ['experiment-stats', experimentId, variants.map(v => v.id).join(',')],
+    enabled: !!experimentId && variants.length >= 2,
+    queryFn: async () => {
+      const variantIds = variants.map(v => v.id);
+      const { data: events } = await supabase
+        .from('gos_analytics_events')
+        .select('event_type, variant_id')
+        .in('variant_id', variantIds);
+
+      const stats: Record<string, VariantStats> = {};
+      for (const v of variants) {
+        stats[v.id] = { variantId: v.id, views: 0, submissions: 0, convRate: 0 };
+      }
+      for (const e of (events || [])) {
+        if (!e.variant_id || !stats[e.variant_id]) continue;
+        if (e.event_type === 'landing_view' || e.event_type === 'form_view') stats[e.variant_id].views++;
+        if (e.event_type === 'form_submit_success') stats[e.variant_id].submissions++;
+      }
+      for (const s of Object.values(stats)) {
+        s.convRate = s.views > 0 ? Math.round((s.submissions / s.views) * 100 * 10) / 10 : 0;
+      }
+      return stats;
+    },
+    staleTime: 30_000,
+  });
+}
 
 export default function GosExperimentsPage() {
   const [experiments, setExperiments] = useState<any[]>([]);
@@ -18,6 +56,8 @@ export default function GosExperimentsPage() {
   const [variants, setVariants] = useState<any[]>([]);
   const [newExp, setNewExp] = useState({ name: '', entity_type: 'landing' });
   const [splitPct, setSplitPct] = useState(50);
+
+  const { data: variantStats } = useExperimentStats(editing?.id, variants);
 
   useEffect(() => { loadData(); }, []);
 
@@ -43,9 +83,8 @@ export default function GosExperimentsPage() {
   const openEditor = async (exp: any) => {
     setEditing(exp);
     const table = exp.entity_type === 'form' ? 'gos_forms' : 'gos_landing_templates';
-    const { data } = await supabase.from(table).select('id, name').eq('experiment_id', exp.id);
+    const { data } = await supabase.from(table).select('id, name, status').eq('experiment_id', exp.id);
     setVariants(data || []);
-    // Parse current split
     const split = exp.traffic_split || {};
     const vals = Object.values(split) as number[];
     setSplitPct(vals[0] ?? 50);
@@ -64,7 +103,6 @@ export default function GosExperimentsPage() {
     const split: Record<string, number> = {};
     split[variants[0].id] = splitPct;
     split[variants[1].id] = 100 - splitPct;
-    // If more variants, distribute remainder equally
     if (variants.length > 2) {
       const remaining = 100 - splitPct;
       const each = Math.floor(remaining / (variants.length - 1));
@@ -93,7 +131,6 @@ export default function GosExperimentsPage() {
   };
 
   const deleteExperiment = async (id: string) => {
-    // Unlink variants first
     await Promise.all([
       supabase.from('gos_landing_templates').update({ experiment_id: null }).eq('experiment_id', id),
       supabase.from('gos_forms').update({ experiment_id: null }).eq('experiment_id', id),
@@ -108,6 +145,12 @@ export default function GosExperimentsPage() {
     running: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     completed: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
   };
+
+  // Calculate total views for all variants
+  const totalViews = useMemo(() => {
+    if (!variantStats) return 0;
+    return Object.values(variantStats).reduce((s, v) => s + v.views, 0);
+  }, [variantStats]);
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
@@ -125,32 +168,46 @@ export default function GosExperimentsPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <FlaskConical className="h-12 w-12 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground mb-3">No experiments yet</p>
+            <p className="text-sm text-muted-foreground mb-1">No experiments yet</p>
+            <p className="text-xs text-muted-foreground/70 mb-3">Create A/B tests to compare form and landing variants</p>
             <Button size="sm" variant="outline" onClick={() => setCreating(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Create First</Button>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {experiments.map(exp => (
-            <Card key={exp.id} className="hover:border-primary/30 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-medium text-foreground text-sm truncate flex-1">{exp.name}</h3>
-                  <Badge className={`text-[10px] ${statusColor[exp.status] || statusColor.draft}`}>{exp.status}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mb-1">{exp.entity_type === 'form' ? 'Form' : 'Landing'} experiment</p>
-                {exp.winner_id && (
-                  <div className="flex items-center gap-1 text-xs text-amber-400 mb-2">
-                    <Trophy className="h-3 w-3" /> Winner declared
+          {experiments.map(exp => {
+            const split = exp.traffic_split || {};
+            const variantCount = Object.keys(split).length;
+            return (
+              <Card key={exp.id} className="hover:border-primary/30 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-medium text-foreground text-sm truncate flex-1">{exp.name}</h3>
+                    <Badge className={`text-[10px] ${statusColor[exp.status] || statusColor.draft}`}>{exp.status}</Badge>
                   </div>
-                )}
-                <div className="flex gap-1.5 mt-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditor(exp)}><Settings2 className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteExperiment(exp.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {exp.entity_type === 'form' ? 'Form' : 'Landing'} experiment · {variantCount} variants
+                  </p>
+                  {exp.winner_id && (
+                    <div className="flex items-center gap-1 text-xs text-amber-400 mb-2">
+                      <Trophy className="h-3 w-3" /> Winner declared
+                    </div>
+                  )}
+                  <div className="flex gap-1.5 mt-2">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditor(exp)}>
+                      <BarChart3 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditor(exp)}>
+                      <Settings2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteExperiment(exp.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -174,34 +231,114 @@ export default function GosExperimentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Editor Dialog */}
+      {/* Editor + Analytics Dialog */}
       {editing && (
         <Dialog open={!!editing} onOpenChange={open => { if (!open) setEditing(null); }}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Experiment: {editing.name}</DialogTitle></DialogHeader>
-            <div className="space-y-4">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FlaskConical className="h-5 w-5 text-primary" />
+                {editing.name}
+                <Badge className={`text-[10px] ml-2 ${statusColor[editing.status] || statusColor.draft}`}>{editing.status}</Badge>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto space-y-5 p-1">
+
+              {/* Per-Variant Analytics */}
+              {variants.length >= 2 && variantStats && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-primary" /> Variant Performance
+                  </h3>
+                  {totalViews === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                      <Eye className="h-6 w-6 text-muted-foreground/30 mx-auto mb-1" />
+                      <p className="text-xs text-muted-foreground">No analytics data yet — views are recorded when embeds are loaded</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {variants.map((v, i) => {
+                        const stats = variantStats[v.id];
+                        if (!stats) return null;
+                        const isWinner = editing.winner_id === v.id;
+                        const splitVal = (editing.traffic_split || {})[v.id] || 0;
+                        return (
+                          <Card key={v.id} className={`${isWinner ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
+                            <CardContent className="p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-[10px]">Variant {String.fromCharCode(65 + i)}</Badge>
+                                  <span className="text-sm font-medium text-foreground">{v.name}</span>
+                                  {v.status !== 'published' && <Badge className="text-[9px] bg-amber-500/10 text-amber-400">unpublished</Badge>}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {isWinner && <Trophy className="h-4 w-4 text-amber-400" />}
+                                  <span className="text-[10px] text-muted-foreground">{splitVal}% traffic</span>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                                    <Eye className="h-3 w-3" />
+                                    <span className="text-[10px]">Views</span>
+                                  </div>
+                                  <p className="text-lg font-bold text-foreground">{stats.views}</p>
+                                </div>
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                                    <Inbox className="h-3 w-3" />
+                                    <span className="text-[10px]">Submissions</span>
+                                  </div>
+                                  <p className="text-lg font-bold text-foreground">{stats.submissions}</p>
+                                </div>
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
+                                    <span className="text-[10px]">Conv. Rate</span>
+                                  </div>
+                                  <p className={`text-lg font-bold ${stats.convRate > 0 ? 'text-emerald-400' : 'text-foreground'}`}>{stats.convRate}%</p>
+                                </div>
+                              </div>
+                              {editing.status === 'running' && !editing.winner_id && (
+                                <div className="mt-2 flex justify-end">
+                                  <Button variant="ghost" size="sm" className="h-6 text-xs text-amber-400" onClick={() => declareWinner(v.id)}>
+                                    <Trophy className="h-3 w-3 mr-1" /> Declare Winner
+                                  </Button>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Variants List */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Variants ({variants.length})</h3>
                 {variants.length === 0 && <p className="text-xs text-muted-foreground">No variants linked. Link existing {editing.entity_type === 'form' ? 'forms' : 'landing templates'} to this experiment.</p>}
+                {variants.length < 2 && variants.length > 0 && (
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 mb-2">
+                    <p className="text-[11px] text-amber-400">Need at least 2 variants to run an experiment</p>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   {variants.map((v, i) => (
                     <div key={v.id} className="flex items-center justify-between rounded-lg border border-border p-2.5">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px]">Variant {String.fromCharCode(65 + i)}</Badge>
                         <span className="text-sm text-foreground">{v.name}</span>
+                        {v.status !== 'published' && <Badge className="text-[9px] bg-amber-500/10 text-amber-400">unpublished</Badge>}
                       </div>
                       {editing.winner_id === v.id && <Trophy className="h-4 w-4 text-amber-400" />}
-                      {editing.status === 'running' && !editing.winner_id && (
-                        <Button variant="ghost" size="sm" className="h-6 text-xs text-amber-400" onClick={() => declareWinner(v.id)}>
-                          <Trophy className="h-3 w-3 mr-1" /> Declare Winner
-                        </Button>
-                      )}
                     </div>
                   ))}
                 </div>
                 <LinkVariantInput entityType={editing.entity_type} experimentId={editing.id} onLink={linkVariant} />
               </div>
 
+              {/* Traffic Split */}
               {variants.length >= 2 && (
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-2">Traffic Split</h3>
@@ -214,6 +351,7 @@ export default function GosExperimentsPage() {
                 </div>
               )}
 
+              {/* Controls */}
               <div className="flex gap-2">
                 {editing.status === 'draft' && variants.length >= 2 && (
                   <Button size="sm" onClick={() => updateStatus(editing.id, 'running')} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">Start Experiment</Button>
