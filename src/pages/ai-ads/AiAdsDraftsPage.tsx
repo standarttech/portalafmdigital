@@ -40,7 +40,8 @@ interface DraftItem {
 }
 
 interface Client { id: string; name: string; }
-interface AdAccount { id: string; account_name: string | null; platform_account_id: string; client_id: string; }
+interface AdAccount { id: string; account_name: string | null; platform_account_id: string; client_id: string; connection_id: string; }
+interface MetaPage { id: string; name: string; page_id: string; }
 
 // ── Constants ──
 
@@ -358,6 +359,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
+  const [metaPages, setMetaPages] = useState<MetaPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -365,10 +367,24 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const loadItems = useCallback(async () => {
     const [iRes, aRes] = await Promise.all([
       supabase.from('campaign_draft_items' as any).select('*').eq('draft_id', draft.id).order('sort_order'),
-      supabase.from('ad_accounts').select('id, account_name, platform_account_id, client_id').eq('client_id', draft.client_id).eq('is_active', true),
+      supabase.from('ad_accounts').select('id, account_name, platform_account_id, client_id, connection_id').eq('client_id', draft.client_id).eq('is_active', true),
     ]);
     setItems((iRes.data as any[]) || []);
-    setAccounts(aRes.data || []);
+    const accs = aRes.data || [];
+    setAccounts(accs);
+    // Attempt to fetch Meta pages from platform_connections metadata for connected accounts
+    const pages: MetaPage[] = [];
+    for (const acc of accs) {
+      if (acc.connection_id) {
+        const { data: conn } = await supabase.from('platform_connections').select('id, account_name').eq('id', acc.connection_id).single();
+        if (conn) {
+          // Use the platform_account_id as a potential page source hint
+          // Real Meta page discovery would need a dedicated edge function; for now expose account info
+          pages.push({ id: acc.id, name: conn.account_name || acc.platform_account_id, page_id: acc.platform_account_id });
+        }
+      }
+    }
+    setMetaPages(pages);
     setLoading(false);
   }, [draft.id, draft.client_id]);
 
@@ -564,7 +580,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
                 adsets.map(as => (
                   <AdSetEditor key={as.id} item={as} onUpdate={updateItem} onDelete={deleteItem}
                     onAddAd={() => addItem('ad', as.id)}
-                    childAds={ads.filter(a => a.parent_item_id === as.id)} />
+                    childAds={ads.filter(a => a.parent_item_id === as.id)} metaPages={metaPages} />
                 ))
               )}
             </div>
@@ -590,7 +606,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
               ) : (
                 ads.map(ad => {
                   const parentName = adsets.find(as => as.id === ad.parent_item_id)?.name || 'Unassigned';
-                  return <AdEditor key={ad.id} item={ad} parentName={parentName} adsets={adsets} onUpdate={updateItem} onDelete={deleteItem} />;
+                  return <AdEditor key={ad.id} item={ad} parentName={parentName} adsets={adsets} onUpdate={updateItem} onDelete={deleteItem} metaPages={metaPages} />;
                 })
               )}
             </div>
@@ -814,9 +830,10 @@ function BudgetTab({ draft, onSave, saving }: { draft: Draft; onSave: (u: Partia
 
 // ── Ad Set Editor ──
 
-function AdSetEditor({ item, onUpdate, onDelete, onAddAd, childAds }: {
+function AdSetEditor({ item, onUpdate, onDelete, onAddAd, childAds, metaPages }: {
   item: DraftItem; onUpdate: (id: string, u: Partial<DraftItem>) => void;
   onDelete: (id: string) => void; onAddAd: () => void; childAds: DraftItem[];
+  metaPages: MetaPage[];
 }) {
   const [expanded, setExpanded] = useState(true);
   const [cfg, setCfg] = useState(item.config || {});
@@ -871,9 +888,10 @@ function AdSetEditor({ item, onUpdate, onDelete, onAddAd, childAds }: {
 
 // ── Ad Editor ──
 
-function AdEditor({ item, parentName, adsets, onUpdate, onDelete }: {
+function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages }: {
   item: DraftItem; parentName: string; adsets: DraftItem[];
   onUpdate: (id: string, u: Partial<DraftItem>) => void; onDelete: (id: string) => void;
+  metaPages: MetaPage[];
 }) {
   const [expanded, setExpanded] = useState(true);
   const [cfg, setCfg] = useState(item.config || {});
@@ -928,8 +946,37 @@ function AdEditor({ item, parentName, adsets, onUpdate, onDelete }: {
               </Select>
             </div>
             <div className="sm:col-span-2"><Label className="text-xs">Destination URL</Label><Input value={cfg.destination_url || ''} onChange={e => setCfg((c: any) => ({ ...c, destination_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="https://..." /></div>
-            <div><Label className="text-xs">Facebook Page ID</Label><Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="Required for Meta ad creation" /></div>
-            <div className="sm:col-span-2"><Label className="text-xs">Creative Reference (optional)</Label><Input value={cfg.creative_ref || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_ref: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="Link or reference to creative asset" /></div>
+            <div><Label className="text-xs">Facebook Page ID</Label>
+              {metaPages.length > 0 ? (
+                <Select value={cfg.page_id || '__manual__'} onValueChange={v => { const val = v === '__manual__' ? '' : v; setCfg((c: any) => ({ ...c, page_id: val })); setTimeout(save, 0); }}>
+                  <SelectTrigger className="text-sm"><SelectValue placeholder="Select page" /></SelectTrigger>
+                  <SelectContent>
+                    {metaPages.map(p => <SelectItem key={p.id} value={p.page_id}>{p.name} ({p.page_id})</SelectItem>)}
+                    <SelectItem value="__manual__">Enter manually...</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="No linked pages found — enter manually" />
+              )}
+              {cfg.page_id === '' && metaPages.length === 0 && <p className="text-[10px] text-amber-400 mt-0.5">Connect an ad account to auto-discover pages</p>}
+            </div>
+            <div><Label className="text-xs">Creative Type</Label>
+              <Select value={cfg.creative_type || 'text_only'} onValueChange={v => { setCfg((c: any) => ({ ...c, creative_type: v })); setTimeout(save, 0); }}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text_only">Text Only</SelectItem>
+                  <SelectItem value="image_url">Image (URL)</SelectItem>
+                  <SelectItem value="video_url">Video (URL)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(cfg.creative_type === 'image_url' || cfg.creative_type === 'video_url') && (
+              <div className="sm:col-span-2"><Label className="text-xs">{cfg.creative_type === 'image_url' ? 'Image' : 'Video'} URL</Label>
+                <Input value={cfg.creative_asset_url || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_asset_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={1000} placeholder="https://..." />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Direct URL to creative asset. Meta upload from URL is not yet automated.</p>
+              </div>
+            )}
+            <div className="sm:col-span-2"><Label className="text-xs">Creative Reference / Notes (optional)</Label><Input value={cfg.creative_ref || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_ref: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="Internal reference, asset library ID, etc." /></div>
           </div>
         </CardContent>
       )}
