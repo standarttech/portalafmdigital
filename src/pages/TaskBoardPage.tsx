@@ -38,6 +38,7 @@ interface Task {
   title: string;
   description: string | null;
   status: 'pending' | 'in_progress' | 'completed';
+  priority: string;
   client_id: string | null;
   assigned_to: string | null;
   due_date: string | null;
@@ -47,6 +48,13 @@ interface Task {
   assignee_names: string[];
   assignee_ids: string[];
 }
+
+const PRIORITIES = [
+  { key: 'urgent', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  { key: 'high', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  { key: 'medium', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  { key: 'low', color: 'bg-muted text-muted-foreground border-border/30' },
+];
 
 interface AgencyUser { user_id: string; display_name: string | null; }
 interface Client { id: string; name: string; }
