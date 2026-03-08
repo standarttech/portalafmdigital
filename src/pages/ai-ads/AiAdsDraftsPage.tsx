@@ -36,7 +36,12 @@ interface Draft {
 interface DraftItem {
   id: string; draft_id: string; item_type: string; parent_item_id: string | null;
   name: string; status: string; config: any; sort_order: number;
+  creative_asset_id: string | null;
   validation_errors: any[]; created_at: string; updated_at: string;
+}
+
+interface CreativeAssetRef {
+  id: string; name: string; asset_type: string; url: string | null; status: string; tags: string[];
 }
 
 interface Client { id: string; name: string; }
