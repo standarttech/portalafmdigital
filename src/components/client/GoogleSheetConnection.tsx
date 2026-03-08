@@ -276,7 +276,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
             {availableAccounts.length === 0 ? (
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
                 {loadingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                {t('clients.loadAccountsList' as TranslationKey) || 'Load accounts list'}
+                {t('clients.loadAccountsList')}
               </Button>
             ) : (
               <div className="space-y-2">
