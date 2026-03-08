@@ -24,7 +24,7 @@ interface ModuleEntry {
   icon: typeof Zap;
   path: string;
   color: 'gold' | 'silver' | 'bronze';
-  permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm' | 'canAccessGrowthOs';
+  permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm' | 'canAccessGrowthOs' | 'canAccessAiAds';
 }
 
 const moduleEntries: ModuleEntry[] = [
@@ -32,6 +32,7 @@ const moduleEntries: ModuleEntry[] = [
   { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', color: 'silver', permissionKey: 'canAccessAdminScale' },
   { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'bronze', permissionKey: 'canAccessCrm' },
   { key: 'nav.growthOs' as TranslationKey, icon: Activity, path: '/growth-os', color: 'emerald' as any, permissionKey: 'canAccessGrowthOs' },
+  { key: 'nav.aiAds' as TranslationKey, icon: Bot, path: '/ai-ads', color: 'purple' as any, permissionKey: 'canAccessAiAds' },
 ];
 
 const moduleColorMap: Record<string, { idle: string; active: string; icon: string; dot: string }> = {
