@@ -212,6 +212,7 @@ export default function GosOnboardingPage() {
       .eq('id', revokeConfirm.tokenId);
     setRevokeConfirm({ open: false, tokenId: '', tokenSnippet: '' });
     if (error) { toast.error('Failed to revoke'); return; }
+    logGosAction('revoke_link', 'onboarding_token', revokeConfirm.tokenId, revokeConfirm.tokenSnippet);
     toast.success('Link revoked');
     if (managingTokens) loadTokens(managingTokens);
   };
