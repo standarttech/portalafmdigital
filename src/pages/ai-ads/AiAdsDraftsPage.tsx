@@ -888,9 +888,10 @@ function AdSetEditor({ item, onUpdate, onDelete, onAddAd, childAds, metaPages }:
 
 // ── Ad Editor ──
 
-function AdEditor({ item, parentName, adsets, onUpdate, onDelete }: {
+function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages }: {
   item: DraftItem; parentName: string; adsets: DraftItem[];
   onUpdate: (id: string, u: Partial<DraftItem>) => void; onDelete: (id: string) => void;
+  metaPages: MetaPage[];
 }) {
   const [expanded, setExpanded] = useState(true);
   const [cfg, setCfg] = useState(item.config || {});
