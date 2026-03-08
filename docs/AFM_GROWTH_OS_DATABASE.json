@@ -1,0 +1,231 @@
+{
+  "tables": [
+    {
+      "name": "gos_landing_templates",
+      "purpose": "Store landing page template configurations with section-based structure",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "name", "type": "text", "nullable": false},
+        {"name": "description", "type": "text", "nullable": true},
+        {"name": "sections", "type": "jsonb", "nullable": false, "default": "[]", "notes": "Array of {type, config} objects. 8 types: hero, features, testimonials, pricing, faq, cta, form, custom_html"},
+        {"name": "settings", "type": "jsonb", "nullable": true, "default": "{}", "notes": "Unused — always empty"},
+        {"name": "status", "type": "text", "nullable": false, "default": "draft", "notes": "Values: draft, published, archived. Published has no actual effect."},
+        {"name": "client_id", "type": "uuid", "nullable": true, "notes": "FK to clients.id. Nullable = global template."},
+        {"name": "created_by", "type": "uuid", "nullable": true},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+        {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [
+        {"column": "client_id", "references": "clients.id", "type": "many-to-one"}
+      ],
+      "used_by_modules": ["Growth OS - Landing Templates"],
+      "implemented_vs_referenced": "Fully created and actively used for CRUD",
+      "rls": "Policy uses true for ALL commands — ANY authenticated user can CRUD all templates",
+      "problems": ["RLS too permissive", "settings column unused", "No public rendering mechanism"]
+    },
+    {
+      "name": "gos_forms",
+      "purpose": "Store form configurations with field definitions",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "name", "type": "text", "nullable": false},
+        {"name": "description", "type": "text", "nullable": true},
+        {"name": "fields", "type": "jsonb", "nullable": false, "default": "[]", "notes": "Array of {id, type, label, required, placeholder}. 8 types supported."},
+        {"name": "settings", "type": "jsonb", "nullable": true, "default": "{}"},
+        {"name": "status", "type": "text", "nullable": false, "default": "draft"},
+        {"name": "submit_action", "type": "text", "nullable": false, "default": "store", "notes": "Values: store, webhook, crm. Only 'store' has any meaning, but no endpoint exists."},
+        {"name": "client_id", "type": "uuid", "nullable": true},
+        {"name": "created_by", "type": "uuid", "nullable": true},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+        {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [
+        {"column": "client_id", "references": "clients.id", "type": "many-to-one"}
+      ],
+      "used_by_modules": ["Growth OS - Form Builder"],
+      "implemented_vs_referenced": "Fully created and actively used for CRUD",
+      "rls": "Likely permissive (true) — same pattern as other GOS tables",
+      "problems": ["submit_action types not implemented", "No submission endpoint"]
+    },
+    {
+      "name": "gos_form_submissions",
+      "purpose": "Store form submission data from external sources",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "form_id", "type": "uuid", "nullable": false},
+        {"name": "data", "type": "jsonb", "nullable": false, "default": "{}"},
+        {"name": "source", "type": "text", "nullable": true},
+        {"name": "ip_address", "type": "text", "nullable": true},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [
+        {"column": "form_id", "references": "gos_forms.id", "type": "many-to-one"}
+      ],
+      "used_by_modules": ["Growth OS - Form Builder (read only)"],
+      "implemented_vs_referenced": "Created but no ingestion mechanism — table will always be empty unless manually inserted",
+      "rls": "true for ALL commands — ANY authenticated user can CRUD all submissions. Also allows unauthenticated INSERT which is needed but not restricted properly.",
+      "problems": ["No Edge Function to populate this table", "RLS too permissive for reads"]
+    },
+    {
+      "name": "gos_onboarding_flows",
+      "purpose": "Store multi-step onboarding flow definitions",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "name", "type": "text", "nullable": false},
+        {"name": "description", "type": "text", "nullable": true},
+        {"name": "steps", "type": "jsonb", "nullable": false, "default": "[]", "notes": "Array of {id, title, description, fields[{key, label, type, required}]}"},
+        {"name": "is_default", "type": "boolean", "nullable": false, "default": false},
+        {"name": "created_by", "type": "uuid", "nullable": true},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+        {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [],
+      "used_by_modules": ["Growth OS - Onboarding"],
+      "implemented_vs_referenced": "Fully created and actively used",
+      "rls": "Likely permissive",
+      "problems": ["No client_id column — flows are global only", "Multiple flows can be is_default=true (no uniqueness constraint)"]
+    },
+    {
+      "name": "gos_onboarding_sessions",
+      "purpose": "Track individual client onboarding progress through a flow",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "client_id", "type": "uuid", "nullable": false},
+        {"name": "flow_id", "type": "uuid", "nullable": true},
+        {"name": "started_by", "type": "uuid", "nullable": true},
+        {"name": "current_step", "type": "integer", "nullable": false, "default": 0, "notes": "Always stays at 0 — no progression logic"},
+        {"name": "data", "type": "jsonb", "nullable": false, "default": "{}", "notes": "Intended to collect field values per step"},
+        {"name": "status", "type": "text", "nullable": false, "default": "in_progress", "notes": "Values: in_progress, completed, abandoned. Never changes."},
+        {"name": "completed_at", "type": "timestamptz", "nullable": true, "notes": "Never set"},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+        {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [
+        {"column": "client_id", "references": "clients.id", "type": "many-to-one"},
+        {"column": "flow_id", "references": "gos_onboarding_flows.id", "type": "many-to-one"}
+      ],
+      "used_by_modules": ["Growth OS - Onboarding"],
+      "implemented_vs_referenced": "Created and used for creating/viewing sessions, but progression never happens",
+      "rls": "Likely permissive",
+      "problems": ["current_step never advances", "status never changes", "completed_at never set"]
+    },
+    {
+      "name": "gos_integrations",
+      "purpose": "Catalog of available third-party integration types",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "name", "type": "text", "nullable": false},
+        {"name": "provider", "type": "text", "nullable": false},
+        {"name": "category", "type": "text", "nullable": false, "default": "general"},
+        {"name": "description", "type": "text", "nullable": true},
+        {"name": "config_schema", "type": "jsonb", "nullable": false, "default": "{}", "notes": "Always empty — never used for dynamic form generation"},
+        {"name": "icon_url", "type": "text", "nullable": true, "notes": "Never used in UI"},
+        {"name": "is_global", "type": "boolean", "nullable": false, "default": false, "notes": "Never used in UI"},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+        {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [],
+      "used_by_modules": ["Growth OS - Integrations"],
+      "implemented_vs_referenced": "Fully created and used",
+      "rls": "true for ALL commands — ANY authenticated user can CRUD",
+      "problems": ["RLS too permissive", "config_schema, icon_url, is_global all unused"]
+    },
+    {
+      "name": "gos_integration_instances",
+      "purpose": "Active connection instances linking integrations to clients with config/credentials",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "integration_id", "type": "uuid", "nullable": false},
+        {"name": "client_id", "type": "uuid", "nullable": true},
+        {"name": "created_by", "type": "uuid", "nullable": true},
+        {"name": "config", "type": "jsonb", "nullable": false, "default": "{}", "notes": "CRITICAL: Contains api_key and account_id in PLAINTEXT"},
+        {"name": "is_active", "type": "boolean", "nullable": false, "default": true},
+        {"name": "error_message", "type": "text", "nullable": true, "notes": "Never populated"},
+        {"name": "last_sync_at", "type": "timestamptz", "nullable": true, "notes": "Never populated"},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+        {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [
+        {"column": "integration_id", "references": "gos_integrations.id", "type": "many-to-one"},
+        {"column": "client_id", "references": "clients.id", "type": "many-to-one"}
+      ],
+      "used_by_modules": ["Growth OS - Integrations"],
+      "implemented_vs_referenced": "Created and used for CRUD, but no actual sync happens",
+      "rls": "Likely permissive — config with API keys readable by any authenticated user",
+      "problems": ["CRITICAL: API keys in plaintext JSONB", "No Vault usage", "error_message and last_sync_at never populated"]
+    },
+    {
+      "name": "gos_routing_rules",
+      "purpose": "Lead routing rule definitions with conditions and actions",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "name", "type": "text", "nullable": false},
+        {"name": "description", "type": "text", "nullable": true},
+        {"name": "conditions", "type": "jsonb", "nullable": false, "default": "[]", "notes": "Array of {field, operator, value}"},
+        {"name": "action_type", "type": "text", "nullable": false, "default": "assign_user"},
+        {"name": "action_config", "type": "jsonb", "nullable": false, "default": "{}"},
+        {"name": "priority", "type": "integer", "nullable": false, "default": 0},
+        {"name": "is_active", "type": "boolean", "nullable": false, "default": true},
+        {"name": "client_id", "type": "uuid", "nullable": true},
+        {"name": "created_by", "type": "uuid", "nullable": true},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"},
+        {"name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [
+        {"column": "client_id", "references": "clients.id", "type": "many-to-one"}
+      ],
+      "used_by_modules": ["Growth OS - Lead Routing"],
+      "implemented_vs_referenced": "Created and used for CRUD, but rules are never evaluated",
+      "rls": "Likely permissive",
+      "problems": ["No evaluation engine", "Rules are stored but dead"]
+    },
+    {
+      "name": "gos_routing_log",
+      "purpose": "Audit trail of routing actions taken on leads",
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "rule_id", "type": "uuid", "nullable": true},
+        {"name": "lead_id", "type": "uuid", "nullable": true},
+        {"name": "lead_source", "type": "text", "nullable": true},
+        {"name": "routed_to", "type": "text", "nullable": true},
+        {"name": "action_taken", "type": "text", "nullable": true},
+        {"name": "matched_conditions", "type": "jsonb", "nullable": true},
+        {"name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()"}
+      ],
+      "relationships": [
+        {"column": "rule_id", "references": "gos_routing_rules.id", "type": "many-to-one"}
+      ],
+      "used_by_modules": ["Growth OS - Lead Routing (read only)"],
+      "implemented_vs_referenced": "Created but always empty — nothing writes to this table",
+      "rls": "Likely permissive",
+      "problems": ["Always empty", "No mechanism to populate"]
+    }
+  ],
+  "missing_tables": [
+    {
+      "name": "gos_landing_analytics",
+      "reason": "No tracking of page views, conversions, bounce rates for landing templates"
+    },
+    {
+      "name": "gos_form_analytics",
+      "reason": "No tracking of form views, submission rates, field completion"
+    }
+  ],
+  "rls_observations": {
+    "summary": "ALL Growth OS tables use overly permissive RLS policies (true for authenticated users). This means any logged-in user — regardless of role or client assignment — can read, create, update, and delete all Growth OS data.",
+    "confirmed_permissive": ["gos_form_submissions", "gos_integrations"],
+    "likely_permissive": ["gos_landing_templates", "gos_forms", "gos_onboarding_flows", "gos_onboarding_sessions", "gos_integration_instances", "gos_routing_rules", "gos_routing_log"],
+    "recommended_fix": "Replace true with (is_agency_admin(auth.uid()) OR has_client_access(auth.uid(), client_id)) for tables with client_id. For tables without client_id (gos_onboarding_flows), use is_agency_member(auth.uid()) for read and is_agency_admin(auth.uid()) for write.",
+    "platform_comparison": "Platform tables (clients, campaigns, daily_metrics, etc.) correctly use is_agency_admin() and has_client_access() — GOS tables should follow the same pattern."
+  },
+  "schema_problems": [
+    "API keys stored in plaintext in gos_integration_instances.config",
+    "gos_onboarding_flows has no client_id — cannot scope flows to specific clients",
+    "Multiple gos_onboarding_flows can be is_default=true simultaneously",
+    "config_schema on gos_integrations is always {} — dead column",
+    "icon_url and is_global on gos_integrations are unused",
+    "No indexes on client_id, status, or created_by columns",
+    "JSONB columns prevent SQL-level validation of sections/fields/steps structure",
+    "gos_routing_log.lead_id does not reference any table (no FK constraint)"
+  ]
+}
