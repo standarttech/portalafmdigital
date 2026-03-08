@@ -238,10 +238,12 @@ serve(async (req) => {
       }
 
       // For cron: only sync clients with meta_auto_sync enabled
-      let accountsToSync = adAccounts;
+      // Filter out Google Sheets-originated accounts (platform_account_id starts with "sheets-")
+      let accountsToSync = adAccounts.filter(a => !a.platform_account_id.startsWith("sheets-"));
+
       if (isCron && !targetClientId) {
         // Check which clients have meta auto-sync on
-        const clientIds = [...new Set(adAccounts.map(a => a.client_id))];
+        const clientIds = [...new Set(accountsToSync.map(a => a.client_id))];
         const { data: settings } = await supabase
           .from("platform_settings")
           .select("key, value")
@@ -258,7 +260,7 @@ serve(async (req) => {
           clientIds.forEach(id => enabledClients.add(id));
         }
 
-        accountsToSync = adAccounts.filter(a => enabledClients.has(a.client_id));
+        accountsToSync = accountsToSync.filter(a => enabledClients.has(a.client_id));
       }
 
       if (!accountsToSync.length) {
