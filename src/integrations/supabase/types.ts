@@ -3547,6 +3547,10 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      has_valid_onboarding_token: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
       is_agency_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agency_member: { Args: { _user_id: string }; Returns: boolean }
       no_admin_exists: { Args: never; Returns: boolean }
