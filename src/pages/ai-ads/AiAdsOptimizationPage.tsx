@@ -399,6 +399,7 @@ function ActionDetail({ action: a, clientName, logs, isAdmin, onBack, onApprove,
   onBack: () => void; onApprove: () => void; onReject: (r: string) => void;
   onExecute: () => void; onCancel: () => void;
 }) {
+  const { user } = useAuth();
   const sc = statusConfig[a.status] || statusConfig.proposed;
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
