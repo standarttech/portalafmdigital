@@ -28,6 +28,14 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) throw new Error("Unauthorized");
 
+    // Verify the user is an agency admin
+    const svcForAuth = createClient(supabaseUrl, serviceRoleKey);
+    const { data: agencyUser } = await svcForAuth.from("agency_users")
+      .select("agency_role").eq("user_id", user.id).single();
+    if (!agencyUser || agencyUser.agency_role !== "AgencyAdmin") {
+      throw new Error("Only agency admins can execute optimization actions");
+    }
+
     const { action_id } = await req.json();
     if (!action_id) throw new Error("Missing action_id");
 

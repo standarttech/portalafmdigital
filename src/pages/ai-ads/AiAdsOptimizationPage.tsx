@@ -505,7 +505,7 @@ function ActionDetail({ action: a, clientName, logs, isAdmin, onBack, onApprove,
           {a.status === 'approved' && !isLive && (
             <Badge variant="outline" className="text-xs text-muted-foreground">This action type creates a draft — use Campaign Drafts to continue</Badge>
           )}
-          {['proposed', 'approved'].includes(a.status) && (
+          {['proposed', 'approved'].includes(a.status) && isAdmin && (
             <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={onCancel}>
               <Ban className="h-3.5 w-3.5" /> Cancel
             </Button>
