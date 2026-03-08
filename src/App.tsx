@@ -423,6 +423,15 @@ function AppRoutes() {
         <Route path="/adminscale/overview" element={<AdminScaleOverview />} />
         <Route path="/adminscale/reference" element={<AdminScaleReference />} />
       </Route>
+      {/* Growth OS — guarded */}
+      <Route element={<ModuleGuard module="growth_os"><GrowthOsLayout /></ModuleGuard>}>
+        <Route path="/growth-os" element={<GosOverviewPage />} />
+        <Route path="/growth-os/landing-templates" element={<GosLandingTemplatesPage />} />
+        <Route path="/growth-os/forms" element={<GosFormsPage />} />
+        <Route path="/growth-os/onboarding" element={<GosOnboardingPage />} />
+        <Route path="/growth-os/integrations" element={<GosIntegrationsPage />} />
+        <Route path="/growth-os/lead-routing" element={<GosLeadRoutingPage />} />
+      </Route>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
       <Route path="/request-access" element={<Navigate to="/dashboard" replace />} />
