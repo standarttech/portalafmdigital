@@ -226,15 +226,18 @@ type HealthStatus = 'active' | 'paused' | 'no_delivery' | 'spending' | 'partial'
 
 function getHealthStatus(lr: LaunchRequest): HealthStatus {
   const meta = lr.metadata || {};
+  const metrics = meta.last_sync_metrics;
   if (lr.execution_status === 'execution_partial') return 'partial';
   if (lr.execution_status === 'execution_failed') return 'failed';
+  if (!meta.last_sync_at) return 'unknown'; // No sync yet — don't guess
   if (meta.campaign_status === 'ACTIVE') {
-    if (meta.last_sync_metrics?.impressions > 0) return meta.last_sync_metrics.spend > 0 ? 'spending' : 'active';
+    if (metrics && metrics.impressions > 0) return metrics.spend > 0 ? 'spending' : 'active';
     return 'no_delivery';
   }
   if (meta.campaign_status === 'PAUSED') return 'paused';
-  if (!meta.last_sync_at) return 'unknown';
-  return 'stale';
+  const lastSync = new Date(meta.last_sync_at).getTime();
+  if ((Date.now() - lastSync) > 48 * 3600000) return 'stale';
+  return 'unknown';
 }
 
 const healthLabels: Record<HealthStatus, { label: string; color: string }> = {
