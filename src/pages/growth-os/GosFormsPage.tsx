@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, FormInput, Loader2, FileText, Settings2, X, ChevronUp, ChevronDown, Code2, Inbox, Copy } from 'lucide-react';
+import { Plus, FormInput, Loader2, Settings2, X, ChevronUp, ChevronDown, Inbox, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -31,15 +31,25 @@ export default function GosFormsPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [viewingSubmissions, setViewingSubmissions] = useState<string | null>(null);
+  const [pipelines, setPipelines] = useState<any[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<any[]>([]);
 
-  useEffect(() => { loadForms(); }, []);
+  useEffect(() => { loadForms(); loadPipelines(); }, []);
 
   const loadForms = async () => {
     setLoading(true);
-    // RLS handles scoping — only forms the user has access to are returned
     const { data } = await supabase.from('gos_forms').select('*').order('updated_at', { ascending: false });
     setForms(data || []);
     setLoading(false);
+  };
+
+  const loadPipelines = async () => {
+    const [pRes, sRes] = await Promise.all([
+      supabase.from('crm_pipelines').select('id, name, client_id'),
+      supabase.from('crm_pipeline_stages').select('id, name, pipeline_id, position').order('position'),
+    ]);
+    setPipelines(pRes.data || []);
+    setPipelineStages(sRes.data || []);
   };
 
   const createForm = async () => {
@@ -48,8 +58,6 @@ export default function GosFormsPage() {
     const { data, error } = await supabase.from('gos_forms').insert({
       name: 'New Form',
       created_by: user.id,
-      // Note: client_id is null = global form. 
-      // Users can set client_id via future UI enhancement.
       fields: [
         { id: 'name', type: 'text', label: 'Name', required: true, placeholder: 'Your name' },
         { id: 'email', type: 'email', label: 'Email', required: true, placeholder: 'email@example.com' },
@@ -83,7 +91,6 @@ export default function GosFormsPage() {
 
   const loadSubmissions = async (formId: string) => {
     setViewingSubmissions(formId);
-    // RLS scopes submissions through parent form's client access
     const { data } = await supabase.from('gos_form_submissions').select('*').eq('form_id', formId).order('created_at', { ascending: false }).limit(100);
     setSubmissions(data || []);
   };
@@ -91,8 +98,7 @@ export default function GosFormsPage() {
   const addField = () => {
     if (!editing) return;
     const id = `field_${Date.now()}`;
-    const fields = [...(editing.fields || []), { id, type: 'text', label: 'New Field', required: false, placeholder: '' }];
-    setEditing({ ...editing, fields });
+    setEditing({ ...editing, fields: [...(editing.fields || []), { id, type: 'text', label: 'New Field', required: false, placeholder: '' }] });
   };
 
   const updateField = (idx: number, key: string, value: any) => {
@@ -115,7 +121,6 @@ export default function GosFormsPage() {
     setEditing({ ...editing, fields });
   };
 
-  // Use real edge function URL for embed code
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   const embedCode = editing ? `<iframe src="${window.location.origin}/embed/form/${editing.id}" width="100%" height="500" frameborder="0"></iframe>` : '';
   const apiEndpoint = editing ? `https://${projectId}.supabase.co/functions/v1/gos-form-submit` : '';
@@ -127,6 +132,10 @@ export default function GosFormsPage() {
     archived: 'bg-destructive/10 text-destructive',
   };
 
+  const selectedPipelineStages = editing?.settings?.crm_pipeline_id
+    ? pipelineStages.filter((s: any) => s.pipeline_id === editing.settings.crm_pipeline_id)
+    : [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -134,9 +143,7 @@ export default function GosFormsPage() {
           <h1 className="text-xl font-bold text-foreground">{t('gos.formBuilder' as TranslationKey)}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t('gos.formBuilderDesc' as TranslationKey)}</p>
         </div>
-        <Button size="sm" onClick={createForm} className="gap-1.5">
-          <Plus className="h-4 w-4" /> {t('common.create')}
-        </Button>
+        <Button size="sm" onClick={createForm} className="gap-1.5"><Plus className="h-4 w-4" /> {t('common.create')}</Button>
       </div>
 
       {loading ? (
@@ -177,14 +184,12 @@ export default function GosFormsPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2"><FormInput className="h-5 w-5 text-primary" /> Edit Form</DialogTitle>
             </DialogHeader>
-
             <Tabs defaultValue="fields" className="flex-1 overflow-hidden flex flex-col">
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="fields">Fields ({(editing.fields || []).length})</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
                 <TabsTrigger value="embed">Embed</TabsTrigger>
               </TabsList>
-
               <TabsContent value="fields" className="flex-1 overflow-auto space-y-2 p-1">
                 {(editing.fields || []).map((field: any, idx: number) => (
                   <Card key={field.id || idx} className="border-border/50">
@@ -233,7 +238,7 @@ export default function GosFormsPage() {
                       <SelectItem value="archived">Archived</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-[10px] text-muted-foreground mt-1">Only published forms accept public submissions and can be embedded.</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Only published forms accept public submissions.</p>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Submit Action</label>
@@ -242,7 +247,7 @@ export default function GosFormsPage() {
                     <SelectContent>
                       <SelectItem value="store">Store in DB</SelectItem>
                       <SelectItem value="webhook">Store + Send Webhook</SelectItem>
-                      <SelectItem value="crm">Store + Create CRM Lead (not yet supported)</SelectItem>
+                      <SelectItem value="crm">Store + Create CRM Lead</SelectItem>
                     </SelectContent>
                   </Select>
                   {editing.submit_action === 'webhook' && (
@@ -253,12 +258,46 @@ export default function GosFormsPage() {
                         value={(editing.settings as any)?.webhook_url || ''}
                         onChange={e => setEditing({ ...editing, settings: { ...(editing.settings || {}), webhook_url: e.target.value } })}
                       />
-                      <p className="text-[10px] text-muted-foreground mt-1">Submission data will be POSTed to this URL after saving.</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Submission data will be POSTed to this URL.</p>
                     </div>
                   )}
                   {editing.submit_action === 'crm' && (
-                    <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
-                      <p className="text-[11px] text-amber-400">CRM lead creation is not yet implemented. Submissions will be stored and routed, but no CRM lead will be created automatically.</p>
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Target CRM Pipeline</label>
+                        {pipelines.length > 0 ? (
+                          <Select
+                            value={(editing.settings as any)?.crm_pipeline_id || ''}
+                            onValueChange={v => setEditing({ ...editing, settings: { ...(editing.settings || {}), crm_pipeline_id: v, crm_stage_id: '' } })}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Select pipeline..." /></SelectTrigger>
+                            <SelectContent>
+                              {pipelines.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
+                            <p className="text-[11px] text-amber-400">No CRM pipelines found. Create a pipeline in the CRM module first.</p>
+                          </div>
+                        )}
+                      </div>
+                      {selectedPipelineStages.length > 0 && (
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Initial Stage (optional)</label>
+                          <Select
+                            value={(editing.settings as any)?.crm_stage_id || ''}
+                            onValueChange={v => setEditing({ ...editing, settings: { ...(editing.settings || {}), crm_stage_id: v } })}
+                          >
+                            <SelectTrigger><SelectValue placeholder="First stage (default)" /></SelectTrigger>
+                            <SelectContent>
+                              {selectedPipelineStages.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {!(editing.settings as any)?.crm_pipeline_id && (
+                        <p className="text-[10px] text-muted-foreground">Select a pipeline to enable CRM lead creation on submission.</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -280,20 +319,13 @@ export default function GosFormsPage() {
                   </div>
                   <div className="rounded-lg bg-muted p-4">
                     <p className="text-xs text-muted-foreground mb-2">API endpoint (POST):</p>
-                    <code className="text-xs text-foreground break-all block bg-background p-3 rounded border border-border">
-                      {apiEndpoint}
-                    </code>
-                    <p className="text-[10px] text-muted-foreground mt-2">
-                      Body: {`{"form_id": "${editing.id}", "data": {"name": "...", "email": "..."}, "source": "api"}`}
-                    </p>
+                    <code className="text-xs text-foreground break-all block bg-background p-3 rounded border border-border">{apiEndpoint}</code>
+                    <p className="text-[10px] text-muted-foreground mt-2">Body: {`{"form_id": "${editing.id}", "data": {"name": "...", "email": "..."}, "source": "api"}`}</p>
                   </div>
                 </div>
               </TabsContent>
             </Tabs>
-
-            <DialogFooter>
-              <Button size="sm" onClick={saveForm}>Save Form</Button>
-            </DialogFooter>
+            <DialogFooter><Button size="sm" onClick={saveForm}>Save Form</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       )}

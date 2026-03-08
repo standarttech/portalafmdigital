@@ -9,18 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, GitBranch, Loader2, Activity, ArrowRight, Settings2, Trash2, X, AlertTriangle } from 'lucide-react';
+import { Plus, GitBranch, Loader2, Activity, ArrowRight, Settings2, Trash2, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
 
 const operators = ['equals', 'not_equals', 'contains', 'starts_with', 'greater_than', 'less_than'];
 const conditionFields = ['source', 'utm_source', 'utm_medium', 'utm_campaign', 'country', 'form_id', 'value'];
 const actionTypes = [
-  { value: 'assign_user', label: 'Assign to User', supported: true },
-  { value: 'assign_pipeline', label: 'Route to Pipeline', supported: true },
-  { value: 'tag', label: 'Add Tag', supported: true },
-  { value: 'webhook', label: 'Trigger Webhook', supported: false },
-  { value: 'notify', label: 'Send Notification', supported: false },
+  { value: 'assign_user', label: 'Assign to User', supported: true, note: 'Assigns CRM lead to user' },
+  { value: 'assign_pipeline', label: 'Route to Pipeline', supported: true, note: 'Moves CRM lead to pipeline' },
+  { value: 'tag', label: 'Add Tag', supported: true, note: 'Tags CRM lead' },
+  { value: 'webhook', label: 'Trigger Webhook', supported: true, note: 'POSTs data to URL (SSRF protected)' },
+  { value: 'notify', label: 'Send Notification', supported: true, note: 'Email to admins or Telegram message' },
 ];
 
 export default function GosLeadRoutingPage() {
@@ -73,12 +73,9 @@ export default function GosLeadRoutingPage() {
   const saveRule = async () => {
     if (!editingRule) return;
     const { error } = await supabase.from('gos_routing_rules').update({
-      name: editingRule.name,
-      description: editingRule.description,
-      conditions: editingRule.conditions,
-      action_type: editingRule.action_type,
-      action_config: editingRule.action_config,
-      priority: editingRule.priority,
+      name: editingRule.name, description: editingRule.description,
+      conditions: editingRule.conditions, action_type: editingRule.action_type,
+      action_config: editingRule.action_config, priority: editingRule.priority,
       is_active: editingRule.is_active,
     }).eq('id', editingRule.id);
     if (error) toast.error('Save failed');
@@ -93,10 +90,7 @@ export default function GosLeadRoutingPage() {
 
   const addCondition = () => {
     if (!editingRule) return;
-    setEditingRule({
-      ...editingRule,
-      conditions: [...(editingRule.conditions || []), { field: 'source', operator: 'equals', value: '' }],
-    });
+    setEditingRule({ ...editingRule, conditions: [...(editingRule.conditions || []), { field: 'source', operator: 'equals', value: '' }] });
   };
 
   const updateCondition = (idx: number, key: string, value: string) => {
@@ -117,6 +111,12 @@ export default function GosLeadRoutingPage() {
 
   const actionInfo = actionTypes.find(a => a.value === editingRule?.action_type);
 
+  const getLogStatusIcon = (actionTaken: string) => {
+    if (actionTaken?.includes(':executed')) return <CheckCircle2 className="h-3 w-3 text-emerald-400" />;
+    if (actionTaken?.includes(':failed') || actionTaken?.includes('error')) return <AlertTriangle className="h-3 w-3 text-destructive" />;
+    return <Activity className="h-3.5 w-3.5 text-muted-foreground" />;
+  };
+
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   return (
@@ -126,9 +126,7 @@ export default function GosLeadRoutingPage() {
           <h1 className="text-xl font-bold text-foreground">{t('gos.leadRouting' as TranslationKey)}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t('gos.leadRoutingDesc' as TranslationKey)}</p>
         </div>
-        <Button size="sm" onClick={createRule} className="gap-1.5">
-          <Plus className="h-4 w-4" /> New Rule
-        </Button>
+        <Button size="sm" onClick={createRule} className="gap-1.5"><Plus className="h-4 w-4" /> New Rule</Button>
       </div>
 
       <Tabs defaultValue="rules">
@@ -158,9 +156,6 @@ export default function GosLeadRoutingPage() {
                         <Badge variant="outline" className="text-[10px]">
                           {actionTypes.find(a => a.value === rule.action_type)?.label || rule.action_type}
                         </Badge>
-                        {!actionTypes.find(a => a.value === rule.action_type)?.supported && (
-                          <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">logged only</Badge>
-                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {(rule.conditions || []).length} condition(s) <ArrowRight className="h-3 w-3 inline mx-1" /> {rule.action_type}
@@ -180,14 +175,14 @@ export default function GosLeadRoutingPage() {
 
         <TabsContent value="log" className="mt-4">
           {logs.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No routing events yet. Submit a form to see routing results here.</p>
+            <p className="text-sm text-muted-foreground text-center py-8">No routing events yet.</p>
           ) : (
             <div className="space-y-1">
               {logs.map(log => (
                 <Card key={log.id}>
                   <CardContent className="p-3 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+                      {getLogStatusIcon(log.action_taken)}
                       <span className="text-foreground font-medium">{log.lead_source || 'Unknown'}</span>
                       <ArrowRight className="h-3 w-3 text-muted-foreground" />
                       <span className="text-foreground">{log.routed_to || '—'}</span>
@@ -202,7 +197,7 @@ export default function GosLeadRoutingPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Rule Editor with structured selects */}
+      {/* Rule Editor */}
       {editingRule && (
         <Dialog open={!!editingRule} onOpenChange={open => { if (!open) setEditingRule(null); }}>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
@@ -249,17 +244,12 @@ export default function GosLeadRoutingPage() {
                 <Select value={editingRule.action_type || 'tag'} onValueChange={v => setEditingRule({ ...editingRule, action_type: v, action_config: {} })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{actionTypes.map(a => (
-                    <SelectItem key={a.value} value={a.value}>
-                      {a.label} {!a.supported && '(logged only)'}
-                    </SelectItem>
+                    <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
                   ))}</SelectContent>
                 </Select>
 
-                {actionInfo && !actionInfo.supported && (
-                  <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 flex items-start gap-2">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-[11px] text-amber-400">This action type is logged but not yet executed. Routing decisions will be recorded in the log.</p>
-                  </div>
+                {actionInfo && (
+                  <p className="text-[10px] text-muted-foreground mt-1">{actionInfo.note}</p>
                 )}
 
                 <div className="mt-3 space-y-2">
@@ -271,9 +261,7 @@ export default function GosLeadRoutingPage() {
                           <SelectTrigger className="text-xs"><SelectValue placeholder="Select user..." /></SelectTrigger>
                           <SelectContent>
                             {agencyUsers.map(u => (
-                              <SelectItem key={u.user_id} value={u.user_id}>
-                                {u.display_name || u.user_id} ({u.agency_role})
-                              </SelectItem>
+                              <SelectItem key={u.user_id} value={u.user_id}>{u.display_name || u.user_id} ({u.agency_role})</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -288,11 +276,7 @@ export default function GosLeadRoutingPage() {
                       {pipelines.length > 0 ? (
                         <Select value={(editingRule.action_config || {}).pipeline_id || ''} onValueChange={v => updateActionConfig('pipeline_id', v)}>
                           <SelectTrigger className="text-xs"><SelectValue placeholder="Select pipeline..." /></SelectTrigger>
-                          <SelectContent>
-                            {pipelines.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                            ))}
-                          </SelectContent>
+                          <SelectContent>{pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                         </Select>
                       ) : (
                         <Input placeholder="Pipeline ID" value={(editingRule.action_config || {}).pipeline_id || ''} onChange={e => updateActionConfig('pipeline_id', e.target.value)} className="text-xs" />
@@ -309,33 +293,34 @@ export default function GosLeadRoutingPage() {
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Webhook URL</label>
                       <Input placeholder="https://..." value={(editingRule.action_config || {}).url || ''} onChange={e => updateActionConfig('url', e.target.value)} className="text-xs" />
-                      <p className="text-[10px] text-muted-foreground mt-1">Webhook execution not yet implemented — decision will be logged</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">SSRF-protected: private IPs and internal hosts are blocked.</p>
                     </div>
                   )}
                   {editingRule.action_type === 'notify' && (
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Notification Channel</label>
-                      <Select value={(editingRule.action_config || {}).channel || ''} onValueChange={v => updateActionConfig('channel', v)}>
-                        <SelectTrigger className="text-xs"><SelectValue placeholder="Select channel..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="telegram">Telegram</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-muted-foreground mt-1">Notification sending not yet implemented — decision will be logged</p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Notification Channel</label>
+                        <Select value={(editingRule.action_config || {}).channel || ''} onValueChange={v => updateActionConfig('channel', v)}>
+                          <SelectTrigger className="text-xs"><SelectValue placeholder="Select channel..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="email">Email (to admins)</SelectItem>
+                            <SelectItem value="telegram">Telegram</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {(editingRule.action_config || {}).channel === 'telegram' && (
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Telegram Chat ID</label>
+                          <Input placeholder="e.g. -1001234567890" value={(editingRule.action_config || {}).telegram_chat_id || ''} onChange={e => updateActionConfig('telegram_chat_id', e.target.value)} className="text-xs" />
+                          <p className="text-[10px] text-muted-foreground mt-1">Uses the platform's system Telegram bot.</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <Switch checked={!!editingRule.is_active} onCheckedChange={v => setEditingRule({ ...editingRule, is_active: v })} />
-                <span className="text-xs text-muted-foreground">Rule active</span>
-              </div>
             </div>
-            <DialogFooter>
-              <Button size="sm" onClick={saveRule}>Save Rule</Button>
-            </DialogFooter>
+            <DialogFooter><Button size="sm" onClick={saveRule}>Save Rule</Button></DialogFooter>
           </DialogContent>
         </Dialog>
       )}
