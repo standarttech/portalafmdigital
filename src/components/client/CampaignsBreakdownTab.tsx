@@ -51,7 +51,8 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
         .select('id, campaign_name, status, platform_campaign_id')
         .eq('client_id', clientId);
 
-      const realCampaigns = (campaigns || []).filter(c => !c.platform_campaign_id.startsWith('sheets-'));
+      // AFM FILTER: only campaigns with "AFM" in name
+      const realCampaigns = (campaigns || []).filter(c => !c.platform_campaign_id.startsWith('sheets-') && isAfmCampaign(c.campaign_name));
       if (!realCampaigns.length) { setData([]); setLoading(false); return; }
 
       let query = supabase
