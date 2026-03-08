@@ -33,6 +33,8 @@ export default function EmbedLandingPage() {
       setNotFound(true); setLoading(false); return;
     }
 
+    let localVariantId: string | null = null;
+
     // A/B experiment resolution
     if (data.experiment_id) {
       const { data: exp } = await supabase
@@ -61,15 +63,16 @@ export default function EmbedLandingPage() {
             initTemplate(variantTemplate, selectedId);
             return;
           }
+          // Variant not found or not published — fall through to original
         }
-        setResolvedVariantId(selectedId || id!);
+        localVariantId = selectedId || id!;
       }
     }
 
     if (data.status !== 'published') {
       setNotFound(true); setLoading(false); return;
     }
-    initTemplate(data, null);
+    initTemplate(data, localVariantId);
   };
 
   const initTemplate = (data: any, variantId: string | null) => {

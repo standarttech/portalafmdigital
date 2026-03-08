@@ -49,6 +49,9 @@ export default function EmbedFormPage() {
       setNotFound(true); setLoading(false); return;
     }
 
+    // Track resolved variant via local var (state not available same cycle)
+    let localVariantId: string | null = null;
+
     // If this form is part of a running experiment, resolve variant
     if (directForm.experiment_id) {
       const { data: exp } = await supabase
@@ -78,9 +81,9 @@ export default function EmbedFormPage() {
             initForm(variantForm, selectedId);
             return;
           }
+          // Variant not found or not published — fall through to original form
         }
-        // Use the original form as the selected variant
-        setResolvedVariantId(selectedId || id!);
+        localVariantId = selectedId || id!;
       }
     }
 
@@ -88,7 +91,7 @@ export default function EmbedFormPage() {
     if (directForm.status !== 'published' && directForm.status !== 'active') {
       setNotFound(true); setLoading(false); return;
     }
-    initForm(directForm, resolvedVariantId || null);
+    initForm(directForm, localVariantId);
   };
 
   const initForm = (data: any, variantId: string | null) => {
