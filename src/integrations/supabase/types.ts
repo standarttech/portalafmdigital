@@ -1708,6 +1708,13 @@ export type Database = {
             referencedRelation: "crm_webhook_endpoints"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_webhook_logs_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "crm_webhook_endpoints_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       daily_metrics: {
@@ -2711,6 +2718,73 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_webhook_endpoints_safe: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          default_stage_id: string | null
+          endpoint_slug: string | null
+          field_mapping: Json | null
+          has_secret: boolean | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          pipeline_id: string | null
+          source_label: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          default_stage_id?: string | null
+          endpoint_slug?: string | null
+          field_mapping?: Json | null
+          has_secret?: never
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          pipeline_id?: string | null
+          source_label?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          default_stage_id?: string | null
+          endpoint_slug?: string | null
+          field_mapping?: Json | null
+          has_secret?: never
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          pipeline_id?: string | null
+          source_label?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_webhook_endpoints_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_webhook_endpoints_default_stage_id_fkey"
+            columns: ["default_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_webhook_endpoints_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
             referencedColumns: ["id"]
           },
         ]
