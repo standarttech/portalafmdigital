@@ -300,7 +300,15 @@ export default function GosOnboardingPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="flows">
+      {/* Branding toggle */}
+      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div>
+          <span className="text-xs font-medium text-foreground">Show "Powered by Growth OS" in client portal</span>
+          <p className="text-[10px] text-muted-foreground">Controls footer branding on external onboarding pages</p>
+        </div>
+        <Switch checked={showBranding} onCheckedChange={toggleBranding} />
+      </div>
+
         <TabsList>
           <TabsTrigger value="flows">Flows ({flows.length})</TabsTrigger>
           <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
