@@ -62,7 +62,7 @@ export default function AiAdsRecommendationsPage() {
     const { error } = await supabase.from('ai_recommendations' as any)
       .update({ status: newStatus, acted_on_at: new Date().toISOString() }).eq('id', rec.id);
     if (error) { toast.error('Failed to update'); return; }
-    logGosAction(newStatus === 'dismissed' ? 'dismiss' : 'update', 'ai_recommendation', rec.id, rec.title, { status: newStatus, clientId: rec.client_id });
+    logGosAction(newStatus === 'dismissed' ? 'dismiss' : 'update', 'ai_recommendation', rec.id, rec.title, { clientId: rec.client_id, metadata: { status: newStatus } });
     setRecs(prev => prev.map(r => r.id === rec.id ? { ...r, status: newStatus, acted_on_at: new Date().toISOString() } : r));
     toast.success(`Recommendation ${newStatus.replace(/_/g, ' ')}`);
   };
