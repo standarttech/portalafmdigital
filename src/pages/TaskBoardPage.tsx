@@ -573,6 +573,11 @@ function TaskCardInner({ task, isRu, onEdit, onStatusChange, onDelete, onArchive
       </div>
       {task.description && <p className="text-[11px] text-muted-foreground line-clamp-2">{task.description}</p>}
       <div className="flex items-center gap-2 flex-wrap">
+        {task.priority && task.priority !== 'medium' && (
+          <Badge variant="outline" className={cn('text-[10px] border', PRIORITIES.find(p => p.key === task.priority)?.color || '')}>
+            {t(`tasks.${task.priority}` as any)}
+          </Badge>
+        )}
         {task.client_id === null ? (
           <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">{isRu ? '🏢 Агентство' : '🏢 Agency'}</Badge>
         ) : task.client_name ? (
