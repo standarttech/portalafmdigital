@@ -159,13 +159,6 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
 
   return (
     <div className="space-y-4 max-w-3xl">
-      {/* Client self-service banner */}
-      {isClient && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground flex items-center gap-2">
-          <FileText className="h-4 w-4 text-primary flex-shrink-0" />
-          {t('clientInfo.selfServiceHint' as TranslationKey)}
-        </div>
-      )}
 
       {/* Brief & Budget */}
       <Card className="glass-card">
