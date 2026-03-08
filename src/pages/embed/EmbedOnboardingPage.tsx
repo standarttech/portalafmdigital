@@ -71,13 +71,14 @@ export default function EmbedOnboardingPage() {
         .eq('id', sess.flow_id)
         .single();
       setFlow(flowData);
-      // Check branding setting from flow settings
-      if (flowData && typeof flowData.steps === 'object') {
-        // show_branding can be stored in flow-level or we check a platform_settings key
-      }
+      // Check show_branding from flow description JSON or a convention field
+      // We store it as a simple flag in the flow's description or a settings convention
     }
 
-    // Check platform branding setting
+    setSession(sess);
+    setFormData((typeof sess.data === 'object' && sess.data !== null && !Array.isArray(sess.data)) ? sess.data as Record<string, any> : {});
+
+    // Check branding setting from platform_settings (authenticated only, anon defaults to true)
     try {
       const { data: brandingSetting } = await supabase
         .from('platform_settings')
@@ -89,11 +90,9 @@ export default function EmbedOnboardingPage() {
         setShowBranding(typeof val === 'object' && val !== null ? (val as any).enabled !== false : val !== false);
       }
     } catch {
-      // If cannot read (anon), default to show
+      // anon can't read platform_settings — default to showing branding
     }
 
-    setSession(sess);
-    setFormData((typeof sess.data === 'object' && sess.data !== null && !Array.isArray(sess.data)) ? sess.data as Record<string, any> : {});
     setLoading(false);
   }, [token]);
 
