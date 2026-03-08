@@ -3333,30 +3333,42 @@ export type Database = {
       launch_execution_logs: {
         Row: {
           created_at: string
+          entity_level: string
+          error_detail: string | null
           executed_by: string | null
+          external_entity_id: string | null
           id: string
           launch_request_id: string
           message: string | null
+          payload_snapshot: Json | null
           response_data: Json | null
           status: string
           step: string
         }
         Insert: {
           created_at?: string
+          entity_level?: string
+          error_detail?: string | null
           executed_by?: string | null
+          external_entity_id?: string | null
           id?: string
           launch_request_id: string
           message?: string | null
+          payload_snapshot?: Json | null
           response_data?: Json | null
           status?: string
           step?: string
         }
         Update: {
           created_at?: string
+          entity_level?: string
+          error_detail?: string | null
           executed_by?: string | null
+          external_entity_id?: string | null
           id?: string
           launch_request_id?: string
           message?: string | null
+          payload_snapshot?: Json | null
           response_data?: Json | null
           status?: string
           step?: string
@@ -3373,14 +3385,23 @@ export type Database = {
       }
       launch_requests: {
         Row: {
+          ad_account_id: string | null
           approved_at: string | null
           approved_by: string | null
           client_id: string
           created_at: string
           draft_id: string
+          error_message: string | null
+          executed_at: string | null
+          executed_by: string | null
+          execution_status: string
+          external_campaign_id: string | null
+          external_ids: Json | null
           id: string
           metadata: Json | null
+          normalized_payload: Json | null
           notes: string | null
+          platform: string
           priority: string
           rejected_at: string | null
           rejected_by: string | null
@@ -3390,14 +3411,23 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ad_account_id?: string | null
           approved_at?: string | null
           approved_by?: string | null
           client_id: string
           created_at?: string
           draft_id: string
+          error_message?: string | null
+          executed_at?: string | null
+          executed_by?: string | null
+          execution_status?: string
+          external_campaign_id?: string | null
+          external_ids?: Json | null
           id?: string
           metadata?: Json | null
+          normalized_payload?: Json | null
           notes?: string | null
+          platform?: string
           priority?: string
           rejected_at?: string | null
           rejected_by?: string | null
@@ -3407,14 +3437,23 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ad_account_id?: string | null
           approved_at?: string | null
           approved_by?: string | null
           client_id?: string
           created_at?: string
           draft_id?: string
+          error_message?: string | null
+          executed_at?: string | null
+          executed_by?: string | null
+          execution_status?: string
+          external_campaign_id?: string | null
+          external_ids?: Json | null
           id?: string
           metadata?: Json | null
+          normalized_payload?: Json | null
           notes?: string | null
+          platform?: string
           priority?: string
           rejected_at?: string | null
           rejected_by?: string | null
@@ -3424,6 +3463,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "launch_requests_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "launch_requests_client_id_fkey"
             columns: ["client_id"]

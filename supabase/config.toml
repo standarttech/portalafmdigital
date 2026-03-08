@@ -51,3 +51,6 @@ verify_jwt = false
 [functions.ai-provider-health]
 verify_jwt = false
 
+[functions.campaign-execute]
+verify_jwt = false
+

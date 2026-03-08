@@ -61,11 +61,12 @@ const bidStrategies = [
 
 const statusConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
   draft: { icon: <Edit className="h-3 w-3" />, color: 'text-muted-foreground border-muted-foreground/30', label: 'Draft' },
-  ready: { icon: <CheckCircle2 className="h-3 w-3" />, color: 'text-blue-400 border-blue-400/30', label: 'Ready' },
-  submitted: { icon: <Rocket className="h-3 w-3" />, color: 'text-amber-400 border-amber-400/30', label: 'Submitted' },
+  ready_for_review: { icon: <Clock className="h-3 w-3" />, color: 'text-amber-400 border-amber-400/30', label: 'In Review' },
   approved: { icon: <CheckCircle2 className="h-3 w-3" />, color: 'text-emerald-400 border-emerald-400/30', label: 'Approved' },
   rejected: { icon: <XCircle className="h-3 w-3" />, color: 'text-destructive border-destructive/30', label: 'Rejected' },
-  launched: { icon: <Rocket className="h-3 w-3" />, color: 'text-violet-400 border-violet-400/30', label: 'Launched' },
+  submitted_for_execution: { icon: <Rocket className="h-3 w-3" />, color: 'text-blue-400 border-blue-400/30', label: 'Executing' },
+  executed: { icon: <CheckCircle2 className="h-3 w-3" />, color: 'text-violet-400 border-violet-400/30', label: 'Executed' },
+  execution_failed: { icon: <AlertTriangle className="h-3 w-3" />, color: 'text-destructive border-destructive/30', label: 'Exec Failed' },
 };
 
 const validationStatusConfig: Record<string, { color: string; label: string }> = {
@@ -444,6 +445,62 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
     toast.success('Preview payload generated');
   };
 
+  const submitForReview = async () => {
+    if (!user) return;
+    // Run validation first
+    const errors = validateDraft(draft, items);
+    const hasErrors = errors.some(e => e.severity === 'error');
+    if (hasErrors) {
+      toast.error('Fix validation errors before submitting');
+      setValidationErrors(errors);
+      saveDraft({ validation_status: 'invalid', validation_errors: errors as any[] });
+      return;
+    }
+    // Generate preview payload
+    const payload = buildPreviewPayload(draft, items);
+    // Create launch request
+    const { data: lr, error } = await supabase.from('launch_requests' as any).insert({
+      draft_id: draft.id,
+      client_id: draft.client_id,
+      ad_account_id: draft.ad_account_id,
+      platform: draft.platform,
+      requested_by: user.id,
+      normalized_payload: payload,
+      notes: draft.notes || '',
+    }).select().single();
+    if (error) { toast.error('Failed to submit: ' + error.message); return; }
+    // Update draft status
+    saveDraft({ status: 'ready_for_review', preview_payload: payload });
+    logGosAction('submit_for_review', 'campaign_draft', draft.id, draft.campaign_name || draft.name, { clientId: draft.client_id, metadata: { launchRequestId: (lr as any).id } });
+    toast.success('Draft submitted for review');
+  };
+
+  const resubmit = async () => {
+    if (!user) return;
+    const errors = validateDraft(draft, items);
+    const hasErrors = errors.some(e => e.severity === 'error');
+    if (hasErrors) {
+      toast.error('Fix validation errors before resubmitting');
+      setValidationErrors(errors);
+      saveDraft({ validation_status: 'invalid', validation_errors: errors as any[] });
+      return;
+    }
+    const payload = buildPreviewPayload(draft, items);
+    const { data: lr, error } = await supabase.from('launch_requests' as any).insert({
+      draft_id: draft.id,
+      client_id: draft.client_id,
+      ad_account_id: draft.ad_account_id,
+      platform: draft.platform,
+      requested_by: user.id,
+      normalized_payload: payload,
+      notes: `Resubmission: ${draft.notes || ''}`,
+    }).select().single();
+    if (error) { toast.error('Failed to resubmit: ' + error.message); return; }
+    saveDraft({ status: 'ready_for_review', preview_payload: payload });
+    logGosAction('resubmit_for_review', 'campaign_draft', draft.id, draft.campaign_name || draft.name, { clientId: draft.client_id, metadata: { launchRequestId: (lr as any).id } });
+    toast.success('Draft resubmitted for review');
+  };
+
   const adsets = items.filter(i => i.item_type === 'adset');
   const ads = items.filter(i => i.item_type === 'ad');
 
@@ -606,6 +663,49 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
             </div>
           </TabsContent>
         </Tabs>
+      )}
+
+      {/* Status Actions */}
+      {draft.status === 'draft' && (
+        <Card className="border-amber-400/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Submit for Review</p>
+                <p className="text-xs text-muted-foreground">Send this draft to admin for approval before execution.</p>
+              </div>
+              <Button size="sm" className="gap-1.5" onClick={submitForReview} disabled={saving}>
+                <Rocket className="h-3.5 w-3.5" /> Submit for Review
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {draft.status === 'rejected' && (
+        <Card className="border-destructive/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Draft was rejected</p>
+                <p className="text-xs text-muted-foreground">Make changes and resubmit when ready.</p>
+              </div>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={resubmit} disabled={saving}>
+                <Rocket className="h-3.5 w-3.5" /> Resubmit
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {(draft.status === 'executed' || draft.status === 'approved' || draft.status === 'ready_for_review' || draft.status === 'submitted_for_execution') && (
+        <Card className="border-blue-400/20">
+          <CardContent className="p-4 flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground capitalize">{(statusConfig[draft.status] || statusConfig.draft).label}</p>
+              <p className="text-xs text-muted-foreground">Go to Executions page to view launch status and details.</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Notes */}
