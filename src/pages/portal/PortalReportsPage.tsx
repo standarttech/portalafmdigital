@@ -15,18 +15,6 @@ import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
 
-function getPreviousPeriod(range: DateRange) {
-  if (range.label === 'Previous month') {
-    const refMonth = subMonths(range.from, 1);
-    return { from: startOfMonth(refMonth), to: endOfMonth(refMonth), label: 'month before' };
-  }
-  if (range.label === 'This month') {
-    const prev = subMonths(new Date(), 1);
-    return { from: startOfMonth(prev), to: endOfMonth(prev), label: 'previous month' };
-  }
-  const duration = range.to.getTime() - range.from.getTime();
-  return { from: new Date(range.from.getTime() - duration), to: new Date(range.from.getTime() - 1), label: 'previous period' };
-}
 
 function dedup(snapshots: any[]): any[] {
   const map = new Map<string, any>();
