@@ -700,7 +700,9 @@ function BudgetTab({ draft, onSave, saving }: { draft: Draft; onSave: (u: Partia
             </Select>
           </div>
         </div>
-        <Button size="sm" onClick={() => onSave(local)} disabled={saving}>
+        <Button size="sm" onClick={() => onSave({
+          budget_mode: local.budget_mode, total_budget: local.total_budget, bid_strategy: local.bid_strategy,
+        })} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Budget Settings
         </Button>
       </CardContent>
