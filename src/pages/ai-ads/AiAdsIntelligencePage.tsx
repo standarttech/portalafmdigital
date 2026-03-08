@@ -533,7 +533,7 @@ function OptimizationQueue({ recs, clients, clientName, onRefresh }: {
     toast.success('Draft created from recommendation');
   };
 
-  const recTypes = ['no_delivery_check', 'pause_loser', 'increase_budget', 'fix_creative_issue', 'investigate_rejection', 'relaunch_with_changes'];
+  const recTypes = ['no_delivery_check', 'pause_loser', 'increase_budget', 'fix_creative_issue', 'high_cpc_alert', 'investigate_rejection', 'relaunch_with_changes', 'duplicate_winner'];
 
   return (
     <div className="space-y-4">

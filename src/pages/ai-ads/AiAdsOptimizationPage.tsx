@@ -604,8 +604,8 @@ function ProposeDialog({ open, onOpenChange, clients, recs, userId, onCreated }:
           pause_loser: 'pause_campaign', increase_budget: 'increase_budget',
           reduce_budget: 'decrease_budget', relaunch_with_changes: 'relaunch_with_changes',
           duplicate_winner: 'duplicate_winner', fix_creative_issue: 'mark_for_review',
-          fix_targeting_issue: 'mark_for_review', investigate_rejection: 'mark_for_review',
-          no_delivery_check: 'mark_for_review',
+          high_cpc_alert: 'decrease_budget', fix_targeting_issue: 'mark_for_review',
+          investigate_rejection: 'mark_for_review', no_delivery_check: 'mark_for_review',
         };
         if (map[rec.recommendation_type]) setActionType(map[rec.recommendation_type]);
       }
