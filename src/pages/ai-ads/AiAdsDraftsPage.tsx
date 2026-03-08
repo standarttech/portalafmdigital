@@ -383,6 +383,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
       buying_type: 'buying_type', notes: 'notes', ad_account_id: 'ad_account_id',
       config: 'config', validation_status: 'validation_status',
       validation_errors: 'validation_errors', preview_payload: 'preview_payload',
+      status: 'status',
     };
     for (const [key, col] of Object.entries(fieldMap)) {
       if (key in updates) payload[col] = (updates as any)[key];
