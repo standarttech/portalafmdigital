@@ -111,6 +111,7 @@ const PortalCampaignsPage = React.lazy(() => import("@/pages/portal/PortalCampai
 const PortalRecommendationsPage = React.lazy(() => import("@/pages/portal/PortalRecommendationsPage"));
 const PortalReportsPage = React.lazy(() => import("@/pages/portal/PortalReportsPage"));
 const PortalSettingsPage = React.lazy(() => import("@/pages/portal/PortalSettingsPage"));
+const PortalFilesPage = React.lazy(() => import("@/pages/portal/PortalFilesPage"));
 const PortalLoginPage = React.lazy(() => import("@/pages/portal/PortalLoginPage"));
 const PortalAcceptInvitePage = React.lazy(() => import("@/pages/portal/PortalAcceptInvitePage"));
 import AiAdsLayout from "@/components/layout/AiAdsLayout";
