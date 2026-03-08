@@ -219,11 +219,11 @@ export default function ClientPortalPage() {
         </Card>
       )}
 
-      {/* Foundation notice */}
+      {/* Navigation hint */}
       <Card className="border-muted-foreground/10">
         <CardContent className="p-4">
           <p className="text-xs text-muted-foreground text-center">
-            This is a performance overview dashboard. Full client portal with detailed analytics, reporting exports, and dedicated access is in development.
+            For detailed reports, exports, and personalized access, visit the <a href="/portal" className="text-primary hover:underline">Client Portal</a>.
           </p>
         </CardContent>
       </Card>
