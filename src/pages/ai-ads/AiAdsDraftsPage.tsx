@@ -431,7 +431,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
     const hasWarnings = errors.some(e => e.severity === 'warning');
     const status = hasErrors ? 'invalid' : hasWarnings ? 'warning' : 'valid';
     setValidationErrors(errors);
-    saveDraft({ ...draft, validation_status: status, validation_errors: errors as any[] });
+    saveDraft({ validation_status: status, validation_errors: errors as any[] });
     logGosAction('validate', 'campaign_draft', draft.id, draft.campaign_name || draft.name, { metadata: { status, errorCount: errors.length } });
     if (status === 'valid') toast.success('Draft is valid and ready');
     else toast.warning(`Found ${errors.length} issue${errors.length > 1 ? 's' : ''}`);
@@ -439,7 +439,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
 
   const generatePreview = () => {
     const payload = buildPreviewPayload(draft, items);
-    saveDraft({ ...draft, preview_payload: payload });
+    saveDraft({ preview_payload: payload });
     logGosAction('preview', 'campaign_draft', draft.id, draft.campaign_name || draft.name);
     toast.success('Preview payload generated');
   };
