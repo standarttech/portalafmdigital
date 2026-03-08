@@ -323,10 +323,33 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
                   </div>
                 </div>
               ))}
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={syncNow}>
-                <RefreshCw className="h-3.5 w-3.5" /> Синхронизировать сейчас
-              </Button>
-            </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={syncNow}>
+                  <RefreshCw className="h-3.5 w-3.5" /> Синхронизировать сейчас
+                </Button>
+              </div>
+              {/* Meta Auto-sync toggle */}
+              <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-secondary/10">
+                <div className="min-w-0 flex-1 mr-3">
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <CalendarClock className="h-3.5 w-3.5 text-primary" />
+                    Автосинхронизация Meta
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Данные подтягиваются каждый час за последние 3 дня (покрывает окно атрибуции Facebook). 
+                    Ручной синк — за 30 дней.
+                  </p>
+                </div>
+                <Switch checked={metaAutoSync} onCheckedChange={async (enabled) => {
+                  setMetaAutoSync(enabled);
+                  await supabase.from('platform_settings').upsert({
+                    key: `meta_auto_sync_${clientId}`,
+                    value: { enabled } as any,
+                    updated_by: null,
+                  }, { onConflict: 'key' });
+                  toast.success(enabled ? 'Автосинхронизация Meta включена' : 'Автосинхронизация Meta отключена');
+                }} className="flex-shrink-0" />
+              </div>
           )}
 
           {/* Add accounts — multi-select with search */}
