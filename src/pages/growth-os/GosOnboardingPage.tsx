@@ -16,6 +16,7 @@ import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, S
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import type { TranslationKey } from '@/i18n/translations';
 
 const stepFieldTypes = ['text', 'email', 'tel', 'url', 'select', 'file', 'checkbox'];
