@@ -204,98 +204,125 @@ serve(async (req) => {
           } catch { /* non-critical */ }
         }
 
-        // ── Auto-generate recommendations ──
+        // ── Smart proposal engine: preset-driven recommendations ──
         const m = result.metrics;
         const executedAt = lr.executed_at ? new Date(lr.executed_at).getTime() : 0;
         const hoursSinceLaunch = executedAt ? (Date.now() - executedAt) / 3600000 : 0;
 
-        const recsToUpsert: any[] = [];
+        // Load active presets
+        const { data: presets } = await svc.from("optimization_presets")
+          .select("*").eq("is_active", true);
 
-        if (m.impressions === 0 && m.spend === 0 && hoursSinceLaunch > 24) {
-          recsToUpsert.push({
+        // Check for existing non-dismissed proposals for this launch to avoid duplicates
+        const { data: existingRecs } = await svc.from("ai_recommendations")
+          .select("id, recommendation_type, status")
+          .eq("client_id", lr.client_id)
+          .in("status", ["new", "reviewed"])
+          .filter("metadata->>launch_request_id", "eq", lr.id);
+        const existingTypes = new Set((existingRecs || []).map((r: any) => r.recommendation_type));
+
+        // Also check existing optimization actions to avoid re-proposing actioned items
+        const { data: existingActions } = await svc.from("optimization_actions")
+          .select("action_type, status")
+          .eq("client_id", lr.client_id)
+          .in("status", ["proposed", "approved", "executing"])
+          .filter("external_campaign_id", "eq", lr.external_campaign_id || "");
+        const activeActionTypes = new Set((existingActions || []).map((a: any) => a.action_type));
+
+        const recsToInsert: any[] = [];
+
+        const addRec = (type: string, title: string, desc: string, priority: string, evidence: any) => {
+          if (existingTypes.has(type)) return; // dedup
+          // Don't propose if there's already an active optimization action for similar type
+          const actionMap: Record<string, string[]> = {
+            no_delivery_check: ["relaunch_with_changes"],
+            pause_loser: ["pause_campaign", "pause_adset"],
+            increase_budget: ["increase_budget"],
+            fix_creative_issue: ["mark_for_review"],
+            investigate_rejection: ["mark_for_review"],
+            relaunch_with_changes: ["relaunch_with_changes"],
+            duplicate_winner: ["duplicate_winner"],
+          };
+          if ((actionMap[type] || []).some(at => activeActionTypes.has(at))) return;
+          existingTypes.add(type); // prevent intra-cycle dups
+          recsToInsert.push({
             client_id: lr.client_id,
-            title: "Investigate zero delivery",
-            description: `Campaign ${lr.external_campaign_id} has 0 impressions after ${Math.round(hoursSinceLaunch)}h. Check targeting, bidding, and account status.`,
-            recommendation_type: "no_delivery_check",
-            priority: "high",
-            status: "new",
-            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
+            title, description: desc,
+            recommendation_type: type,
+            priority, status: "new",
+            metadata: {
+              source: "auto_sync",
+              launch_request_id: lr.id,
+              external_campaign_id: lr.external_campaign_id,
+              evidence,
+              generated_by_preset: true,
+            },
           });
-        }
+        };
 
-        if (m.spend > 50 && m.leads === 0 && m.purchases === 0) {
-          recsToUpsert.push({
-            client_id: lr.client_id,
-            title: "Consider pausing underperformer",
-            description: `$${m.spend.toFixed(2)} spent with zero conversions. Pause or restructure.`,
-            recommendation_type: "pause_loser",
-            priority: "high",
-            status: "new",
-            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
-          });
-        }
+        for (const preset of (presets || [])) {
+          const cond = preset.rule_condition || {};
 
-        if (m.ctr > 1.5 && m.leads > 3 && m.spend > 5) {
-          recsToUpsert.push({
-            client_id: lr.client_id,
-            title: "Scale winning campaign",
-            description: `Strong CTR (${m.ctr.toFixed(1)}%) and ${m.leads} leads. Consider increasing budget or duplicating.`,
-            recommendation_type: "increase_budget",
-            priority: "medium",
-            status: "new",
-            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
-          });
-        }
-
-        if (m.impressions > 500 && m.ctr < 0.5) {
-          recsToUpsert.push({
-            client_id: lr.client_id,
-            title: "Fix creative or targeting",
-            description: `Low CTR (${m.ctr.toFixed(2)}%) with ${m.impressions} impressions. Review ad creative or audience.`,
-            recommendation_type: "fix_creative_issue",
-            priority: "medium",
-            status: "new",
-            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
-          });
-        }
-
-        if (result.campaign_status && ["DISAPPROVED", "WITH_ISSUES"].includes(result.campaign_status)) {
-          recsToUpsert.push({
-            client_id: lr.client_id,
-            title: "Investigate platform rejection",
-            description: `Campaign reported as ${result.campaign_status} by Meta. Review ad policies.`,
-            recommendation_type: "investigate_rejection",
-            priority: "high",
-            status: "new",
-            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
-          });
-        }
-
-        if (lr.execution_status === "execution_partial") {
-          recsToUpsert.push({
-            client_id: lr.client_id,
-            title: "Relaunch with fixes",
-            description: `Partial execution — some entities failed. Fix issues and relaunch.`,
-            recommendation_type: "relaunch_with_changes",
-            priority: "high",
-            status: "new",
-            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
-          });
-        }
-
-        // Deduplicate: only insert if no existing 'new' rec of same type for same launch
-        for (const rec of recsToUpsert) {
-          // Check for any non-dismissed rec of same type for same launch (prevents spam after review)
-          const { data: existing } = await svc.from("ai_recommendations")
-            .select("id, status")
-            .eq("client_id", rec.client_id)
-            .eq("recommendation_type", rec.recommendation_type)
-            .in("status", ["new", "reviewed"])
-            .filter("metadata->>launch_request_id", "eq", lr.id)
-            .limit(1);
-          if (!existing || existing.length === 0) {
-            await svc.from("ai_recommendations").insert(rec);
+          if (cond.type === "no_delivery" && m.impressions === 0 && m.spend === 0 && hoursSinceLaunch > (cond.threshold_hours || 24)) {
+            addRec("no_delivery_check", "Investigate zero delivery",
+              `Campaign ${lr.external_campaign_id} has 0 impressions after ${Math.round(hoursSinceLaunch)}h. Preset: "${preset.name}"`,
+              preset.proposed_priority || "high",
+              { hours_since_launch: Math.round(hoursSinceLaunch), preset_id: preset.id, preset_name: preset.name });
           }
+
+          if (cond.type === "spend_no_results" && m.spend > (cond.spend_threshold || 50) && m.leads === 0 && m.purchases === 0) {
+            addRec("pause_loser", "Consider pausing underperformer",
+              `$${m.spend.toFixed(2)} spent with zero conversions. Preset: "${preset.name}"`,
+              preset.proposed_priority || "high",
+              { spend: m.spend, preset_id: preset.id, preset_name: preset.name });
+          }
+
+          if (cond.type === "low_ctr" && m.impressions > (cond.min_impressions || 500) && m.ctr < (cond.ctr_threshold || 0.5)) {
+            addRec("fix_creative_issue", "Fix creative or targeting",
+              `Low CTR (${m.ctr.toFixed(2)}%) with ${m.impressions} impressions. Preset: "${preset.name}"`,
+              preset.proposed_priority || "medium",
+              { ctr: m.ctr, impressions: m.impressions, preset_id: preset.id, preset_name: preset.name });
+          }
+
+          if (cond.type === "winner_detected" && m.ctr > (cond.ctr_threshold || 1.5) && m.leads >= (cond.min_leads || 3) && m.spend > 5) {
+            addRec("increase_budget", "Scale winning campaign",
+              `Strong CTR (${m.ctr.toFixed(1)}%) and ${m.leads} leads. Preset: "${preset.name}"`,
+              preset.proposed_priority || "medium",
+              { ctr: m.ctr, leads: m.leads, spend: m.spend, preset_id: preset.id, preset_name: preset.name });
+          }
+
+          if (cond.type === "platform_rejection" && result.campaign_status && ["DISAPPROVED", "WITH_ISSUES"].includes(result.campaign_status)) {
+            addRec("investigate_rejection", "Investigate platform rejection",
+              `Campaign reported as ${result.campaign_status} by Meta. Preset: "${preset.name}"`,
+              preset.proposed_priority || "high",
+              { campaign_status: result.campaign_status, preset_id: preset.id, preset_name: preset.name });
+          }
+
+          if (cond.type === "partial_execution" && lr.execution_status === "execution_partial") {
+            addRec("relaunch_with_changes", "Relaunch with fixes",
+              `Partial execution — some entities failed. Preset: "${preset.name}"`,
+              preset.proposed_priority || "high",
+              { execution_status: lr.execution_status, preset_id: preset.id, preset_name: preset.name });
+          }
+
+          if (cond.type === "strong_winner" && m.ctr > (cond.ctr_threshold || 2.0) && m.leads >= (cond.min_leads || 5)) {
+            addRec("duplicate_winner", "Duplicate winning campaign",
+              `Exceptional performance: ${m.ctr.toFixed(1)}% CTR, ${m.leads} leads. Preset: "${preset.name}"`,
+              preset.proposed_priority || "medium",
+              { ctr: m.ctr, leads: m.leads, preset_id: preset.id, preset_name: preset.name });
+          }
+
+          if (cond.type === "high_cpc" && m.cpc > (cond.cpc_threshold || 10) && m.clicks >= (cond.min_clicks || 5)) {
+            addRec("fix_creative_issue", "High CPC alert",
+              `CPC is $${m.cpc.toFixed(2)} with ${m.clicks} clicks. Preset: "${preset.name}"`,
+              preset.proposed_priority || "medium",
+              { cpc: m.cpc, clicks: m.clicks, preset_id: preset.id, preset_name: preset.name });
+          }
+        }
+
+        // Batch insert all new recs
+        if (recsToInsert.length > 0) {
+          await svc.from("ai_recommendations").insert(recsToInsert);
         }
 
       } catch (e: any) {

@@ -1122,6 +1122,7 @@ export type Database = {
         Row: {
           config: Json | null
           created_at: string
+          creative_asset_id: string | null
           draft_id: string
           id: string
           item_type: string
@@ -1136,6 +1137,7 @@ export type Database = {
         Insert: {
           config?: Json | null
           created_at?: string
+          creative_asset_id?: string | null
           draft_id: string
           id?: string
           item_type?: string
@@ -1150,6 +1152,7 @@ export type Database = {
         Update: {
           config?: Json | null
           created_at?: string
+          creative_asset_id?: string | null
           draft_id?: string
           id?: string
           item_type?: string
@@ -1162,6 +1165,13 @@ export type Database = {
           validation_errors?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "campaign_draft_items_creative_asset_id_fkey"
+            columns: ["creative_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "campaign_draft_items_draft_id_fkey"
             columns: ["draft_id"]
@@ -1993,6 +2003,65 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      creative_assets: {
+        Row: {
+          asset_type: string
+          client_id: string
+          created_at: string
+          created_by: string
+          file_path: string | null
+          file_size_bytes: number | null
+          id: string
+          mime_type: string | null
+          name: string
+          notes: string | null
+          status: string
+          tags: string[] | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          asset_type?: string
+          client_id: string
+          created_at?: string
+          created_by: string
+          file_path?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          notes?: string | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          asset_type?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          file_path?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          notes?: string | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_assets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_bot_profiles: {
         Row: {
@@ -3876,6 +3945,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      optimization_presets: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          proposed_action_type: string
+          proposed_priority: string
+          rule_condition: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          proposed_action_type?: string
+          proposed_priority?: string
+          rule_condition?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          proposed_action_type?: string
+          proposed_priority?: string
+          rule_condition?: Json
+          updated_at?: string
+        }
+        Relationships: []
       }
       platform_connections: {
         Row: {

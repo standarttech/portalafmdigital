@@ -101,6 +101,9 @@ const AiAdsExecutionsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsExecuti
 const AiAdsRecommendationsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsRecommendationsPage"));
 const AiAdsIntelligencePage = React.lazy(() => import("@/pages/ai-ads/AiAdsIntelligencePage"));
 const AiAdsOptimizationPage = React.lazy(() => import("@/pages/ai-ads/AiAdsOptimizationPage"));
+const AiAdsCreativesPage = React.lazy(() => import("@/pages/ai-ads/AiAdsCreativesPage"));
+const AiAdsPresetsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsPresetsPage"));
+const AiAdsClientReportPage = React.lazy(() => import("@/pages/ai-ads/AiAdsClientReportPage"));
 import AiAdsLayout from "@/components/layout/AiAdsLayout";
 import AiInfraLayout from "@/components/layout/AiInfraLayout";
 const AiInfraProvidersPage = React.lazy(() => import("@/pages/ai-infra/AiInfraProvidersPage"));
@@ -484,6 +487,9 @@ function AppRoutes() {
         <Route path="/ai-ads/executions" element={<AiAdsExecutionsPage />} />
         <Route path="/ai-ads/intelligence" element={<AiAdsIntelligencePage />} />
         <Route path="/ai-ads/optimization" element={<AiAdsOptimizationPage />} />
+        <Route path="/ai-ads/creatives" element={<AiAdsCreativesPage />} />
+        <Route path="/ai-ads/presets" element={<AiAdsPresetsPage />} />
+        <Route path="/ai-ads/client-report" element={<AiAdsClientReportPage />} />
       </Route>
       {/* AI Infrastructure — admin only */}
       <Route element={<ModuleGuard module="ai_infra"><AiInfraLayout /></ModuleGuard>}>
