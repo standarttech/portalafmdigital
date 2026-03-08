@@ -483,6 +483,7 @@ function AppRoutes() {
         <Route path="/ai-ads/drafts" element={<AiAdsDraftsPage />} />
         <Route path="/ai-ads/executions" element={<AiAdsExecutionsPage />} />
         <Route path="/ai-ads/intelligence" element={<AiAdsIntelligencePage />} />
+        <Route path="/ai-ads/optimization" element={<AiAdsOptimizationPage />} />
       </Route>
       {/* AI Infrastructure — admin only */}
       <Route element={<ModuleGuard module="ai_infra"><AiInfraLayout /></ModuleGuard>}>

@@ -57,3 +57,6 @@ verify_jwt = false
 [functions.sync-launched-campaigns]
 verify_jwt = false
 
+[functions.execute-optimization]
+verify_jwt = false
+

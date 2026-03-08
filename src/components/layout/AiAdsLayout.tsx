@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Bot, MonitorSmartphone, BrainCircuit,
-  Lightbulb, FileStack, Rocket, TrendingUp, Brain
+  Lightbulb, FileStack, Rocket, TrendingUp, Brain, Zap
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
@@ -21,6 +21,7 @@ const navItems = [
   { label: 'Campaign Drafts', icon: FileStack, path: '/ai-ads/drafts' },
   { label: 'Executions', icon: Rocket, path: '/ai-ads/executions' },
   { label: 'Intelligence', icon: Brain, path: '/ai-ads/intelligence' },
+  { label: 'Optimization', icon: Zap, path: '/ai-ads/optimization' },
 ];
 
 function AiAdsSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
