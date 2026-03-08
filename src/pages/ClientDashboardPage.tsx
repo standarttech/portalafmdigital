@@ -67,6 +67,8 @@ export default function ClientDashboardPage() {
   const [campaignPlatformMap, setCampaignPlatformMap] = useState<Record<string, string>>({});
   const [budgetPlan, setBudgetPlan] = useState<BudgetPlan | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
+  const [recommendations, setRecommendations] = useState<{ id: string; content: string; created_at: string; user_name: string }[]>([]);
+  const [hasMetaApiAccounts, setHasMetaApiAccounts] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<PlatformKey>('all');
   const [chartNormalized, setChartNormalized] = useState(true);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
@@ -107,12 +109,12 @@ export default function ClientDashboardPage() {
     })();
   }, [user]);
 
-  // Fetch metrics, campaigns, budget, reports
+  // Fetch metrics, campaigns, budget, reports, recommendations
   const fetchData = useCallback(async () => {
     if (clientIds.length === 0) return;
     const cid = clientIds[0];
 
-    const [metricsRes, campaignsRes, budgetRes, reportsRes] = await Promise.all([
+    const [metricsRes, campaignsRes, budgetRes, reportsRes, adAccountsRes, commentsRes] = await Promise.all([
       supabase.from('daily_metrics')
         .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
         .eq('client_id', cid).order('date', { ascending: true }),
@@ -129,6 +131,16 @@ export default function ClientDashboardPage() {
         .eq('client_id', cid)
         .eq('status', 'published')
         .order('created_at', { ascending: false }),
+      supabase.from('ad_accounts')
+        .select('id')
+        .eq('client_id', cid)
+        .eq('is_active', true)
+        .limit(1),
+      supabase.from('client_comments')
+        .select('id, content, created_at, user_id')
+        .eq('client_id', cid)
+        .order('created_at', { ascending: false })
+        .limit(10),
     ]);
 
     if (metricsRes.data) setDailyMetrics(metricsRes.data as DailyRow[]);
@@ -144,6 +156,20 @@ export default function ClientDashboardPage() {
 
     if (budgetRes.data) setBudgetPlan(budgetRes.data as BudgetPlan);
     if (reportsRes.data) setReports(reportsRes.data as Report[]);
+    setHasMetaApiAccounts((adAccountsRes.data?.length || 0) > 0);
+
+    if (commentsRes.data && commentsRes.data.length > 0) {
+      const userIds = [...new Set(commentsRes.data.map(c => c.user_id))];
+      const { data: users } = await supabase.from('agency_users').select('user_id, display_name').in('user_id', userIds);
+      const nameMap: Record<string, string> = {};
+      (users || []).forEach(u => { nameMap[u.user_id] = u.display_name || 'Team'; });
+      setRecommendations(commentsRes.data.map(c => ({
+        id: c.id,
+        content: c.content,
+        created_at: c.created_at,
+        user_name: nameMap[c.user_id] || 'Team',
+      })));
+    }
   }, [clientIds]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -179,12 +205,12 @@ export default function ClientDashboardPage() {
     return currentMonthMetrics.reduce((sum, m) => sum + m.leads, 0);
   }, [currentMonthMetrics]);
 
-  // Platform-specific spend check — if no sheet URL, show 0 for that platform
+  // Platform-specific spend check — check both sheet URLs and direct Meta API accounts
   const platformHasData = useMemo(() => ({
-    meta: !!client?.meta_sheet_url,
+    meta: !!client?.meta_sheet_url || hasMetaApiAccounts,
     google: !!client?.google_sheet_url,
     tiktok: !!client?.tiktok_sheet_url,
-  }), [client]);
+  }), [client, hasMetaApiAccounts]);
 
   // Daily table data
   const dailyTableData = useMemo(() => {
@@ -513,15 +539,15 @@ export default function ClientDashboardPage() {
                   }}
                 />
                 <Card className="glass-card">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">Spend by Platform</CardTitle></CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">{t('clients.spendByPlatform')}</CardTitle></CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       {(['meta', 'google', 'tiktok'] as const).map(p => {
                         const hasSheet = platformHasData[p];
                         const label = p === 'meta' ? 'Meta Ads' : p === 'google' ? 'Google Ads' : 'TikTok Ads';
-                        // Compute platform spend
                         const platformMetrics = dailyMetrics.filter(m => (campaignPlatformMap[m.campaign_id] as string) === (p as string));
                         const platformSpend = platformMetrics.reduce((s, m) => s + Number(m.spend), 0);
+                        const sourceLabel = p === 'meta' && hasMetaApiAccounts ? 'API' : hasSheet ? 'Sheets' : '';
                         return (
                           <div key={p} className="flex items-center justify-between p-2 rounded-lg border border-border/50 bg-secondary/20">
                             <div>
@@ -530,15 +556,37 @@ export default function ClientDashboardPage() {
                                 <p className="text-[10px] text-muted-foreground">{formatCurrency(platformSpend)}</p>
                               )}
                             </div>
-                            <Badge variant="outline" className={`text-[9px] ${hasSheet ? 'border-success/30 text-success' : 'border-border text-muted-foreground'}`}>
-                              {hasSheet ? 'Connected' : 'Not connected'}
-                            </Badge>
+                            <div className="flex items-center gap-1.5">
+                              {sourceLabel && (
+                                <Badge variant="outline" className="text-[8px] border-primary/30 text-primary">{sourceLabel}</Badge>
+                              )}
+                              <Badge variant="outline" className={`text-[9px] ${hasSheet ? 'border-success/30 text-success' : 'border-border text-muted-foreground'}`}>
+                                {hasSheet ? t('common.connected') : t('common.notConnected')}
+                              </Badge>
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Recommendations from team */}
+                {recommendations.length > 0 && (
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">{t('clients.recommendations')}</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {recommendations.slice(0, 5).map(rec => (
+                          <div key={rec.id} className="p-2.5 rounded-lg bg-secondary/30 border border-border/30">
+                            <p className="text-xs text-foreground">{rec.content}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1">— {rec.user_name} · {format(new Date(rec.created_at), 'dd.MM.yyyy')}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </TabsContent>
