@@ -204,7 +204,39 @@ serve(async (req) => {
 
       // 4. Web Push
       if (channels.includes("webpush") && prefs?.webpush_enabled && prefs?.webpush_subscription) {
-        console.log("Web push would be sent to user:", userId);
+        try {
+          console.log(`Sending web push to user ${userId}`);
+          const wpRes = await fetch(`${supabaseUrl}/functions/v1/send-webpush`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              subscription: prefs.webpush_subscription,
+              title,
+              message,
+              link,
+              tag: type,
+            }),
+          });
+          const wpData = await wpRes.json();
+          if (wpData.success) {
+            deliveredChannels.push("webpush");
+            if (wpData.expired) {
+              // Clean up expired subscription
+              await supabase
+                .from("notification_preferences")
+                .update({ webpush_enabled: false, webpush_subscription: null })
+                .eq("user_id", userId);
+              console.warn(`Cleaned up expired webpush subscription for user ${userId}`);
+            }
+          } else {
+            console.error("Web push delivery failed:", JSON.stringify(wpData));
+          }
+        } catch (e) {
+          console.error("Web push error:", e);
+        }
       }
 
       results[userId] = deliveredChannels;
