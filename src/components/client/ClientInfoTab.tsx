@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Save, Loader2, ExternalLink, Globe, Instagram, Facebook, Linkedin, Youtube, MessageSquare, FileText, Users, MapPin, Target, Briefcase, Phone, Mail, Calendar } from 'lucide-react';
+import { Save, Loader2, ExternalLink, Globe, Instagram, Facebook, Linkedin, Youtube, MessageSquare, FileText, Users, MapPin, Target, Briefcase, Phone, Mail, Calendar, Lock } from 'lucide-react';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface ClientInfo {
@@ -46,8 +47,21 @@ const defaultInfo: ClientInfo = {
   contract_end: null, additional_notes: '',
 };
 
+// Fields that clients are allowed to edit
+const CLIENT_EDITABLE_FIELDS: (keyof ClientInfo)[] = [
+  'brief_url', 'website_url', 'instagram_url', 'facebook_url', 'tiktok_url',
+  'linkedin_url', 'youtube_url', 'twitter_url', 'telegram_url',
+  'business_niche', 'target_audience', 'geo_targeting', 'key_competitors',
+  'brand_guidelines_url', 'landing_pages', 'crm_system',
+  'contact_person', 'contact_phone', 'contact_email', 'additional_notes',
+];
+
 export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
+  const { effectiveRole } = useAuth();
+  const isClient = effectiveRole === 'Client';
+  const canEdit = isAdmin || effectiveRole === 'MediaBuyer' || isClient;
+
   const [info, setInfo] = useState<ClientInfo>(defaultInfo);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -110,38 +124,76 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
 
   const u = (key: keyof ClientInfo, value: string | number) => setInfo(prev => ({ ...prev, [key]: value }));
 
+  // For client role: check if field is editable
+  const isFieldEditable = (key: keyof ClientInfo) => {
+    if (!isClient) return true; // Admins/MediaBuyers can edit everything
+    return CLIENT_EDITABLE_FIELDS.includes(key);
+  };
+
+  const renderField = (key: keyof ClientInfo, label: string, opts?: { type?: string; placeholder?: string; icon?: any; textarea?: boolean }) => {
+    const editable = isFieldEditable(key);
+    const Icon = opts?.icon;
+    return (
+      <div className="space-y-1.5">
+        <Label className="text-xs flex items-center gap-1">
+          {Icon && <Icon className="h-3 w-3" />}
+          {label}
+          {!editable && <Lock className="h-2.5 w-2.5 text-muted-foreground ml-0.5" />}
+        </Label>
+        {opts?.textarea ? (
+          <Textarea
+            value={String(info[key] || '')}
+            onChange={e => u(key, e.target.value)}
+            placeholder={opts?.placeholder}
+            className="text-sm min-h-[60px]"
+            disabled={!editable}
+          />
+        ) : (
+          <div className="flex gap-1.5">
+            <Input
+              type={opts?.type || 'text'}
+              value={info[key] === null ? '' : String(info[key])}
+              onChange={e => u(key, opts?.type === 'number' ? Number(e.target.value) : e.target.value)}
+              placeholder={opts?.placeholder}
+              className="text-sm h-8"
+              disabled={!editable}
+            />
+            {typeof info[key] === 'string' && (info[key] as string).startsWith('http') && (
+              <a href={info[key] as string} target="_blank" rel="noreferrer">
+                <Button variant="ghost" size="icon" className="h-8 w-8"><ExternalLink className="h-3.5 w-3.5" /></Button>
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-4 max-w-3xl">
+      {/* Client self-service banner */}
+      {isClient && (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+          {t('clientInfo.selfServiceHint' as TranslationKey)}
+        </div>
+      )}
+
       {/* Brief & Budget */}
       <Card className="glass-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Бриф и бюджет</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> {t('clientInfo.briefBudget' as TranslationKey)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Ссылка на бриф</Label>
-              <div className="flex gap-1.5">
-                <Input value={info.brief_url} onChange={e => u('brief_url', e.target.value)} placeholder="https://docs.google.com/..." className="text-sm h-8" />
-                {info.brief_url && <a href={info.brief_url} target="_blank" rel="noreferrer"><Button variant="ghost" size="icon" className="h-8 w-8"><ExternalLink className="h-3.5 w-3.5" /></Button></a>}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Ежемесячный бюджет ($)</Label>
-              <Input type="number" value={info.monthly_budget || ''} onChange={e => u('monthly_budget', Number(e.target.value))} placeholder="5000" className="text-sm h-8" />
-            </div>
+            {renderField('brief_url', t('clientInfo.briefUrl' as TranslationKey), { placeholder: 'https://docs.google.com/...' })}
+            {renderField('monthly_budget', t('clientInfo.monthlyBudget' as TranslationKey), { type: 'number', placeholder: '5000' })}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Брендбук / гайдлайны</Label>
-              <Input value={info.brand_guidelines_url} onChange={e => u('brand_guidelines_url', e.target.value)} placeholder="https://..." className="text-sm h-8" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">CRM клиента</Label>
-              <Input value={info.crm_system} onChange={e => u('crm_system', e.target.value)} placeholder="GoHighLevel, HubSpot..." className="text-sm h-8" />
-            </div>
+            {renderField('brand_guidelines_url', t('clientInfo.brandGuidelines' as TranslationKey), { placeholder: 'https://...' })}
+            {renderField('crm_system', t('clientInfo.crmSystem' as TranslationKey), { placeholder: 'GoHighLevel, HubSpot...' })}
           </div>
         </CardContent>
       </Card>
@@ -149,56 +201,34 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
       {/* Business Info */}
       <Card className="glass-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> О бизнесе</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> {t('clientInfo.aboutBusiness' as TranslationKey)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Ниша / сфера</Label>
-              <Input value={info.business_niche} onChange={e => u('business_niche', e.target.value)} placeholder="Недвижимость, e-com..." className="text-sm h-8" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Гео таргетинг</Label>
-              <Input value={info.geo_targeting} onChange={e => u('geo_targeting', e.target.value)} placeholder="USA, EU, CIS..." className="text-sm h-8" />
-            </div>
+            {renderField('business_niche', t('clientInfo.niche' as TranslationKey), { placeholder: 'Real estate, e-com...' })}
+            {renderField('geo_targeting', t('clientInfo.geoTargeting' as TranslationKey), { placeholder: 'USA, EU, CIS...' })}
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Целевая аудитория</Label>
-            <Textarea value={info.target_audience} onChange={e => u('target_audience', e.target.value)} placeholder="Мужчины 25-45, доход средний+, интересы..." className="text-sm min-h-[60px]" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Основные конкуренты</Label>
-            <Textarea value={info.key_competitors} onChange={e => u('key_competitors', e.target.value)} placeholder="Конкурент 1, Конкурент 2..." className="text-sm min-h-[50px]" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Посадочные страницы</Label>
-            <Textarea value={info.landing_pages} onChange={e => u('landing_pages', e.target.value)} placeholder="https://landing1.com, https://landing2.com" className="text-sm min-h-[50px]" />
-          </div>
+          {renderField('target_audience', t('clientInfo.targetAudience' as TranslationKey), { textarea: true, placeholder: 'Males 25-45, income mid+...' })}
+          {renderField('key_competitors', t('clientInfo.competitors' as TranslationKey), { textarea: true, placeholder: 'Competitor 1, Competitor 2...' })}
+          {renderField('landing_pages', t('clientInfo.landingPages' as TranslationKey), { textarea: true, placeholder: 'https://landing1.com, https://landing2.com' })}
         </CardContent>
       </Card>
 
       {/* Social Media */}
       <Card className="glass-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /> Соцсети и ссылки</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /> {t('clientInfo.socialLinks' as TranslationKey)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              { key: 'website_url' as const, label: 'Сайт', icon: Globe, placeholder: 'https://...' },
-              { key: 'instagram_url' as const, label: 'Instagram', icon: Instagram, placeholder: 'https://instagram.com/...' },
-              { key: 'facebook_url' as const, label: 'Facebook', icon: Facebook, placeholder: 'https://facebook.com/...' },
-              { key: 'tiktok_url' as const, label: 'TikTok', icon: Globe, placeholder: 'https://tiktok.com/@...' },
-              { key: 'linkedin_url' as const, label: 'LinkedIn', icon: Linkedin, placeholder: 'https://linkedin.com/...' },
-              { key: 'youtube_url' as const, label: 'YouTube', icon: Youtube, placeholder: 'https://youtube.com/...' },
-              { key: 'telegram_url' as const, label: 'Telegram', icon: MessageSquare, placeholder: 'https://t.me/...' },
-              { key: 'twitter_url' as const, label: 'X (Twitter)', icon: Globe, placeholder: 'https://x.com/...' },
-            ].map(s => (
-              <div key={s.key} className="space-y-1.5">
-                <Label className="text-xs flex items-center gap-1.5"><s.icon className="h-3 w-3" />{s.label}</Label>
-                <Input value={info[s.key]} onChange={e => u(s.key, e.target.value)} placeholder={s.placeholder} className="text-sm h-8" />
-              </div>
-            ))}
+            {renderField('website_url', t('clientInfo.website' as TranslationKey), { icon: Globe, placeholder: 'https://...' })}
+            {renderField('instagram_url', 'Instagram', { icon: Instagram, placeholder: 'https://instagram.com/...' })}
+            {renderField('facebook_url', 'Facebook', { icon: Facebook, placeholder: 'https://facebook.com/...' })}
+            {renderField('tiktok_url', 'TikTok', { icon: Globe, placeholder: 'https://tiktok.com/@...' })}
+            {renderField('linkedin_url', 'LinkedIn', { icon: Linkedin, placeholder: 'https://linkedin.com/...' })}
+            {renderField('youtube_url', 'YouTube', { icon: Youtube, placeholder: 'https://youtube.com/...' })}
+            {renderField('telegram_url', 'Telegram', { icon: MessageSquare, placeholder: 'https://t.me/...' })}
+            {renderField('twitter_url', 'X (Twitter)', { icon: Globe, placeholder: 'https://x.com/...' })}
           </div>
         </CardContent>
       </Card>
@@ -206,36 +236,18 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
       {/* Contact */}
       <Card className="glass-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> Контактное лицо и договор</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Briefcase className="h-4 w-4 text-primary" /> {t('clientInfo.contactContract' as TranslationKey)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1"><Users className="h-3 w-3" /> Контактное лицо</Label>
-              <Input value={info.contact_person} onChange={e => u('contact_person', e.target.value)} placeholder="Имя Фамилия" className="text-sm h-8" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" /> Телефон</Label>
-              <Input value={info.contact_phone} onChange={e => u('contact_phone', e.target.value)} placeholder="+1 234 567 8900" className="text-sm h-8" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1"><Mail className="h-3 w-3" /> Email</Label>
-              <Input value={info.contact_email} onChange={e => u('contact_email', e.target.value)} placeholder="client@company.com" className="text-sm h-8" />
-            </div>
+            {renderField('contact_person', t('clientInfo.contactPerson' as TranslationKey), { icon: Users, placeholder: 'Name' })}
+            {renderField('contact_phone', t('clientInfo.phone' as TranslationKey), { icon: Phone, placeholder: '+1 234 567 8900' })}
+            {renderField('contact_email', t('clientInfo.email' as TranslationKey), { icon: Mail, placeholder: 'client@company.com' })}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Условия оплаты</Label>
-              <Input value={info.payment_terms} onChange={e => u('payment_terms', e.target.value)} placeholder="Предоплата, %" className="text-sm h-8" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1"><Calendar className="h-3 w-3" /> Начало контракта</Label>
-              <Input type="date" value={info.contract_start || ''} onChange={e => u('contract_start', e.target.value)} className="text-sm h-8" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1"><Calendar className="h-3 w-3" /> Конец контракта</Label>
-              <Input type="date" value={info.contract_end || ''} onChange={e => u('contract_end', e.target.value)} className="text-sm h-8" />
-            </div>
+            {renderField('payment_terms', t('clientInfo.paymentTerms' as TranslationKey), { placeholder: 'Prepaid, %' })}
+            {renderField('contract_start', t('clientInfo.contractStart' as TranslationKey), { type: 'date', icon: Calendar })}
+            {renderField('contract_end', t('clientInfo.contractEnd' as TranslationKey), { type: 'date', icon: Calendar })}
           </div>
         </CardContent>
       </Card>
@@ -243,18 +255,19 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
       {/* Notes */}
       <Card className="glass-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Дополнительные заметки</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> {t('clientInfo.notes' as TranslationKey)}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Textarea value={info.additional_notes} onChange={e => u('additional_notes', e.target.value)}
-            placeholder="Любая важная информация о клиенте..." className="text-sm min-h-[80px]" />
+          {renderField('additional_notes', '', { textarea: true, placeholder: t('clientInfo.notesPlaceholder' as TranslationKey) })}
         </CardContent>
       </Card>
 
-      <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-        Сохранить информацию
-      </Button>
+      {canEdit && (
+        <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {t('common.save')}
+        </Button>
+      )}
     </div>
   );
 }

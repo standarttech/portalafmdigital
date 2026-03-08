@@ -139,6 +139,22 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Try to auto-link campaign_id via utm_campaign or campaign_name matching
+    let linkedCampaignId: string | null = null;
+    const campaignNameToMatch = leadData.campaign_name || leadData.utm_campaign;
+    if (campaignNameToMatch) {
+      const { data: matchedCampaign } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('client_id', endpoint.client_id)
+        .ilike('campaign_name', `%${campaignNameToMatch}%`)
+        .limit(1)
+        .maybeSingle();
+      if (matchedCampaign) {
+        linkedCampaignId = matchedCampaign.id;
+      }
+    }
+
     // Insert lead
     const { data: newLead, error: insertError } = await supabase
       .from('crm_leads')
@@ -157,14 +173,20 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Log activity
+    // Log activity with campaign attribution info
     await supabase.from('crm_lead_activities').insert({
       lead_id: newLead.id,
       type: 'webhook_received',
-      payload: { source: leadData.source, endpoint: endpoint.name, is_duplicate: isDuplicate },
+      payload: {
+        source: leadData.source,
+        endpoint: endpoint.name,
+        is_duplicate: isDuplicate,
+        linked_campaign_id: linkedCampaignId,
+        campaign_match: campaignNameToMatch || null,
+      },
     });
 
-    await logWebhook(supabase, endpoint.id, 'success', body, `Lead created: ${newLead.id}${isDuplicate ? ' (duplicate)' : ''}`);
+    await logWebhook(supabase, endpoint.id, 'success', body, `Lead created: ${newLead.id}${isDuplicate ? ' (duplicate)' : ''}${linkedCampaignId ? ` (campaign: ${linkedCampaignId})` : ''}`);
 
     return new Response(JSON.stringify({
       success: true,
