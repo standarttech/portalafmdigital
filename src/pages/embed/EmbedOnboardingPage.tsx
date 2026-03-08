@@ -47,6 +47,8 @@ export default function EmbedOnboardingPage() {
     if (tokenData.error) { setError('Invalid or expired link'); setLoading(false); return; }
 
     if (tokenData.client_label) setClientLabel(tokenData.client_label);
+    // Branding setting comes from the secure RPC — no need to query platform_settings
+    if (tokenData.show_branding === false) setShowBranding(false);
 
     // Load session
     const { data: sess, error: sessError } = await supabase
@@ -71,27 +73,10 @@ export default function EmbedOnboardingPage() {
         .eq('id', sess.flow_id)
         .single();
       setFlow(flowData);
-      // Check show_branding from flow description JSON or a convention field
-      // We store it as a simple flag in the flow's description or a settings convention
     }
 
     setSession(sess);
     setFormData((typeof sess.data === 'object' && sess.data !== null && !Array.isArray(sess.data)) ? sess.data as Record<string, any> : {});
-
-    // Check branding setting from platform_settings (authenticated only, anon defaults to true)
-    try {
-      const { data: brandingSetting } = await supabase
-        .from('platform_settings')
-        .select('value')
-        .eq('key', 'gos_show_branding')
-        .maybeSingle();
-      if (brandingSetting?.value !== undefined && brandingSetting?.value !== null) {
-        const val = brandingSetting.value;
-        setShowBranding(typeof val === 'object' && val !== null ? (val as any).enabled !== false : val !== false);
-      }
-    } catch {
-      // anon can't read platform_settings — default to showing branding
-    }
 
     setLoading(false);
   }, [token]);
