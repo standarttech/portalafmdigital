@@ -32,6 +32,7 @@ const TTL_OPTIONS = [
 export default function GosOnboardingPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { logGosAction } = useGosAuditLog();
   const [flows, setFlows] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
