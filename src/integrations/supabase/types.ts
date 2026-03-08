@@ -3557,6 +3557,10 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: boolean
       }
+      has_valid_onboarding_token_for_flow: {
+        Args: { p_flow_id: string }
+        Returns: boolean
+      }
       is_agency_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agency_member: { Args: { _user_id: string }; Returns: boolean }
       no_admin_exists: { Args: never; Returns: boolean }
