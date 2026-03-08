@@ -3,6 +3,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, TrendingUp, RefreshCw, CheckCircle2, TrendingDown, ChevronDown, Sparkles, ArrowDownRight, ArrowUpRight, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { getAllAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { cn } from '@/lib/utils';
 import { format, subDays } from 'date-fns';
 import { toClientCategory, type ClientCategory } from './categoryMetrics';
