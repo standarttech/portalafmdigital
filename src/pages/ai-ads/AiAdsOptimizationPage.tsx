@@ -399,6 +399,7 @@ function ActionDetail({ action: a, clientName, logs, isAdmin, onBack, onApprove,
   onBack: () => void; onApprove: () => void; onReject: (r: string) => void;
   onExecute: () => void; onCancel: () => void;
 }) {
+  const { user } = useAuth();
   const sc = statusConfig[a.status] || statusConfig.proposed;
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -505,7 +506,12 @@ function ActionDetail({ action: a, clientName, logs, isAdmin, onBack, onApprove,
           {a.status === 'approved' && !isLive && (
             <Badge variant="outline" className="text-xs text-muted-foreground">This action type creates a draft — use Campaign Drafts to continue</Badge>
           )}
-          {['proposed', 'approved'].includes(a.status) && (
+          {a.status === 'proposed' && (isAdmin || a.proposed_by === user?.id) && (
+            <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={onCancel}>
+              <Ban className="h-3.5 w-3.5" /> Cancel
+            </Button>
+          )}
+          {a.status === 'approved' && isAdmin && (
             <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={onCancel}>
               <Ban className="h-3.5 w-3.5" /> Cancel
             </Button>
@@ -565,8 +571,7 @@ function ProposeDialog({ open, onOpenChange, clients, recs, userId, onCreated }:
         recommendation_id: recId !== 'none' ? recId : null,
         external_campaign_id: extCampaignId || null,
         external_adset_id: extAdsetId || null,
-        input_payload: input,
-        metadata: recId !== 'none' ? { source: 'recommendation' } : {},
+        input_payload: Object.keys(input).length > 0 ? input : (recId !== 'none' ? { source: 'recommendation' } : {}),
       }).select().single();
       if (error) throw error;
 
