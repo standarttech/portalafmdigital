@@ -112,6 +112,7 @@ const PortalRecommendationsPage = React.lazy(() => import("@/pages/portal/Portal
 const PortalReportsPage = React.lazy(() => import("@/pages/portal/PortalReportsPage"));
 const PortalSettingsPage = React.lazy(() => import("@/pages/portal/PortalSettingsPage"));
 const PortalLoginPage = React.lazy(() => import("@/pages/portal/PortalLoginPage"));
+const PortalAcceptInvitePage = React.lazy(() => import("@/pages/portal/PortalAcceptInvitePage"));
 import AiAdsLayout from "@/components/layout/AiAdsLayout";
 import AiInfraLayout from "@/components/layout/AiInfraLayout";
 const AiInfraProvidersPage = React.lazy(() => import("@/pages/ai-infra/AiInfraProvidersPage"));
