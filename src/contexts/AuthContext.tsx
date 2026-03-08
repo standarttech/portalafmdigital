@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [viewAsRole, setViewAsRole] = useState<AgencyRole>(null);
   const [simulatedUser, setSimulatedUser] = useState<SimulatedUser | null>(null);
+  const lastAuthUserIdRef = useRef<string | null>(null);
 
   // If simulating a specific user, use their role; otherwise use viewAsRole or real role
   const effectiveRole = simulatedUser ? simulatedUser.role : (viewAsRole || agencyRole);
