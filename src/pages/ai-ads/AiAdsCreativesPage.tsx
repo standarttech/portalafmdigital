@@ -47,7 +47,7 @@ export default function AiAdsCreativesPage() {
       supabase.from('creative_assets' as any).select('*').neq('status', 'deleted').order('created_at', { ascending: false }).limit(500),
       supabase.from('clients').select('id, name').order('name'),
     ]);
-    const loadedAssets = (aRes.data as CreativeAsset[] | null) || [];
+    const loadedAssets = ((aRes.data as unknown as CreativeAsset[]) || []);
     setAssets(loadedAssets);
     setClients(cRes.data || []);
 
