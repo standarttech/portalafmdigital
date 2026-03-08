@@ -606,7 +606,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
               ) : (
                 ads.map(ad => {
                   const parentName = adsets.find(as => as.id === ad.parent_item_id)?.name || 'Unassigned';
-                  return <AdEditor key={ad.id} item={ad} parentName={parentName} adsets={adsets} onUpdate={updateItem} onDelete={deleteItem} />;
+                  return <AdEditor key={ad.id} item={ad} parentName={parentName} adsets={adsets} onUpdate={updateItem} onDelete={deleteItem} metaPages={metaPages} />;
                 })
               )}
             </div>
