@@ -216,6 +216,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/embed/form/:id" element={<EmbedFormPage />} />
         <Route path="/embed/landing/:id" element={<EmbedLandingPage />} />
+        <Route path="/embed/onboarding/:token" element={<EmbedOnboardingPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     );
