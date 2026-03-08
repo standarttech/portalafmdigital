@@ -147,6 +147,7 @@ function LeadForm({ initial, onSave, onCancel, title }: LeadFormProps) {
 }
 
 export default function AfmSales() {
+  const { t } = useLanguage();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
