@@ -117,6 +117,10 @@ function validateDraft(draft: Draft, items: DraftItem[]): ValidationError[] {
     if (!cfg.destination_url) errors.push({ field: `ad_${idx}_destination`, message: `Ad "${ad.name || idx + 1}": Destination URL is required`, severity: 'error', section: 'ads' });
     if (!ad.parent_item_id) errors.push({ field: `ad_${idx}_parent`, message: `Ad "${ad.name || idx + 1}": Not assigned to any ad set`, severity: 'error', section: 'ads' });
     if (!cfg.page_id) errors.push({ field: `ad_${idx}_page_id`, message: `Ad "${ad.name || idx + 1}": Facebook Page ID is required for Meta execution`, severity: 'warning', section: 'ads' });
+    // Creative validation
+    if ((cfg.creative_type === 'image_url' || cfg.creative_type === 'video_url') && !ad.creative_asset_id && !cfg.creative_asset_url) {
+      errors.push({ field: `ad_${idx}_creative`, message: `Ad "${ad.name || idx + 1}": Image/video expected but no creative asset linked`, severity: 'warning', section: 'ads' });
+    }
   });
 
   return errors;
