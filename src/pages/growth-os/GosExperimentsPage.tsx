@@ -174,11 +174,13 @@ export default function GosExperimentsPage() {
   };
 
   const deleteExperiment = async (id: string) => {
+    const exp = experiments.find(e => e.id === id);
     await Promise.all([
       supabase.from('gos_landing_templates').update({ experiment_id: null }).eq('experiment_id', id),
       supabase.from('gos_forms').update({ experiment_id: null }).eq('experiment_id', id),
     ]);
     await supabase.from('gos_experiments').delete().eq('id', id);
+    logGosAction('delete', 'experiment', id, exp?.name);
     toast.success('Deleted');
     loadData();
   };

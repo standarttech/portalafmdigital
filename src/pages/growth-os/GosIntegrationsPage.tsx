@@ -83,7 +83,9 @@ export default function GosIntegrationsPage() {
   };
 
   const deleteIntegration = async (id: string) => {
+    const int = integrations.find(i => i.id === id);
     await supabase.from('gos_integrations').delete().eq('id', id);
+    logGosAction('delete', 'integration', id, int?.name);
     toast.success('Integration removed'); loadData();
   };
 
@@ -142,7 +144,9 @@ export default function GosIntegrationsPage() {
   };
 
   const deleteInstance = async (id: string) => {
+    const inst = instances.find(i => i.id === id);
     await supabase.from('gos_integration_instances').delete().eq('id', id);
+    logGosAction('delete', 'integration_instance', id, (inst as any)?.gos_integrations?.name);
     toast.success('Connection removed'); loadData();
   };
 
