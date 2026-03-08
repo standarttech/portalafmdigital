@@ -708,22 +708,22 @@ export default function AfmDashboard() {
                     <div>
                       <p className="text-sm font-medium flex items-center gap-2">
                         <RefreshCw className="h-4 w-4 text-primary" />
-                        Автосинхронизация
+                        {t('afm.dash.autoSync' as any)}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Автоматически синхронизировать данные каждый час</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t('afm.dash.autoSyncDesc' as any)}</p>
                     </div>
                     <Switch
                       checked={agencyClient.auto_sync_enabled}
                       onCheckedChange={async (v) => {
                         await supabase.from('clients').update({ auto_sync_enabled: v }).eq('id', agencyClient.id);
                         setAgencyClient(prev => prev ? { ...prev, auto_sync_enabled: v } : prev);
-                        toast.success(v ? 'Автосинхронизация включена' : 'Автосинхронизация отключена');
+                        toast.success(v ? t('afm.dash.autoSyncOn' as any) : t('afm.dash.autoSyncOff' as any));
                       }}
                     />
                   </div>
                   {agencyClient.auto_sync_enabled && (
                     <p className="text-[10px] text-success mt-2 flex items-center gap-1">
-                      ✓ Данные будут обновляться каждый час автоматически
+                      ✓ {t('afm.dash.autoSyncHint' as any)}
                     </p>
                   )}
                 </div>
