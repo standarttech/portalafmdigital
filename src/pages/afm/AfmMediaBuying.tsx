@@ -286,6 +286,7 @@ export default function AfmMediaBuying() {
       else { setTargetCpl(''); setTargetLeads(''); setTargetRoas(''); }
       setHasApiAccounts((aa.data || []).length > 0);
     });
+    });
   }, [selectedClientId, dateRange]);
 
   const totalSpend = metrics.reduce((s, m) => s + m.spend, 0);
