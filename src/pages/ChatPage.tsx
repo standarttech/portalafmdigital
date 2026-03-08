@@ -97,10 +97,20 @@ export default function ChatPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
 
+  // Typing indicator state
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+  const typingTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const lastTypingBroadcast = useRef(0);
+
+  // Unread counts per room
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+  // Get current user display name
+  const currentUserName = allUsers.find(u => u.user_id === user?.id)?.display_name || 'User';
+
   // Client: ensure support room exists and client is a member, then show it
   const ensureClientSupportRoom = useCallback(async () => {
     if (!user || !isClient) return;
-    // Use the simulated user's ID if simulating, otherwise the real user
     const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
     const { data: assignments } = await supabase.from('client_users').select('client_id').eq('user_id', targetUserId);
     const assignedClientIds = assignments?.map(a => a.client_id) || [];
@@ -115,7 +125,6 @@ export default function ChatPage() {
 
     if (existingRooms && existingRooms.length > 0) {
       const room = existingRooms[0];
-      // Ensure the client is a member so they can write
       const { data: membership } = await supabase
         .from('chat_members')
         .select('id')
@@ -144,17 +153,63 @@ export default function ChatPage() {
     setLoadingRooms(false);
   }, [user, isClient, simulatedUser]);
 
+  // Fetch unread counts for all rooms
+  const fetchUnreadCounts = useCallback(async (roomIds: string[]) => {
+    if (!user || roomIds.length === 0) return;
+
+    // Get read statuses for current user
+    const { data: readStatuses } = await supabase
+      .from('chat_read_status')
+      .select('room_id, last_read_at')
+      .eq('user_id', user.id)
+      .in('room_id', roomIds);
+
+    const readMap: Record<string, string> = {};
+    readStatuses?.forEach(rs => { readMap[rs.room_id] = rs.last_read_at; });
+
+    // For each room, count messages after last_read_at
+    const counts: Record<string, number> = {};
+    await Promise.all(roomIds.map(async (roomId) => {
+      const lastRead = readMap[roomId];
+      let query = supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('room_id', roomId);
+      if (lastRead) {
+        query = query.gt('created_at', lastRead);
+      }
+      // Exclude own messages
+      query = query.neq('user_id', user.id);
+      const { count } = await query;
+      if (count && count > 0) counts[roomId] = count;
+    }));
+
+    setUnreadCounts(counts);
+  }, [user]);
+
+  // Mark room as read
+  const markRoomAsRead = useCallback(async (roomId: string) => {
+    if (!user) return;
+    await supabase.from('chat_read_status').upsert(
+      { user_id: user.id, room_id: roomId, last_read_at: new Date().toISOString() },
+      { onConflict: 'user_id,room_id' }
+    );
+    setUnreadCounts(prev => {
+      const next = { ...prev };
+      delete next[roomId];
+      return next;
+    });
+  }, [user]);
+
   const fetchRooms = useCallback(async () => {
     if (isClient) return;
 
     let roomsData: any[] = [];
 
     if (isAdmin) {
-      // Admins see all rooms
       const { data } = await supabase.from('chat_rooms').select('*').order('updated_at', { ascending: false });
       roomsData = data || [];
     } else {
-      // Non-admins: only see rooms where they are a member
       const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
       if (!targetUserId) { setLoadingRooms(false); return; }
 
@@ -181,7 +236,11 @@ export default function ChatPage() {
 
     setRooms(enriched);
     setLoadingRooms(false);
-  }, [isClient, isAdmin, user, simulatedUser]);
+
+    // Fetch unread counts
+    const roomIds = enriched.map(r => r.id);
+    fetchUnreadCounts(roomIds);
+  }, [isClient, isAdmin, user, simulatedUser, fetchUnreadCounts]);
 
   const fetchUsersAndClients = useCallback(async () => {
     const [{ data: users }, { data: cls }] = await Promise.all([
@@ -213,9 +272,14 @@ export default function ChatPage() {
     else { fetchRooms(); fetchUsersAndClients(); }
   }, [fetchRooms, fetchUsersAndClients, ensureClientSupportRoom, isClient]);
 
-  useEffect(() => { if (selectedRoom) fetchMessages(selectedRoom); }, [selectedRoom, fetchMessages]);
+  useEffect(() => {
+    if (selectedRoom) {
+      fetchMessages(selectedRoom);
+      markRoomAsRead(selectedRoom);
+    }
+  }, [selectedRoom, fetchMessages, markRoomAsRead]);
 
-  // Realtime
+  // Realtime messages
   useEffect(() => {
     if (!selectedRoom) return;
     const channel = supabase
@@ -225,10 +289,61 @@ export default function ChatPage() {
           const newMsg = payload.new as any;
           const { data: u } = await supabase.from('agency_users').select('display_name, agency_role').eq('user_id', newMsg.user_id).maybeSingle();
           setMessages(prev => [...prev, { ...newMsg, display_name: u?.display_name || 'User', role: u?.agency_role || 'Client' }]);
+          // Mark as read since we're in this room
+          markRoomAsRead(selectedRoom);
         }
       ).subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [selectedRoom]);
+  }, [selectedRoom, markRoomAsRead]);
+
+  // Typing indicator broadcast channel
+  useEffect(() => {
+    if (!selectedRoom || !user) return;
+
+    const channel = supabase.channel(`typing-${selectedRoom}`);
+
+    channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
+      if (payload.userId === user.id) return;
+      setTypingUsers(prev => ({ ...prev, [payload.userId]: payload.displayName }));
+
+      // Clear existing timeout for this user
+      if (typingTimeoutsRef.current[payload.userId]) {
+        clearTimeout(typingTimeoutsRef.current[payload.userId]);
+      }
+      // Auto-clear after 3 seconds
+      typingTimeoutsRef.current[payload.userId] = setTimeout(() => {
+        setTypingUsers(prev => {
+          const next = { ...prev };
+          delete next[payload.userId];
+          return next;
+        });
+      }, 3000);
+    });
+
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      // Clear all typing timeouts
+      Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
+      typingTimeoutsRef.current = {};
+      setTypingUsers({});
+    };
+  }, [selectedRoom, user]);
+
+  // Broadcast typing event (throttled)
+  const broadcastTyping = useCallback(() => {
+    if (!selectedRoom || !user) return;
+    const now = Date.now();
+    if (now - lastTypingBroadcast.current < 2000) return;
+    lastTypingBroadcast.current = now;
+
+    supabase.channel(`typing-${selectedRoom}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { userId: user.id, displayName: currentUserName },
+    });
+  }, [selectedRoom, user, currentUserName]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -295,11 +410,10 @@ export default function ChatPage() {
     if (membersToAdd.length > 0) {
       await supabase.from('chat_members').insert(membersToAdd.map(uid => ({ room_id: room.id, user_id: uid, can_write: true })));
     }
-    // For voice rooms, post the meeting link as the first message
     if (roomType === 'voice' && roomMeetingLink.trim()) {
       await supabase.from('chat_messages').insert({
         room_id: room.id, user_id: user.id,
-        content: `🔗 Ссылка на встречу: ${roomMeetingLink.trim()}`,
+        content: `🔗 ${t('chat.meetingLink' as TranslationKey)}: ${roomMeetingLink.trim()}`,
       });
     }
     setCreating(false); setCreateOpen(false); setRoomName(''); setSelectedMembers([]); setRoomType('custom'); setRoomClientId(''); setRoomMeetingLink('');
@@ -353,9 +467,16 @@ export default function ChatPage() {
   const voiceRooms = rooms.filter(r => r.type === 'voice');
   const roomTypeIcon = (type: string) => type === 'team' ? Users : type === 'client' ? Building2 : type === 'support' ? Headphones : type === 'voice' ? Mic : Hash;
 
+  // Typing indicator text
+  const typingText = Object.values(typingUsers);
+  const typingLabel = typingText.length > 0
+    ? `${typingText.slice(0, 2).join(', ')} ${t('chat.typing' as TranslationKey)}`
+    : null;
+
   const renderRoomItem = (room: ChatRoom) => {
     const RoomIcon = roomTypeIcon(room.type);
     const isActive = selectedRoom === room.id;
+    const unread = unreadCounts[room.id] || 0;
     return (
       <button
         key={room.id}
@@ -385,6 +506,11 @@ export default function ChatPage() {
           </div>
           <span className="text-[10px] text-muted-foreground">{timeAgo(room.created_at)}</span>
         </div>
+        {unread > 0 && (
+          <span className="flex-shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
       </button>
     );
   };
@@ -427,7 +553,7 @@ export default function ChatPage() {
                        <div className="px-3 pt-3 pb-1">
                          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
                            <Building2 className="h-3 w-3" />
-                           Клиенты ({supportRooms.length + clientRooms.length})
+                           {t('chat.clients' as TranslationKey)} ({supportRooms.length + clientRooms.length})
                          </p>
                        </div>
                        {supportRooms.map(renderRoomItem)}
@@ -439,7 +565,7 @@ export default function ChatPage() {
                        <div className="px-3 pt-3 pb-1">
                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                            <Hash className="h-3 w-3" />
-                           Каналы ({teamRooms.length})
+                           {t('chat.channels' as TranslationKey)} ({teamRooms.length})
                          </p>
                        </div>
                        {teamRooms.map(renderRoomItem)}
@@ -450,11 +576,12 @@ export default function ChatPage() {
                        <div className="px-3 pt-3 pb-1">
                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                            <Mic className="h-3 w-3" />
-                           Голосовые ({voiceRooms.length})
+                           {t('chat.voice' as TranslationKey)} ({voiceRooms.length})
                          </p>
                        </div>
                        {voiceRooms.map(room => {
                          const isActive = selectedRoom === room.id;
+                         const unread = unreadCounts[room.id] || 0;
                          return (
                            <div key={room.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive ? 'bg-primary/15' : 'hover:bg-secondary/50'}`}>
                              <div className="h-9 w-9 rounded-lg bg-secondary/50 flex items-center justify-center flex-shrink-0">
@@ -465,12 +592,17 @@ export default function ChatPage() {
                                className="flex-1 text-left min-w-0"
                              >
                                <span className="text-sm font-medium truncate block">{room.name}</span>
-                               <span className="text-[10px] text-muted-foreground">Нажмите чтобы открыть чат</span>
+                               <span className="text-[10px] text-muted-foreground">{t('chat.clickToOpen' as TranslationKey)}</span>
                              </button>
+                             {unread > 0 && (
+                               <span className="flex-shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                                 {unread > 99 ? '99+' : unread}
+                               </span>
+                             )}
                              {room.name.includes('http') ? (
                                <a href={room.name} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
                                  <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1">
-                                   <ExternalLink className="h-3 w-3" /> Join
+                                   <ExternalLink className="h-3 w-3" /> {t('chat.join' as TranslationKey)}
                                  </Button>
                                </a>
                              ) : null}
@@ -511,19 +643,19 @@ export default function ChatPage() {
                     )}
                     {selectedRoomData?.type === 'voice' && (
                       <Badge variant="outline" className="text-[10px] gap-1 border-primary/30 text-primary">
-                        <Mic className="h-3 w-3" /> Голосовой
+                        <Mic className="h-3 w-3" /> {t('chat.voiceChannel' as TranslationKey)}
                       </Badge>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-1">
                   {selectedRoomData?.type === 'voice' && (() => {
-                    const meetMsg = messages.find(m => m.content.includes('Ссылка на встречу:'));
+                    const meetMsg = messages.find(m => m.content.includes('http'));
                     const meetUrl = meetMsg?.content.match(/https?:\/\/\S+/)?.[0];
                     return meetUrl ? (
                       <a href={meetUrl} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 border-primary/30 text-primary hover:bg-primary/10">
-                          <Video className="h-3.5 w-3.5" /> Присоединиться
+                          <Video className="h-3.5 w-3.5" /> {t('chat.join' as TranslationKey)}
                         </Button>
                       </a>
                     ) : null;
@@ -600,6 +732,20 @@ export default function ChatPage() {
                 )}
               </ScrollArea>
 
+              {/* Typing indicator */}
+              {typingLabel && (
+                <div className="px-4 py-1.5 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className="flex gap-0.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                    {typingLabel}
+                  </p>
+                </div>
+              )}
+
               {/* Image preview bar */}
               {imagePreview && (
                 <div className="px-3 py-2 border-t border-border bg-secondary/30 flex items-center gap-3">
@@ -629,7 +775,10 @@ export default function ChatPage() {
                   </Button>
                   <Input
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      if (e.target.value.trim()) broadcastTyping();
+                    }}
                     placeholder={t('chat.messagePlaceholder' as TranslationKey)}
                     className="text-sm"
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
@@ -658,10 +807,10 @@ export default function ChatPage() {
               <Select value={roomType} onValueChange={setRoomType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="team">💬 Текстовый канал</SelectItem>
-                  <SelectItem value="voice">🎙️ Голосовой канал (Zoom/Meet)</SelectItem>
-                  <SelectItem value="client">🏢 Клиентский</SelectItem>
-                  <SelectItem value="custom">📌 Произвольный</SelectItem>
+                  <SelectItem value="team">{t('chat.textChannel' as TranslationKey)}</SelectItem>
+                  <SelectItem value="voice">{t('chat.voiceChannelType' as TranslationKey)}</SelectItem>
+                  <SelectItem value="client">{t('chat.clientChannel' as TranslationKey)}</SelectItem>
+                  <SelectItem value="custom">{t('chat.customChannel' as TranslationKey)}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -678,14 +827,14 @@ export default function ChatPage() {
             )}
             {roomType === 'voice' && (
               <div>
-                <Label className="flex items-center gap-1.5"><Video className="h-3.5 w-3.5" /> Ссылка на Zoom / Google Meet</Label>
+                <Label className="flex items-center gap-1.5"><Video className="h-3.5 w-3.5" /> {t('chat.meetingLink' as TranslationKey)}</Label>
                 <Input
                   value={roomMeetingLink}
                   onChange={(e) => setRoomMeetingLink(e.target.value)}
-                  placeholder="https://meet.google.com/xxx или https://zoom.us/j/xxx"
+                  placeholder="https://meet.google.com/xxx or https://zoom.us/j/xxx"
                   className="mt-1"
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">Участники смогут присоединиться к звонку по этой ссылке</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{t('chat.meetingLinkHint' as TranslationKey)}</p>
               </div>
             )}
             <div>
@@ -745,10 +894,10 @@ export default function ChatPage() {
       <ConfirmDialog
         open={!!confirmDeleteRoom}
         onOpenChange={(open) => !open && setConfirmDeleteRoom(null)}
-        title="Удалить чат?"
-        description="Все сообщения в этом чате будут удалены. Это действие необратимо."
-        confirmLabel="Удалить"
-        cancelLabel="Отмена"
+        title={t('chat.deleteConfirmTitle' as TranslationKey)}
+        description={t('chat.deleteConfirmDesc' as TranslationKey)}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         onConfirm={executeDeleteRoom}
       />
     </motion.div>
