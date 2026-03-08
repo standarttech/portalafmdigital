@@ -1081,9 +1081,6 @@ export const translations = {
   'columns.saved': t('Preset saved', 'Шаблон сохранён', 'Modello salvato', 'Plantilla guardada', 'تم حفظ القالب', 'Modèle enregistré'),
   'columns.deleted': t('Preset deleted', 'Шаблон удалён', 'Modello eliminato', 'Plantilla eliminada', 'تم حذف القالب', 'Modèle supprimé'),
   'columns.applied': t('Preset applied', 'Шаблон применён', 'Modello applicato', 'Plantilla aplicada', 'تم تطبيق القالب', 'Modèle appliqué'),
-  'metric.addToCart': t('Add to Cart', 'В корзину', 'Aggiungi al carrello', 'Añadir al carrito', 'أضف إلى السلة', 'Ajouter au panier'),
-  'metric.checkouts': t('Checkouts', 'Оформления', 'Checkout', 'Pagos', 'عمليات الدفع', 'Commandes'),
-  'metric.roas': t('ROAS', 'ROAS', 'ROAS', 'ROAS', 'ROAS', 'ROAS'),
 
 } as const;
 
