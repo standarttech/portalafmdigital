@@ -3,7 +3,7 @@ import { usePortalAuth } from '@/hooks/usePortalAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard, Megaphone, Lightbulb, FileText, Settings, LogOut, Loader2, FolderOpen,
+  LayoutDashboard, Megaphone, Lightbulb, FileText, Settings, LogOut, Loader2, FolderOpen, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PortalNotificationBell from '@/components/portal/PortalNotificationBell';
@@ -22,7 +22,6 @@ export default function PortalLayout() {
   const { user, signOut, agencyRole } = useAuth();
   const location = useLocation();
 
-  // Allow admins to preview portal
   const isAdmin = agencyRole === 'AgencyAdmin';
 
   if (loading) {
@@ -33,9 +32,28 @@ export default function PortalLayout() {
     );
   }
 
-  // If not admin and not portal user, redirect
+  // No session at all → redirect to portal login
+  if (!user) {
+    return <Navigate to="/portal/login" replace />;
+  }
+
+  // Deactivated portal user → show message
+  if (portalUser && portalUser.status === 'deactivated') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md p-8 space-y-4">
+          <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+          <h1 className="text-lg font-bold text-foreground">Portal Access Suspended</h1>
+          <p className="text-sm text-muted-foreground">Your portal access has been deactivated. Please contact your account manager for assistance.</p>
+          <Button variant="outline" size="sm" onClick={() => signOut()}>Sign Out</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Not admin and not portal user → redirect
   if (!isAdmin && !isPortalUser) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/portal/login" replace />;
   }
 
   const title = branding?.portal_title || 'Performance Portal';

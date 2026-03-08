@@ -1,18 +1,51 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, TrendingUp, Zap, RefreshCw, Lightbulb, FolderOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, FileText, TrendingUp, Zap, RefreshCw, Lightbulb, FolderOpen, Download } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOutletContext, Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import PortalDateFilter, { type DateRange } from '@/components/portal/PortalDateFilter';
+import PeriodComparison from '@/components/portal/PeriodComparison';
+import { exportPerformanceSummary } from '@/lib/portalExport';
+import { toast } from 'sonner';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
 
+function getPreviousPeriod(range: DateRange) {
+  const duration = range.to.getTime() - range.from.getTime();
+  return { from: new Date(range.from.getTime() - duration), to: new Date(range.from.getTime() - 1) };
+}
+
+function dedup(snapshots: any[]): any[] {
+  const map = new Map<string, any>();
+  for (const s of snapshots) {
+    const key = s.external_campaign_id || s.id;
+    const ex = map.get(key);
+    if (!ex || new Date(s.synced_at) > new Date(ex.synced_at)) map.set(key, s);
+  }
+  return Array.from(map.values());
+}
+
+function sumM(snaps: any[]) {
+  const l = dedup(snaps);
+  return {
+    spend: l.reduce((s, x) => s + Number(x.spend || 0), 0),
+    clicks: l.reduce((s, x) => s + Number(x.clicks || 0), 0),
+    leads: l.reduce((s, x) => s + Number(x.leads || 0), 0),
+    revenue: l.reduce((s, x) => s + Number(x.revenue || 0), 0),
+    ctr: l.length > 0 ? l.reduce((s, x) => s + Number(x.ctr || 0), 0) / l.length : 0,
+  };
+}
+
 export default function PortalReportsPage() {
   const { portalUser, isAdmin } = useOutletContext<Ctx>();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [snapshots, setSnapshots] = useState<any[]>([]);
+  const [prevSnapshots, setPrevSnapshots] = useState<any[]>([]);
   const [launches, setLaunches] = useState<any[]>([]);
   const [actions, setActions] = useState<any[]>([]);
   const [recs, setRecs] = useState<any[]>([]);
@@ -33,6 +66,16 @@ export default function PortalReportsPage() {
       return q;
     };
 
+    let prevData: any[] = [];
+    if (dateRange && clientId) {
+      const prev = getPreviousPeriod(dateRange);
+      const { data: pd } = await supabase.from('campaign_performance_snapshots' as any).select('*')
+        .eq('client_id', clientId).eq('entity_level', 'campaign')
+        .gte('synced_at', prev.from.toISOString()).lte('synced_at', prev.to.toISOString())
+        .order('synced_at', { ascending: false }).limit(300);
+      prevData = (pd as any[]) || [];
+    }
+
     const [sRes, lRes, aRes, rRes, fRes] = await Promise.all([
       buildQ('campaign_performance_snapshots', 'synced_at').eq('entity_level', 'campaign').order('synced_at', { ascending: false }).limit(300),
       buildQ('launch_requests', 'executed_at').not('external_campaign_id', 'is', null).order('executed_at', { ascending: false }).limit(50),
@@ -44,6 +87,7 @@ export default function PortalReportsPage() {
     ]);
 
     setSnapshots((sRes.data as any[]) || []);
+    setPrevSnapshots(prevData);
     setLaunches((lRes.data as any[]) || []);
     setActions((aRes.data as any[]) || []);
     setRecs((rRes.data as any[]) || []);
@@ -55,32 +99,44 @@ export default function PortalReportsPage() {
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
-  const latestMap = new Map<string, any>();
-  for (const s of snapshots) {
-    const key = s.external_campaign_id || s.id;
-    const ex = latestMap.get(key);
-    if (!ex || new Date(s.synced_at) > new Date(ex.synced_at)) latestMap.set(key, s);
-  }
-  const latest = Array.from(latestMap.values());
-
-  const totalSpend = latest.reduce((s, snap) => s + Number(snap.spend || 0), 0);
-  const totalClicks = latest.reduce((s, snap) => s + Number(snap.clicks || 0), 0);
-  const totalLeads = latest.reduce((s, snap) => s + Number(snap.leads || 0), 0);
-  const totalRevenue = latest.reduce((s, snap) => s + Number(snap.revenue || 0), 0);
-  const avgCTR = latest.length > 0 ? latest.reduce((s, snap) => s + Number(snap.ctr || 0), 0) / latest.length : 0;
+  const cur = sumM(snapshots);
+  const prev = sumM(prevSnapshots);
+  const latest = dedup(snapshots);
   const lastSync = snapshots.length > 0 ? snapshots[0].synced_at : null;
   const executedCount = actions.filter(a => a.status === 'executed').length;
   const totalActions = actions.length;
   const activeRecs = recs.filter(r => ['new', 'reviewed'].includes(r.status));
+  const showComparison = dateRange && prevSnapshots.length > 0;
+
+  const handleExport = () => {
+    const ok = exportPerformanceSummary(latest, dateRange?.label || 'all-time');
+    if (ok) {
+      toast.success('Report exported');
+      supabase.from('audit_log').insert({
+        action: 'portal_report_exported', entity_type: 'portal_export',
+        entity_id: portalUser?.client_id || 'unknown', user_id: user?.id,
+        details: { period: dateRange?.label || 'all-time', rows: latest.length },
+      });
+    } else {
+      toast.error('No data to export');
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-foreground">Reports</h1>
-        <p className="text-sm text-muted-foreground">
-          Performance summary and activity reports
-          {lastSync && <span className="ml-2 text-[10px]">· Data as of: {new Date(lastSync).toLocaleString()}</span>}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Reports</h1>
+          <p className="text-sm text-muted-foreground">
+            Performance summary and activity reports
+            {lastSync && <span className="ml-2 text-[10px]">· Data as of: {new Date(lastSync).toLocaleString()}</span>}
+          </p>
+        </div>
+        {latest.length > 0 && (
+          <Button size="sm" variant="outline" onClick={handleExport} className="gap-1.5 text-xs shrink-0">
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+        )}
       </div>
 
       <PortalDateFilter value={dateRange} onChange={setDateRange} />
@@ -90,17 +146,31 @@ export default function PortalReportsPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Performance Summary</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           {latest.length === 0 ? (
             <p className="text-sm text-muted-foreground">No campaign data available{dateRange ? ' for selected period' : ' yet'}.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              <div className="text-center"><p className="text-lg font-bold text-foreground">${totalSpend.toFixed(0)}</p><p className="text-[10px] text-muted-foreground">Total Spend</p></div>
-              <div className="text-center"><p className="text-lg font-bold text-foreground">{totalClicks.toLocaleString()}</p><p className="text-[10px] text-muted-foreground">Clicks</p></div>
-              <div className="text-center"><p className="text-lg font-bold text-foreground">{totalLeads}</p><p className="text-[10px] text-muted-foreground">Leads</p></div>
-              <div className="text-center"><p className="text-lg font-bold text-foreground">${totalRevenue.toFixed(0)}</p><p className="text-[10px] text-muted-foreground">Revenue</p></div>
-              <div className="text-center"><p className="text-lg font-bold text-foreground">{avgCTR.toFixed(2)}%</p><p className="text-[10px] text-muted-foreground">Avg CTR</p></div>
+              <div className="text-center"><p className="text-lg font-bold text-foreground">${cur.spend.toFixed(0)}</p><p className="text-[10px] text-muted-foreground">Total Spend</p></div>
+              <div className="text-center"><p className="text-lg font-bold text-foreground">{cur.clicks.toLocaleString()}</p><p className="text-[10px] text-muted-foreground">Clicks</p></div>
+              <div className="text-center"><p className="text-lg font-bold text-foreground">{cur.leads}</p><p className="text-[10px] text-muted-foreground">Leads</p></div>
+              <div className="text-center"><p className="text-lg font-bold text-foreground">${cur.revenue.toFixed(0)}</p><p className="text-[10px] text-muted-foreground">Revenue</p></div>
+              <div className="text-center"><p className="text-lg font-bold text-foreground">{cur.ctr.toFixed(2)}%</p><p className="text-[10px] text-muted-foreground">Avg CTR</p></div>
             </div>
+          )}
+          {showComparison && (
+            <PeriodComparison
+              previousLabel="previous period"
+              metrics={[
+                { label: 'Spend', current: cur.spend, previous: prev.spend, format: 'currency' },
+                { label: 'Clicks', current: cur.clicks, previous: prev.clicks },
+                { label: 'Leads', current: cur.leads, previous: prev.leads },
+                { label: 'Revenue', current: cur.revenue, previous: prev.revenue, format: 'currency' },
+              ]}
+            />
+          )}
+          {dateRange && prevSnapshots.length === 0 && snapshots.length > 0 && (
+            <p className="text-[10px] text-muted-foreground italic">Comparison unavailable — not enough data for the previous period.</p>
           )}
         </CardContent>
       </Card>

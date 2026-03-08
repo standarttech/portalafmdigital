@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut, User, Shield, Bell, Key } from 'lucide-react';
+import { LogOut, User, Shield, Bell, Key, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
@@ -37,8 +37,17 @@ export default function PortalSettingsPage() {
       toast.error('Could not send reset email. Please try again later.');
     } else {
       toast.success('Password reset email sent. Check your inbox.');
+      supabase.from('audit_log').insert({
+        action: 'portal_password_reset_initiated',
+        entity_type: 'client_portal_users',
+        entity_id: portalUser?.id || user?.id || 'unknown',
+        user_id: user?.id,
+      });
     }
   };
+
+  // Session info
+  const sessionStarted = user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : null;
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -92,6 +101,24 @@ export default function PortalSettingsPage() {
             <Key className="h-4 w-4" /> Reset Password
           </Button>
           <p className="text-xs text-muted-foreground">A password reset link will be sent to your email address.</p>
+        </CardContent>
+      </Card>
+
+      {/* Session info */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" /> Current Session
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {sessionStarted && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Session started</span>
+              <span className="text-sm text-foreground">{sessionStarted}</span>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">Your session is automatically refreshed. Sign out manually when you're done.</p>
         </CardContent>
       </Card>
 
