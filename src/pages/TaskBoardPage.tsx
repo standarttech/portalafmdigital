@@ -139,7 +139,7 @@ export default function TaskBoardPage() {
   const [formAssignees, setFormAssignees] = useState<string[]>([]);
   const [formDueDate, setFormDueDate] = useState('');
   const [formStatus, setFormStatus] = useState<Task['status']>('pending');
-
+  const [formPriority, setFormPriority] = useState('medium');
   const toggleFormAssignee = (userId: string) => {
     setFormAssignees(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
   };
