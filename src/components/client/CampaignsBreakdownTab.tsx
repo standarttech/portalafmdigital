@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { isAfmCampaign } from '@/lib/afmCampaignFilter';
 import CampaignColumnSettings, { type ColumnDef } from './CampaignColumnSettings';
 
 type Level = 'campaign' | 'adset' | 'ad';
