@@ -9,18 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, GitBranch, Loader2, Activity, ArrowRight, Settings2, Trash2, X } from 'lucide-react';
+import { Plus, GitBranch, Loader2, Activity, ArrowRight, Settings2, Trash2, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
 
 const operators = ['equals', 'not_equals', 'contains', 'starts_with', 'greater_than', 'less_than'];
 const conditionFields = ['source', 'utm_source', 'utm_medium', 'utm_campaign', 'country', 'form_id', 'value'];
 const actionTypes = [
-  { value: 'assign_user', label: 'Assign to User' },
-  { value: 'assign_pipeline', label: 'Route to Pipeline' },
-  { value: 'tag', label: 'Add Tag' },
-  { value: 'webhook', label: 'Trigger Webhook' },
-  { value: 'notify', label: 'Send Notification' },
+  { value: 'assign_user', label: 'Assign to User', supported: true },
+  { value: 'assign_pipeline', label: 'Route to Pipeline', supported: true },
+  { value: 'tag', label: 'Add Tag', supported: true },
+  { value: 'webhook', label: 'Trigger Webhook', supported: false },
+  { value: 'notify', label: 'Send Notification', supported: false },
 ];
 
 export default function GosLeadRoutingPage() {
@@ -29,18 +29,23 @@ export default function GosLeadRoutingPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingRule, setEditingRule] = useState<any | null>(null);
+  const [agencyUsers, setAgencyUsers] = useState<any[]>([]);
+  const [pipelines, setPipelines] = useState<any[]>([]);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     setLoading(true);
-    // RLS handles scoping — only rules/logs the user has access to are returned
-    const [rulesRes, logsRes] = await Promise.all([
+    const [rulesRes, logsRes, usersRes, pipelinesRes] = await Promise.all([
       supabase.from('gos_routing_rules').select('*').order('priority', { ascending: true }),
       supabase.from('gos_routing_log').select('*').order('created_at', { ascending: false }).limit(100),
+      supabase.from('agency_users').select('user_id, display_name, agency_role'),
+      supabase.from('crm_pipelines').select('id, name, client_id'),
     ]);
     setRules(rulesRes.data || []);
     setLogs(logsRes.data || []);
+    setAgencyUsers(usersRes.data || []);
+    setPipelines(pipelinesRes.data || []);
     setLoading(false);
   };
 
@@ -57,7 +62,7 @@ export default function GosLeadRoutingPage() {
       created_by: user.id,
       priority: rules.length,
       conditions: [{ field: 'source', operator: 'equals', value: '' }],
-      action_type: 'assign_user',
+      action_type: 'tag',
       action_config: {},
     }).select().single();
     if (error) { toast.error('Failed to create rule'); return; }
@@ -110,6 +115,8 @@ export default function GosLeadRoutingPage() {
     setEditingRule({ ...editingRule, action_config: { ...(editingRule.action_config || {}), [key]: value } });
   };
 
+  const actionInfo = actionTypes.find(a => a.value === editingRule?.action_type);
+
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   return (
@@ -151,11 +158,13 @@ export default function GosLeadRoutingPage() {
                         <Badge variant="outline" className="text-[10px]">
                           {actionTypes.find(a => a.value === rule.action_type)?.label || rule.action_type}
                         </Badge>
+                        {!actionTypes.find(a => a.value === rule.action_type)?.supported && (
+                          <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">logged only</Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {(rule.conditions || []).length} condition(s) <ArrowRight className="h-3 w-3 inline mx-1" /> {rule.action_type}
                       </p>
-                      {rule.description && <p className="text-xs text-muted-foreground mt-0.5">{rule.description}</p>}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingRule(rule)}><Settings2 className="h-3.5 w-3.5" /></Button>
@@ -193,7 +202,7 @@ export default function GosLeadRoutingPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Rule Editor */}
+      {/* Rule Editor with structured selects */}
       {editingRule && (
         <Dialog open={!!editingRule} onOpenChange={open => { if (!open) setEditingRule(null); }}>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
@@ -237,26 +246,84 @@ export default function GosLeadRoutingPage() {
 
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Action</h3>
-                <Select value={editingRule.action_type || 'assign_user'} onValueChange={v => setEditingRule({ ...editingRule, action_type: v })}>
+                <Select value={editingRule.action_type || 'tag'} onValueChange={v => setEditingRule({ ...editingRule, action_type: v, action_config: {} })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{actionTypes.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{actionTypes.map(a => (
+                    <SelectItem key={a.value} value={a.value}>
+                      {a.label} {!a.supported && '(logged only)'}
+                    </SelectItem>
+                  ))}</SelectContent>
                 </Select>
+
+                {actionInfo && !actionInfo.supported && (
+                  <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 flex items-start gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-[11px] text-amber-400">This action type is logged but not yet executed. Routing decisions will be recorded in the log.</p>
+                  </div>
+                )}
 
                 <div className="mt-3 space-y-2">
                   {editingRule.action_type === 'assign_user' && (
-                    <Input placeholder="User email or ID" value={(editingRule.action_config || {}).user_id || ''} onChange={e => updateActionConfig('user_id', e.target.value)} className="text-xs" />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Assign to User</label>
+                      {agencyUsers.length > 0 ? (
+                        <Select value={(editingRule.action_config || {}).user_id || ''} onValueChange={v => updateActionConfig('user_id', v)}>
+                          <SelectTrigger className="text-xs"><SelectValue placeholder="Select user..." /></SelectTrigger>
+                          <SelectContent>
+                            {agencyUsers.map(u => (
+                              <SelectItem key={u.user_id} value={u.user_id}>
+                                {u.display_name || u.user_id} ({u.agency_role})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input placeholder="User ID" value={(editingRule.action_config || {}).user_id || ''} onChange={e => updateActionConfig('user_id', e.target.value)} className="text-xs" />
+                      )}
+                    </div>
                   )}
                   {editingRule.action_type === 'assign_pipeline' && (
-                    <Input placeholder="Pipeline ID" value={(editingRule.action_config || {}).pipeline_id || ''} onChange={e => updateActionConfig('pipeline_id', e.target.value)} className="text-xs" />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Target Pipeline</label>
+                      {pipelines.length > 0 ? (
+                        <Select value={(editingRule.action_config || {}).pipeline_id || ''} onValueChange={v => updateActionConfig('pipeline_id', v)}>
+                          <SelectTrigger className="text-xs"><SelectValue placeholder="Select pipeline..." /></SelectTrigger>
+                          <SelectContent>
+                            {pipelines.map(p => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input placeholder="Pipeline ID" value={(editingRule.action_config || {}).pipeline_id || ''} onChange={e => updateActionConfig('pipeline_id', e.target.value)} className="text-xs" />
+                      )}
+                    </div>
                   )}
                   {editingRule.action_type === 'tag' && (
-                    <Input placeholder="Tag name" value={(editingRule.action_config || {}).tag || ''} onChange={e => updateActionConfig('tag', e.target.value)} className="text-xs" />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Tag Name</label>
+                      <Input placeholder="e.g. hot-lead, organic" value={(editingRule.action_config || {}).tag || ''} onChange={e => updateActionConfig('tag', e.target.value)} className="text-xs" />
+                    </div>
                   )}
                   {editingRule.action_type === 'webhook' && (
-                    <Input placeholder="Webhook URL" value={(editingRule.action_config || {}).url || ''} onChange={e => updateActionConfig('url', e.target.value)} className="text-xs" />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Webhook URL</label>
+                      <Input placeholder="https://..." value={(editingRule.action_config || {}).url || ''} onChange={e => updateActionConfig('url', e.target.value)} className="text-xs" />
+                      <p className="text-[10px] text-muted-foreground mt-1">Webhook execution not yet implemented — decision will be logged</p>
+                    </div>
                   )}
                   {editingRule.action_type === 'notify' && (
-                    <Input placeholder="Notification channel (email, telegram)" value={(editingRule.action_config || {}).channel || ''} onChange={e => updateActionConfig('channel', e.target.value)} className="text-xs" />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Notification Channel</label>
+                      <Select value={(editingRule.action_config || {}).channel || ''} onValueChange={v => updateActionConfig('channel', v)}>
+                        <SelectTrigger className="text-xs"><SelectValue placeholder="Select channel..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="telegram">Telegram</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground mt-1">Notification sending not yet implemented — decision will be logged</p>
+                    </div>
                   )}
                 </div>
               </div>
