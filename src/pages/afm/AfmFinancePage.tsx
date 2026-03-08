@@ -703,6 +703,7 @@ function FinancialPlanningTable() {
 
 // ─── MAIN PAGE ─────────────────────────────────────────────────────────────
 export default function AfmFinancePage() {
+  const { t } = useLanguage();
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
       <motion.div variants={item}>
