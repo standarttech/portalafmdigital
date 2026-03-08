@@ -139,30 +139,52 @@ export default function NotificationSettings() {
 
   const handleEnableWebPush = async () => {
     try {
-      // Check if the browser supports notifications at all
       if (!('Notification' in window)) {
         toast.error(t('notif.webpushNotSupported'));
         return;
       }
-
-      // Check for service worker + PushManager (not supported in iOS Safari < 16.4)
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         toast.error(t('notif.webpushNotSupported'));
         return;
       }
 
       const permission = await Notification.requestPermission();
-      if (permission === 'denied') {
-        toast.error(t('notif.webpushDenied'));
-        return;
-      }
       if (permission !== 'granted') {
         toast.error(t('notif.webpushDenied'));
         return;
       }
 
-      await navigator.serviceWorker.register('/sw.js');
-      updatePref('webpush_enabled', true);
+      // Register service worker
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+
+      // Fetch VAPID public key from edge function or env
+      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      if (!vapidPublicKey) {
+        toast.error('VAPID key not configured');
+        return;
+      }
+
+      // Convert VAPID key to Uint8Array
+      const padding = '='.repeat((4 - (vapidPublicKey.length % 4)) % 4);
+      const base64 = (vapidPublicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = atob(base64);
+      const applicationServerKey = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        applicationServerKey[i] = rawData.charCodeAt(i);
+      }
+
+      // Subscribe to push
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
+
+      const subscriptionJson = subscription.toJSON();
+
+      // Save subscription to DB
+      await updatePref('webpush_subscription', subscriptionJson);
+      await updatePref('webpush_enabled', true);
       toast.success(t('notif.webpushEnabled'));
     } catch (e: any) {
       console.error('Web push setup error:', e);
