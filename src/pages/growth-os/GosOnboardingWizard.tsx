@@ -67,7 +67,7 @@ export default function GosOnboardingWizard() {
     }
 
     setSession(sess);
-    setFormData(sess.data || {});
+    setFormData((typeof sess.data === 'object' && sess.data !== null && !Array.isArray(sess.data)) ? sess.data as Record<string, any> : {});
     setLoading(false);
   }, [sessionId, navigate]);
 
