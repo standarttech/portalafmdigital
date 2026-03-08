@@ -109,12 +109,12 @@ export default function ClientDashboardPage() {
     })();
   }, [user]);
 
-  // Fetch metrics, campaigns, budget, reports
+  // Fetch metrics, campaigns, budget, reports, recommendations
   const fetchData = useCallback(async () => {
     if (clientIds.length === 0) return;
     const cid = clientIds[0];
 
-    const [metricsRes, campaignsRes, budgetRes, reportsRes] = await Promise.all([
+    const [metricsRes, campaignsRes, budgetRes, reportsRes, adAccountsRes, commentsRes] = await Promise.all([
       supabase.from('daily_metrics')
         .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
         .eq('client_id', cid).order('date', { ascending: true }),
@@ -131,6 +131,16 @@ export default function ClientDashboardPage() {
         .eq('client_id', cid)
         .eq('status', 'published')
         .order('created_at', { ascending: false }),
+      supabase.from('ad_accounts')
+        .select('id')
+        .eq('client_id', cid)
+        .eq('is_active', true)
+        .limit(1),
+      supabase.from('client_comments')
+        .select('id, content, created_at, user_id')
+        .eq('client_id', cid)
+        .order('created_at', { ascending: false })
+        .limit(10),
     ]);
 
     if (metricsRes.data) setDailyMetrics(metricsRes.data as DailyRow[]);
@@ -146,6 +156,20 @@ export default function ClientDashboardPage() {
 
     if (budgetRes.data) setBudgetPlan(budgetRes.data as BudgetPlan);
     if (reportsRes.data) setReports(reportsRes.data as Report[]);
+    setHasMetaApiAccounts((adAccountsRes.data?.length || 0) > 0);
+
+    if (commentsRes.data && commentsRes.data.length > 0) {
+      const userIds = [...new Set(commentsRes.data.map(c => c.user_id))];
+      const { data: users } = await supabase.from('agency_users').select('user_id, display_name').in('user_id', userIds);
+      const nameMap: Record<string, string> = {};
+      (users || []).forEach(u => { nameMap[u.user_id] = u.display_name || 'Team'; });
+      setRecommendations(commentsRes.data.map(c => ({
+        id: c.id,
+        content: c.content,
+        created_at: c.created_at,
+        user_name: nameMap[c.user_id] || 'Team',
+      })));
+    }
   }, [clientIds]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
