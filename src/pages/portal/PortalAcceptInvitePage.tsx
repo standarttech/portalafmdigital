@@ -270,7 +270,9 @@ export default function PortalAcceptInvitePage() {
             <form onSubmit={handleSignIn} className="space-y-3">
               <div>
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+                <Input id="email" type="email" value={email} readOnly
+                  className="bg-muted/50 cursor-not-allowed" />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Sign in with this email to activate your portal access</p>
               </div>
               <div>
                 <Label htmlFor="password">Password</Label>
