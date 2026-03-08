@@ -21,6 +21,7 @@ interface Metrics {
 const modules = [
   { label: 'Ad Accounts', desc: 'Connect and manage advertising platform accounts', icon: MonitorSmartphone, path: '/ai-ads/accounts', color: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30', iconColor: 'text-blue-400' },
   { label: 'AI Analysis', desc: 'AI-powered campaign analysis and insights', icon: BrainCircuit, path: '/ai-ads/analysis', color: 'from-violet-500/20 to-purple-500/20 border-violet-500/30', iconColor: 'text-violet-400' },
+  { label: 'Recommendations', desc: 'Review and act on AI-generated recommendations', icon: TrendingUp, path: '/ai-ads/recommendations', color: 'from-cyan-500/20 to-blue-500/20 border-cyan-500/30', iconColor: 'text-cyan-400' },
   { label: 'Hypotheses', desc: 'Brainstorm and discuss optimization strategies', icon: Lightbulb, path: '/ai-ads/hypotheses', color: 'from-amber-500/20 to-orange-500/20 border-amber-500/30', iconColor: 'text-amber-400' },
   { label: 'Campaign Drafts', desc: 'Build and review campaign configurations', icon: FileStack, path: '/ai-ads/drafts', color: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30', iconColor: 'text-emerald-400' },
   { label: 'Executions', desc: 'Approve and monitor campaign launches', icon: Rocket, path: '/ai-ads/executions', color: 'from-rose-500/20 to-pink-500/20 border-rose-500/30', iconColor: 'text-rose-400' },
@@ -55,7 +56,7 @@ export default function AiAdsOverviewPage() {
         supabase.from('campaign_drafts' as any).select('id', { count: 'exact', head: true }),
         supabase.from('launch_requests' as any).select('id', { count: 'exact', head: true }).eq('status', 'pending_approval'),
         supabase.from('hypothesis_threads' as any).select('id', { count: 'exact', head: true }),
-        supabase.from('ai_recommendations' as any).select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('ai_recommendations' as any).select('id', { count: 'exact', head: true }).eq('status', 'new'),
       ]);
       setMetrics({
         accounts: accounts.count || 0,

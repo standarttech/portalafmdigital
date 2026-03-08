@@ -98,6 +98,7 @@ const AiAdsAnalysisPage = React.lazy(() => import("@/pages/ai-ads/AiAdsAnalysisP
 const AiAdsHypothesesPage = React.lazy(() => import("@/pages/ai-ads/AiAdsHypothesesPage"));
 const AiAdsDraftsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsDraftsPage"));
 const AiAdsExecutionsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsExecutionsPage"));
+const AiAdsRecommendationsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsRecommendationsPage"));
 import AiAdsLayout from "@/components/layout/AiAdsLayout";
 
 const queryClient = new QueryClient({
@@ -469,6 +470,7 @@ function AppRoutes() {
         <Route path="/ai-ads" element={<AiAdsOverviewPage />} />
         <Route path="/ai-ads/accounts" element={<AiAdsAccountsPage />} />
         <Route path="/ai-ads/analysis" element={<AiAdsAnalysisPage />} />
+        <Route path="/ai-ads/recommendations" element={<AiAdsRecommendationsPage />} />
         <Route path="/ai-ads/hypotheses" element={<AiAdsHypothesesPage />} />
         <Route path="/ai-ads/drafts" element={<AiAdsDraftsPage />} />
         <Route path="/ai-ads/executions" element={<AiAdsExecutionsPage />} />

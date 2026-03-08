@@ -454,6 +454,7 @@ export type Database = {
       ai_analysis_runs: {
         Row: {
           ad_account_id: string | null
+          analysis_type: string
           client_id: string
           completed_at: string | null
           created_at: string
@@ -468,6 +469,7 @@ export type Database = {
         }
         Insert: {
           ad_account_id?: string | null
+          analysis_type?: string
           client_id: string
           completed_at?: string | null
           created_at?: string
@@ -482,6 +484,7 @@ export type Database = {
         }
         Update: {
           ad_account_id?: string | null
+          analysis_type?: string
           client_id?: string
           completed_at?: string | null
           created_at?: string
@@ -793,6 +796,7 @@ export type Database = {
           created_at: string
           created_by: string
           draft_type: string
+          hypothesis_id: string | null
           id: string
           metadata: Json | null
           name: string
@@ -810,6 +814,7 @@ export type Database = {
           created_at?: string
           created_by: string
           draft_type?: string
+          hypothesis_id?: string | null
           id?: string
           metadata?: Json | null
           name: string
@@ -827,6 +832,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           draft_type?: string
+          hypothesis_id?: string | null
           id?: string
           metadata?: Json | null
           name?: string
@@ -850,6 +856,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_drafts_hypothesis_id_fkey"
+            columns: ["hypothesis_id"]
+            isOneToOne: false
+            referencedRelation: "hypothesis_threads"
             referencedColumns: ["id"]
           },
           {
@@ -2786,6 +2799,7 @@ export type Database = {
           id: string
           linked_campaign_ids: string[] | null
           metadata: Json | null
+          recommendation_id: string | null
           status: string
           tags: string[] | null
           title: string
@@ -2799,6 +2813,7 @@ export type Database = {
           id?: string
           linked_campaign_ids?: string[] | null
           metadata?: Json | null
+          recommendation_id?: string | null
           status?: string
           tags?: string[] | null
           title: string
@@ -2812,6 +2827,7 @@ export type Database = {
           id?: string
           linked_campaign_ids?: string[] | null
           metadata?: Json | null
+          recommendation_id?: string | null
           status?: string
           tags?: string[] | null
           title?: string
@@ -2830,6 +2846,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hypothesis_threads_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_recommendations"
             referencedColumns: ["id"]
           },
         ]
