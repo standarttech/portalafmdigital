@@ -239,6 +239,7 @@ serve(async (req) => {
             pause_loser: ["pause_campaign", "pause_adset"],
             increase_budget: ["increase_budget"],
             fix_creative_issue: ["mark_for_review"],
+            high_cpc_alert: ["mark_for_review", "decrease_budget"],
             investigate_rejection: ["mark_for_review"],
             relaunch_with_changes: ["relaunch_with_changes"],
             duplicate_winner: ["duplicate_winner"],
