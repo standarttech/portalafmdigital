@@ -391,6 +391,7 @@ function AppRoutes() {
         </Route>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<ClientDashboardPage />} />
+          <Route path="/portal" element={<ClientPortalPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/glossary" element={<GlossaryPage />} />
