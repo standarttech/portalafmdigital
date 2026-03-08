@@ -309,6 +309,7 @@ export default function GosOnboardingPage() {
         <Switch checked={showBranding} onCheckedChange={toggleBranding} />
       </div>
 
+      <Tabs defaultValue="flows">
         <TabsList>
           <TabsTrigger value="flows">Flows ({flows.length})</TabsTrigger>
           <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
