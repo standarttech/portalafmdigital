@@ -254,7 +254,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                     {t('clients.metaAutoSync')}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {t('clients.metaAutoSyncDesc' as TranslationKey) || 'Data is pulled every hour for the last 3 days (covers Facebook attribution window). Manual sync — 30 days.'}
+                    {t('clients.metaAutoSyncDesc')}
                   </p>
                 </div>
                 <Switch checked={metaAutoSync} onCheckedChange={async (enabled) => {
