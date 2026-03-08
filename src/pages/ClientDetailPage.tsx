@@ -123,6 +123,8 @@ export default function ClientDetailPage() {
   const [newEventNote, setNewEventNote] = useState('');
   const [addingNote, setAddingNote] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [hasMetaApiAccounts, setHasMetaApiAccounts] = useState(false);
+  const [lastSyncDate, setLastSyncDate] = useState<string | null>(null);
 
   // Unified DateRangePicker state
   const [dateRange, setDateRange] = useState<DateRange>('30d');
