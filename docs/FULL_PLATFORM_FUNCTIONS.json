@@ -1,0 +1,33 @@
+{
+  "edge_functions": [
+    {"name": "approve-user", "purpose": "Approve access requests, create agency users", "auth": "JWT via getUser", "verify_jwt": false},
+    {"name": "sync-google-sheet", "purpose": "Sync client data from Google Sheets", "auth": "service_role or cron", "verify_jwt": false},
+    {"name": "send-notification", "purpose": "Multi-channel notification dispatch", "auth": "service_role", "verify_jwt": false},
+    {"name": "telegram-bot", "purpose": "Telegram bot webhook handler", "auth": "Telegram signature", "verify_jwt": false},
+    {"name": "meta-oauth", "purpose": "Meta OAuth flow handler", "auth": "JWT", "verify_jwt": false},
+    {"name": "task-reminders", "purpose": "Send task deadline reminders", "auth": "cron secret", "verify_jwt": false},
+    {"name": "trigger-webhooks", "purpose": "Fire client webhooks on events", "auth": "service_role", "verify_jwt": false},
+    {"name": "send-webpush", "purpose": "Web push notification delivery", "auth": "service_role", "verify_jwt": false},
+    {"name": "get-vapid-key", "purpose": "Return public VAPID key", "auth": "none (public key)", "verify_jwt": false},
+    {"name": "scheduled-digest", "purpose": "Periodic email digest", "auth": "cron secret", "verify_jwt": false},
+    {"name": "gos-form-submit", "purpose": "Growth OS form submission handler", "auth": "public (form token)", "verify_jwt": false},
+    {"name": "gos-store-secret", "purpose": "Store Growth OS integration secrets", "auth": "JWT", "verify_jwt": false},
+    {"name": "gos-test-connection", "purpose": "Test Growth OS integration connectivity", "auth": "JWT", "verify_jwt": false},
+    {"name": "scheduled-gos-health", "purpose": "Periodic Growth OS health checks", "auth": "cron secret", "verify_jwt": false},
+    {"name": "ai-ads-analyze", "purpose": "AI analysis for ad campaigns", "auth": "JWT", "verify_jwt": false},
+    {"name": "ai-router", "purpose": "Route AI tasks to appropriate providers", "auth": "JWT", "verify_jwt": false},
+    {"name": "ai-provider-health", "purpose": "Check AI provider health status", "auth": "JWT/cron", "verify_jwt": false},
+    {"name": "campaign-execute", "purpose": "Execute campaign launch on ad platforms", "auth": "JWT", "verify_jwt": false},
+    {"name": "sync-launched-campaigns", "purpose": "Sync launched campaign status/metrics", "auth": "cron/JWT", "verify_jwt": false},
+    {"name": "execute-optimization", "purpose": "Execute optimization actions on ad platforms", "auth": "JWT", "verify_jwt": false},
+    {"name": "portal-pdf-report", "purpose": "Generate HTML report for portal users", "auth": "JWT via getUser", "verify_jwt": false},
+    {"name": "send-portal-invite", "purpose": "Send portal invite emails", "auth": "JWT", "verify_jwt": false},
+    {"name": "store-bot-token", "purpose": "Store Telegram bot token", "auth": "JWT", "verify_jwt": false},
+    {"name": "test-bot-token", "purpose": "Test Telegram bot token validity", "auth": "JWT", "verify_jwt": false},
+    {"name": "crm-webhook", "purpose": "CRM inbound webhook handler", "auth": "webhook signature", "verify_jwt": false},
+    {"name": "sync-meta-ads", "purpose": "Sync Meta ads data", "auth": "cron/JWT", "verify_jwt": false}
+  ],
+  "total": 26,
+  "dead_functions": [],
+  "notes": "All functions have verify_jwt=false with auth validated in code. No dead/unreferenced functions found."
+}
