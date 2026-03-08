@@ -375,19 +375,10 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
     setItems((iRes.data as any[]) || []);
     const accs = aRes.data || [];
     setAccounts(accs);
-    // Attempt to fetch Meta pages from platform_connections metadata for connected accounts
-    const pages: MetaPage[] = [];
-    for (const acc of accs) {
-      if (acc.connection_id) {
-        const { data: conn } = await supabase.from('platform_connections').select('id, account_name').eq('id', acc.connection_id).single();
-        if (conn) {
-          // Use the platform_account_id as a potential page source hint
-          // Real Meta page discovery would need a dedicated edge function; for now expose account info
-          pages.push({ id: acc.id, name: conn.account_name || acc.platform_account_id, page_id: acc.platform_account_id });
-        }
-      }
-    }
-    setMetaPages(pages);
+    // Note: Real Meta page discovery requires a dedicated Graph API call.
+    // Ad account IDs are NOT page IDs — we don't fake page discovery.
+    // MetaPages will remain empty until a page discovery edge function is implemented.
+    setMetaPages([]);
     setLoading(false);
   }, [draft.id, draft.client_id]);
 
