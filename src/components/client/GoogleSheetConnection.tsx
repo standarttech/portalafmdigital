@@ -318,7 +318,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
-                  <RefreshCw className="h-3 w-3 mr-1.5" /> {t('clients.refreshList' as TranslationKey) || 'Refresh list'}
+                  <RefreshCw className="h-3 w-3 mr-1.5" /> {t('clients.refreshList')}
                 </Button>
               </div>
             )}
