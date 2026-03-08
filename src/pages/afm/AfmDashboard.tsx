@@ -489,10 +489,10 @@ export default function AfmDashboard() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <BarChart3 className="h-3.5 w-3.5" /> Обзор
+              <BarChart3 className="h-3.5 w-3.5" /> {t('afm.dash.overview' as any)}
             </TabsTrigger>
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <Table2 className="h-3.5 w-3.5" /> Ежедневно
+              <Table2 className="h-3.5 w-3.5" /> {t('afm.dash.daily' as any)}
             </TabsTrigger>
             <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Link2 className="h-3.5 w-3.5" /> {t('dashboard.dataSources')}
