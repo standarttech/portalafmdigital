@@ -346,7 +346,7 @@ function AppRoutes() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/glossary" element={<GlossaryPage />} />
         </Route>
-        <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/auth" element={<AuthPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     );
@@ -414,7 +414,7 @@ function AppRoutes() {
         <Route path="/adminscale/overview" element={<AdminScaleOverview />} />
         <Route path="/adminscale/reference" element={<AdminScaleReference />} />
       </Route>
-      <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
       <Route path="/request-access" element={<Navigate to="/dashboard" replace />} />
       <Route path="/invite" element={<Navigate to="/dashboard" replace />} />
