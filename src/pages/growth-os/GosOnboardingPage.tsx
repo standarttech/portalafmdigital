@@ -70,6 +70,7 @@ export default function GosOnboardingPage() {
       { onConflict: 'key' }
     );
     toast.success(enabled ? 'Branding enabled' : 'Branding hidden');
+    logGosAction('branding_changed', 'settings', 'gos_show_branding', 'Branding Toggle', { afterSummary: { enabled } });
   };
 
   const loadData = async () => {
