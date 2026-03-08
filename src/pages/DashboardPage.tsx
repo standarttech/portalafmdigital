@@ -97,14 +97,22 @@ export default function DashboardPage() {
   const isClient = effectiveRole === 'Client';
   const isAgencyMember = isAdmin || isBuyer;
 
-  // Draggable section order
-  const [sectionOrder, setSectionOrder] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_SECTIONS;
-  });
+  // Draggable section order — persisted in platform_settings for all users
+  const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_SECTIONS);
+
+  // Load section order from DB on mount
+  useEffect(() => {
+    supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'dashboard_section_order')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value && Array.isArray(data.value)) {
+          setSectionOrder(data.value as string[]);
+        }
+      });
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -118,7 +126,11 @@ export default function DashboardPage() {
         const oldIndex = prev.indexOf(active.id as string);
         const newIndex = prev.indexOf(over.id as string);
         const newOrder = arrayMove(prev, oldIndex, newIndex);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
+        // Save to DB for all users
+        supabase
+          .from('platform_settings')
+          .upsert({ key: 'dashboard_section_order', value: newOrder as any, updated_by: user?.id }, { onConflict: 'key' })
+          .then(() => {});
         return newOrder;
       });
     }
