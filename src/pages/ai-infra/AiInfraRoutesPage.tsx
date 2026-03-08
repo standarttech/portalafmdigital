@@ -88,10 +88,10 @@ export default function AiInfraRoutesPage() {
                 </Select>
               </div>
               <div><Label>Fallback Provider (optional)</Label>
-                <Select value={form.fallback_provider_id} onValueChange={v => setForm(f => ({ ...f, fallback_provider_id: v }))}>
+                <Select value={form.fallback_provider_id || '__none__'} onValueChange={v => setForm(f => ({ ...f, fallback_provider_id: v === '__none__' ? '' : v }))}>
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {providers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
