@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, FormInput, Loader2, Settings2, X, ChevronUp, ChevronDown, Inbox, Copy, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 
 /** CAPTCHA provider status block with real status check */
 function CaptchaSettingBlock({ enabled, onToggle }: { enabled: boolean; onToggle: (v: boolean) => void }) {
