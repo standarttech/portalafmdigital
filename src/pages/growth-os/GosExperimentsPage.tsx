@@ -167,6 +167,7 @@ export default function GosExperimentsPage() {
   const declareWinner = async (winnerId: string) => {
     if (!editing) return;
     await supabase.from('gos_experiments').update({ winner_id: winnerId, status: 'completed' }).eq('id', editing.id);
+    logGosAction('declare_winner', 'experiment', editing.id, editing.name, { metadata: { winner_id: winnerId } });
     toast.success('Winner declared!');
     setEditing(null);
     loadData();
