@@ -1,7 +1,12 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileCode2, FormInput, ClipboardCheck, Plug, GitBranch, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  FileCode2, FormInput, ClipboardCheck, Plug, GitBranch, ArrowRight,
+  Inbox, Activity, CheckCircle2, AlertCircle, Loader2, TrendingUp
+} from 'lucide-react';
+import { useGosMetrics } from '@/hooks/useGosMetrics';
 import type { TranslationKey } from '@/i18n/translations';
 
 const modules = [
@@ -12,9 +17,27 @@ const modules = [
   { key: 'gos.leadRouting' as TranslationKey, desc: 'gos.leadRoutingDesc' as TranslationKey, icon: GitBranch, path: '/growth-os/lead-routing', color: 'from-rose-500/20 to-pink-500/20 border-rose-500/30', iconColor: 'text-rose-400' },
 ];
 
+function KpiCard({ label, value, sub, icon: Icon, color }: { label: string; value: string | number; sub?: string; icon: React.ElementType; color: string }) {
+  return (
+    <Card className="hover:border-primary/20 transition-colors">
+      <CardContent className="p-4 flex items-start gap-3">
+        <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${color} flex-shrink-0`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-lg font-bold text-foreground leading-tight">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          {sub && <p className="text-[10px] text-muted-foreground/70">{sub}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function GosOverviewPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { data: metrics, isLoading } = useGosMetrics();
 
   return (
     <div className="space-y-6">
@@ -23,28 +46,177 @@ export default function GosOverviewPage() {
         <p className="text-sm text-muted-foreground mt-1">{t('gos.overviewDesc' as TranslationKey)}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {modules.map(mod => {
-          const Icon = mod.icon;
-          return (
-            <Card
-              key={mod.path}
-              className={`cursor-pointer group bg-gradient-to-br ${mod.color} border hover:scale-[1.02] transition-all duration-200`}
-              onClick={() => navigate(mod.path)}
-            >
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center bg-background/50 ${mod.iconColor}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      {/* KPI Grid */}
+      {isLoading ? (
+        <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : metrics ? (
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <KpiCard label="Published Forms" value={metrics.publishedForms} icon={FormInput} color="bg-violet-500/10 text-violet-400" />
+          <KpiCard label="Published Landings" value={metrics.publishedLandings} icon={FileCode2} color="bg-blue-500/10 text-blue-400" />
+          <KpiCard label="Submissions (7d)" value={metrics.submissions7d} sub={`${metrics.totalSubmissions} total`} icon={Inbox} color="bg-emerald-500/10 text-emerald-400" />
+          <KpiCard label="Submissions (30d)" value={metrics.submissions30d} icon={TrendingUp} color="bg-cyan-500/10 text-cyan-400" />
+          <KpiCard label="Active Onboarding" value={metrics.activeOnboarding} icon={ClipboardCheck} color="bg-amber-500/10 text-amber-400" />
+          <KpiCard label="Completed Onboarding" value={metrics.completedOnboarding} sub={`${metrics.onboardingCompletionRate}% rate`} icon={CheckCircle2} color="bg-emerald-500/10 text-emerald-400" />
+          <KpiCard label="Active Integrations" value={metrics.activeIntegrations} sub={metrics.integrationErrors > 0 ? `${metrics.integrationErrors} with errors` : undefined} icon={Plug} color="bg-teal-500/10 text-teal-400" />
+          <KpiCard label="Routing (7d)" value={metrics.routingLogs7d} sub={`${metrics.activeRules} active rules`} icon={GitBranch} color="bg-rose-500/10 text-rose-400" />
+        </div>
+      ) : null}
+
+      {/* Operational Blocks */}
+      {metrics && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Recent Submissions */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">Recent Submissions</h3>
+                <button onClick={() => navigate('/growth-os/forms')} className="text-xs text-primary hover:underline">View All</button>
+              </div>
+              {metrics.recentSubmissions.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No submissions yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {metrics.recentSubmissions.map((sub: any) => (
+                    <div key={sub.id} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Inbox className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <span className="text-foreground truncate">
+                          {(sub.data as any)?.name || (sub.data as any)?.email || 'Submission'}
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">{sub.source || 'direct'}</Badge>
+                      </div>
+                      <span className="text-muted-foreground flex-shrink-0">{new Date(sub.created_at).toLocaleDateString()}</span>
+                    </div>
+                  ))}
                 </div>
-                <h3 className="font-semibold text-foreground text-sm mb-1">{t(mod.key)}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{t(mod.desc)}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Routing */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">Recent Routing</h3>
+                <button onClick={() => navigate('/growth-os/lead-routing')} className="text-xs text-primary hover:underline">View All</button>
+              </div>
+              {metrics.recentRoutingLogs.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No routing events yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {metrics.recentRoutingLogs.map((log: any) => (
+                    <div key={log.id} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Activity className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <span className="text-foreground">{log.lead_source || '—'}</span>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-foreground truncate">{log.routed_to || '—'}</span>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">{log.action_taken}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Onboarding Summary */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">Onboarding Sessions</h3>
+                <button onClick={() => navigate('/growth-os/onboarding')} className="text-xs text-primary hover:underline">View All</button>
+              </div>
+              {metrics.onboardingSessions.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No sessions yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {metrics.onboardingSessions.map((s: any) => {
+                    const flowSteps = (s as any).gos_onboarding_flows?.steps || [];
+                    const total = Array.isArray(flowSteps) ? flowSteps.length : 0;
+                    return (
+                      <div key={s.id} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <ClipboardCheck className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-foreground truncate">{(s as any).clients?.name || '—'}</span>
+                          <span className="text-muted-foreground">{s.current_step + 1}/{total || '?'}</span>
+                        </div>
+                        <Badge variant="outline" className={`text-[10px] ${s.status === 'completed' ? 'border-emerald-500/30 text-emerald-400' : ''}`}>
+                          {s.status}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Integrations Health */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">Integrations Health</h3>
+                <button onClick={() => navigate('/growth-os/integrations')} className="text-xs text-primary hover:underline">View All</button>
+              </div>
+              {metrics.integrationInstances.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No integrations configured</p>
+              ) : (
+                <div className="space-y-2">
+                  {metrics.integrationInstances.map((inst: any) => {
+                    const hasError = !!inst.error_message;
+                    const neverSynced = !inst.last_sync_at;
+                    return (
+                      <div key={inst.id} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {hasError ? (
+                            <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+                          ) : inst.is_active ? (
+                            <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                          ) : (
+                            <AlertCircle className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          )}
+                          <span className="text-foreground truncate">{(inst as any).gos_integrations?.name || 'Integration'}</span>
+                        </div>
+                        <Badge variant="outline" className={`text-[10px] ${hasError ? 'border-destructive/30 text-destructive' : neverSynced ? 'border-amber-500/30 text-amber-400' : inst.is_active ? 'border-emerald-500/30 text-emerald-400' : ''}`}>
+                          {hasError ? 'error' : neverSynced ? 'never synced' : inst.is_active ? 'active' : 'inactive'}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Module Navigation */}
+      <div>
+        <h2 className="text-sm font-semibold text-foreground mb-3">Modules</h2>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {modules.map(mod => {
+            const Icon = mod.icon;
+            return (
+              <Card
+                key={mod.path}
+                className={`cursor-pointer group bg-gradient-to-br ${mod.color} border hover:scale-[1.02] transition-all duration-200`}
+                onClick={() => navigate(mod.path)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center bg-background/50 ${mod.iconColor}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <h3 className="font-semibold text-foreground text-sm mb-0.5">{t(mod.key)}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{t(mod.desc)}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
