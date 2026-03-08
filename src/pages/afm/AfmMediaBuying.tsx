@@ -130,6 +130,10 @@ function CampaignBreakdown({ clientId, dateRange, t, formatCurrency, formatNumbe
       }
 
       const { data } = await query;
+      // AFM FILTER: at campaign level, filter by name containing AFM
+      const filtered = currentLevel === 'campaign'
+        ? (data || []).filter((r: any) => isAfmCampaign(r.name))
+        : data || [];
       if (data) {
         // Aggregate by platform_id
         const agg: Record<string, AdLevelRow> = {};
