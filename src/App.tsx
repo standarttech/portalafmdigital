@@ -406,13 +406,21 @@ function AppRoutes() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/cookies" element={<CookiePolicyPage />} />
         </Route>
+        {/* Client Portal — isolated layout */}
+        <Route element={<PortalLayout />}>
+          <Route path="/portal" element={<PortalDashboardPage />} />
+          <Route path="/portal/campaigns" element={<PortalCampaignsPage />} />
+          <Route path="/portal/recommendations" element={<PortalRecommendationsPage />} />
+          <Route path="/portal/reports" element={<PortalReportsPage />} />
+          <Route path="/portal/settings" element={<PortalSettingsPage />} />
+        </Route>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<ClientDashboardPage />} />
-          <Route path="/portal" element={<ClientPortalPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/glossary" element={<GlossaryPage />} />
         </Route>
+        <Route path="/portal/login" element={<Navigate to="/portal" replace />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
