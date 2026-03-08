@@ -1792,6 +1792,7 @@ export type Database = {
           metadata: Json | null
           referrer: string | null
           user_agent: string | null
+          variant_id: string | null
         }
         Insert: {
           client_id?: string | null
@@ -1804,6 +1805,7 @@ export type Database = {
           metadata?: Json | null
           referrer?: string | null
           user_agent?: string | null
+          variant_id?: string | null
         }
         Update: {
           client_id?: string | null
@@ -1816,6 +1818,7 @@ export type Database = {
           metadata?: Json | null
           referrer?: string | null
           user_agent?: string | null
+          variant_id?: string | null
         }
         Relationships: [
           {
@@ -1826,6 +1829,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      gos_experiments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entity_type: string
+          id: string
+          name: string
+          status: string
+          traffic_split: Json
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entity_type?: string
+          id?: string
+          name?: string
+          status?: string
+          traffic_split?: Json
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entity_type?: string
+          id?: string
+          name?: string
+          status?: string
+          traffic_split?: Json
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
       }
       gos_form_submissions: {
         Row: {
@@ -1868,6 +1907,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          experiment_id: string | null
           fields: Json
           id: string
           name: string
@@ -1881,6 +1921,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          experiment_id?: string | null
           fields?: Json
           id?: string
           name: string
@@ -1894,6 +1935,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          experiment_id?: string | null
           fields?: Json
           id?: string
           name?: string
@@ -1908,6 +1950,45 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gos_forms_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "gos_experiments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gos_health_check_log: {
+        Row: {
+          checked_at: string
+          id: string
+          instance_id: string
+          message: string | null
+          status: string
+        }
+        Insert: {
+          checked_at?: string
+          id?: string
+          instance_id: string
+          message?: string | null
+          status?: string
+        }
+        Update: {
+          checked_at?: string
+          id?: string
+          instance_id?: string
+          message?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_health_check_log_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "gos_integration_instances"
             referencedColumns: ["id"]
           },
         ]
@@ -2014,6 +2095,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          experiment_id: string | null
           id: string
           name: string
           sections: Json
@@ -2026,6 +2108,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          experiment_id?: string | null
           id?: string
           name: string
           sections?: Json
@@ -2038,6 +2121,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          experiment_id?: string | null
           id?: string
           name?: string
           sections?: Json
@@ -2051,6 +2135,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gos_landing_templates_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "gos_experiments"
             referencedColumns: ["id"]
           },
         ]
@@ -2138,6 +2229,41 @@ export type Database = {
             columns: ["flow_id"]
             isOneToOne: false
             referencedRelation: "gos_onboarding_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gos_onboarding_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          session_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          session_id: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          session_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_onboarding_tokens_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "gos_onboarding_sessions"
             referencedColumns: ["id"]
           },
         ]

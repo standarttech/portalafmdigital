@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, ExternalLink, Copy } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
@@ -258,9 +258,19 @@ export default function GosOnboardingPage() {
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <Badge className={`text-[10px] ${sessionStatusColor[s.status] || ''}`}>{s.status}</Badge>
                           {s.status === 'in_progress' && (
-                            <Button variant="outline" size="sm" className="h-6 text-xs gap-1" onClick={() => navigate(`/growth-os/onboarding/${s.id}`)}>
-                              <ExternalLink className="h-3 w-3" /> Continue
-                            </Button>
+                            <>
+                              <Button variant="outline" size="sm" className="h-6 text-xs gap-1" onClick={() => navigate(`/growth-os/onboarding/${s.id}`)}>
+                                <ExternalLink className="h-3 w-3" /> Continue
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={async () => {
+                                const { data: { user } } = await supabase.auth.getUser();
+                                if (!user) return;
+                                const { data: token } = await supabase.from('gos_onboarding_tokens').insert({ session_id: s.id, created_by: user.id }).select('token').single();
+                                if (token) { navigator.clipboard.writeText(`${window.location.origin}/embed/onboarding/${token.token}`); toast.success('Client link copied to clipboard!'); }
+                              }}>
+                                <Copy className="h-3 w-3" /> Client Link
+                              </Button>
+                            </>
                           )}
                           {s.status === 'completed' && (
                             <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => setViewingSession(s)}>
