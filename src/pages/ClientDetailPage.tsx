@@ -655,7 +655,7 @@ export default function ClientDetailPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('dashboard.overview')}</span></TabsTrigger>
-            <TabsTrigger value="info" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Edit2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clients.info' as TranslationKey)}</span></TabsTrigger>
+            {isAgency && <TabsTrigger value="info" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Edit2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clients.info' as TranslationKey)}</span></TabsTrigger>}
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{t('dashboard.daily')}</TabsTrigger>
             <TabsTrigger value="campaigns" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Play className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Кампании</span></TabsTrigger>
             <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('tasks.title')}</span></TabsTrigger>
