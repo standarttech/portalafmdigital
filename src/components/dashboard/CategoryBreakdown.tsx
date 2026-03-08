@@ -1,7 +1,7 @@
-import { useMemo, forwardRef } from 'react';
+import { useMemo } from 'react';
+import React from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { DollarSign, Users, ShoppingBag, TrendingUp } from 'lucide-react';
 import { CATEGORY_OPTIONS } from '@/components/dashboard/categoryMetrics';
 import type { TranslationKey } from '@/i18n/translations';
@@ -22,34 +22,30 @@ interface Props {
   clients: ClientData[];
 }
 
-const categoryColors: Record<string, string> = {
-  ecom: 'border-blue-500/30 bg-blue-500/5',
-  info_product: 'border-purple-500/30 bg-purple-500/5',
-  online_business: 'border-emerald-500/30 bg-emerald-500/5',
-  local_business: 'border-orange-500/30 bg-orange-500/5',
-  real_estate: 'border-cyan-500/30 bg-cyan-500/5',
-  saas: 'border-indigo-500/30 bg-indigo-500/5',
-  other: 'border-border bg-secondary/5',
+const categoryDots: Record<string, string> = {
+  ecom: 'bg-blue-500',
+  info_product: 'bg-purple-500',
+  online_business: 'bg-emerald-500',
+  local_business: 'bg-orange-500',
+  real_estate: 'bg-cyan-500',
+  saas: 'bg-indigo-500',
+  other: 'bg-muted-foreground',
 };
-
-import React from 'react';
 
 const CategoryBreakdown = React.forwardRef<HTMLDivElement, Props>(function CategoryBreakdown({ clients }, ref) {
   const { t, formatCurrency, formatNumber } = useLanguage();
 
   const categories = useMemo(() => {
-    const groups: Record<string, { clients: ClientData[]; spend: number; leads: number; revenue: number; purchases: number; clicks: number; impressions: number }> = {};
-    
+    const groups: Record<string, { clients: ClientData[]; spend: number; leads: number; revenue: number; purchases: number }> = {};
+
     clients.forEach(c => {
       const cat = c.category || 'other';
-      if (!groups[cat]) groups[cat] = { clients: [], spend: 0, leads: 0, revenue: 0, purchases: 0, clicks: 0, impressions: 0 };
+      if (!groups[cat]) groups[cat] = { clients: [], spend: 0, leads: 0, revenue: 0, purchases: 0 };
       groups[cat].clients.push(c);
       groups[cat].spend += c.spend;
       groups[cat].leads += c.leads;
       groups[cat].revenue += c.revenue;
       groups[cat].purchases += c.purchases;
-      groups[cat].clicks += c.clicks;
-      groups[cat].impressions += c.impressions;
     });
 
     return Object.entries(groups)
@@ -66,78 +62,55 @@ const CategoryBreakdown = React.forwardRef<HTMLDivElement, Props>(function Categ
   if (categories.length === 0) return null;
 
   return (
-    <Card className="glass-card">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm sm:text-base">{t('dashboard.categoryBreakdown')}</CardTitle>
+    <Card ref={ref} className="glass-card">
+      <CardHeader className="pb-1.5 pt-3 px-4">
+        <CardTitle className="text-sm">{t('dashboard.categoryBreakdown')}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {categories.map(cat => (
-          <div key={cat.category} className={`rounded-lg border p-3 ${categoryColors[cat.category] || categoryColors.other}`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px]">{t(cat.label as TranslationKey)}</Badge>
-                <span className="text-[10px] text-muted-foreground">{cat.clients.length} {t('dashboard.clients')}</span>
+      <CardContent className="px-4 pb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {categories.map(cat => {
+            const isEcom = cat.revenue > 0;
+            return (
+              <div key={cat.category} className="rounded-lg border border-border/60 bg-secondary/20 p-2.5 hover:bg-secondary/30 transition-colors">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className={`h-2 w-2 rounded-full flex-shrink-0 ${categoryDots[cat.category] || categoryDots.other}`} />
+                  <span className="text-[11px] font-medium text-foreground truncate">{t(cat.label as TranslationKey)}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">{cat.clients.length}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+                  <Metric icon={DollarSign} label={t('dashboard.spend')} value={formatCurrency(cat.spend)} color="text-primary" />
+                  {isEcom ? (
+                    <>
+                      <Metric icon={DollarSign} label={t('metric.revenue')} value={formatCurrency(cat.revenue)} color="text-emerald-500" />
+                      <Metric icon={TrendingUp} label={t('metric.roas')} value={`${cat.roas.toFixed(2)}x`} color="text-emerald-500" />
+                    </>
+                  ) : (
+                    <>
+                      <Metric icon={Users} label={t('dashboard.leads')} value={formatNumber(cat.leads)} color="text-primary" />
+                      <Metric icon={TrendingUp} label={t('dashboard.cpl')} value={formatCurrency(cat.cpl)} color="text-primary" />
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              <div>
-                <div className="flex items-center gap-1 mb-0.5">
-                  <DollarSign className="h-3 w-3 text-primary" />
-                  <span className="text-[9px] text-muted-foreground">{t('dashboard.spend')}</span>
-                </div>
-                <p className="text-xs sm:text-sm font-semibold">{formatCurrency(cat.spend)}</p>
-              </div>
-              {cat.leads > 0 && (
-                <div>
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <Users className="h-3 w-3 text-primary" />
-                    <span className="text-[9px] text-muted-foreground">{t('dashboard.leads')}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold">{formatNumber(cat.leads)}</p>
-                </div>
-              )}
-              {cat.leads > 0 && (
-                <div>
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <TrendingUp className="h-3 w-3 text-primary" />
-                    <span className="text-[9px] text-muted-foreground">{t('dashboard.cpl')}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold">{formatCurrency(cat.cpl)}</p>
-                </div>
-              )}
-              {cat.revenue > 0 && (
-                <div>
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <DollarSign className="h-3 w-3 text-success" />
-                    <span className="text-[9px] text-muted-foreground">{t('metric.revenue')}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold">{formatCurrency(cat.revenue)}</p>
-                </div>
-              )}
-              {cat.purchases > 0 && (
-                <div>
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <ShoppingBag className="h-3 w-3 text-primary" />
-                    <span className="text-[9px] text-muted-foreground">{t('metric.purchases')}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold">{formatNumber(cat.purchases)}</p>
-                </div>
-              )}
-              {cat.roas > 0 && (
-                <div>
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <TrendingUp className="h-3 w-3 text-success" />
-                    <span className="text-[9px] text-muted-foreground">{t('metric.roas')}</span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-semibold">{cat.roas.toFixed(2)}x</p>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
 });
+
+function Metric({ icon: Icon, label, value, color }: { icon: typeof DollarSign; label: string; value: string; color: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-0.5">
+        <Icon className={`h-2.5 w-2.5 ${color}`} />
+        <span className="text-[9px] text-muted-foreground truncate">{label}</span>
+      </div>
+      <p className="text-xs font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
 CategoryBreakdown.displayName = 'CategoryBreakdown';
 export default CategoryBreakdown;
