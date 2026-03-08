@@ -289,7 +289,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                 <div className="max-h-[240px] overflow-y-auto space-y-1 border border-border/50 rounded-lg p-2 bg-secondary/10">
                   {filteredAvailable.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">
-                      {searchQuery ? t('common.noResults' as TranslationKey) || 'No results' : t('clients.allAccountsConnected' as TranslationKey) || 'All accounts already connected'}
+                      {searchQuery ? t('common.noResults') : t('clients.allAccountsConnected')}
                     </p>
                   ) : (
                     filteredAvailable.map(a => (
