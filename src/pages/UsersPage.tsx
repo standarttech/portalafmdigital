@@ -736,6 +736,11 @@ export default function UsersPage() {
           <TabsContent value="approvals">
             <AdminApprovalsPanel />
           </TabsContent>
+
+          {/* PORTAL TAB */}
+          <TabsContent value="portal">
+            <AdminPortalManagement />
+          </TabsContent>
         </Tabs>
       </motion.div>
 
