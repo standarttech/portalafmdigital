@@ -78,6 +78,12 @@ const BudgetPlannerPage = React.lazy(() => import("@/pages/BudgetPlannerPage"));
 const CalendarPage = React.lazy(() => import("@/pages/CalendarPage"));
 const TaskBoardPage = React.lazy(() => import("@/pages/TaskBoardPage"));
 const ReportsPage = React.lazy(() => import("@/pages/ReportsPage"));
+const GosOverviewPage = React.lazy(() => import("@/pages/growth-os/GosOverviewPage"));
+const GosLandingTemplatesPage = React.lazy(() => import("@/pages/growth-os/GosLandingTemplatesPage"));
+const GosFormsPage = React.lazy(() => import("@/pages/growth-os/GosFormsPage"));
+const GosOnboardingPage = React.lazy(() => import("@/pages/growth-os/GosOnboardingPage"));
+const GosIntegrationsPage = React.lazy(() => import("@/pages/growth-os/GosIntegrationsPage"));
+const GosLeadRoutingPage = React.lazy(() => import("@/pages/growth-os/GosLeadRoutingPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
