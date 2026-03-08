@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-const MODULE_KEYS = ['can_access_afm_internal', 'can_access_adminscale', 'can_access_crm', 'can_access_growth_os', 'can_access_ai_ads'] as const;
+const MODULE_KEYS = ['can_access_afm_internal', 'can_access_adminscale', 'can_access_crm', 'can_access_growth_os', 'can_access_ai_ads', 'can_manage_ai_infra'] as const;
 
 export function useModuleAccess() {
   const { user, effectiveRole, simulatedUser } = useAuth();
