@@ -110,6 +110,7 @@ function validateDraft(draft: Draft, items: DraftItem[]): ValidationError[] {
     if (!cfg.headline) errors.push({ field: `ad_${idx}_headline`, message: `Ad "${ad.name || idx + 1}": Headline is required`, severity: 'error', section: 'ads' });
     if (!cfg.destination_url) errors.push({ field: `ad_${idx}_destination`, message: `Ad "${ad.name || idx + 1}": Destination URL is required`, severity: 'error', section: 'ads' });
     if (!ad.parent_item_id) errors.push({ field: `ad_${idx}_parent`, message: `Ad "${ad.name || idx + 1}": Not assigned to any ad set`, severity: 'error', section: 'ads' });
+    if (!cfg.page_id) errors.push({ field: `ad_${idx}_page_id`, message: `Ad "${ad.name || idx + 1}": Facebook Page ID is required for Meta execution`, severity: 'warning', section: 'ads' });
   });
 
   return errors;
@@ -383,6 +384,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
       buying_type: 'buying_type', notes: 'notes', ad_account_id: 'ad_account_id',
       config: 'config', validation_status: 'validation_status',
       validation_errors: 'validation_errors', preview_payload: 'preview_payload',
+      status: 'status',
     };
     for (const [key, col] of Object.entries(fieldMap)) {
       if (key in updates) payload[col] = (updates as any)[key];
@@ -926,6 +928,7 @@ function AdEditor({ item, parentName, adsets, onUpdate, onDelete }: {
               </Select>
             </div>
             <div className="sm:col-span-2"><Label className="text-xs">Destination URL</Label><Input value={cfg.destination_url || ''} onChange={e => setCfg((c: any) => ({ ...c, destination_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="https://..." /></div>
+            <div><Label className="text-xs">Facebook Page ID</Label><Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="Required for Meta ad creation" /></div>
             <div className="sm:col-span-2"><Label className="text-xs">Creative Reference (optional)</Label><Input value={cfg.creative_ref || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_ref: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="Link or reference to creative asset" /></div>
           </div>
         </CardContent>
