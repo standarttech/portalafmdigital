@@ -366,6 +366,9 @@ export default function ReportsPage() {
                         <Badge variant="outline" className={report.status === 'published' ? 'bg-success/15 text-success border-success/20' : 'bg-warning/15 text-warning border-warning/20'}>
                           {report.status === 'published' ? t('reports.published') : t('reports.draft')}
                         </Badge>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setPreviewReport(report)}>
+                          <Eye className="h-3.5 w-3.5" />{t('reports.preview' as any)}
+                        </Button>
                         {report.status === 'draft' && (
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handlePublish(report.id)}>
                             <Send className="h-3.5 w-3.5" />{t('reports.published')}
@@ -386,6 +389,12 @@ export default function ReportsPage() {
           </div>
         )}
       </motion.div>
+
+      <ReportPreviewDialog
+        open={!!previewReport}
+        onOpenChange={(open) => !open && setPreviewReport(null)}
+        report={previewReport}
+      />
     </motion.div>
   );
 }
