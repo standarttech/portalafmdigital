@@ -86,7 +86,7 @@ export default function AuthPage() {
                     {displayName || user.email}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {'Вы уже авторизованы'}
+                    {t('auth.alreadyLoggedIn')}
                   </p>
                 </div>
                 <Button
@@ -95,7 +95,7 @@ export default function AuthPage() {
                   onClick={() => navigate('/dashboard')}
                 >
                   <LogIn className="h-4 w-4" />
-                  {'Войти в панель'}
+                  {t('auth.goToDashboard')}
                 </Button>
                 <p className="text-xs text-muted-foreground">
                   {user.email}

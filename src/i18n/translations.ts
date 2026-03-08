@@ -1067,6 +1067,8 @@ export const translations = {
   'campaigns.campaigns': t('Campaigns', 'Кампании', 'Campagne', 'Campañas', 'الحملات', 'Campagnes'),
   'campaigns.adsets': t('Ad Sets', 'Группы объявлений', 'Gruppi di annunci', 'Conjuntos de anuncios', 'مجموعات الإعلانات', 'Ensembles de publicités'),
   'campaigns.ads': t('Ads', 'Объявления', 'Annunci', 'Anuncios', 'الإعلانات', 'Publicités'),
+  'auth.alreadyLoggedIn': t('You are already logged in', 'Вы уже авторизованы', 'Sei già connesso', 'Ya has iniciado sesión', 'أنت مسجل الدخول بالفعل', 'Vous êtes déjà connecté'),
+  'auth.goToDashboard': t('Go to Dashboard', 'Войти в панель', 'Vai alla dashboard', 'Ir al panel', 'الذهاب إلى لوحة التحكم', 'Aller au tableau de bord'),
 
 } as const;
 
