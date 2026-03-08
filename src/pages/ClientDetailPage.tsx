@@ -350,6 +350,7 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
                   toast.success(enabled ? 'Автосинхронизация Meta включена' : 'Автосинхронизация Meta отключена');
                 }} className="flex-shrink-0" />
               </div>
+            </div>
           )}
 
           {/* Add accounts — multi-select with search */}
