@@ -441,38 +441,57 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
     </div>
   );
 }
-// Campaigns Breakdown Tab
-function CampaignsBreakdownTab({ clientId }: { clientId: string }) {
+// Campaigns Breakdown Tab with drill-down navigation and date filtering
+function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { clientId: string; dateFrom?: string; dateTo?: string }) {
   const { formatCurrency, formatNumber } = useLanguage();
-  const [level, setLevel] = useState<'campaign' | 'adset' | 'ad'>('campaign');
+  // Breadcrumb-style navigation: [{level, id, name}]
+  const [breadcrumb, setBreadcrumb] = useState<{ level: 'campaign' | 'adset' | 'ad'; platformId?: string; name?: string }[]>([
+    { level: 'campaign' },
+  ]);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<string>('spend');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  const current = breadcrumb[breadcrumb.length - 1];
+
   useEffect(() => {
     loadData();
-  }, [clientId, level]);
+  }, [clientId, breadcrumb, dateFrom, dateTo]);
 
   const loadData = async () => {
     setLoading(true);
+    const level = current.level;
+
     if (level === 'campaign') {
-      // Aggregate daily_metrics by campaign
       const { data: campaigns } = await supabase
         .from('campaigns')
         .select('id, campaign_name, status, platform_campaign_id')
         .eq('client_id', clientId);
 
-      if (!campaigns?.length) { setData([]); setLoading(false); return; }
+      // Filter out Google Sheets-synced campaigns (they have "sheets-" prefix)
+      const realCampaigns = (campaigns || []).filter(c => !c.platform_campaign_id.startsWith('sheets-'));
+      if (!realCampaigns.length) { setData([]); setLoading(false); return; }
 
-      const { data: metrics } = await supabase
+      let query = supabase
         .from('daily_metrics')
-        .select('campaign_id, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts')
+        .select('campaign_id, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, date')
         .eq('client_id', clientId);
 
+      if (dateFrom) query = query.gte('date', dateFrom);
+      if (dateTo) query = query.lte('date', dateTo);
+
+      const { data: metrics } = await query;
+
       const agg: Record<string, any> = {};
-      (campaigns || []).forEach(c => {
-        agg[c.id] = { name: c.campaign_name, status: c.status, platform_id: c.platform_campaign_id, spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0 };
+      realCampaigns.forEach(c => {
+        agg[c.id] = {
+          id: c.id,
+          name: c.campaign_name,
+          status: c.status,
+          platform_id: c.platform_campaign_id,
+          spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0,
+        };
       });
       (metrics || []).forEach(m => {
         const a = agg[m.campaign_id];
@@ -486,19 +505,33 @@ function CampaignsBreakdownTab({ clientId }: { clientId: string }) {
         a.addToCart += (m.add_to_cart || 0);
         a.checkouts += (m.checkouts || 0);
       });
-      setData(Object.values(agg));
+      // Only show campaigns that have data in this date range
+      setData(Object.values(agg).filter(a => a.spend > 0 || a.impressions > 0 || a.leads > 0));
     } else {
-      // adset or ad level
-      const { data: rows } = await supabase
+      // adset or ad — filter by parent
+      let query = supabase
         .from('ad_level_metrics')
-        .select('platform_id, name, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, status')
+        .select('platform_id, name, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, status, parent_platform_id, date')
         .eq('client_id', clientId)
         .eq('level', level);
+
+      if (current.platformId) {
+        query = query.eq('parent_platform_id', current.platformId);
+      }
+      if (dateFrom) query = query.gte('date', dateFrom);
+      if (dateTo) query = query.lte('date', dateTo);
+
+      const { data: rows } = await query;
 
       const agg: Record<string, any> = {};
       (rows || []).forEach(r => {
         if (!agg[r.platform_id]) {
-          agg[r.platform_id] = { name: r.name, platform_id: r.platform_id, status: r.status, spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0 };
+          agg[r.platform_id] = {
+            name: r.name,
+            platform_id: r.platform_id,
+            status: r.status,
+            spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0,
+          };
         }
         const a = agg[r.platform_id];
         a.spend += Number(r.spend);
@@ -520,6 +553,18 @@ function CampaignsBreakdownTab({ clientId }: { clientId: string }) {
     else { setSortKey(key); setSortDir('desc'); }
   };
 
+  const drillDown = (row: any) => {
+    if (current.level === 'campaign') {
+      setBreadcrumb(prev => [...prev, { level: 'adset', platformId: row.platform_id, name: row.name }]);
+    } else if (current.level === 'adset') {
+      setBreadcrumb(prev => [...prev, { level: 'ad', platformId: row.platform_id, name: row.name }]);
+    }
+  };
+
+  const navigateTo = (index: number) => {
+    setBreadcrumb(prev => prev.slice(0, index + 1));
+  };
+
   const sorted = useMemo(() => {
     return [...data].sort((a, b) => {
       const av = a[sortKey] ?? 0;
@@ -533,30 +578,56 @@ function CampaignsBreakdownTab({ clientId }: { clientId: string }) {
     { key: 'spend', label: 'Расход', right: true },
     { key: 'impressions', label: 'Показы', right: true },
     { key: 'clicks', label: 'Клики', right: true },
+    { key: 'cpc', label: 'CPC', right: true },
+    { key: 'ctr', label: 'CTR', right: true },
     { key: 'leads', label: 'Лиды', right: true },
+    { key: 'cpl', label: 'CPL', right: true },
     { key: 'purchases', label: 'Продажи', right: true },
     { key: 'revenue', label: 'Выручка', right: true },
-    { key: 'addToCart', label: 'В корзину', right: true },
   ];
 
-  const formatVal = (key: string, val: any) => {
-    if (key === 'spend' || key === 'revenue') return formatCurrency(val);
-    if (key === 'name') return val;
-    return formatNumber(val);
+  const formatVal = (key: string, row: any) => {
+    if (key === 'name') return row.name;
+    if (key === 'spend' || key === 'revenue') return formatCurrency(row[key] || 0);
+    if (key === 'cpc') {
+      const clicks = row.clicks || 0;
+      return clicks > 0 ? formatCurrency(row.spend / clicks) : '—';
+    }
+    if (key === 'ctr') {
+      const imp = row.impressions || 0;
+      return imp > 0 ? ((row.clicks / imp) * 100).toFixed(2) + '%' : '—';
+    }
+    if (key === 'cpl') {
+      const leads = row.leads || 0;
+      return leads > 0 ? formatCurrency(row.spend / leads) : '—';
+    }
+    return formatNumber(row[key] || 0);
   };
+
+  const canDrillDown = current.level !== 'ad';
+  const levelLabels: Record<string, string> = { campaign: 'Кампании', adset: 'Группы', ad: 'Объявления' };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base sm:text-lg font-semibold">Структура рекламы</h3>
-        <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5">
-          {(['campaign', 'adset', 'ad'] as const).map(l => (
-            <Button key={l} variant={level === l ? 'default' : 'ghost'} size="sm" onClick={() => setLevel(l)}
-              className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3">
-              {l === 'campaign' ? 'Кампании' : l === 'adset' ? 'Группы' : 'Объявления'}
-            </Button>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 text-sm">
+          {breadcrumb.map((b, i) => (
+            <span key={i} className="flex items-center gap-1.5">
+              {i > 0 && <span className="text-muted-foreground">/</span>}
+              <button
+                onClick={() => navigateTo(i)}
+                className={`hover:underline transition-colors ${i === breadcrumb.length - 1 ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {b.name || levelLabels[b.level]}
+              </button>
+            </span>
           ))}
         </div>
+        {dateFrom && dateTo && (
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            {dateFrom} → {dateTo}
+          </Badge>
+        )}
       </div>
 
       <Card className="glass-card overflow-hidden">
@@ -566,7 +637,16 @@ function CampaignsBreakdownTab({ clientId }: { clientId: string }) {
           ) : sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Play className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">Нет данных. Подключите Meta Ads кабинет и запустите синхронизацию.</p>
+              <p className="text-sm text-muted-foreground">
+                {current.level === 'campaign'
+                  ? 'Нет данных за выбранный период. Подключите Meta Ads кабинет и запустите синхронизацию.'
+                  : 'Нет данных на этом уровне за выбранный период.'}
+              </p>
+              {current.level !== 'campaign' && (
+                <Button variant="ghost" size="sm" className="mt-2" onClick={() => navigateTo(breadcrumb.length - 2)}>
+                  <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Назад
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto max-h-[600px]">
@@ -586,15 +666,42 @@ function CampaignsBreakdownTab({ clientId }: { clientId: string }) {
                 </thead>
                 <tbody>
                   {sorted.map((row, i) => (
-                    <tr key={i}>
+                    <tr key={i}
+                      className={canDrillDown ? 'cursor-pointer hover:bg-primary/5 transition-colors' : ''}
+                      onClick={() => canDrillDown && drillDown(row)}
+                    >
                       {cols.map(col => (
                         <td key={col.key} className={`${col.right ? 'text-right' : ''} ${col.key === 'name' ? 'font-medium text-foreground max-w-[300px] truncate' : 'text-muted-foreground'}`}>
-                          {formatVal(col.key, row[col.key] || 0)}
+                          {col.key === 'name' && canDrillDown ? (
+                            <span className="inline-flex items-center gap-1.5 group">
+                              <span className="truncate">{row.name}</span>
+                              <ChevronDown className="h-3 w-3 -rotate-90 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                            </span>
+                          ) : formatVal(col.key, row)}
                         </td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
+                {/* Summary row */}
+                <tfoot>
+                  <tr className="bg-secondary/30 font-semibold">
+                    {cols.map(col => {
+                      if (col.key === 'name') return <td key={col.key} className="text-foreground">Итого ({sorted.length})</td>;
+                      const totalRow = {
+                        spend: sorted.reduce((s, r) => s + (r.spend || 0), 0),
+                        impressions: sorted.reduce((s, r) => s + (r.impressions || 0), 0),
+                        clicks: sorted.reduce((s, r) => s + (r.clicks || 0), 0),
+                        leads: sorted.reduce((s, r) => s + (r.leads || 0), 0),
+                        purchases: sorted.reduce((s, r) => s + (r.purchases || 0), 0),
+                        revenue: sorted.reduce((s, r) => s + (r.revenue || 0), 0),
+                        addToCart: sorted.reduce((s, r) => s + (r.addToCart || 0), 0),
+                        checkouts: sorted.reduce((s, r) => s + (r.checkouts || 0), 0),
+                      };
+                      return <td key={col.key} className="text-right text-foreground">{formatVal(col.key, totalRow)}</td>;
+                    })}
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
@@ -1349,7 +1456,11 @@ export default function ClientDetailPage() {
 
           {/* CAMPAIGNS TAB */}
           <TabsContent value="campaigns" className="space-y-4">
-            <CampaignsBreakdownTab clientId={id!} />
+            <CampaignsBreakdownTab
+              clientId={id!}
+              dateFrom={customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
+              dateTo={customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
+            />
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
