@@ -133,6 +133,7 @@ export default function GosFormsPage() {
       ],
     }).select().single();
     if (error) { toast.error('Failed to create form'); return; }
+    logGosAction('create', 'form', data?.id, 'New Form');
     setEditing(data);
     loadForms();
   };
