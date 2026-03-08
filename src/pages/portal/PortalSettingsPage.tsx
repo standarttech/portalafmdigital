@@ -21,7 +21,7 @@ const PREF_TYPES: { key: string; label: string; desc: string; mandatory?: boolea
   { key: 'portal_access_updated', label: 'Account updates', desc: 'Portal access and security updates (always on)', mandatory: true },
 ];
 
-type PrefKey = typeof PREF_TYPES[number]['key'];
+type PrefKey = 'campaign_launched' | 'optimization_update' | 'recommendation_added' | 'report_available' | 'file_shared' | 'portal_access_updated';
 
 export default function PortalSettingsPage() {
   const { portalUser, branding, isAdmin } = useOutletContext<Ctx>();
