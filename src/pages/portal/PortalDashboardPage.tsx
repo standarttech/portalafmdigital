@@ -9,8 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import PortalDateFilter, { type DateRange } from '@/components/portal/PortalDateFilter';
 import PeriodComparison from '@/components/portal/PeriodComparison';
 import { exportPerformanceSummary } from '@/lib/portalExport';
+import { getPreviousPeriod } from '@/lib/portalPeriod';
 import { toast } from 'sonner';
-import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
