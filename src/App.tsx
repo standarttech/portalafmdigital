@@ -252,11 +252,12 @@ function AppRoutes() {
     );
   }
 
-  // Portal login is always accessible (separate client auth)
-  if (currentPath === "/portal/login") {
+  // Portal login and accept-invite are always accessible (separate client auth)
+  if (currentPath === "/portal/login" || currentPath === "/portal/accept-invite") {
     return (
       <Routes>
         <Route path="/portal/login" element={<PortalLoginPage />} />
+        <Route path="/portal/accept-invite" element={<PortalAcceptInvitePage />} />
         <Route path="*" element={<Navigate to="/portal/login" replace />} />
       </Routes>
     );
