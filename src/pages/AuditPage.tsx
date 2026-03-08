@@ -195,7 +195,7 @@ export default function AuditPage() {
               mode="range"
               selected={dateRange}
               onSelect={setDateRange}
-              numberOfMonths={2}
+              numberOfMonths={1}
               disabled={date => date > new Date()}
               className="p-3 pointer-events-auto"
               weekStartsOn={1}
