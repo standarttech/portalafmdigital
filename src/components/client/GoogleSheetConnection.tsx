@@ -314,7 +314,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                 {selectedIds.length > 0 && (
                   <Button size="sm" onClick={addSelectedAccounts} disabled={addingAccounts} className="gap-1.5 w-full">
                     {addingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                    {t('clients.addSelected' as TranslationKey) || 'Add selected'} ({selectedIds.length})
+                    {t('clients.addSelected')} ({selectedIds.length})
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
