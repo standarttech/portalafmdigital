@@ -997,6 +997,12 @@ export const translations = {
   'afm.perf.mediaBuyer': t('Media Buyer', 'Медиабаер', 'Media Buyer', 'Media Buyer', 'مشتري الإعلانات', 'Acheteur Média'),
   'afm.perf.clientsCount': t('Clients', 'Клиентов', 'Clienti', 'Clientes', 'العملاء', 'Clients'),
 
+  // Client Dashboard
+  'clients.spendByPlatform': t('Spend by Platform', 'Расходы по платформам', 'Spesa per piattaforma', 'Gasto por plataforma', 'الإنفاق حسب المنصة', 'Dépenses par plateforme'),
+  'clients.recommendations': t('Team Notes', 'Заметки команды', 'Note del team', 'Notas del equipo', 'ملاحظات الفريق', 'Notes de l\'équipe'),
+  'common.connected': t('Connected', 'Подключено', 'Connesso', 'Conectado', 'متصل', 'Connecté'),
+  'common.notConnected': t('Not connected', 'Не подключено', 'Non connesso', 'No conectado', 'غير متصل', 'Non connecté'),
+
 } as const;
 
 export type TranslationKey = keyof typeof translations;
