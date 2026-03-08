@@ -153,7 +153,9 @@ export default function GosFormsPage() {
   };
 
   const deleteForm = async (id: string) => {
+    const form = forms.find(f => f.id === id);
     await supabase.from('gos_forms').delete().eq('id', id);
+    logGosAction('delete', 'form', id, form?.name);
     toast.success('Form deleted');
     loadForms();
   };
