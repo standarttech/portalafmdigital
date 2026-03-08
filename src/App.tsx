@@ -464,6 +464,15 @@ function AppRoutes() {
         <Route path="/growth-os/health" element={<GosSystemHealthPage />} />
         <Route path="/growth-os/integrity" element={<GosIntegrityChecksPage />} />
       </Route>
+      {/* AI Ads Copilot — guarded */}
+      <Route element={<ModuleGuard module="ai_ads"><AiAdsLayout /></ModuleGuard>}>
+        <Route path="/ai-ads" element={<AiAdsOverviewPage />} />
+        <Route path="/ai-ads/accounts" element={<AiAdsAccountsPage />} />
+        <Route path="/ai-ads/analysis" element={<AiAdsAnalysisPage />} />
+        <Route path="/ai-ads/hypotheses" element={<AiAdsHypothesesPage />} />
+        <Route path="/ai-ads/drafts" element={<AiAdsDraftsPage />} />
+        <Route path="/ai-ads/executions" element={<AiAdsExecutionsPage />} />
+      </Route>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
       <Route path="/request-access" element={<Navigate to="/dashboard" replace />} />
