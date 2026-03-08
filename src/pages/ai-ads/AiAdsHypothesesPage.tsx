@@ -229,7 +229,7 @@ function ThreadDetail({ thread, clientName, onBack, onStatusChange, onConvertToD
       thread_id: thread.id, role: 'user', content: newMessage.trim(), created_by: user.id,
     }).select().single();
     if (error) { toast.error('Failed to send message'); setSending(false); return; }
-    logGosAction('create', 'hypothesis_message', (data as any).id, newMessage.trim().slice(0, 60), { threadId: thread.id });
+    logGosAction('create', 'hypothesis_message', (data as any).id, newMessage.trim().slice(0, 60), { metadata: { threadId: thread.id } });
     setMessages(prev => [...prev, data as any]);
     setNewMessage('');
     setSending(false);

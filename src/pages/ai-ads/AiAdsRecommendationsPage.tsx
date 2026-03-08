@@ -96,7 +96,7 @@ export default function AiAdsRecommendationsPage() {
       content: `**Recommendation:** ${rec.title}\n\n${rec.description}\n\n**Type:** ${rec.recommendation_type.replace(/_/g, ' ')}\n**Priority:** ${rec.priority}`,
     });
     await updateStatus(rec, 'converted_to_hypothesis');
-    logGosAction('create', 'hypothesis_thread', (data as any).id, `Hypothesis: ${rec.title}`, { source: 'recommendation', recommendationId: rec.id, clientId: rec.client_id });
+    logGosAction('create', 'hypothesis_thread', (data as any).id, `Hypothesis: ${rec.title}`, { clientId: rec.client_id, metadata: { source: 'recommendation', recommendationId: rec.id } });
     toast.success('Hypothesis thread created');
   };
 
