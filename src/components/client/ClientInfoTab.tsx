@@ -47,14 +47,6 @@ const defaultInfo: ClientInfo = {
   contract_end: null, additional_notes: '',
 };
 
-// Fields that clients are allowed to edit
-const CLIENT_EDITABLE_FIELDS: (keyof ClientInfo)[] = [
-  'brief_url', 'website_url', 'instagram_url', 'facebook_url', 'tiktok_url',
-  'linkedin_url', 'youtube_url', 'twitter_url', 'telegram_url',
-  'business_niche', 'target_audience', 'geo_targeting', 'key_competitors',
-  'brand_guidelines_url', 'landing_pages', 'crm_system',
-  'contact_person', 'contact_phone', 'contact_email', 'additional_notes',
-];
 
 export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
