@@ -1063,6 +1063,12 @@ export const translations = {
   'clients.secondary': t('Secondary', 'Вторичный', 'Secondario', 'Secundario', 'ثانوي', 'Secondaire'),
   'common.noResults': t('No results', 'Нет результатов', 'Nessun risultato', 'Sin resultados', 'لا توجد نتائج', 'Aucun résultat'),
   'common.disabled': t('Disabled', 'Отключено', 'Disabilitato', 'Desactivado', 'معطل', 'Désactivé'),
+  'common.total': t('Total', 'Итого', 'Totale', 'Total', 'الإجمالي', 'Total'),
+  'campaigns.campaigns': t('Campaigns', 'Кампании', 'Campagne', 'Campañas', 'الحملات', 'Campagnes'),
+  'campaigns.adsets': t('Ad Sets', 'Группы объявлений', 'Gruppi di annunci', 'Conjuntos de anuncios', 'مجموعات الإعلانات', 'Ensembles de publicités'),
+  'campaigns.ads': t('Ads', 'Объявления', 'Annunci', 'Anuncios', 'الإعلانات', 'Publicités'),
+  'auth.alreadyLoggedIn': t('You are already logged in', 'Вы уже авторизованы', 'Sei già connesso', 'Ya has iniciado sesión', 'أنت مسجل الدخول بالفعل', 'Vous êtes déjà connecté'),
+  'auth.goToDashboard': t('Go to Dashboard', 'Войти в панель', 'Vai alla dashboard', 'Ir al panel', 'الذهاب إلى لوحة التحكم', 'Aller au tableau de bord'),
 
 } as const;
 
