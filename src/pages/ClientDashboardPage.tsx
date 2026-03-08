@@ -67,6 +67,8 @@ export default function ClientDashboardPage() {
   const [campaignPlatformMap, setCampaignPlatformMap] = useState<Record<string, string>>({});
   const [budgetPlan, setBudgetPlan] = useState<BudgetPlan | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
+  const [recommendations, setRecommendations] = useState<{ id: string; content: string; created_at: string; user_name: string }[]>([]);
+  const [hasMetaApiAccounts, setHasMetaApiAccounts] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<PlatformKey>('all');
   const [chartNormalized, setChartNormalized] = useState(true);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
