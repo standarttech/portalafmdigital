@@ -40,7 +40,8 @@ interface DraftItem {
 }
 
 interface Client { id: string; name: string; }
-interface AdAccount { id: string; account_name: string | null; platform_account_id: string; client_id: string; }
+interface AdAccount { id: string; account_name: string | null; platform_account_id: string; client_id: string; connection_id: string; }
+interface MetaPage { id: string; name: string; page_id: string; }
 
 // ── Constants ──
 
