@@ -7,6 +7,7 @@ import { BrainCircuit, Plus, Loader2, Clock, CheckCircle2, XCircle, Search } fro
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
 
 interface Session {
@@ -38,6 +39,7 @@ const statusColor: Record<string, string> = {
 
 export default function AiAdsAnalysisPage() {
   const { user } = useAuth();
+  const { logGosAction } = useGosAuditLog();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +68,7 @@ export default function AiAdsAnalysisPage() {
       session_type: 'analysis',
     }).select().single();
     if (error) { toast.error('Failed to create session'); return; }
+    logGosAction('create', 'ai_campaign_session', (data as any).id, (data as any).title, { clientId });
     setSessions(prev => [data as any, ...prev]);
     toast.success('Analysis session created');
   };
