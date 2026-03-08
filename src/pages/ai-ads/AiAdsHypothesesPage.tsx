@@ -97,7 +97,7 @@ export default function AiAdsHypothesesPage() {
     }).select().single();
     if (error) { toast.error('Failed to create draft'); return; }
     await updateThreadStatus(thread.id, 'converted');
-    logGosAction('create', 'campaign_draft', (data as any).id, `Draft: ${thread.title}`, { source: 'hypothesis', hypothesisId: thread.id, clientId: thread.client_id });
+    logGosAction('create', 'campaign_draft', (data as any).id, `Draft: ${thread.title}`, { clientId: thread.client_id, metadata: { source: 'hypothesis', hypothesisId: thread.id } });
     toast.success('Campaign draft created from hypothesis');
   };
 
