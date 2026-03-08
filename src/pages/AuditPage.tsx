@@ -211,7 +211,7 @@ export default function AuditPage() {
 
         {/* Entity Filter */}
         <Select value={entityFilter} onValueChange={setEntityFilter}>
-          <SelectTrigger className="h-8 w-[140px] text-xs">
+          <SelectTrigger className="h-8 w-[110px] sm:w-[140px] text-xs">
             <SelectValue placeholder={isRu ? 'Объект' : 'Entity'} />
           </SelectTrigger>
           <SelectContent>
