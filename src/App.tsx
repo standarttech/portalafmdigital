@@ -481,6 +481,15 @@ function AppRoutes() {
         <Route path="/ai-ads/drafts" element={<AiAdsDraftsPage />} />
         <Route path="/ai-ads/executions" element={<AiAdsExecutionsPage />} />
       </Route>
+      {/* AI Infrastructure — admin only */}
+      <Route element={<ModuleGuard module="ai_infra"><AiInfraLayout /></ModuleGuard>}>
+        <Route path="/ai-infra" element={<Navigate to="/ai-infra/providers" replace />} />
+        <Route path="/ai-infra/providers" element={<AiInfraProvidersPage />} />
+        <Route path="/ai-infra/routes" element={<AiInfraRoutesPage />} />
+        <Route path="/ai-infra/tasks" element={<AiInfraTasksPage />} />
+        <Route path="/ai-infra/logs" element={<AiInfraLogsPage />} />
+        <Route path="/ai-infra/health" element={<AiInfraHealthPage />} />
+      </Route>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
       <Route path="/request-access" element={<Navigate to="/dashboard" replace />} />

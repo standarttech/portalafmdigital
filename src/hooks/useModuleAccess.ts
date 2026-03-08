@@ -41,5 +41,6 @@ export function useModuleAccess() {
     canAccessCrm: permissions.can_access_crm ?? false,
     canAccessGrowthOs: permissions.can_access_growth_os ?? false,
     canAccessAiAds: permissions.can_access_ai_ads ?? false,
+    canManageAiInfra: permissions.can_manage_ai_infra ?? false,
   };
 }
