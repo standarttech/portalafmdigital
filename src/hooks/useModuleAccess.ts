@@ -30,7 +30,7 @@ export function useModuleAccess() {
           MODULE_KEYS.forEach(k => { p[k] = !!(data as any)[k]; });
           setPermissions(p);
         } else {
-          setPermissions({ can_access_afm_internal: false, can_access_adminscale: false, can_access_crm: false, can_access_growth_os: false, can_access_ai_ads: false });
+          setPermissions({ can_access_afm_internal: false, can_access_adminscale: false, can_access_crm: false, can_access_growth_os: false, can_access_ai_ads: false, can_manage_ai_infra: false });
         }
       });
   }, [user, effectiveRole, simulatedUser]);
