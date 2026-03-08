@@ -67,14 +67,33 @@ export default function SyncMonitorPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchConnections = useCallback(async () => {
-    const { data, error } = await supabase
+    // Fetch platform_connections (Google Sheets sync)
+    const { data: pcData } = await supabase
       .from('platform_connections')
       .select('id, platform, account_name, sync_status, last_sync_at, sync_error, is_active, client_id, clients(name)')
       .order('last_sync_at', { ascending: false, nullsFirst: false });
-    
-    if (!error && data) {
-      setConnections(data.map((d: any) => ({ ...d, client_name: d.clients?.name })));
-    }
+
+    const fromPC = (pcData || []).map((d: any) => ({ ...d, client_name: d.clients?.name }));
+
+    // Fetch ad_accounts (direct Meta API connections)
+    const { data: aaData } = await supabase
+      .from('ad_accounts')
+      .select('id, platform_account_id, account_name, is_active, client_id, clients(name)')
+      .order('client_id');
+
+    const fromAA = (aaData || []).map((d: any) => ({
+      id: d.id,
+      platform: 'meta (API)',
+      account_name: d.account_name || d.platform_account_id,
+      sync_status: d.is_active ? 'success' : 'idle',
+      last_sync_at: null,
+      sync_error: null,
+      is_active: d.is_active,
+      client_id: d.client_id,
+      client_name: d.clients?.name,
+    }));
+
+    setConnections([...fromPC, ...fromAA]);
     setLoading(false);
   }, []);
 
