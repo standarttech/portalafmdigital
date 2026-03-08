@@ -24,7 +24,7 @@ interface ModuleEntry {
   icon: typeof Zap;
   path: string;
   color: 'gold' | 'silver' | 'bronze';
-  permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm' | 'canAccessGrowthOs' | 'canAccessAiAds';
+  permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm' | 'canAccessGrowthOs' | 'canAccessAiAds' | 'canManageAiInfra';
 }
 
 const moduleEntries: ModuleEntry[] = [
