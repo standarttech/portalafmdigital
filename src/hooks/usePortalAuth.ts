@@ -24,11 +24,8 @@ export function usePortalAuth() {
       setPortalUser(pu as any as PortalUser);
       setIsPortalUser(true);
 
-      // Update last_login_at
-      await supabase
-        .from('client_portal_users' as any)
-        .update({ last_login_at: new Date().toISOString() } as any)
-        .eq('id', (pu as any).id);
+      // Update last_login_at via SECURITY DEFINER function (safe, no RLS bypass)
+      await supabase.rpc('update_portal_last_login', { _user_id: user.id });
 
       // Load branding
       const { data: br } = await supabase

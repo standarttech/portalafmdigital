@@ -5095,6 +5095,10 @@ export type Database = {
         Args: { _secret_name: string; _secret_value: string }
         Returns: string
       }
+      update_portal_last_login: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       upsert_afm_stat: {
         Args: {
           _field_name: string
