@@ -24,3 +24,6 @@ verify_jwt = false
 [functions.send-webpush]
 verify_jwt = false
 
+[functions.get-vapid-key]
+verify_jwt = false
+
