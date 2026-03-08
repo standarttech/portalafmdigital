@@ -42,3 +42,6 @@ verify_jwt = false
 [functions.scheduled-gos-health]
 verify_jwt = false
 
+[functions.ai-ads-analyze]
+verify_jwt = false
+
