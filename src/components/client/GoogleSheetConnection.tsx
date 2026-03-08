@@ -210,7 +210,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Zap className="h-5 w-5 text-blue-500" /> Meta Ads API — {t('clients.directConnection' as TranslationKey) || 'Direct Connection'}
+              <Zap className="h-5 w-5 text-blue-500" /> Meta Ads API — {t('clients.directConnection')}
             </CardTitle>
             {hasMetaAccounts && <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">{t('clients.primarySource' as TranslationKey) || 'Primary Source'}</Badge>}
           </div>
