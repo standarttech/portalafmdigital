@@ -35,22 +35,22 @@ const moduleEntries: ModuleEntry[] = [
 
 const moduleColorMap = {
   gold: {
-    idle: 'bg-[hsl(42,40%,12%)] text-[hsl(42,87%,55%)] border-[hsl(42,60%,25%)] hover:bg-[hsl(42,40%,15%)] hover:border-[hsl(42,70%,35%)]',
-    active: 'bg-[hsl(42,40%,16%)] text-[hsl(42,87%,65%)] border-[hsl(42,80%,40%)] shadow-[0_0_20px_rgba(217,170,58,0.1)]',
+    idle: 'text-[hsl(42,87%,55%)] border-[hsl(42,60%,20%)]/50 hover:bg-[hsl(42,40%,12%)] hover:border-[hsl(42,60%,25%)]',
+    active: 'bg-[hsl(42,40%,14%)] text-[hsl(42,87%,65%)] border-[hsl(42,70%,30%)]',
     icon: 'text-[hsl(42,87%,55%)]',
     dot: 'bg-[hsl(42,87%,55%)]',
   },
   silver: {
-    idle: 'bg-[hsl(220,20%,12%)] text-[hsl(220,15%,70%)] border-[hsl(220,20%,22%)] hover:bg-[hsl(220,20%,15%)] hover:border-[hsl(220,20%,32%)]',
-    active: 'bg-[hsl(220,20%,16%)] text-[hsl(220,15%,80%)] border-[hsl(220,20%,38%)] shadow-[0_0_20px_rgba(148,163,184,0.08)]',
-    icon: 'text-[hsl(220,15%,70%)]',
-    dot: 'bg-[hsl(220,15%,70%)]',
+    idle: 'text-[hsl(220,15%,65%)] border-[hsl(220,20%,18%)]/50 hover:bg-[hsl(220,20%,12%)] hover:border-[hsl(220,20%,25%)]',
+    active: 'bg-[hsl(220,20%,14%)] text-[hsl(220,15%,78%)] border-[hsl(220,20%,30%)]',
+    icon: 'text-[hsl(220,15%,65%)]',
+    dot: 'bg-[hsl(220,15%,65%)]',
   },
   bronze: {
-    idle: 'bg-[hsl(25,30%,12%)] text-[hsl(25,60%,55%)] border-[hsl(25,40%,22%)] hover:bg-[hsl(25,30%,15%)] hover:border-[hsl(25,50%,32%)]',
-    active: 'bg-[hsl(25,30%,16%)] text-[hsl(25,60%,65%)] border-[hsl(25,50%,38%)] shadow-[0_0_20px_rgba(180,120,60,0.08)]',
-    icon: 'text-[hsl(25,60%,55%)]',
-    dot: 'bg-[hsl(25,60%,55%)]',
+    idle: 'text-[hsl(25,60%,50%)] border-[hsl(25,40%,18%)]/50 hover:bg-[hsl(25,30%,12%)] hover:border-[hsl(25,40%,25%)]',
+    active: 'bg-[hsl(25,30%,14%)] text-[hsl(25,60%,60%)] border-[hsl(25,50%,30%)]',
+    icon: 'text-[hsl(25,60%,50%)]',
+    dot: 'bg-[hsl(25,60%,50%)]',
   },
 };
 
@@ -186,10 +186,10 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
       return (
         <Link key={mod.path} to={mod.path} onClick={onNavigate} title={t(mod.key)}
           className={cn(
-            'flex items-center justify-center w-10 h-10 rounded-xl border transition-all duration-200 mx-auto',
+            'flex items-center justify-center w-9 h-9 rounded-lg border transition-all duration-200 mx-auto',
             isActive ? colors.active : colors.idle,
           )}>
-          <Icon className={cn('h-4.5 w-4.5', colors.icon)} />
+          <Icon className={cn('h-4 w-4', colors.icon)} />
         </Link>
       );
     }
@@ -197,10 +197,10 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
     return (
       <Link key={mod.path} to={mod.path} onClick={onNavigate}
         className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-200 text-sm font-semibold',
+          'flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg border transition-all duration-200 text-xs font-semibold',
           isActive ? colors.active : colors.idle,
         )}>
-        <Icon className={cn('h-4.5 w-4.5 flex-shrink-0', colors.icon)} />
+        <Icon className={cn('h-3.5 w-3.5 flex-shrink-0', colors.icon)} />
         <span className="truncate">{t(mod.key)}</span>
       </Link>
     );
