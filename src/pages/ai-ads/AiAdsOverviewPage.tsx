@@ -56,7 +56,7 @@ export default function AiAdsOverviewPage() {
         supabase.from('campaign_drafts' as any).select('id', { count: 'exact', head: true }),
         supabase.from('launch_requests' as any).select('id', { count: 'exact', head: true }).eq('status', 'pending_approval'),
         supabase.from('hypothesis_threads' as any).select('id', { count: 'exact', head: true }),
-        supabase.from('ai_recommendations' as any).select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('ai_recommendations' as any).select('id', { count: 'exact', head: true }).eq('status', 'new'),
       ]);
       setMetrics({
         accounts: accounts.count || 0,
