@@ -412,8 +412,170 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
     </div>
   );
 }
+// Campaigns Breakdown Tab
+function CampaignsBreakdownTab({ clientId }: { clientId: string }) {
+  const { formatCurrency, formatNumber } = useLanguage();
+  const [level, setLevel] = useState<'campaign' | 'adset' | 'ad'>('campaign');
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<string>('spend');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-export default function ClientDetailPage() {
+  useEffect(() => {
+    loadData();
+  }, [clientId, level]);
+
+  const loadData = async () => {
+    setLoading(true);
+    if (level === 'campaign') {
+      // Aggregate daily_metrics by campaign
+      const { data: campaigns } = await supabase
+        .from('campaigns')
+        .select('id, campaign_name, status, platform_campaign_id')
+        .eq('client_id', clientId);
+
+      if (!campaigns?.length) { setData([]); setLoading(false); return; }
+
+      const { data: metrics } = await supabase
+        .from('daily_metrics')
+        .select('campaign_id, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts')
+        .eq('client_id', clientId);
+
+      const agg: Record<string, any> = {};
+      (campaigns || []).forEach(c => {
+        agg[c.id] = { name: c.campaign_name, status: c.status, platform_id: c.platform_campaign_id, spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0 };
+      });
+      (metrics || []).forEach(m => {
+        const a = agg[m.campaign_id];
+        if (!a) return;
+        a.spend += Number(m.spend);
+        a.impressions += m.impressions;
+        a.clicks += m.link_clicks;
+        a.leads += m.leads;
+        a.purchases += (m.purchases || 0);
+        a.revenue += Number(m.revenue || 0);
+        a.addToCart += (m.add_to_cart || 0);
+        a.checkouts += (m.checkouts || 0);
+      });
+      setData(Object.values(agg));
+    } else {
+      // adset or ad level
+      const { data: rows } = await supabase
+        .from('ad_level_metrics')
+        .select('platform_id, name, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, status')
+        .eq('client_id', clientId)
+        .eq('level', level);
+
+      const agg: Record<string, any> = {};
+      (rows || []).forEach(r => {
+        if (!agg[r.platform_id]) {
+          agg[r.platform_id] = { name: r.name, platform_id: r.platform_id, status: r.status, spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0 };
+        }
+        const a = agg[r.platform_id];
+        a.spend += Number(r.spend);
+        a.impressions += r.impressions;
+        a.clicks += r.link_clicks;
+        a.leads += r.leads;
+        a.purchases += r.purchases;
+        a.revenue += Number(r.revenue);
+        a.addToCart += r.add_to_cart;
+        a.checkouts += r.checkouts;
+      });
+      setData(Object.values(agg));
+    }
+    setLoading(false);
+  };
+
+  const handleSort = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+
+  const sorted = useMemo(() => {
+    return [...data].sort((a, b) => {
+      const av = a[sortKey] ?? 0;
+      const bv = b[sortKey] ?? 0;
+      return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    });
+  }, [data, sortKey, sortDir]);
+
+  const cols = [
+    { key: 'name', label: 'Название', right: false },
+    { key: 'spend', label: 'Расход', right: true },
+    { key: 'impressions', label: 'Показы', right: true },
+    { key: 'clicks', label: 'Клики', right: true },
+    { key: 'leads', label: 'Лиды', right: true },
+    { key: 'purchases', label: 'Продажи', right: true },
+    { key: 'revenue', label: 'Выручка', right: true },
+    { key: 'addToCart', label: 'В корзину', right: true },
+  ];
+
+  const formatVal = (key: string, val: any) => {
+    if (key === 'spend' || key === 'revenue') return formatCurrency(val);
+    if (key === 'name') return val;
+    return formatNumber(val);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base sm:text-lg font-semibold">Структура рекламы</h3>
+        <div className="flex items-center gap-0.5 bg-secondary/50 rounded-lg p-0.5">
+          {(['campaign', 'adset', 'ad'] as const).map(l => (
+            <Button key={l} variant={level === l ? 'default' : 'ghost'} size="sm" onClick={() => setLevel(l)}
+              className="text-[10px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3">
+              {l === 'campaign' ? 'Кампании' : l === 'adset' ? 'Группы' : 'Объявления'}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <Card className="glass-card overflow-hidden">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : sorted.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Play className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Нет данных. Подключите Meta Ads кабинет и запустите синхронизацию.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto max-h-[600px]">
+              <table className="spreadsheet-table">
+                <thead>
+                  <tr>
+                    {cols.map(col => (
+                      <th key={col.key} className={`${col.right ? 'text-right' : ''} cursor-pointer select-none hover:bg-secondary/50`}
+                        onClick={() => handleSort(col.key)}>
+                        <span className="inline-flex items-center gap-1">
+                          {col.label}
+                          {sortKey === col.key && <span className="text-[9px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((row, i) => (
+                    <tr key={i}>
+                      {cols.map(col => (
+                        <td key={col.key} className={`${col.right ? 'text-right' : ''} ${col.key === 'name' ? 'font-medium text-foreground max-w-[300px] truncate' : 'text-muted-foreground'}`}>
+                          {formatVal(col.key, row[col.key] || 0)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, formatCurrency, formatNumber } = useLanguage();
