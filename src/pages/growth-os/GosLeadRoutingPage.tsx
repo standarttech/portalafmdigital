@@ -34,6 +34,7 @@ export default function GosLeadRoutingPage() {
 
   const loadData = async () => {
     setLoading(true);
+    // RLS handles scoping — only rules/logs the user has access to are returned
     const [rulesRes, logsRes] = await Promise.all([
       supabase.from('gos_routing_rules').select('*').order('priority', { ascending: true }),
       supabase.from('gos_routing_log').select('*').order('created_at', { ascending: false }).limit(100),
@@ -85,7 +86,6 @@ export default function GosLeadRoutingPage() {
     loadData();
   };
 
-  // Condition helpers
   const addCondition = () => {
     if (!editingRule) return;
     setEditingRule({
@@ -171,7 +171,7 @@ export default function GosLeadRoutingPage() {
 
         <TabsContent value="log" className="mt-4">
           {logs.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No routing events yet</p>
+            <p className="text-sm text-muted-foreground text-center py-8">No routing events yet. Submit a form to see routing results here.</p>
           ) : (
             <div className="space-y-1">
               {logs.map(log => (
@@ -214,7 +214,6 @@ export default function GosLeadRoutingPage() {
                 <Input value={editingRule.description || ''} onChange={e => setEditingRule({ ...editingRule, description: e.target.value })} placeholder="Optional description" />
               </div>
 
-              {/* Conditions */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Conditions (match ALL)</h3>
                 <div className="space-y-2">
@@ -236,7 +235,6 @@ export default function GosLeadRoutingPage() {
                 </div>
               </div>
 
-              {/* Action */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Action</h3>
                 <Select value={editingRule.action_type || 'assign_user'} onValueChange={v => setEditingRule({ ...editingRule, action_type: v })}>
