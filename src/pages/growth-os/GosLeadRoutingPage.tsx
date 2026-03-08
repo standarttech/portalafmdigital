@@ -68,6 +68,7 @@ export default function GosLeadRoutingPage() {
       action_config: {},
     }).select().single();
     if (error) { toast.error('Failed to create rule'); return; }
+    logGosAction('create', 'routing_rule', data?.id, 'New Routing Rule');
     setEditingRule(data);
     loadData();
   };
