@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import {
 import { Plus, Trash2, Save, Download, Upload, ChevronDown, ChevronRight, BookOpen, FileJson, FileText, FileDown, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import AdminScaleReferencePanel from './AdminScaleReferencePanel';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
@@ -78,15 +80,10 @@ function ProgramEditor({ program, onChange, onRemove, label }: {
   program: Program; onChange: (p: Program) => void; onRemove?: () => void; label: string;
 }) {
   const [open, setOpen] = useState(true);
-
   const addStep = () => onChange({ ...program, steps: [...program.steps, { type: 'operating', text: '', assignee: '' }] });
-
   const updateStep = (i: number, patch: Partial<Step>) => {
-    const steps = [...program.steps];
-    steps[i] = { ...steps[i], ...patch };
-    onChange({ ...program, steps });
+    const steps = [...program.steps]; steps[i] = { ...steps[i], ...patch }; onChange({ ...program, steps });
   };
-
   const removeStep = (i: number) => {
     if (program.steps.length <= 1) return;
     onChange({ ...program, steps: program.steps.filter((_, j) => j !== i) });
@@ -206,39 +203,88 @@ function exportAsMarkdown(scale: ScaleData) {
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
 export default function AdminScaleEditor() {
+  const { user } = useAuth();
   const [scale, setScale] = useState<ScaleData>(emptyScale);
+  const [currentScaleId, setCurrentScaleId] = useState<string | null>(null);
   const [refOpen, setRefOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load current scale from DB on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('adminscale_current');
-      if (saved) setScale(JSON.parse(saved));
-    } catch {}
-  }, []);
+    if (!user) return;
+    supabase
+      .from('admin_scales')
+      .select('id, data')
+      .eq('user_id', user.id)
+      .eq('is_current', true)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.data) {
+          setScale(data.data as unknown as ScaleData);
+          setCurrentScaleId(data.id);
+        } else {
+          // Migrate from localStorage if exists
+          try {
+            const saved = localStorage.getItem('adminscale_current');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              setScale(parsed);
+              // Save to DB
+              supabase
+                .from('admin_scales')
+                .insert({ user_id: user.id, name: parsed.name || '', data: parsed as any, is_current: true })
+                .select('id')
+                .single()
+                .then(({ data: inserted }) => {
+                  if (inserted) setCurrentScaleId(inserted.id);
+                  localStorage.removeItem('adminscale_current');
+                });
+            }
+          } catch {}
+        }
+        setLoaded(true);
+      });
+  }, [user]);
 
-  // Auto-save on change (debounced)
+  // Auto-save to DB (debounced)
   useEffect(() => {
+    if (!loaded || !user) return;
     const timer = setTimeout(() => {
-      localStorage.setItem('adminscale_current', JSON.stringify(scale));
-    }, 500);
+      if (currentScaleId) {
+        supabase
+          .from('admin_scales')
+          .update({ data: scale as any, name: scale.name || '', updated_at: new Date().toISOString() })
+          .eq('id', currentScaleId)
+          .then(() => {});
+      } else {
+        supabase
+          .from('admin_scales')
+          .insert({ user_id: user.id, name: scale.name || '', data: scale as any, is_current: true })
+          .select('id')
+          .single()
+          .then(({ data }) => {
+            if (data) setCurrentScaleId(data.id);
+          });
+      }
+    }, 800);
     return () => clearTimeout(timer);
-  }, [scale]);
+  }, [scale, loaded, user, currentScaleId]);
 
-  const save = () => {
-    localStorage.setItem('adminscale_current', JSON.stringify(scale));
-    try {
-      const history: { name: string; date: string; data: ScaleData }[] = JSON.parse(localStorage.getItem('adminscale_history') || '[]');
-      history.unshift({ name: scale.name || 'Без названия', date: new Date().toISOString(), data: scale });
-      if (history.length > 20) history.length = 20;
-      localStorage.setItem('adminscale_history', JSON.stringify(history));
-    } catch {}
+  const save = async () => {
+    if (!user) return;
+    // Save as a history entry (non-current)
+    await supabase.from('admin_scales').insert({
+      user_id: user.id,
+      name: scale.name || 'Без названия',
+      data: scale as any,
+      is_current: false,
+    });
     toast.success('Шкала сохранена в историю');
   };
 
@@ -253,7 +299,6 @@ export default function AdminScaleEditor() {
           const data = JSON.parse(text) as ScaleData;
           if (data.goal !== undefined || data.programs !== undefined) {
             setScale(data);
-            localStorage.setItem('adminscale_current', JSON.stringify(data));
             toast.success(`Шкала "${data.name || 'Без названия'}" импортирована`);
           } else {
             toast.error('Неверный формат JSON');
@@ -277,7 +322,6 @@ export default function AdminScaleEditor() {
 
   return (
     <div className="flex gap-0 h-full relative">
-      {/* Main editor - shrinks when reference is open */}
       <motion.div variants={container} initial="hidden" animate="show"
         className={cn("space-y-4 pb-8 flex-1 min-w-0 transition-all duration-300", refOpen ? 'mr-[380px]' : 'max-w-3xl mx-auto')}>
         {/* Top bar */}
@@ -422,7 +466,6 @@ export default function AdminScaleEditor() {
         </motion.div>
       </motion.div>
 
-      {/* Right-side inline reference panel (not a Sheet — doesn't block content) */}
       {refOpen && (
         <div className="fixed right-0 top-14 bottom-0 w-[380px] bg-sidebar border-l border-sidebar-border overflow-y-auto z-20 shadow-lg">
           <div className="sticky top-0 bg-sidebar border-b border-sidebar-border px-4 py-3 flex items-center justify-between z-10">

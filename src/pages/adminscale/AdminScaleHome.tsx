@@ -6,6 +6,8 @@ import { Sparkles, BookOpen, Building2, Heart, TrendingUp, Users, Upload, Histor
 import { useState, useRef, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import AdminScaleReferencePanel from './AdminScaleReferencePanel';
 import type { ScaleData } from './AdminScaleEditor';
 
@@ -23,18 +25,16 @@ const examples = [
       intentions: ['Показать культуру компании', 'Продемонстрировать рабочие процессы'],
       policies: ['Экскурсии проводятся только по согласованию', 'Максимум 10 человек в группе'],
       plans: ['Провести 20 экскурсий за квартал'],
-      programs: [
-        { name: 'Организация экскурсий', steps: [
-          { type: 'priority', text: 'Прочитайте программу', assignee: 'Руководитель' },
-          { type: 'priority', text: 'Назначьте ответственного за экскурсии', assignee: 'HR' },
-          { type: 'vital', text: 'Поддерживайте связь с офисом в процессе', assignee: 'Координатор' },
-          { type: 'conditional', text: 'УСЛОВНАЯ: Если нет гида — назначьте одного из руководителей', assignee: 'HR' },
-          { type: 'operating', text: 'Составьте список из 20 потенциальных гостей', assignee: 'Маркетолог' },
-          { type: 'operating', text: 'Каждую неделю приглашайте 5 человек из списка', assignee: 'Маркетолог' },
-          { type: 'operating', text: 'Оформите выставку в приёмной', assignee: 'Дизайнер' },
-          { type: 'production', text: 'Проводить не менее 5 экскурсий в неделю', assignee: 'Гид' },
-        ]},
-      ],
+      programs: [{ name: 'Организация экскурсий', steps: [
+        { type: 'priority', text: 'Прочитайте программу', assignee: 'Руководитель' },
+        { type: 'priority', text: 'Назначьте ответственного за экскурсии', assignee: 'HR' },
+        { type: 'vital', text: 'Поддерживайте связь с офисом в процессе', assignee: 'Координатор' },
+        { type: 'conditional', text: 'УСЛОВНАЯ: Если нет гида — назначьте одного из руководителей', assignee: 'HR' },
+        { type: 'operating', text: 'Составьте список из 20 потенциальных гостей', assignee: 'Маркетолог' },
+        { type: 'operating', text: 'Каждую неделю приглашайте 5 человек из списка', assignee: 'Маркетолог' },
+        { type: 'operating', text: 'Оформите выставку в приёмной', assignee: 'Дизайнер' },
+        { type: 'production', text: 'Проводить не менее 5 экскурсий в неделю', assignee: 'Гид' },
+      ]}],
       projects: [],
       orders: ['Начать проводить экскурсии с понедельника'],
       idealPicture: 'Каждый посетитель уходит с желанием работать с нами или у нас',
@@ -52,16 +52,14 @@ const examples = [
       intentions: ['Провести качественное время вместе', 'Показать заботу и внимание'],
       policies: ['Телефон в беззвучном режиме', 'Никаких рабочих разговоров'],
       plans: ['Организовать вечер в эту субботу'],
-      programs: [
-        { name: 'Организация вечера', steps: [
-          { type: 'priority', text: 'Узнайте предпочтения жены на этот вечер', assignee: 'Вы' },
-          { type: 'priority', text: 'Забронируйте столик в ресторане', assignee: 'Вы' },
-          { type: 'vital', text: 'Убедитесь что дети под присмотром', assignee: 'Вы' },
-          { type: 'conditional', text: 'УСЛОВНАЯ: Если ресторан занят — выберите альтернативу', assignee: 'Вы' },
-          { type: 'operating', text: 'Купите цветы по дороге', assignee: 'Вы' },
-          { type: 'operating', text: 'Кино → ресторан → прогулка по набережной', assignee: 'Вы' },
-        ]},
-      ],
+      programs: [{ name: 'Организация вечера', steps: [
+        { type: 'priority', text: 'Узнайте предпочтения жены на этот вечер', assignee: 'Вы' },
+        { type: 'priority', text: 'Забронируйте столик в ресторане', assignee: 'Вы' },
+        { type: 'vital', text: 'Убедитесь что дети под присмотром', assignee: 'Вы' },
+        { type: 'conditional', text: 'УСЛОВНАЯ: Если ресторан занят — выберите альтернативу', assignee: 'Вы' },
+        { type: 'operating', text: 'Купите цветы по дороге', assignee: 'Вы' },
+        { type: 'operating', text: 'Кино → ресторан → прогулка по набережной', assignee: 'Вы' },
+      ]}],
       projects: [],
       orders: ['Выезд в 17:00'],
       idealPicture: 'Счастливая жена, приятный вечер без стрессов',
@@ -79,24 +77,20 @@ const examples = [
       intentions: ['Увеличить клиентскую базу на 50%', 'Освоить новые каналы продвижения'],
       policies: ['Каждый клиент получает персонального менеджера', 'Минимальный бюджет клиента — $1000/мес'],
       plans: ['Запустить продвижение в 3 новых соцсетях за квартал'],
-      programs: [
-        { name: 'Расширение присутствия в соцсетях', steps: [
-          { type: 'priority', text: 'Изучите программу и распределите роли', assignee: 'Директор' },
-          { type: 'priority', text: 'Наймите SMM-специалиста по новым платформам', assignee: 'HR' },
-          { type: 'vital', text: 'Проводите еженедельные инспекции контента', assignee: 'Директор' },
-          { type: 'conditional', text: 'УСЛОВНАЯ: Если бюджет ограничен — начните с одной платформы', assignee: 'Финдир' },
-          { type: 'operating', text: 'Создайте контент-план на месяц для каждой платформы', assignee: 'SMM' },
-          { type: 'operating', text: 'Запустите таргетированную рекламу на привлечение', assignee: 'Медиабайер' },
-          { type: 'production', text: 'Привлекать не менее 5 новых лидов в неделю', assignee: 'Отдел продаж' },
-        ]},
-      ],
-      projects: [
-        { name: 'Проект: Запуск TikTok-направления', steps: [
-          { type: 'priority', text: 'Изучить успешные кейсы конкурентов', assignee: 'SMM' },
-          { type: 'operating', text: 'Создать 10 пробных видео', assignee: 'Видеограф' },
-          { type: 'operating', text: 'Запустить рекламу на лучшие 3 видео', assignee: 'Медиабайер' },
-        ]},
-      ],
+      programs: [{ name: 'Расширение присутствия в соцсетях', steps: [
+        { type: 'priority', text: 'Изучите программу и распределите роли', assignee: 'Директор' },
+        { type: 'priority', text: 'Наймите SMM-специалиста по новым платформам', assignee: 'HR' },
+        { type: 'vital', text: 'Проводите еженедельные инспекции контента', assignee: 'Директор' },
+        { type: 'conditional', text: 'УСЛОВНАЯ: Если бюджет ограничен — начните с одной платформы', assignee: 'Финдир' },
+        { type: 'operating', text: 'Создайте контент-план на месяц для каждой платформы', assignee: 'SMM' },
+        { type: 'operating', text: 'Запустите таргетированную рекламу на привлечение', assignee: 'Медиабайер' },
+        { type: 'production', text: 'Привлекать не менее 5 новых лидов в неделю', assignee: 'Отдел продаж' },
+      ]}],
+      projects: [{ name: 'Проект: Запуск TikTok-направления', steps: [
+        { type: 'priority', text: 'Изучить успешные кейсы конкурентов', assignee: 'SMM' },
+        { type: 'operating', text: 'Создать 10 пробных видео', assignee: 'Видеограф' },
+        { type: 'operating', text: 'Запустить рекламу на лучшие 3 видео', assignee: 'Медиабайер' },
+      ]}],
       orders: ['Начать публикации со следующего понедельника'],
       idealPicture: 'Агентство генерирует 30+ лидов в месяц из 5 каналов',
       statistics: ['Количество лидов в неделю', 'Стоимость лида по каналам', 'Конверсия в клиентов'],
@@ -113,16 +107,14 @@ const examples = [
       intentions: ['Повысить компетенции команды', 'Снизить текучку кадров'],
       policies: ['ТИП обновляется ежеквартально', 'Каждый ТИП согласуется с руководителем'],
       plans: ['Составить ТИПы для всех сотрудников за 2 месяца'],
-      programs: [
-        { name: 'Составление ТИПов', steps: [
-          { type: 'priority', text: 'Соберите данные по текущим навыкам каждого сотрудника', assignee: 'HR' },
-          { type: 'priority', text: 'Определите целевые компетенции по должностям', assignee: 'Руководители' },
-          { type: 'vital', text: 'Согласуйте каждый ТИП лично с сотрудником', assignee: 'HR' },
-          { type: 'operating', text: 'Составьте план обучения на квартал', assignee: 'HR' },
-          { type: 'operating', text: 'Назначьте наставников для ключевых навыков', assignee: 'Руководители' },
-          { type: 'production', text: 'Составлять не менее 5 ТИПов в неделю', assignee: 'HR' },
-        ]},
-      ],
+      programs: [{ name: 'Составление ТИПов', steps: [
+        { type: 'priority', text: 'Соберите данные по текущим навыкам каждого сотрудника', assignee: 'HR' },
+        { type: 'priority', text: 'Определите целевые компетенции по должностям', assignee: 'Руководители' },
+        { type: 'vital', text: 'Согласуйте каждый ТИП лично с сотрудником', assignee: 'HR' },
+        { type: 'operating', text: 'Составьте план обучения на квартал', assignee: 'HR' },
+        { type: 'operating', text: 'Назначьте наставников для ключевых навыков', assignee: 'Руководители' },
+        { type: 'production', text: 'Составлять не менее 5 ТИПов в неделю', assignee: 'HR' },
+      ]}],
       projects: [],
       orders: ['Начать сбор данных с понедельника'],
       idealPicture: 'Каждый сотрудник растёт по индивидуальному плану',
@@ -134,29 +126,52 @@ const examples = [
 
 export default function AdminScaleHome() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [refOpen, setRefOpen] = useState(false);
-  const [history, setHistory] = useState<{ name: string; date: string; data: ScaleData }[]>([]);
+  const [history, setHistory] = useState<{ id: string; name: string; date: string; data: ScaleData }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-      const h = JSON.parse(localStorage.getItem('adminscale_history') || '[]');
-      setHistory(h);
-    } catch {}
-  }, []);
+    if (!user) return;
+    supabase
+      .from('admin_scales')
+      .select('id, name, data, created_at')
+      .eq('user_id', user.id)
+      .eq('is_current', false)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (data) {
+          setHistory(data.map(d => ({
+            id: d.id,
+            name: d.name,
+            date: d.created_at,
+            data: d.data as unknown as ScaleData,
+          })));
+        }
+      });
+  }, [user]);
 
-  const loadExample = (data: ScaleData) => {
-    localStorage.setItem('adminscale_current', JSON.stringify(data));
+  const loadScale = async (data: ScaleData) => {
+    if (!user) return;
+    // Set as current
+    await supabase.from('admin_scales').update({ is_current: false }).eq('user_id', user.id).eq('is_current', true);
+    await supabase.from('admin_scales').upsert({
+      user_id: user.id, name: data.name || '', data: data as any, is_current: true,
+    }, { onConflict: 'id' });
     navigate('/adminscale/editor');
   };
 
-  const createNew = () => {
+  const createNew = async () => {
+    if (!user) return;
     const blank: ScaleData = {
       name: '', goal: '', intentions: [''], policies: [''], plans: [''],
       programs: [{ name: '', steps: [{ type: 'operating', text: '', assignee: '' }] }],
       projects: [], orders: [''], idealPicture: '', statistics: [''], vfp: '',
     };
-    localStorage.setItem('adminscale_current', JSON.stringify(blank));
+    // Mark old current as not current
+    await supabase.from('admin_scales').update({ is_current: false }).eq('user_id', user.id).eq('is_current', true);
+    await supabase.from('admin_scales').insert({ user_id: user.id, name: '', data: blank as any, is_current: true });
     navigate('/adminscale/editor');
   };
 
@@ -164,14 +179,13 @@ export default function AdminScaleHome() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const text = ev.target?.result as string;
         const data = JSON.parse(text) as ScaleData;
         if (data.goal !== undefined) {
-          localStorage.setItem('adminscale_current', JSON.stringify(data));
+          await loadScale(data);
           toast.success(`Шкала "${data.name || 'Без названия'}" импортирована`);
-          navigate('/adminscale/editor');
         } else {
           toast.error('Неверный формат JSON');
         }
@@ -183,16 +197,14 @@ export default function AdminScaleHome() {
     e.target.value = '';
   };
 
-  const deleteHistoryItem = (index: number) => {
-    const updated = history.filter((_, i) => i !== index);
-    setHistory(updated);
-    localStorage.setItem('adminscale_history', JSON.stringify(updated));
+  const deleteHistoryItem = async (id: string, index: number) => {
+    await supabase.from('admin_scales').delete().eq('id', id);
+    setHistory(h => h.filter((_, i) => i !== index));
     toast.success('Удалено из истории');
   };
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
       <motion.div variants={item} className="text-center space-y-2 pt-4">
         <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-amber-500">Добро пожаловать</p>
         <h1 className="text-3xl font-bold text-foreground">AdminScale Pro</h1>
@@ -201,7 +213,6 @@ export default function AdminScaleHome() {
         </p>
       </motion.div>
 
-      {/* Action cards */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="cursor-pointer border-amber-500/30 hover:border-amber-500/60 transition-colors group" onClick={createNew}>
           <CardContent className="p-5 flex items-start gap-4">
@@ -241,7 +252,6 @@ export default function AdminScaleHome() {
         <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
       </motion.div>
 
-      {/* Saved history */}
       {history.length > 0 && (
         <motion.div variants={item} className="space-y-2">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -249,14 +259,14 @@ export default function AdminScaleHome() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {history.slice(0, 6).map((h, i) => (
-              <Card key={i} className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group">
+              <Card key={h.id} className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group">
                 <CardContent className="p-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0" onClick={() => loadExample(h.data)}>
+                  <div className="flex-1 min-w-0" onClick={() => loadScale(h.data)}>
                     <p className="text-sm font-medium text-foreground truncate">{h.name}</p>
                     <p className="text-[10px] text-muted-foreground">{new Date(h.date).toLocaleDateString('ru-RU')} {new Date(h.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => { e.stopPropagation(); deleteHistoryItem(i); }}>
+                    onClick={(e) => { e.stopPropagation(); deleteHistoryItem(h.id, i); }}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </CardContent>
@@ -266,19 +276,18 @@ export default function AdminScaleHome() {
         </motion.div>
       )}
 
-      {/* Examples */}
       <motion.div variants={item} className="space-y-2">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Примеры шкал</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {examples.map((ex, i) => (
-            <Card key={i} className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group" onClick={() => loadExample(ex.data)}>
+            <Card key={i} className="cursor-pointer border-border hover:border-amber-500/40 transition-colors group" onClick={() => loadScale(ex.data)}>
               <CardContent className="p-4 flex items-start gap-3">
                 <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/10 transition-colors">
                   <ex.icon className="h-5 w-5 text-muted-foreground group-hover:text-amber-500 transition-colors" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">{ex.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{ex.desc}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{ex.desc}</p>
                 </div>
               </CardContent>
             </Card>
@@ -286,35 +295,11 @@ export default function AdminScaleHome() {
         </div>
       </motion.div>
 
-      {/* Scale hierarchy info */}
-      <motion.div variants={item}>
-        <Card className="border-border">
-          <CardContent className="p-5 space-y-3">
-            <p className="text-sm font-semibold text-foreground">Правильная логика: Программа → Шаг (Задача) → Проект</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-3 rounded-lg bg-secondary/50">
-                <span className="text-amber-500 font-bold">📋 ПЛАН</span>
-                <p className="text-muted-foreground mt-1">Широкомасштабное намерение. Ещё не разбит на конкретные действия.</p>
-              </div>
-              <div className="p-3 rounded-lg bg-secondary/50">
-                <span className="text-amber-500 font-bold">⚡ ПРОГРАММА</span>
-                <p className="text-muted-foreground mt-1">Упорядоченная последовательность шагов для выполнения плана.</p>
-              </div>
-              <div className="p-3 rounded-lg bg-secondary/50">
-                <span className="text-amber-500 font-bold">🔧 ПРОЕКТ</span>
-                <p className="text-muted-foreground mt-1">Создаётся только когда один шаг оказался слишком сложным.</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Reference Sheet */}
       <Sheet open={refOpen} onOpenChange={setRefOpen}>
-        <SheetContent side="right" className="w-[420px] sm:w-[480px] overflow-y-auto p-0">
-          <SheetHeader className="px-6 pt-6 pb-2">
-            <SheetTitle className="flex items-center gap-2 text-lg">
-              <BookOpen className="h-5 w-5 text-amber-500" /> Справочник
+        <SheetContent side="right" className="w-[400px] sm:w-[460px] p-0 overflow-y-auto">
+          <SheetHeader className="px-6 pt-5 pb-3 border-b">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <BookOpen className="h-5 w-5 text-amber-500" /> Справочник AdminScale
             </SheetTitle>
           </SheetHeader>
           <div className="px-6 pb-8">
