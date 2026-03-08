@@ -9,9 +9,75 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, FormInput, Loader2, Settings2, X, ChevronUp, ChevronDown, Inbox, Copy } from 'lucide-react';
+import { Plus, FormInput, Loader2, Settings2, X, ChevronUp, ChevronDown, Inbox, Copy, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
+
+/** CAPTCHA provider status block with real status check */
+function CaptchaSettingBlock({ enabled, onToggle }: { enabled: boolean; onToggle: (v: boolean) => void }) {
+  const [providerStatus, setProviderStatus] = useState<'checking' | 'configured' | 'not_configured'>('checking');
+
+  useEffect(() => {
+    supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'captcha_provider_status')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value && typeof data.value === 'object' && (data.value as any).configured) {
+          setProviderStatus('configured');
+        } else {
+          setProviderStatus('not_configured');
+        }
+      });
+  }, []);
+
+  return (
+    <div className="rounded-lg border border-border p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-xs font-medium text-foreground">CAPTCHA Protection</label>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Require CAPTCHA verification on submit</p>
+        </div>
+        <Switch checked={enabled} onCheckedChange={onToggle} />
+      </div>
+
+      {/* Provider status indicator */}
+      <div className="flex items-center gap-2">
+        {providerStatus === 'checking' ? (
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Checking provider...
+          </div>
+        ) : providerStatus === 'configured' ? (
+          <div className="flex items-center gap-1.5 text-[10px] text-emerald-400">
+            <ShieldCheck className="h-3.5 w-3.5" /> Provider configured — server-side verification active
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 text-[10px] text-amber-400">
+            <ShieldAlert className="h-3.5 w-3.5" /> Provider not configured
+          </div>
+        )}
+      </div>
+
+      {enabled && providerStatus === 'not_configured' && (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
+          <p className="text-[10px] text-amber-400">
+            ⚠ CAPTCHA is enabled but server secrets (CAPTCHA_PROVIDER, CAPTCHA_SECRET) are not configured. 
+            The toggle is saved, but verification will not run until secrets are set up. Contact your admin.
+          </p>
+        </div>
+      )}
+
+      {enabled && providerStatus === 'configured' && (
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
+          <p className="text-[10px] text-emerald-400">
+            ✓ CAPTCHA is active. Submissions will be verified server-side before being accepted.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const fieldTypes = [
   { value: 'text', label: 'Text' },
@@ -302,23 +368,10 @@ export default function GosFormsPage() {
                   )}
                 </div>
                 {/* CAPTCHA Setting */}
-                <div className="rounded-lg border border-border p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-xs font-medium text-foreground">CAPTCHA Protection</label>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Require CAPTCHA verification on submit</p>
-                    </div>
-                    <Switch
-                      checked={!!(editing.settings as any)?.captcha_enabled}
-                      onCheckedChange={v => setEditing({ ...editing, settings: { ...(editing.settings || {}), captcha_enabled: v } })}
-                    />
-                  </div>
-                  {(editing.settings as any)?.captcha_enabled && (
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
-                      <p className="text-[10px] text-amber-400">⚠ Requires CAPTCHA_PROVIDER + CAPTCHA_SECRET server secrets. Without them this has no effect.</p>
-                    </div>
-                  )}
-                </div>
+                <CaptchaSettingBlock
+                  enabled={!!(editing.settings as any)?.captcha_enabled}
+                  onToggle={v => setEditing({ ...editing, settings: { ...(editing.settings || {}), captcha_enabled: v } })}
+                />
               </TabsContent>
 
               <TabsContent value="embed" className="flex-1 overflow-auto p-1">

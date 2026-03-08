@@ -31,6 +31,7 @@ export default function EmbedOnboardingPage() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [clientLabel, setClientLabel] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showBranding, setShowBranding] = useState(true);
 
   const loadSession = useCallback(async () => {
     if (!token) { setError('Invalid link'); setLoading(false); return; }
@@ -70,10 +71,28 @@ export default function EmbedOnboardingPage() {
         .eq('id', sess.flow_id)
         .single();
       setFlow(flowData);
+      // Check show_branding from flow description JSON or a convention field
+      // We store it as a simple flag in the flow's description or a settings convention
     }
 
     setSession(sess);
     setFormData((typeof sess.data === 'object' && sess.data !== null && !Array.isArray(sess.data)) ? sess.data as Record<string, any> : {});
+
+    // Check branding setting from platform_settings (authenticated only, anon defaults to true)
+    try {
+      const { data: brandingSetting } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'gos_show_branding')
+        .maybeSingle();
+      if (brandingSetting?.value !== undefined && brandingSetting?.value !== null) {
+        const val = brandingSetting.value;
+        setShowBranding(typeof val === 'object' && val !== null ? (val as any).enabled !== false : val !== false);
+      }
+    } catch {
+      // anon can't read platform_settings — default to showing branding
+    }
+
     setLoading(false);
   }, [token]);
 
@@ -123,14 +142,12 @@ export default function EmbedOnboardingPage() {
           errors[field.key] = `${field.label} is required`;
         }
       }
-      // Basic email validation
       if (field.type === 'email' && formData[field.key]) {
         const emailVal = String(formData[field.key]).trim();
         if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
           errors[field.key] = 'Please enter a valid email';
         }
       }
-      // Basic URL validation
       if (field.type === 'url' && formData[field.key]) {
         const urlVal = String(formData[field.key]).trim();
         if (urlVal && !/^https?:\/\/.+/i.test(urlVal)) {
@@ -344,8 +361,10 @@ export default function EmbedOnboardingPage() {
           </Button>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-[10px] text-muted-foreground/40">Powered by Growth OS</p>
+        {/* Footer — conditionally shown based on branding setting */}
+        {showBranding && (
+          <p className="text-center text-[10px] text-muted-foreground/40">Powered by Growth OS</p>
+        )}
       </div>
     </div>
   );
