@@ -87,6 +87,8 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
         .eq('client_id', clientId)
         .eq('level', level);
 
+      // Note: at adset/ad level, parent campaign was already AFM-filtered via breadcrumb navigation
+
       if (current.platformId) query = query.eq('parent_platform_id', current.platformId);
       if (dateFrom) query = query.gte('date', dateFrom);
       if (dateTo) query = query.lte('date', dateTo);

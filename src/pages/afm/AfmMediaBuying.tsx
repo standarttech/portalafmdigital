@@ -258,11 +258,17 @@ export default function AfmMediaBuying() {
     const toStr = format(dateRange.to, 'yyyy-MM-dd');
     const monthStr = format(new Date(), 'yyyy-MM-01');
 
+    // AFM FILTER: only AFM campaign metrics
+    const afmIds = await getAfmCampaignIds(selectedClientId);
+
     Promise.all([
-      supabase.from('daily_metrics')
-        .select('date, spend, leads, impressions, link_clicks')
-        .eq('client_id', selectedClientId)
-        .gte('date', fromStr).lte('date', toStr).order('date'),
+      afmIds.length > 0
+        ? supabase.from('daily_metrics')
+            .select('date, spend, leads, impressions, link_clicks')
+            .eq('client_id', selectedClientId)
+            .in('campaign_id', afmIds)
+            .gte('date', fromStr).lte('date', toStr).order('date')
+        : Promise.resolve({ data: [], error: null }),
       supabase.from('budget_plans')
         .select('id, month, planned_spend, planned_leads, planned_cpl')
         .eq('client_id', selectedClientId).eq('month', monthStr).maybeSingle(),

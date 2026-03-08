@@ -71,11 +71,16 @@ export default function BudgetPlannerPage() {
     // Get actuals for the selected month
     const monthStart = selectedMonth;
     const monthEnd = format(addMonths(new Date(selectedMonth), 1), 'yyyy-MM-dd');
-    const { data: metrics } = await supabase
-      .from('daily_metrics')
-      .select('client_id, spend, leads')
-      .gte('date', monthStart)
-      .lt('date', monthEnd);
+    // AFM FILTER: only AFM campaign metrics
+    const afmIds = await getAllAfmCampaignIds();
+    const { data: metrics } = afmIds.length > 0
+      ? await supabase
+          .from('daily_metrics')
+          .select('client_id, spend, leads')
+          .in('campaign_id', afmIds)
+          .gte('date', monthStart)
+          .lt('date', monthEnd)
+      : { data: [] };
 
     const actuals = new Map<string, { spend: number; leads: number }>();
     metrics?.forEach(m => {

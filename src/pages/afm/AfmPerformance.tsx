@@ -48,8 +48,12 @@ export default function AfmPerformance() {
           const clientIds = (clientUsers || []).filter(cu => cu.user_id === user.user_id).map(cu => cu.client_id);
           let spend = 0, leads = 0, impressions = 0, clicks = 0;
           if (clientIds.length > 0) {
-            const { data: metrics } = await supabase.from('daily_metrics').select('spend, leads, impressions, link_clicks').in('client_id', clientIds).gte('date', fromDate).lte('date', toDate);
-            if (metrics) { spend = metrics.reduce((s, m) => s + m.spend, 0); leads = metrics.reduce((s, m) => s + m.leads, 0); impressions = metrics.reduce((s, m) => s + m.impressions, 0); clicks = metrics.reduce((s, m) => s + m.link_clicks, 0); }
+            // AFM FILTER: only AFM campaigns
+            const afmIds = await getAllAfmCampaignIds(clientIds);
+            if (afmIds.length > 0) {
+              const { data: metrics } = await supabase.from('daily_metrics').select('spend, leads, impressions, link_clicks').in('campaign_id', afmIds).gte('date', fromDate).lte('date', toDate);
+              if (metrics) { spend = metrics.reduce((s, m) => s + m.spend, 0); leads = metrics.reduce((s, m) => s + m.leads, 0); impressions = metrics.reduce((s, m) => s + m.impressions, 0); clicks = metrics.reduce((s, m) => s + m.link_clicks, 0); }
+            }
           }
           const cpl = leads > 0 ? spend / leads : 0;
           const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;

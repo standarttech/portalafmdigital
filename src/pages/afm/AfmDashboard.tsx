@@ -200,13 +200,17 @@ export default function AfmDashboard() {
   const fetchData = useCallback(async () => {
     if (!agencyClient) return;
     const cid = agencyClient.id;
+    // AFM FILTER: only AFM campaigns
+    const afmIds = await getAfmCampaignIds(cid);
     const [metricsRes, campaignsRes, budgetRes] = await Promise.all([
-      supabase.from('daily_metrics')
-        .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-        .eq('client_id', cid).order('date', { ascending: true }),
+      afmIds.length > 0
+        ? supabase.from('daily_metrics')
+            .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
+            .eq('client_id', cid).in('campaign_id', afmIds).order('date', { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
       supabase.from('campaigns')
         .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
-        .eq('client_id', cid),
+        .eq('client_id', cid).ilike('campaign_name', '%AFM%'),
       supabase.from('budget_plans')
         .select('planned_spend, planned_leads, month')
         .eq('client_id', cid)
