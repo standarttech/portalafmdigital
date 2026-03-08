@@ -530,9 +530,25 @@ function LaunchRequestDetail({ lr: initialLr, clientName, isAdmin, clients, onBa
     } finally { setExecuting(false); }
   };
 
+  const [creatingReview, setCreatingReview] = useState(false);
+
   const createOptimizationReview = async () => {
-    if (!user || !draft) return;
+    if (!user || !draft || creatingReview) return;
+    setCreatingReview(true);
     try {
+      // Check for existing optimization review for this launch request
+      const { data: existing } = await supabase.from('ai_campaign_sessions' as any)
+        .select('id')
+        .eq('client_id', draft.client_id)
+        .eq('session_type', 'optimization_review')
+        .filter('metadata->>source_launch_request_id', 'eq', lr.id)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        toast.info('Optimization review already exists for this launch');
+        setCreatingReview(false);
+        return;
+      }
+
       const { data: sess, error } = await supabase.from('ai_campaign_sessions' as any).insert({
         client_id: draft.client_id,
         title: `Post-Launch Review: ${draft.campaign_name || draft.name}`,
@@ -547,7 +563,6 @@ function LaunchRequestDetail({ lr: initialLr, clientName, isAdmin, clients, onBa
       }).select().single();
       if (error) throw error;
       const sessionId = (sess as any).id;
-      // Pre-create analysis run with execution context
       const prompt = `Post-launch optimization review for campaign "${draft.campaign_name || draft.name}" (${lr.platform}).
 External Campaign ID: ${lr.external_campaign_id || 'N/A'}
 Execution status: ${lr.execution_status}
@@ -566,7 +581,7 @@ Review campaign structure, identify optimization opportunities, and recommend ne
       });
       logGosAction('create_optimization_review', 'launch_request', lr.id, `Optimization review for #${lr.id.slice(0, 8)}`, { clientId: draft.client_id, metadata: { sessionId } });
       toast.success('Optimization review session created — go to AI Analysis to run it');
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) { toast.error(e.message); } finally { setCreatingReview(false); }
   };
 
   const sc = lrStatusConfig[lr.status] || lrStatusConfig.pending_approval;
@@ -670,8 +685,8 @@ Review campaign structure, identify optimization opportunities, and recommend ne
                   <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><RefreshCw className="h-4 w-4 text-blue-400" /> Post-Launch Actions</CardTitle></CardHeader>
                   <CardContent>
                     <p className="text-xs text-muted-foreground mb-3">Create an AI-powered optimization review session for this launched campaign.</p>
-                    <Button size="sm" variant="outline" className="gap-1.5" onClick={createOptimizationReview}>
-                      <BarChart3 className="h-3.5 w-3.5" /> Create Optimization Review
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={createOptimizationReview} disabled={creatingReview}>
+                      {creatingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BarChart3 className="h-3.5 w-3.5" />} Create Optimization Review
                     </Button>
                   </CardContent>
                 </Card>

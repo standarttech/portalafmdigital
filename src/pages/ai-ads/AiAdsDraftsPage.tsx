@@ -150,6 +150,9 @@ function buildPreviewPayload(draft: Draft, items: DraftItem[]): any {
           headline: ad.config?.headline || '',
           cta: ad.config?.cta || 'LEARN_MORE',
           destination_url: ad.config?.destination_url || '',
+          page_id: ad.config?.page_id || null,
+          creative_type: ad.config?.creative_type || 'text_only',
+          creative_asset_url: ad.config?.creative_asset_url || null,
           creative_ref: ad.config?.creative_ref || null,
         },
       })),
@@ -372,19 +375,10 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
     setItems((iRes.data as any[]) || []);
     const accs = aRes.data || [];
     setAccounts(accs);
-    // Attempt to fetch Meta pages from platform_connections metadata for connected accounts
-    const pages: MetaPage[] = [];
-    for (const acc of accs) {
-      if (acc.connection_id) {
-        const { data: conn } = await supabase.from('platform_connections').select('id, account_name').eq('id', acc.connection_id).single();
-        if (conn) {
-          // Use the platform_account_id as a potential page source hint
-          // Real Meta page discovery would need a dedicated edge function; for now expose account info
-          pages.push({ id: acc.id, name: conn.account_name || acc.platform_account_id, page_id: acc.platform_account_id });
-        }
-      }
-    }
-    setMetaPages(pages);
+    // Note: Real Meta page discovery requires a dedicated Graph API call.
+    // Ad account IDs are NOT page IDs — we don't fake page discovery.
+    // MetaPages will remain empty until a page discovery edge function is implemented.
+    setMetaPages([]);
     setLoading(false);
   }, [draft.id, draft.client_id]);
 
@@ -947,18 +941,8 @@ function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages }: {
             </div>
             <div className="sm:col-span-2"><Label className="text-xs">Destination URL</Label><Input value={cfg.destination_url || ''} onChange={e => setCfg((c: any) => ({ ...c, destination_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="https://..." /></div>
             <div><Label className="text-xs">Facebook Page ID</Label>
-              {metaPages.length > 0 ? (
-                <Select value={cfg.page_id || '__manual__'} onValueChange={v => { const val = v === '__manual__' ? '' : v; setCfg((c: any) => ({ ...c, page_id: val })); setTimeout(save, 0); }}>
-                  <SelectTrigger className="text-sm"><SelectValue placeholder="Select page" /></SelectTrigger>
-                  <SelectContent>
-                    {metaPages.map(p => <SelectItem key={p.id} value={p.page_id}>{p.name} ({p.page_id})</SelectItem>)}
-                    <SelectItem value="__manual__">Enter manually...</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="No linked pages found — enter manually" />
-              )}
-              {cfg.page_id === '' && metaPages.length === 0 && <p className="text-[10px] text-amber-400 mt-0.5">Connect an ad account to auto-discover pages</p>}
+              <Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="Enter Facebook Page ID (required for Meta ads)" />
+              {!cfg.page_id && <p className="text-[10px] text-amber-400 mt-0.5">Required for Meta ad creation. Find it in your Facebook Page settings.</p>}
             </div>
             <div><Label className="text-xs">Creative Type</Label>
               <Select value={cfg.creative_type || 'text_only'} onValueChange={v => { setCfg((c: any) => ({ ...c, creative_type: v })); setTimeout(save, 0); }}>
