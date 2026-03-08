@@ -79,7 +79,7 @@ export default function GosIntegrationsPage() {
     if (!newInt.name || !newInt.provider) { toast.error('Name and provider are required'); return; }
     const { error } = await supabase.from('gos_integrations').insert({ name: newInt.name, provider: newInt.provider, category: newInt.category, description: newInt.description, config_schema: {} });
     if (error) toast.error('Failed to create');
-    else { toast.success('Integration added'); setAddingIntegration(false); setNewInt({ name: '', provider: '', category: 'general', description: '' }); loadData(); }
+    else { toast.success('Integration added'); logGosAction('create', 'integration', undefined, newInt.name); setAddingIntegration(false); setNewInt({ name: '', provider: '', category: 'general', description: '' }); loadData(); }
   };
 
   const deleteIntegration = async (id: string) => {
