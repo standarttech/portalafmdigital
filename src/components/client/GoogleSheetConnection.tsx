@@ -251,7 +251,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                 <div className="min-w-0 flex-1 mr-3">
                   <p className="text-sm font-medium flex items-center gap-1.5">
                     <CalendarClock className="h-3.5 w-3.5 text-primary" />
-                    {t('clients.metaAutoSync' as TranslationKey) || 'Meta Auto-sync'}
+                    {t('clients.metaAutoSync')}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     {t('clients.metaAutoSyncDesc' as TranslationKey) || 'Data is pulled every hour for the last 3 days (covers Facebook attribution window). Manual sync — 30 days.'}
