@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
+import { selectVariant, type ExperimentConfig } from '@/lib/experimentRuntime';
 
 interface Section {
   type: string;
@@ -14,32 +15,76 @@ export default function EmbedLandingPage() {
   const [template, setTemplate] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [resolvedVariantId, setResolvedVariantId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) { setNotFound(true); setLoading(false); return; }
-    loadTemplate();
+    resolveTemplate();
   }, [id]);
 
-  const loadTemplate = async () => {
+  const resolveTemplate = async () => {
     const { data, error } = await supabase
       .from('gos_landing_templates')
-      .select('id, name, description, sections, settings, status, client_id')
+      .select('id, name, description, sections, settings, status, client_id, experiment_id')
       .eq('id', id!)
       .single();
 
-    if (error || !data || data.status !== 'published') {
-      setNotFound(true);
-    } else {
-      setTemplate(data);
-      // Write analytics: landing_view
-      supabase.from('gos_analytics_events').insert({
-        event_type: 'landing_view',
-        entity_type: 'landing',
-        entity_id: data.id,
-        client_id: data.client_id,
-        referrer: document.referrer?.substring(0, 500) || null,
-      }).then(() => {});
+    if (error || !data) {
+      setNotFound(true); setLoading(false); return;
     }
+
+    // A/B experiment resolution
+    if (data.experiment_id) {
+      const { data: exp } = await supabase
+        .from('gos_experiments')
+        .select('id, status, winner_id, traffic_split')
+        .eq('id', data.experiment_id)
+        .single();
+
+      if (exp && (exp.status === 'running' || exp.winner_id)) {
+        const config: ExperimentConfig = {
+          id: exp.id,
+          status: exp.status,
+          winner_id: exp.winner_id,
+          traffic_split: (exp.traffic_split || {}) as Record<string, number>,
+        };
+        const selectedId = selectVariant(config);
+
+        if (selectedId && selectedId !== id) {
+          // Load the selected variant template
+          const { data: variantTemplate } = await supabase
+            .from('gos_landing_templates')
+            .select('id, name, description, sections, settings, status, client_id, experiment_id')
+            .eq('id', selectedId)
+            .single();
+          if (variantTemplate && variantTemplate.status === 'published') {
+            initTemplate(variantTemplate, selectedId);
+            return;
+          }
+        }
+        setResolvedVariantId(selectedId || id!);
+      }
+    }
+
+    if (data.status !== 'published') {
+      setNotFound(true); setLoading(false); return;
+    }
+    initTemplate(data, null);
+  };
+
+  const initTemplate = (data: any, variantId: string | null) => {
+    setTemplate(data);
+    const vid = variantId || data.id;
+    setResolvedVariantId(vid);
+    // Write analytics: landing_view with variant_id
+    supabase.from('gos_analytics_events').insert({
+      event_type: 'landing_view',
+      entity_type: 'landing',
+      entity_id: data.id,
+      client_id: data.client_id,
+      variant_id: vid,
+      referrer: document.referrer?.substring(0, 500) || null,
+    }).then(() => {});
     setLoading(false);
   };
 
@@ -168,7 +213,6 @@ function RenderSection({ section }: { section: Section }) {
       }
       return null;
     case 'custom_html':
-      // Sanitized: scripts, event handlers, and dangerous elements are stripped
       return (
         <section className="py-8 px-5" dangerouslySetInnerHTML={{ __html: sanitizeHtml(config.html || '') }} />
       );

@@ -127,6 +127,43 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Extract optional A/B variant_id and captcha_token
+    const variantId = body.variant_id || null;
+    const captchaToken = body.captcha_token || null;
+
+    // CAPTCHA validation (when provider is configured)
+    // Currently a prepared integration point — no provider active by default.
+    // To activate: set CAPTCHA_SECRET env var and CAPTCHA_PROVIDER (turnstile|hcaptcha).
+    const captchaProvider = Deno.env.get('CAPTCHA_PROVIDER'); // 'turnstile' or 'hcaptcha'
+    const captchaSecret = Deno.env.get('CAPTCHA_SECRET');
+    if (captchaProvider && captchaSecret) {
+      if (!captchaToken) {
+        return new Response(JSON.stringify({ error: 'CAPTCHA verification required' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const verifyUrl = captchaProvider === 'turnstile'
+        ? 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+        : 'https://api.hcaptcha.com/siteverify';
+      try {
+        const verifyRes = await fetch(verifyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ secret: captchaSecret, response: captchaToken }),
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyData.success) {
+          return new Response(JSON.stringify({ error: 'CAPTCHA verification failed' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (e) {
+        console.error('CAPTCHA verify error:', e);
+        // Fail open if captcha service is down — configurable behavior
+      }
+    }
+    // If no captcha provider configured, skip silently (no fake protection)
+
     // Honeypot anti-spam check
     if (body._hp_check && String(body._hp_check).trim() !== '') {
       // Bot detected — silently accept but don't process
@@ -198,6 +235,7 @@ Deno.serve(async (req) => {
         entity_id: formId,
         client_id: form.client_id,
         ip_hash: ipHash,
+        variant_id: variantId,
         metadata: { reason: 'validation', errors: validationErrors },
       });
       return new Response(JSON.stringify({ error: 'Validation failed', details: validationErrors }), {
@@ -221,13 +259,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Write analytics: form_submit_success
+    // Write analytics: form_submit_success with variant_id
     await supabase.from('gos_analytics_events').insert({
       event_type: 'form_submit_success',
       entity_type: 'form',
       entity_id: formId,
       client_id: form.client_id,
       ip_hash: ipHash,
+      variant_id: variantId,
       user_agent: userAgent.substring(0, 500),
       referrer: referrer.substring(0, 500),
     });
