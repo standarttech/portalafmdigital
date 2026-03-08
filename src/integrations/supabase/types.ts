@@ -3594,6 +3594,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      validate_onboarding_token: { Args: { p_token: string }; Returns: Json }
     }
     Enums: {
       agency_role:
