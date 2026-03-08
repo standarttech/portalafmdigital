@@ -58,6 +58,7 @@ export default function ReportsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewReport, setPreviewReport] = useState<Report | null>(null);
 
   const fetchClients = useCallback(async () => {
     if (isAdmin) {
