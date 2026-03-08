@@ -234,7 +234,7 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
                 <tfoot>
                   <tr className="bg-secondary/30 font-semibold">
                     {cols.map(col => {
-                      if (col.key === 'name') return <td key={col.key} className="text-foreground">{t('common.total' as TranslationKey) || 'Total'} ({sorted.length})</td>;
+                      if (col.key === 'name') return <td key={col.key} className="text-foreground">{t('common.total')} ({sorted.length})</td>;
                       const totalRow = {
                         spend: sorted.reduce((s, r) => s + (r.spend || 0), 0),
                         impressions: sorted.reduce((s, r) => s + (r.impressions || 0), 0),
