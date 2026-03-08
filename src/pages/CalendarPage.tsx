@@ -6,20 +6,19 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Target, ListTodo, MessageSquare } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Target, ListTodo, MessageSquare, Plus } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, isToday } from 'date-fns';
 import { cn } from '@/lib/utils';
-import DateRangePicker from '@/components/dashboard/DateRangePicker';
-import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
+import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface CalendarEvent {
-  id: string;
-  date: string;
-  title: string;
-  type: 'task' | 'annotation' | 'campaign';
-  client_name?: string;
-  status?: string;
+  id: string; date: string; title: string; type: 'task' | 'annotation' | 'campaign'; client_name?: string; status?: string;
 }
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
@@ -33,15 +32,17 @@ const typeConfig: Record<string, { icon: typeof ListTodo; color: string }> = {
 
 export default function CalendarPage() {
   const { t } = useLanguage();
-  const { agencyRole } = useAuth();
+  const { user } = useAuth();
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange>('30d');
-  const [comparison, setComparison] = useState<Comparison>('none');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
-  const [compareEnabled, setCompareEnabled] = useState(false);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createType, setCreateType] = useState<'annotation' | 'task'>('annotation');
+  const [createTitle, setCreateTitle] = useState('');
+  const [createClientId, setCreateClientId] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -52,46 +53,52 @@ export default function CalendarPage() {
     const from = format(monthStart, 'yyyy-MM-dd');
     const to = format(monthEnd, 'yyyy-MM-dd');
 
-    const [{ data: tasks }, { data: annotations }] = await Promise.all([
+    const [{ data: tasks }, { data: annotations }, { data: cls }] = await Promise.all([
       supabase.from('tasks').select('id, title, due_date, status, client_id').gte('due_date', from).lte('due_date', to),
       supabase.from('annotations').select('id, text, date, client_id').gte('date', from).lte('date', to),
+      supabase.from('clients').select('id, name').eq('status', 'active').order('name'),
     ]);
 
-    // Get client names
-    const clientIds = new Set([
-      ...(tasks || []).map(t => t.client_id),
-      ...(annotations || []).map(a => a.client_id),
-    ]);
-    const { data: clients } = await supabase.from('clients').select('id, name').in('id', [...clientIds]);
-    const nameMap = new Map(clients?.map(c => [c.id, c.name]) || []);
+    setClients(cls || []);
+    const clientIds = new Set([...(tasks || []).map(t => t.client_id), ...(annotations || []).map(a => a.client_id)]);
+    const { data: allClients } = await supabase.from('clients').select('id, name').in('id', [...clientIds]);
+    const nameMap = new Map(allClients?.map(c => [c.id, c.name]) || []);
 
-    const evts: CalendarEvent[] = [
-      ...(tasks || []).filter(t => t.due_date).map(t => ({
-        id: t.id, date: t.due_date!, title: t.title, type: 'task' as const,
-        client_name: nameMap.get(t.client_id), status: t.status,
-      })),
-      ...(annotations || []).map(a => ({
-        id: a.id, date: a.date, title: a.text, type: 'annotation' as const,
-        client_name: nameMap.get(a.client_id),
-      })),
-    ];
-    setEvents(evts);
+    setEvents([
+      ...(tasks || []).filter(t => t.due_date).map(t => ({ id: t.id, date: t.due_date!, title: t.title, type: 'task' as const, client_name: nameMap.get(t.client_id), status: t.status })),
+      ...(annotations || []).map(a => ({ id: a.id, date: a.date, title: a.text, type: 'annotation' as const, client_name: nameMap.get(a.client_id) })),
+    ]);
   }, [monthStart, monthEnd]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
-    events.forEach(e => {
-      const key = e.date;
-      map.set(key, [...(map.get(key) || []), e]);
-    });
+    events.forEach(e => map.set(e.date, [...(map.get(e.date) || []), e]));
     return map;
   }, [events]);
 
-  const selectedEvents = selectedDate
-    ? eventsByDate.get(format(selectedDate, 'yyyy-MM-dd')) || []
-    : [];
+  const selectedEvents = selectedDate ? eventsByDate.get(format(selectedDate, 'yyyy-MM-dd')) || [] : [];
+
+  const openCreate = () => {
+    if (!selectedDate) { toast.error(t('calendar.selectDay' as TranslationKey)); return; }
+    setCreateTitle(''); setCreateClientId(''); setCreateType('annotation'); setShowCreateDialog(true);
+  };
+
+  const handleCreate = async () => {
+    if (!createTitle || !createClientId || !selectedDate) return;
+    setCreating(true);
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    if (createType === 'annotation') {
+      const { error } = await supabase.from('annotations').insert({ client_id: createClientId, date: dateStr, text: createTitle, created_by: user?.id });
+      if (error) { toast.error(error.message); setCreating(false); return; }
+    } else {
+      const { error } = await supabase.from('tasks').insert({ client_id: createClientId, title: createTitle, due_date: dateStr, created_by: user?.id, status: 'pending' as any });
+      if (error) { toast.error(error.message); setCreating(false); return; }
+    }
+    toast.success(t('tasks.taskCreated' as TranslationKey));
+    setCreating(false); setShowCreateDialog(false); fetchEvents();
+  };
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -103,20 +110,12 @@ export default function CalendarPage() {
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">{t('calendar.subtitle' as TranslationKey)}</p>
         </div>
-        <DateRangePicker
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          comparison={comparison}
-          onComparisonChange={setComparison}
-          customDateRange={customDateRange}
-          onCustomDateRangeChange={setCustomDateRange}
-          compareEnabled={compareEnabled}
-          onCompareEnabledChange={setCompareEnabled}
-        />
+        <Button size="sm" className="gap-1.5" onClick={openCreate} disabled={!selectedDate}>
+          <Plus className="h-4 w-4" /> {t('calendar.addEvent' as TranslationKey)}
+        </Button>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Calendar Grid */}
         <motion.div variants={item} className="lg:col-span-2">
           <Card className="glass-card">
             <CardHeader className="pb-2">
@@ -131,38 +130,23 @@ export default function CalendarPage() {
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                   <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1.5">{d}</div>
                 ))}
-                {Array.from({ length: startDow }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-16 sm:h-20" />
-                ))}
+                {Array.from({ length: startDow }).map((_, i) => <div key={`empty-${i}`} className="h-16 sm:h-20" />)}
                 {days.map(day => {
                   const dateStr = format(day, 'yyyy-MM-dd');
                   const dayEvents = eventsByDate.get(dateStr) || [];
                   const isSelected = selectedDate && isSameDay(day, selectedDate);
                   return (
-                    <button
-                      key={dateStr}
-                      onClick={() => setSelectedDate(day)}
-                      className={cn(
-                        'h-16 sm:h-20 border border-border/30 rounded-md p-1 text-left hover:bg-secondary/30 transition-colors relative',
-                        isToday(day) && 'border-primary/50',
-                        isSelected && 'bg-primary/10 border-primary',
-                      )}
-                    >
-                      <span className={cn(
-                        'text-[10px] sm:text-xs font-medium',
-                        isToday(day) ? 'text-primary font-bold' : 'text-muted-foreground'
-                      )}>
-                        {format(day, 'd')}
-                      </span>
+                    <button key={dateStr} onClick={() => setSelectedDate(day)}
+                      className={cn('h-16 sm:h-20 border border-border/30 rounded-md p-1 text-left hover:bg-secondary/30 transition-colors relative',
+                        isToday(day) && 'border-primary/50', isSelected && 'bg-primary/10 border-primary')}>
+                      <span className={cn('text-[10px] sm:text-xs font-medium', isToday(day) ? 'text-primary font-bold' : 'text-muted-foreground')}>{format(day, 'd')}</span>
                       <div className="flex flex-wrap gap-0.5 mt-0.5">
                         {dayEvents.slice(0, 3).map(e => (
-                          <div key={e.id} className={cn(
-                            'h-1.5 w-1.5 rounded-full',
+                          <div key={e.id} className={cn('h-1.5 w-1.5 rounded-full',
                             e.type === 'task' && e.status === 'completed' ? 'bg-emerald-400' :
                             e.type === 'task' && e.status === 'in_progress' ? 'bg-blue-400' :
                             e.type === 'task' ? 'bg-amber-400' :
-                            e.type === 'annotation' ? 'bg-purple-400' : 'bg-green-400'
-                          )} />
+                            e.type === 'annotation' ? 'bg-purple-400' : 'bg-green-400')} />
                         ))}
                         {dayEvents.length > 3 && <span className="text-[8px] text-muted-foreground">+{dayEvents.length - 3}</span>}
                       </div>
@@ -174,17 +158,16 @@ export default function CalendarPage() {
           </Card>
         </motion.div>
 
-        {/* Selected day details */}
         <motion.div variants={item}>
           <Card className="glass-card h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">
-                {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Select a day'}
+                {selectedDate ? format(selectedDate, 'EEEE, MMM d') : t('calendar.selectDay' as TranslationKey)}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {selectedEvents.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-4 text-center">No events</p>
+                <p className="text-xs text-muted-foreground py-4 text-center">{t('calendar.noEvents' as TranslationKey)}</p>
               ) : (
                 <div className="space-y-2">
                   {selectedEvents.map(e => {
@@ -207,6 +190,41 @@ export default function CalendarPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Create Event Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>{t('calendar.addEvent' as TranslationKey)}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{t('calendar.eventType' as TranslationKey)}</Label>
+              <Select value={createType} onValueChange={v => setCreateType(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="annotation">{t('calendar.annotation' as TranslationKey)}</SelectItem>
+                  <SelectItem value="task">{t('calendar.task' as TranslationKey)}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('common.title')}</Label>
+              <Input value={createTitle} onChange={e => setCreateTitle(e.target.value)} placeholder={createType === 'annotation' ? 'Budget approved, Campaign launch...' : 'Prepare creatives, Review metrics...'} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('nav.clients')}</Label>
+              <Select value={createClientId} onValueChange={setCreateClientId}>
+                <SelectTrigger><SelectValue placeholder={t('crm.selectClient')} /></SelectTrigger>
+                <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            {selectedDate && <p className="text-xs text-muted-foreground">{t('common.date')}: {format(selectedDate, 'dd MMM yyyy')}</p>}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
+            <Button onClick={handleCreate} disabled={creating || !createTitle || !createClientId}>{t('common.create')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

@@ -477,8 +477,8 @@ export const translations = {
   'budget.plannedLeads': t('Planned Leads', 'План лидов', 'Lead pianificati', 'Leads planificados', 'العملاء المخططون', 'Leads prévus'),
 
   // Calendar
-  'calendar.title': t('Activity Calendar', 'Календарь активности', 'Calendario attività', 'Calendario de actividades', 'تقويم النشاط', "Calendrier d'activités"),
-  'calendar.subtitle': t('Tasks, annotations and campaign events', 'Задачи, аннотации и события кампаний', 'Attività, annotazioni ed eventi delle campagne', 'Tareas, anotaciones y eventos de campaña', 'المهام والتعليقات التوضيحية وأحداث الحملات', 'Tâches, annotations et événements de campagne'),
+  'calendar.title': t('Calendar', 'Календарь', 'Calendario', 'Calendario', 'التقويم', 'Calendrier'),
+  'calendar.subtitle': t('Tasks, annotations and events', 'Задачи, аннотации и события', 'Attività, annotazioni ed eventi', 'Tareas, anotaciones y eventos', 'المهام والتعليقات والأحداث', 'Tâches, annotations et événements'),
 
   // Chat
   'nav.chat': t('Chat', 'Чат', 'Chat', 'Chat', 'الدردشة', 'Chat'),
@@ -871,6 +871,72 @@ export const translations = {
   'admin.recentActivity': t('Recent Activity', 'Последняя активность', 'Attività recente', 'Actividad reciente', 'النشاط الأخير', 'Activité récente'),
   'admin.activityFor': t('Activity for', 'Активность для', 'Attività per', 'Actividad de', 'نشاط لـ', 'Activité de'),
   'nav.presence': t('Presence', 'Присутствие', 'Presenza', 'Presencia', 'الحضور', 'Présence'),
+
+  // Webhooks (Client)
+  'webhooks.title': t('Webhooks', 'Вебхуки', 'Webhook', 'Webhooks', 'الويب هوك', 'Webhooks'),
+  'webhooks.outbound': t('Outbound', 'Исходящие', 'In uscita', 'Salientes', 'الصادرة', 'Sortants'),
+  'webhooks.inbound': t('Inbound', 'Входящие', 'In entrata', 'Entrantes', 'الواردة', 'Entrants'),
+  'webhooks.outboundDesc': t('Send data to external CRM, Telegram or other services. Each webhook is signed with HMAC (SHA-256).', 'Отправка данных в CRM, Telegram или другие сервисы. Каждый вебхук подписывается HMAC (SHA-256).', 'Invia dati a CRM esterno, Telegram o altri servizi.', 'Envía datos a CRM externo, Telegram u otros servicios.', 'إرسال البيانات إلى CRM خارجي أو Telegram.', 'Envoyez des données vers un CRM externe, Telegram ou autres.'),
+  'webhooks.inboundDesc': t('Receive leads from external sources (Meta Ads, landing pages) into CRM pipelines.', 'Приём лидов из внешних источников (Meta Ads, лендинги) в CRM-воронки.', 'Ricevi lead da fonti esterne nelle pipeline CRM.', 'Recibe leads de fuentes externas en los pipelines CRM.', 'استقبال العملاء المحتملين من مصادر خارجية.', 'Recevez des leads de sources externes dans les pipelines CRM.'),
+  'webhooks.telegramTip': t('Quick Telegram setup: use URL format telegram://CHAT_ID', 'Быстрое подключение Telegram: URL в формате telegram://CHAT_ID', 'Connessione rapida Telegram: URL formato telegram://CHAT_ID', 'Conexión rápida Telegram: URL formato telegram://CHAT_ID', 'إعداد Telegram السريع: استخدم تنسيق URL telegram://CHAT_ID', 'Configuration rapide Telegram : format URL telegram://CHAT_ID'),
+  'webhooks.add': t('Add Webhook', 'Добавить вебхук', 'Aggiungi webhook', 'Añadir webhook', 'إضافة ويب هوك', 'Ajouter un webhook'),
+  'webhooks.noWebhooks': t('No webhooks', 'Нет вебхуков', 'Nessun webhook', 'Sin webhooks', 'لا توجد ويب هوك', 'Aucun webhook'),
+  'webhooks.noWebhooksDesc': t('Add a webhook to integrate with CRM, Telegram and other services', 'Добавьте вебхук для интеграции с CRM, Telegram и другими сервисами', 'Aggiungi un webhook per integrare con CRM e altri servizi', 'Añade un webhook para integrar con CRM y otros servicios', 'أضف ويب هوك للتكامل مع CRM وخدمات أخرى', 'Ajoutez un webhook pour intégrer avec CRM et autres services'),
+  'webhooks.createFirst': t('Create first webhook', 'Создать первый вебхук', 'Crea il primo webhook', 'Crear primer webhook', 'إنشاء أول ويب هوك', 'Créer le premier webhook'),
+  'webhooks.nameAndUrl': t('Enter name and URL', 'Укажите имя и URL', 'Inserisci nome e URL', 'Ingrese nombre y URL', 'أدخل الاسم والرابط', "Entrez le nom et l'URL"),
+  'webhooks.invalidUrl': t('Invalid URL', 'Некорректный URL', 'URL non valido', 'URL inválido', 'رابط غير صالح', 'URL invalide'),
+  'webhooks.headersJson': t('Headers must be valid JSON', 'Заголовки должны быть валидным JSON', 'Le intestazioni devono essere JSON valido', 'Los encabezados deben ser JSON válido', 'يجب أن تكون JSON صالحة', 'Les en-têtes doivent être du JSON valide'),
+  'webhooks.updated': t('Webhook updated', 'Вебхук обновлён', 'Webhook aggiornato', 'Webhook actualizado', 'تم تحديث الويب هوك', 'Webhook mis à jour'),
+  'webhooks.created': t('Webhook created', 'Вебхук создан', 'Webhook creato', 'Webhook creado', 'تم إنشاء الويب هوك', 'Webhook créé'),
+  'webhooks.deleted': t('Webhook deleted', 'Вебхук удалён', 'Webhook eliminato', 'Webhook eliminado', 'تم حذف الويب هوك', 'Webhook supprimé'),
+  'webhooks.testSent': t('Test request sent', 'Тестовый запрос отправлен', 'Richiesta di test inviata', 'Solicitud de prueba enviada', 'تم إرسال طلب الاختبار', 'Requête de test envoyée'),
+  'webhooks.urlCopied': t('URL copied', 'URL скопирован', 'URL copiato', 'URL copiada', 'تم نسخ الرابط', 'URL copié'),
+  'webhooks.failuresReset': t('Failure count reset', 'Счётчик ошибок сброшен', 'Conteggio errori azzerato', 'Contador de errores reiniciado', 'تم إعادة تعيين عداد الأخطاء', "Compteur d'erreurs réinitialisé"),
+  'webhooks.editWebhook': t('Edit webhook', 'Редактировать вебхук', 'Modifica webhook', 'Editar webhook', 'تعديل الويب هوك', 'Modifier le webhook'),
+  'webhooks.newWebhook': t('New webhook', 'Новый вебхук', 'Nuovo webhook', 'Nuevo webhook', 'ويب هوك جديد', 'Nouveau webhook'),
+  'webhooks.editDesc': t('Change webhook settings', 'Измените настройки вебхука', 'Modifica le impostazioni', 'Cambie la configuración', 'تغيير الإعدادات', 'Modifier les paramètres'),
+  'webhooks.createDesc': t('Create a new webhook', 'Создайте вебхук', 'Crea un webhook', 'Crea un webhook', 'أنشئ ويب هوك', 'Créez un webhook'),
+  'webhooks.endpointUrl': t('Endpoint URL', 'URL эндпоинта', 'URL endpoint', 'URL del endpoint', 'رابط نقطة النهاية', 'URL du point de terminaison'),
+  'webhooks.secretHmac': t('Secret (HMAC, optional)', 'Secret (HMAC, опционально)', 'Secret (HMAC, opzionale)', 'Secret (HMAC, opcional)', 'السر (HMAC، اختياري)', 'Secret (HMAC, optionnel)'),
+  'webhooks.signatureHeader': t('Sent in X-Webhook-Signature header', 'Отправляется в заголовке X-Webhook-Signature', 'Inviata nell\'intestazione X-Webhook-Signature', 'Enviada en el encabezado X-Webhook-Signature', 'يُرسل في ترويسة X-Webhook-Signature', "Envoyé dans l'en-tête X-Webhook-Signature"),
+  'webhooks.events': t('Events', 'События', 'Eventi', 'Eventos', 'الأحداث', 'Événements'),
+  'webhooks.additionalHeaders': t('Additional headers (JSON)', 'Доп. заголовки (JSON)', 'Intestazioni aggiuntive (JSON)', 'Encabezados adicionales (JSON)', 'عناوين إضافية (JSON)', 'En-têtes supplémentaires (JSON)'),
+  'webhooks.deleteConfirm': t('Delete webhook?', 'Удалить вебхук?', 'Eliminare il webhook?', '¿Eliminar webhook?', 'حذف الويب هوك؟', 'Supprimer le webhook ?'),
+  'webhooks.deleteDesc': t('The webhook and all logs will be permanently deleted.', 'Вебхук и все логи будут удалены.', 'Il webhook e tutti i log saranno eliminati.', 'El webhook y todos sus logs se eliminarán.', 'سيتم حذف الويب هوك وجميع سجلاته.', 'Le webhook et tous ses logs seront supprimés.'),
+  'webhooks.logsTitle': t('Logs:', 'Логи:', 'Log:', 'Registros:', 'السجلات:', 'Logs :'),
+  'webhooks.last50': t('Last 50 deliveries', 'Последние 50 доставок', 'Ultime 50 consegne', 'Últimas 50 entregas', 'آخر 50 عملية تسليم', 'Dernières 50 livraisons'),
+  'webhooks.noLogs': t('No records. Send a test request.', 'Нет записей. Отправьте тестовый запрос.', 'Nessun record.', 'Sin registros.', 'لا توجد سجلات.', 'Aucun enregistrement.'),
+  'webhooks.lastCall': t('Last call:', 'Последний вызов:', 'Ultima chiamata:', 'Última llamada:', 'آخر مكالمة:', 'Dernier appel :'),
+  'webhooks.errorsConsecutive': t('consecutive errors', 'ошибок подряд', 'errori consecutivi', 'errores consecutivos', 'أخطاء متتالية', 'erreurs consécutives'),
+  'webhooks.autoDisabled': t('— automatically disabled', '— автоматически деактивирован', '— disattivato automaticamente', '— desactivado automáticamente', '— تم تعطيله تلقائيًا', '— désactivé automatiquement'),
+  'webhooks.resetErrors': t('Reset', 'Сбросить', 'Reimposta', 'Reiniciar', 'إعادة تعيين', 'Réinitialiser'),
+  'webhooks.saving': t('Saving...', 'Сохранение...', 'Salvataggio...', 'Guardando...', 'جار الحفظ...', 'Enregistrement...'),
+  'webhooks.allEvents': t('All events', 'Все события', 'Tutti gli eventi', 'Todos los eventos', 'جميع الأحداث', 'Tous les événements'),
+  'webhooks.newLead': t('New lead', 'Новый лид', 'Nuovo lead', 'Nuevo lead', 'عميل جديد', 'Nouveau lead'),
+  'webhooks.leadUpdated': t('Lead updated', 'Лид обновлён', 'Lead aggiornato', 'Lead actualizado', 'تم تحديث العميل', 'Lead mis à jour'),
+  'webhooks.leadDeleted': t('Lead deleted', 'Лид удалён', 'Lead eliminato', 'Lead eliminado', 'تم حذف العميل', 'Lead supprimé'),
+  'webhooks.metricsSynced': t('Metrics synced', 'Метрики синхронизированы', 'Metriche sincronizzate', 'Métricas sincronizadas', 'تمت مزامنة المقاييس', 'Métriques synchronisées'),
+  'webhooks.reportPublished': t('Report published', 'Отчёт опубликован', 'Report pubblicato', 'Informe publicado', 'تم نشر التقرير', 'Rapport publié'),
+  'webhooks.campaignStatusChanged': t('Campaign status changed', 'Статус кампании изменён', 'Stato campagna modificato', 'Estado de campaña cambiado', 'تم تغيير حالة الحملة', 'Statut de campagne modifié'),
+  'webhooks.budgetUpdated': t('Budget updated', 'Бюджет обновлён', 'Budget aggiornato', 'Presupuesto actualizado', 'تم تحديث الميزانية', 'Budget mis à jour'),
+  'webhooks.taskCompleted': t('Task completed', 'Задача выполнена', 'Attività completata', 'Tarea completada', 'تم إكمال المهمة', 'Tâche terminée'),
+  'webhooks.goToCrmWebhooks': t('Go to CRM Webhooks', 'Перейти к CRM-вебхукам', 'Vai ai webhook CRM', 'Ir a webhooks CRM', 'الذهاب إلى ويب هوك CRM', 'Aller aux webhooks CRM'),
+
+  // Task priorities
+  'tasks.priority': t('Priority', 'Приоритет', 'Priorità', 'Prioridad', 'الأولوية', 'Priorité'),
+  'tasks.urgent': t('Urgent', 'Срочно', 'Urgente', 'Urgente', 'عاجل', 'Urgent'),
+  'tasks.high': t('High', 'Высокий', 'Alta', 'Alta', 'مرتفع', 'Haute'),
+  'tasks.medium': t('Medium', 'Средний', 'Media', 'Media', 'متوسط', 'Moyenne'),
+  'tasks.low': t('Low', 'Низкий', 'Bassa', 'Baja', 'منخفض', 'Basse'),
+
+  // Calendar extras
+  'calendar.addEvent': t('Add Event', 'Добавить событие', 'Aggiungi evento', 'Añadir evento', 'إضافة حدث', 'Ajouter un événement'),
+  'calendar.noEvents': t('No events', 'Нет событий', 'Nessun evento', 'Sin eventos', 'لا توجد أحداث', 'Aucun événement'),
+  'calendar.selectDay': t('Select a day', 'Выберите день', 'Seleziona un giorno', 'Selecciona un día', 'اختر يومًا', 'Sélectionnez un jour'),
+  'calendar.eventType': t('Event Type', 'Тип события', 'Tipo di evento', 'Tipo de evento', 'نوع الحدث', "Type d'événement"),
+  'calendar.annotation': t('Annotation', 'Аннотация', 'Annotazione', 'Anotación', 'تعليق', 'Annotation'),
+  'calendar.task': t('Task', 'Задача', 'Attività', 'Tarea', 'مهمة', 'Tâche'),
+
 } as const;
 
 export type TranslationKey = keyof typeof translations;
