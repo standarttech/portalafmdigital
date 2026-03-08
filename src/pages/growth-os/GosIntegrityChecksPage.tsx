@@ -201,10 +201,11 @@ function AdminTools() {
     if (!token) { setTesting(''); return; }
     try {
       const { data } = await supabase.rpc('validate_onboarding_token', { p_token: token });
-      if (data?.error) {
-        toast.error(`Token invalid: ${data.error}`);
+      const result = data as any;
+      if (result?.error) {
+        toast.error(`Token invalid: ${result.error}`);
       } else {
-        toast.success(`Token valid. Session: ${data.session_id?.slice(0, 8)}... Expires: ${new Date(data.expires_at).toLocaleString()}`);
+        toast.success(`Token valid. Session: ${result.session_id?.slice(0, 8)}... Expires: ${new Date(result.expires_at).toLocaleString()}`);
       }
     } catch {
       toast.error('Token validation failed');
