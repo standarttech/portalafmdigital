@@ -149,7 +149,7 @@ export default function GosFormsPage() {
       settings: editing.settings,
     }).eq('id', editing.id);
     if (error) toast.error('Save failed');
-    else { toast.success('Form saved'); loadForms(); }
+    else { toast.success('Form saved'); logGosAction('update', 'form', editing.id, editing.name); loadForms(); }
   };
 
   const deleteForm = async (id: string) => {
