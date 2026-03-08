@@ -373,6 +373,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const [items, setItems] = useState<DraftItem[]>([]);
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
   const [metaPages, setMetaPages] = useState<MetaPage[]>([]);
+  const [creativeAssets, setCreativeAssets] = useState<CreativeAssetRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
