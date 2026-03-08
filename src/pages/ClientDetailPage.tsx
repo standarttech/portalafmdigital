@@ -331,15 +331,15 @@ export default function ClientDetailPage() {
 
   const fetchCampaigns = useCallback(async () => {
     if (!id) return;
-    // Fetch campaigns with their ad_account platform info to enable platform filtering
+    // AFM FILTER: only show campaigns with "AFM" in name
     const { data } = await supabase
       .from('campaigns')
       .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
       .eq('client_id', id)
+      .ilike('campaign_name', '%AFM%')
       .order('campaign_name');
     if (data) {
       setCampaigns(data as any);
-      // Build campaign_id -> platform map
       const map: Record<string, string> = {};
       (data as any[]).forEach((c: any) => {
         const platform = c.ad_accounts?.platform_connections?.platform;
