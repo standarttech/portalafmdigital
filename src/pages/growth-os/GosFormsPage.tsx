@@ -50,11 +50,11 @@ function CaptchaSettingBlock({ enabled, onToggle }: { enabled: boolean; onToggle
           </div>
         ) : providerStatus === 'configured' ? (
           <div className="flex items-center gap-1.5 text-[10px] text-emerald-400">
-            <ShieldCheck className="h-3.5 w-3.5" /> Provider configured — server-side verification active
+            <ShieldCheck className="h-3.5 w-3.5" /> Provider setup flag present — server-side secrets should be configured
           </div>
         ) : (
           <div className="flex items-center gap-1.5 text-[10px] text-amber-400">
-            <ShieldAlert className="h-3.5 w-3.5" /> Provider not configured
+            <ShieldAlert className="h-3.5 w-3.5" /> Provider not configured — setup flag missing
           </div>
         )}
       </div>

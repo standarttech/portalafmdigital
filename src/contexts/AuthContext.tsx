@@ -88,12 +88,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (event, newSession) => {
+        // Skip TOKEN_REFRESHED if user hasn't actually changed — prevents tab-switch reloads
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(prev => {
+            // Only update if tokens actually differ
+            if (prev?.access_token === newSession?.access_token) return prev;
+            return newSession;
+          });
+          // Don't re-fetch role or re-set user on token refresh — user is the same
+          return;
+        }
 
-        if (session?.user) {
-          setTimeout(() => fetchRole(session.user.id), 0);
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          setTimeout(() => fetchRole(newSession.user.id), 0);
         } else {
           setAgencyRole(null);
           localStorage.removeItem('afm_cached_role');
