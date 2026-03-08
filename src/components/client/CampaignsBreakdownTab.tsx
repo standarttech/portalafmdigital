@@ -1,12 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { ArrowLeft, ChevronDown, Loader2, Play, Layers, LayoutGrid, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import CampaignColumnSettings, { type ColumnDef } from './CampaignColumnSettings';
 
 type Level = 'campaign' | 'adset' | 'ad';
+
+const DEFAULT_VISIBLE = ['name', 'spend', 'impressions', 'clicks', 'cpc', 'ctr', 'leads', 'cpl', 'purchases', 'revenue'];
+const STORAGE_KEY = 'campaigns-visible-cols';
 
 export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { clientId: string; dateFrom?: string; dateTo?: string }) {
   const { t, formatCurrency, formatNumber } = useLanguage();
@@ -18,14 +22,23 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
   const [sortKey, setSortKey] = useState<string>('spend');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  const current = breadcrumb[breadcrumb.length - 1];
+  // Visible columns — persisted in localStorage as quick access
+  const [visibleKeys, setVisibleKeys] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : DEFAULT_VISIBLE;
+    } catch { return DEFAULT_VISIBLE; }
+  });
 
-  // Whether we're in "flat view" mode (no parent filter) vs drill-down
+  const handleChangeVisible = useCallback((keys: string[]) => {
+    setVisibleKeys(keys);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
+  }, []);
+
+  const current = breadcrumb[breadcrumb.length - 1];
   const isFlatView = breadcrumb.length === 1;
 
-  useEffect(() => {
-    loadData();
-  }, [clientId, breadcrumb, dateFrom, dateTo]);
+  useEffect(() => { loadData(); }, [clientId, breadcrumb, dateFrom, dateTo]);
 
   const loadData = async () => {
     setLoading(true);
@@ -66,14 +79,12 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
       });
       setData(Object.values(agg).filter(a => a.spend > 0 || a.impressions > 0 || a.leads > 0));
     } else {
-      // For adset/ad level — if flat view (no parent), load ALL items of that level
       let query = supabase
         .from('ad_level_metrics')
         .select('platform_id, name, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, status, parent_platform_id, date')
         .eq('client_id', clientId)
         .eq('level', level);
 
-      // Only filter by parent when drilling down (not flat view)
       if (current.platformId) query = query.eq('parent_platform_id', current.platformId);
       if (dateFrom) query = query.gte('date', dateFrom);
       if (dateTo) query = query.lte('date', dateTo);
@@ -112,14 +123,8 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
     }
   };
 
-  const navigateTo = (index: number) => {
-    setBreadcrumb(prev => prev.slice(0, index + 1));
-  };
-
-  // Switch to flat view of a specific level (no parent filter)
-  const switchLevel = (level: Level) => {
-    setBreadcrumb([{ level }]);
-  };
+  const navigateTo = (index: number) => setBreadcrumb(prev => prev.slice(0, index + 1));
+  const switchLevel = (level: Level) => setBreadcrumb([{ level }]);
 
   const sorted = useMemo(() => {
     return [...data].sort((a, b) => {
@@ -129,7 +134,8 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
     });
   }, [data, sortKey, sortDir]);
 
-  const cols = [
+  // ALL possible columns
+  const allColumns: ColumnDef[] = useMemo(() => [
     { key: 'name', label: t('common.name'), right: false },
     { key: 'spend', label: t('metric.spend'), right: true },
     { key: 'impressions', label: t('metric.impressions'), right: true },
@@ -138,9 +144,15 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
     { key: 'ctr', label: t('metric.ctr'), right: true },
     { key: 'leads', label: t('metric.leads'), right: true },
     { key: 'cpl', label: t('metric.cpl'), right: true },
+    { key: 'addToCart', label: t('metric.addToCart'), right: true },
+    { key: 'checkouts', label: t('metric.checkouts'), right: true },
     { key: 'purchases', label: t('metric.purchases'), right: true },
     { key: 'revenue', label: t('metric.revenue'), right: true },
-  ];
+    { key: 'roas', label: t('metric.roas'), right: true },
+  ], [t]);
+
+  // Filtered columns based on user selection
+  const cols = useMemo(() => allColumns.filter(c => visibleKeys.includes(c.key)), [allColumns, visibleKeys]);
 
   const formatVal = (key: string, row: any) => {
     if (key === 'name') return row.name;
@@ -156,6 +168,10 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
     if (key === 'cpl') {
       const leads = row.leads || 0;
       return leads > 0 ? formatCurrency(row.spend / leads) : '—';
+    }
+    if (key === 'roas') {
+      const spend = row.spend || 0;
+      return spend > 0 ? ((row.revenue || 0) / spend).toFixed(2) : '—';
     }
     return formatNumber(row[key] || 0);
   };
@@ -179,7 +195,6 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          {/* Level switcher tabs */}
           {isFlatView && (
             <div className="flex items-center gap-1 bg-secondary/30 rounded-lg p-0.5">
               {levels.map(lvl => (
@@ -199,7 +214,6 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
             </div>
           )}
 
-          {/* Breadcrumb (shown when drilling down) */}
           {!isFlatView && (
             <div className="flex items-center gap-1.5 text-sm">
               {breadcrumb.map((b, i) => (
@@ -220,11 +234,18 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
           )}
         </div>
 
-        {dateFrom && dateTo && (
-          <Badge variant="outline" className="text-[10px] text-muted-foreground">
-            {dateFrom} → {dateTo}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          <CampaignColumnSettings
+            allColumns={allColumns}
+            visibleKeys={visibleKeys}
+            onChangeVisible={handleChangeVisible}
+          />
+          {dateFrom && dateTo && (
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+              {dateFrom} → {dateTo}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <Card className="glass-card overflow-hidden">
