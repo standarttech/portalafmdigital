@@ -288,7 +288,17 @@ serve(async (req) => {
           } catch (e) { /* non-critical */ }
 
         } catch (err) {
-          errors.push(`Account ${account.platform_account_id}: ${(err as Error).message}`);
+          const errMsg = (err as Error).message;
+          errors.push(`Account ${account.platform_account_id}: ${errMsg}`);
+
+          // Log to raw_api_logs for diagnostics
+          await supabase.from("raw_api_logs").insert({
+            client_id: account.client_id,
+            platform: "meta" as any,
+            endpoint: `sync-meta-ads/${account.platform_account_id}`,
+            error_message: errMsg,
+            status_code: 500,
+          });
         }
       }
 
