@@ -391,6 +391,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Reject unauthenticated cron flag attempts
+    if (body.cron === true) {
+      return new Response(JSON.stringify({ error: "Unauthorized cron call" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Manual mode: requires auth
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
