@@ -281,7 +281,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
             ) : (
               <div className="space-y-2">
                 <Input
-                  placeholder={t('clients.searchAccounts' as TranslationKey) || 'Search by ID or name...'}
+                  placeholder={t('clients.searchAccounts')}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="h-8 text-xs"
