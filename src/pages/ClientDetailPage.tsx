@@ -469,7 +469,9 @@ function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { clientId: strin
         .select('id, campaign_name, status, platform_campaign_id')
         .eq('client_id', clientId);
 
-      if (!campaigns?.length) { setData([]); setLoading(false); return; }
+      // Filter out Google Sheets-synced campaigns (they have "sheets-" prefix)
+      const realCampaigns = (campaigns || []).filter(c => !c.platform_campaign_id.startsWith('sheets-'));
+      if (!realCampaigns.length) { setData([]); setLoading(false); return; }
 
       let query = supabase
         .from('daily_metrics')
@@ -482,7 +484,7 @@ function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { clientId: strin
       const { data: metrics } = await query;
 
       const agg: Record<string, any> = {};
-      (campaigns || []).forEach(c => {
+      realCampaigns.forEach(c => {
         agg[c.id] = {
           id: c.id,
           name: c.campaign_name,
