@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
-import { Plus, FlaskConical, Loader2, Trash2, Settings2, Trophy, BarChart3, Eye, Inbox } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, FlaskConical, Loader2, Trash2, Settings2, Trophy, BarChart3, Eye, Inbox, TrendingUp } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
 
 interface VariantStats {
@@ -17,6 +19,11 @@ interface VariantStats {
   views: number;
   submissions: number;
   convRate: number;
+}
+
+interface VariantTrendPoint {
+  date: string;
+  [key: string]: number | string;
 }
 
 function useExperimentStats(experimentId: string | null, variants: any[]) {
@@ -27,26 +34,56 @@ function useExperimentStats(experimentId: string | null, variants: any[]) {
       const variantIds = variants.map(v => v.id);
       const { data: events } = await supabase
         .from('gos_analytics_events')
-        .select('event_type, variant_id')
+        .select('event_type, variant_id, created_at')
         .in('variant_id', variantIds);
 
       const stats: Record<string, VariantStats> = {};
       for (const v of variants) {
         stats[v.id] = { variantId: v.id, views: 0, submissions: 0, convRate: 0 };
       }
+
+      // Build trend data: daily views/submissions per variant
+      const trendMap: Record<string, Record<string, { views: number; submissions: number }>> = {};
+
       for (const e of (events || [])) {
         if (!e.variant_id || !stats[e.variant_id]) continue;
         if (e.event_type === 'landing_view' || e.event_type === 'form_view') stats[e.variant_id].views++;
         if (e.event_type === 'form_submit_success') stats[e.variant_id].submissions++;
+
+        // Trend
+        const day = e.created_at.slice(0, 10);
+        if (!trendMap[day]) trendMap[day] = {};
+        if (!trendMap[day][e.variant_id]) trendMap[day][e.variant_id] = { views: 0, submissions: 0 };
+        if (e.event_type === 'landing_view' || e.event_type === 'form_view') trendMap[day][e.variant_id].views++;
+        if (e.event_type === 'form_submit_success') trendMap[day][e.variant_id].submissions++;
       }
       for (const s of Object.values(stats)) {
         s.convRate = s.views > 0 ? Math.round((s.submissions / s.views) * 100 * 10) / 10 : 0;
       }
-      return stats;
+
+      // Convert trend to chart data
+      const sortedDays = Object.keys(trendMap).sort();
+      const trendData: VariantTrendPoint[] = sortedDays.map(day => {
+        const point: VariantTrendPoint = { date: day.slice(5) };
+        variants.forEach((v, i) => {
+          const label = String.fromCharCode(65 + i);
+          const d = trendMap[day]?.[v.id];
+          point[`views_${label}`] = d?.views || 0;
+          point[`subs_${label}`] = d?.submissions || 0;
+          const views = d?.views || 0;
+          const subs = d?.submissions || 0;
+          point[`conv_${label}`] = views > 0 ? Math.round((subs / views) * 100) : 0;
+        });
+        return point;
+      });
+
+      return { stats, trendData };
     },
     staleTime: 30_000,
   });
 }
+
+const VARIANT_COLORS = ['hsl(160,70%,45%)', 'hsl(200,80%,50%)', 'hsl(280,70%,55%)', 'hsl(340,70%,50%)'];
 
 export default function GosExperimentsPage() {
   const [experiments, setExperiments] = useState<any[]>([]);
@@ -57,7 +94,9 @@ export default function GosExperimentsPage() {
   const [newExp, setNewExp] = useState({ name: '', entity_type: 'landing' });
   const [splitPct, setSplitPct] = useState(50);
 
-  const { data: variantStats } = useExperimentStats(editing?.id, variants);
+  const { data: experimentData } = useExperimentStats(editing?.id, variants);
+  const variantStats = experimentData?.stats;
+  const trendData = experimentData?.trendData || [];
 
   useEffect(() => { loadData(); }, []);
 
@@ -146,7 +185,6 @@ export default function GosExperimentsPage() {
     completed: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
   };
 
-  // Calculate total views for all variants
   const totalViews = useMemo(() => {
     if (!variantStats) return 0;
     return Object.values(variantStats).reduce((s, v) => s + v.views, 0);
@@ -234,7 +272,7 @@ export default function GosExperimentsPage() {
       {/* Editor + Analytics Dialog */}
       {editing && (
         <Dialog open={!!editing} onOpenChange={open => { if (!open) setEditing(null); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <FlaskConical className="h-5 w-5 text-primary" />
@@ -242,17 +280,20 @@ export default function GosExperimentsPage() {
                 <Badge className={`text-[10px] ml-2 ${statusColor[editing.status] || statusColor.draft}`}>{editing.status}</Badge>
               </DialogTitle>
             </DialogHeader>
-            <div className="flex-1 overflow-auto space-y-5 p-1">
 
-              {/* Per-Variant Analytics */}
-              {variants.length >= 2 && variantStats && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-primary" /> Variant Performance
-                  </h3>
-                  {totalViews === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border p-4 text-center">
-                      <Eye className="h-6 w-6 text-muted-foreground/30 mx-auto mb-1" />
+            <Tabs defaultValue="performance" className="flex-1 overflow-hidden flex flex-col">
+              <TabsList className="w-full justify-start">
+                <TabsTrigger value="performance">Performance</TabsTrigger>
+                <TabsTrigger value="trends">Trends</TabsTrigger>
+                <TabsTrigger value="setup">Setup</TabsTrigger>
+              </TabsList>
+
+              {/* Performance Tab */}
+              <TabsContent value="performance" className="flex-1 overflow-auto space-y-4 p-1">
+                {variants.length >= 2 && variantStats ? (
+                  totalViews === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border p-6 text-center">
+                      <Eye className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                       <p className="text-xs text-muted-foreground">No analytics data yet — views are recorded when embeds are loaded</p>
                     </div>
                   ) : (
@@ -267,7 +308,7 @@ export default function GosExperimentsPage() {
                             <CardContent className="p-3">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-[10px]">Variant {String.fromCharCode(65 + i)}</Badge>
+                                  <Badge variant="outline" className="text-[10px]" style={{ borderColor: VARIANT_COLORS[i % VARIANT_COLORS.length], color: VARIANT_COLORS[i % VARIANT_COLORS.length] }}>Variant {String.fromCharCode(65 + i)}</Badge>
                                   <span className="text-sm font-medium text-foreground">{v.name}</span>
                                   {v.status !== 'published' && <Badge className="text-[9px] bg-amber-500/10 text-amber-400">unpublished</Badge>}
                                 </div>
@@ -279,21 +320,19 @@ export default function GosExperimentsPage() {
                               <div className="grid grid-cols-3 gap-3">
                                 <div className="text-center">
                                   <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
-                                    <Eye className="h-3 w-3" />
-                                    <span className="text-[10px]">Views</span>
+                                    <Eye className="h-3 w-3" /><span className="text-[10px]">Views</span>
                                   </div>
                                   <p className="text-lg font-bold text-foreground">{stats.views}</p>
                                 </div>
                                 <div className="text-center">
                                   <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
-                                    <Inbox className="h-3 w-3" />
-                                    <span className="text-[10px]">Submissions</span>
+                                    <Inbox className="h-3 w-3" /><span className="text-[10px]">Submissions</span>
                                   </div>
                                   <p className="text-lg font-bold text-foreground">{stats.submissions}</p>
                                 </div>
                                 <div className="text-center">
                                   <div className="flex items-center justify-center gap-1 text-muted-foreground mb-0.5">
-                                    <span className="text-[10px]">Conv. Rate</span>
+                                    <TrendingUp className="h-3 w-3" /><span className="text-[10px]">Conv. Rate</span>
                                   </div>
                                   <p className={`text-lg font-bold ${stats.convRate > 0 ? 'text-emerald-400' : 'text-foreground'}`}>{stats.convRate}%</p>
                                 </div>
@@ -310,57 +349,130 @@ export default function GosExperimentsPage() {
                         );
                       })}
                     </div>
+                  )
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border p-6 text-center">
+                    <p className="text-xs text-muted-foreground">Link at least 2 variants in the Setup tab to see performance data</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Trends Tab */}
+              <TabsContent value="trends" className="flex-1 overflow-auto space-y-4 p-1">
+                {trendData.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border p-6 text-center">
+                    <TrendingUp className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">No trend data yet — data appears once views are recorded</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Views Trend */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <h4 className="text-xs font-semibold text-foreground mb-3">Views by Variant</h4>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <LineChart data={trendData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                            <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                            <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
+                            {variants.map((_, i) => (
+                              <Line key={i} type="monotone" dataKey={`views_${String.fromCharCode(65 + i)}`} stroke={VARIANT_COLORS[i % VARIANT_COLORS.length]} strokeWidth={2} dot={false} name={`Variant ${String.fromCharCode(65 + i)}`} />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+
+                    {/* Submissions Trend */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <h4 className="text-xs font-semibold text-foreground mb-3">Submissions by Variant</h4>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <LineChart data={trendData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                            <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                            <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
+                            {variants.map((_, i) => (
+                              <Line key={i} type="monotone" dataKey={`subs_${String.fromCharCode(65 + i)}`} stroke={VARIANT_COLORS[i % VARIANT_COLORS.length]} strokeWidth={2} dot={false} name={`Variant ${String.fromCharCode(65 + i)}`} />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+
+                    {/* Conversion Trend */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <h4 className="text-xs font-semibold text-foreground mb-3">Conversion Rate by Variant (%)</h4>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <LineChart data={trendData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                            <YAxis unit="%" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                            <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }} />
+                            {variants.map((_, i) => (
+                              <Line key={i} type="monotone" dataKey={`conv_${String.fromCharCode(65 + i)}`} stroke={VARIANT_COLORS[i % VARIANT_COLORS.length]} strokeWidth={2} dot={false} name={`Variant ${String.fromCharCode(65 + i)}`} />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </TabsContent>
+
+              {/* Setup Tab */}
+              <TabsContent value="setup" className="flex-1 overflow-auto space-y-4 p-1">
+                {/* Variants List */}
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Variants ({variants.length})</h3>
+                  {variants.length === 0 && <p className="text-xs text-muted-foreground">No variants linked. Link existing {editing.entity_type === 'form' ? 'forms' : 'landing templates'} to this experiment.</p>}
+                  {variants.length < 2 && variants.length > 0 && (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 mb-2">
+                      <p className="text-[11px] text-amber-400">Need at least 2 variants to run an experiment</p>
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    {variants.map((v, i) => (
+                      <div key={v.id} className="flex items-center justify-between rounded-lg border border-border p-2.5">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]" style={{ borderColor: VARIANT_COLORS[i % VARIANT_COLORS.length], color: VARIANT_COLORS[i % VARIANT_COLORS.length] }}>Variant {String.fromCharCode(65 + i)}</Badge>
+                          <span className="text-sm text-foreground">{v.name}</span>
+                          {v.status !== 'published' && <Badge className="text-[9px] bg-amber-500/10 text-amber-400">unpublished</Badge>}
+                        </div>
+                        {editing.winner_id === v.id && <Trophy className="h-4 w-4 text-amber-400" />}
+                      </div>
+                    ))}
+                  </div>
+                  <LinkVariantInput entityType={editing.entity_type} experimentId={editing.id} onLink={linkVariant} />
+                </div>
+
+                {/* Traffic Split */}
+                {variants.length >= 2 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-2">Traffic Split</h3>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground w-16">A: {splitPct}%</span>
+                      <Slider value={[splitPct]} onValueChange={v => setSplitPct(v[0])} min={10} max={90} step={5} className="flex-1" />
+                      <span className="text-xs text-muted-foreground w-16">B: {100 - splitPct}%</span>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={saveSplit} className="mt-2">Save Split</Button>
+                  </div>
+                )}
+
+                {/* Controls */}
+                <div className="flex gap-2">
+                  {editing.status === 'draft' && variants.length >= 2 && (
+                    <Button size="sm" onClick={() => updateStatus(editing.id, 'running')} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">Start Experiment</Button>
+                  )}
+                  {editing.status === 'running' && (
+                    <Button size="sm" variant="outline" onClick={() => updateStatus(editing.id, 'completed')}>Stop Experiment</Button>
                   )}
                 </div>
-              )}
-
-              {/* Variants List */}
-              <div>
-                <h3 className="text-sm font-semibold text-foreground mb-2">Variants ({variants.length})</h3>
-                {variants.length === 0 && <p className="text-xs text-muted-foreground">No variants linked. Link existing {editing.entity_type === 'form' ? 'forms' : 'landing templates'} to this experiment.</p>}
-                {variants.length < 2 && variants.length > 0 && (
-                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 mb-2">
-                    <p className="text-[11px] text-amber-400">Need at least 2 variants to run an experiment</p>
-                  </div>
-                )}
-                <div className="space-y-1.5">
-                  {variants.map((v, i) => (
-                    <div key={v.id} className="flex items-center justify-between rounded-lg border border-border p-2.5">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px]">Variant {String.fromCharCode(65 + i)}</Badge>
-                        <span className="text-sm text-foreground">{v.name}</span>
-                        {v.status !== 'published' && <Badge className="text-[9px] bg-amber-500/10 text-amber-400">unpublished</Badge>}
-                      </div>
-                      {editing.winner_id === v.id && <Trophy className="h-4 w-4 text-amber-400" />}
-                    </div>
-                  ))}
-                </div>
-                <LinkVariantInput entityType={editing.entity_type} experimentId={editing.id} onLink={linkVariant} />
-              </div>
-
-              {/* Traffic Split */}
-              {variants.length >= 2 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Traffic Split</h3>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground w-16">A: {splitPct}%</span>
-                    <Slider value={[splitPct]} onValueChange={v => setSplitPct(v[0])} min={10} max={90} step={5} className="flex-1" />
-                    <span className="text-xs text-muted-foreground w-16">B: {100 - splitPct}%</span>
-                  </div>
-                  <Button size="sm" variant="outline" onClick={saveSplit} className="mt-2">Save Split</Button>
-                </div>
-              )}
-
-              {/* Controls */}
-              <div className="flex gap-2">
-                {editing.status === 'draft' && variants.length >= 2 && (
-                  <Button size="sm" onClick={() => updateStatus(editing.id, 'running')} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">Start Experiment</Button>
-                )}
-                {editing.status === 'running' && (
-                  <Button size="sm" variant="outline" onClick={() => updateStatus(editing.id, 'completed')}>Stop Experiment</Button>
-                )}
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       )}
