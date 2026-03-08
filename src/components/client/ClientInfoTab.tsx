@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,20 +47,10 @@ const defaultInfo: ClientInfo = {
   contract_end: null, additional_notes: '',
 };
 
-// Fields that clients are allowed to edit
-const CLIENT_EDITABLE_FIELDS: (keyof ClientInfo)[] = [
-  'brief_url', 'website_url', 'instagram_url', 'facebook_url', 'tiktok_url',
-  'linkedin_url', 'youtube_url', 'twitter_url', 'telegram_url',
-  'business_niche', 'target_audience', 'geo_targeting', 'key_competitors',
-  'brand_guidelines_url', 'landing_pages', 'crm_system',
-  'contact_person', 'contact_phone', 'contact_email', 'additional_notes',
-];
 
 export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
-  const { effectiveRole } = useAuth();
-  const isClient = effectiveRole === 'Client';
-  const canEdit = isAdmin || effectiveRole === 'MediaBuyer' || isClient;
+  const canEdit = true; // Only agency users see this tab now
 
   const [info, setInfo] = useState<ClientInfo>(defaultInfo);
   const [saving, setSaving] = useState(false);
@@ -124,11 +114,7 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
 
   const u = (key: keyof ClientInfo, value: string | number) => setInfo(prev => ({ ...prev, [key]: value }));
 
-  // For client role: check if field is editable
-  const isFieldEditable = (key: keyof ClientInfo) => {
-    if (!isClient) return true; // Admins/MediaBuyers can edit everything
-    return CLIENT_EDITABLE_FIELDS.includes(key);
-  };
+  const isFieldEditable = (_key: keyof ClientInfo) => true;
 
   const renderField = (key: keyof ClientInfo, label: string, opts?: { type?: string; placeholder?: string; icon?: any; textarea?: boolean }) => {
     const editable = isFieldEditable(key);
@@ -173,13 +159,6 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
 
   return (
     <div className="space-y-4 max-w-3xl">
-      {/* Client self-service banner */}
-      {isClient && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground flex items-center gap-2">
-          <FileText className="h-4 w-4 text-primary flex-shrink-0" />
-          {t('clientInfo.selfServiceHint' as TranslationKey)}
-        </div>
-      )}
 
       {/* Brief & Budget */}
       <Card className="glass-card">
