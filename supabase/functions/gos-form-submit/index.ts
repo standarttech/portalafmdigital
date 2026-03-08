@@ -235,6 +235,7 @@ Deno.serve(async (req) => {
         entity_id: formId,
         client_id: form.client_id,
         ip_hash: ipHash,
+        variant_id: variantId,
         metadata: { reason: 'validation', errors: validationErrors },
       });
       return new Response(JSON.stringify({ error: 'Validation failed', details: validationErrors }), {
