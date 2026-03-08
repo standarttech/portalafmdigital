@@ -20,6 +20,7 @@ interface Preset {
   id: string; name: string; description: string; rule_condition: any;
   proposed_action_type: string; proposed_priority: string;
   is_active: boolean; created_by: string; created_at: string;
+  trigger_count?: number; last_triggered_at?: string | null;
 }
 
 const RULE_TYPES = [
