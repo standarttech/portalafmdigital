@@ -61,11 +61,12 @@ const bidStrategies = [
 
 const statusConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
   draft: { icon: <Edit className="h-3 w-3" />, color: 'text-muted-foreground border-muted-foreground/30', label: 'Draft' },
-  ready: { icon: <CheckCircle2 className="h-3 w-3" />, color: 'text-blue-400 border-blue-400/30', label: 'Ready' },
-  submitted: { icon: <Rocket className="h-3 w-3" />, color: 'text-amber-400 border-amber-400/30', label: 'Submitted' },
+  ready_for_review: { icon: <Clock className="h-3 w-3" />, color: 'text-amber-400 border-amber-400/30', label: 'In Review' },
   approved: { icon: <CheckCircle2 className="h-3 w-3" />, color: 'text-emerald-400 border-emerald-400/30', label: 'Approved' },
   rejected: { icon: <XCircle className="h-3 w-3" />, color: 'text-destructive border-destructive/30', label: 'Rejected' },
-  launched: { icon: <Rocket className="h-3 w-3" />, color: 'text-violet-400 border-violet-400/30', label: 'Launched' },
+  submitted_for_execution: { icon: <Rocket className="h-3 w-3" />, color: 'text-blue-400 border-blue-400/30', label: 'Executing' },
+  executed: { icon: <CheckCircle2 className="h-3 w-3" />, color: 'text-violet-400 border-violet-400/30', label: 'Executed' },
+  execution_failed: { icon: <AlertTriangle className="h-3 w-3" />, color: 'text-destructive border-destructive/30', label: 'Exec Failed' },
 };
 
 const validationStatusConfig: Record<string, { color: string; label: string }> = {
