@@ -243,7 +243,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
               ))}
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={syncNow}>
-                  <RefreshCw className="h-3.5 w-3.5" /> {t('clients.syncNow' as TranslationKey) || 'Sync Now'}
+                  <RefreshCw className="h-3.5 w-3.5" /> {t('clients.syncNow')}
                 </Button>
               </div>
               {/* Meta Auto-sync toggle */}
