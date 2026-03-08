@@ -30,6 +30,8 @@ const gosNavItems: GosNavItem[] = [
   { labelKey: 'gos.leadRouting' as TranslationKey, icon: GitBranch, path: '/growth-os/lead-routing' },
   { labelKey: 'gos.analytics' as TranslationKey, icon: TrendingUp, path: '/growth-os/analytics' },
   { labelKey: 'gos.experiments' as TranslationKey, icon: FlaskConical, path: '/growth-os/experiments' },
+  { labelKey: 'gos.systemHealth' as TranslationKey, icon: HeartPulse, path: '/growth-os/health' },
+  { labelKey: 'gos.integrityChecks' as TranslationKey, icon: ShieldCheck, path: '/growth-os/integrity' },
 ];
 
 function GosSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
