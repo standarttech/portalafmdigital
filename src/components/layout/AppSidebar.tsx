@@ -60,6 +60,12 @@ const moduleColorMap: Record<string, { idle: string; active: string; icon: strin
     icon: 'text-[hsl(160,70%,40%)]',
     dot: 'bg-[hsl(160,70%,40%)]',
   },
+  purple: {
+    idle: 'text-[hsl(270,70%,50%)] border-[hsl(270,40%,18%)]/50 hover:bg-[hsl(270,30%,12%)] hover:border-[hsl(270,40%,25%)]',
+    active: 'bg-[hsl(270,30%,14%)] text-[hsl(270,70%,60%)] border-[hsl(270,50%,30%)]',
+    icon: 'text-[hsl(270,70%,50%)]',
+    dot: 'bg-[hsl(270,70%,50%)]',
+  },
 };
 
 /* ── Regular nav sections ── */
