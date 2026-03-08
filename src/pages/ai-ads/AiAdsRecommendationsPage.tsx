@@ -69,17 +69,40 @@ export default function AiAdsRecommendationsPage() {
 
   const convertToDraft = async (rec: Recommendation) => {
     if (!user) return;
+    // Infer objective from recommendation type
+    const objectiveMap: Record<string, string> = {
+      restructure_campaign: 'leads', test_new_angle: 'leads', kill_underperformer: '',
+      duplicate_winner: 'sales', adjust_budget: '', change_audience: 'leads',
+      improve_creative: 'engagement', improve_landing: 'traffic', launch_new_test: 'leads',
+    };
+    const campaignName = `${rec.title.slice(0, 80)}`;
     const { data, error } = await supabase.from('campaign_drafts' as any).insert({
       client_id: rec.client_id, created_by: user.id,
-      name: `Draft: ${rec.title}`, draft_type: rec.recommendation_type,
+      name: campaignName, campaign_name: campaignName,
+      draft_type: rec.recommendation_type,
+      source_type: 'recommendation', source_entity_id: rec.id,
       recommendation_id: rec.id, session_id: rec.session_id,
-      notes: rec.description,
+      objective: objectiveMap[rec.recommendation_type] || '',
+      notes: `${rec.description}\n\nSource: AI Recommendation (${rec.recommendation_type.replace(/_/g, ' ')}, priority: ${rec.priority})`,
       metadata: { source: 'recommendation', recommendation_id: rec.id, recommendation_type: rec.recommendation_type },
     }).select().single();
     if (error) { toast.error('Failed to create draft'); return; }
+    const draftId = (data as any).id;
+    // Create starter ad set + ad
+    await supabase.from('campaign_draft_items' as any).insert([
+      { draft_id: draftId, item_type: 'adset', name: 'Ad Set 1', sort_order: 0, config: { geo: '', age_min: 18, age_max: 65, gender: 'all', interests: '', placements: 'automatic', daily_budget: 0, optimization_goal: '' } },
+    ]);
+    const { data: adsetData } = await supabase.from('campaign_draft_items' as any).select('id').eq('draft_id', draftId).eq('item_type', 'adset').limit(1).single();
+    if (adsetData) {
+      await supabase.from('campaign_draft_items' as any).insert({
+        draft_id: draftId, item_type: 'ad', name: 'Ad 1', sort_order: 0,
+        parent_item_id: (adsetData as any).id,
+        config: { primary_text: '', headline: '', cta: 'LEARN_MORE', destination_url: '', creative_ref: '' },
+      });
+    }
     await updateStatus(rec, 'converted_to_draft');
-    logGosAction('create', 'campaign_draft', (data as any).id, `Draft: ${rec.title}`, { clientId: rec.client_id, metadata: { source: 'recommendation', recommendationId: rec.id } });
-    toast.success('Campaign draft created');
+    logGosAction('create', 'campaign_draft', draftId, campaignName, { clientId: rec.client_id, metadata: { source: 'recommendation', recommendationId: rec.id } });
+    toast.success('Campaign draft created with starter structure');
   };
 
   const convertToHypothesis = async (rec: Recommendation) => {
