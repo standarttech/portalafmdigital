@@ -158,8 +158,13 @@ export default function NotificationSettings() {
       const registration = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
 
-      // Fetch VAPID public key from edge function or env
-      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      // Fetch VAPID public key from edge function
+      const vapidRes = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vapid-key`,
+        { headers: { 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } }
+      );
+      const vapidData = await vapidRes.json();
+      const vapidPublicKey = vapidData.publicKey;
       if (!vapidPublicKey) {
         toast.error('VAPID key not configured');
         return;
