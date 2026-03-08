@@ -45,10 +45,28 @@ export default function GosOnboardingPage() {
   const [tokensLoading, setTokensLoading] = useState(false);
   // Revoke confirmation state
   const [revokeConfirm, setRevokeConfirm] = useState<{ open: boolean; tokenId: string; tokenSnippet: string }>({ open: false, tokenId: '', tokenSnippet: '' });
-  // TTL selection state
-  const [linkTtlDays, setLinkTtlDays] = useState('7');
+  // Branding toggle state
+  const [showBranding, setShowBranding] = useState(true);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); loadBrandingSetting(); }, []);
+
+  const loadBrandingSetting = async () => {
+    const { data } = await supabase.from('platform_settings').select('value').eq('key', 'gos_show_branding').maybeSingle();
+    if (data?.value !== undefined && data?.value !== null) {
+      const val = data.value;
+      setShowBranding(typeof val === 'object' && val !== null ? (val as any).enabled !== false : val !== false);
+    }
+  };
+
+  const toggleBranding = async (enabled: boolean) => {
+    setShowBranding(enabled);
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('platform_settings').upsert(
+      { key: 'gos_show_branding', value: { enabled } as any, updated_by: user?.id },
+      { onConflict: 'key' }
+    );
+    toast.success(enabled ? 'Branding enabled' : 'Branding hidden');
+  };
 
   const loadData = async () => {
     setLoading(true);
