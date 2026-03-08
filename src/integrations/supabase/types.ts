@@ -1304,6 +1304,92 @@ export type Database = {
           },
         ]
       }
+      campaign_performance_snapshots: {
+        Row: {
+          clicks: number
+          client_id: string
+          cpc: number
+          created_at: string
+          ctr: number
+          date_window_end: string | null
+          date_window_start: string | null
+          entity_level: string
+          entity_name: string | null
+          entity_status: string | null
+          external_ad_id: string | null
+          external_adset_id: string | null
+          external_campaign_id: string | null
+          id: string
+          impressions: number
+          launch_request_id: string | null
+          leads: number
+          metadata: Json | null
+          platform: string
+          purchases: number
+          revenue: number
+          spend: number
+          synced_at: string
+        }
+        Insert: {
+          clicks?: number
+          client_id: string
+          cpc?: number
+          created_at?: string
+          ctr?: number
+          date_window_end?: string | null
+          date_window_start?: string | null
+          entity_level?: string
+          entity_name?: string | null
+          entity_status?: string | null
+          external_ad_id?: string | null
+          external_adset_id?: string | null
+          external_campaign_id?: string | null
+          id?: string
+          impressions?: number
+          launch_request_id?: string | null
+          leads?: number
+          metadata?: Json | null
+          platform?: string
+          purchases?: number
+          revenue?: number
+          spend?: number
+          synced_at?: string
+        }
+        Update: {
+          clicks?: number
+          client_id?: string
+          cpc?: number
+          created_at?: string
+          ctr?: number
+          date_window_end?: string | null
+          date_window_start?: string | null
+          entity_level?: string
+          entity_name?: string | null
+          entity_status?: string | null
+          external_ad_id?: string | null
+          external_adset_id?: string | null
+          external_campaign_id?: string | null
+          id?: string
+          impressions?: number
+          launch_request_id?: string | null
+          leads?: number
+          metadata?: Json | null
+          platform?: string
+          purchases?: number
+          revenue?: number
+          spend?: number
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_performance_snapshots_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           ad_account_id: string
