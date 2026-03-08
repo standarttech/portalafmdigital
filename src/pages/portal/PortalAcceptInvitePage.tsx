@@ -74,13 +74,27 @@ export default function PortalAcceptInvitePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError('Authentication failed'); setSubmitting(false); return; }
 
+    // Verify email match before accepting
+    if (user.email?.toLowerCase() !== inviteState.email.toLowerCase()) {
+      setError(`This invite is for ${inviteState.email}. You signed in as ${user.email}. Please use the correct account.`);
+      await supabase.auth.signOut();
+      setSubmitting(false);
+      return;
+    }
+
     // Accept invite
     const { data: acceptResult } = await supabase.rpc('accept_portal_invite', {
       _invite_id: inviteState.id,
       _user_id: user.id,
     });
-    if ((acceptResult as any)?.error) {
-      setError(`Activation failed: ${(acceptResult as any).error}`);
+    const result = acceptResult as any;
+    if (result?.error) {
+      if (result.error === 'email_mismatch') {
+        setError(`This invite is for ${inviteState.email}. Please sign in with that email address.`);
+        await supabase.auth.signOut();
+      } else {
+        setError(`Activation failed: ${result.error}`);
+      }
       setSubmitting(false);
       return;
     }
@@ -149,8 +163,13 @@ export default function PortalAcceptInvitePage() {
         _invite_id: inviteState.id,
         _user_id: user.id,
       });
-      if ((acceptResult as any)?.error) {
-        setError(`Activation failed: ${(acceptResult as any).error}`);
+      const aResult = acceptResult as any;
+      if (aResult?.error) {
+        if (aResult.error === 'email_mismatch') {
+          setError('Email mismatch. Please use the invited email address.');
+        } else {
+          setError(`Activation failed: ${aResult.error}`);
+        }
         setSubmitting(false);
         return;
       }
@@ -256,7 +275,9 @@ export default function PortalAcceptInvitePage() {
             <form onSubmit={handleSignIn} className="space-y-3">
               <div>
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+                <Input id="email" type="email" value={email} readOnly
+                  className="bg-muted/50 cursor-not-allowed" />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Sign in with this email to activate your portal access</p>
               </div>
               <div>
                 <Label htmlFor="password">Password</Label>
