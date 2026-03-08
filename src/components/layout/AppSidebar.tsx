@@ -34,7 +34,7 @@ const moduleEntries: ModuleEntry[] = [
   { key: 'nav.growthOs' as TranslationKey, icon: Activity, path: '/growth-os', color: 'emerald' as any, permissionKey: 'canAccessGrowthOs' },
 ];
 
-const moduleColorMap = {
+const moduleColorMap: Record<string, { idle: string; active: string; icon: string; dot: string }> = {
   gold: {
     idle: 'text-[hsl(42,87%,55%)] border-[hsl(42,60%,20%)]/50 hover:bg-[hsl(42,40%,12%)] hover:border-[hsl(42,60%,25%)]',
     active: 'bg-[hsl(42,40%,14%)] text-[hsl(42,87%,65%)] border-[hsl(42,70%,30%)]',
@@ -52,6 +52,12 @@ const moduleColorMap = {
     active: 'bg-[hsl(25,30%,14%)] text-[hsl(25,60%,60%)] border-[hsl(25,50%,30%)]',
     icon: 'text-[hsl(25,60%,50%)]',
     dot: 'bg-[hsl(25,60%,50%)]',
+  },
+  emerald: {
+    idle: 'text-[hsl(160,70%,40%)] border-[hsl(160,40%,18%)]/50 hover:bg-[hsl(160,30%,12%)] hover:border-[hsl(160,40%,25%)]',
+    active: 'bg-[hsl(160,30%,14%)] text-[hsl(160,70%,50%)] border-[hsl(160,50%,30%)]',
+    icon: 'text-[hsl(160,70%,40%)]',
+    dot: 'bg-[hsl(160,70%,40%)]',
   },
 };
 
