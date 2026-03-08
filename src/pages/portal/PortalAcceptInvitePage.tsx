@@ -163,8 +163,13 @@ export default function PortalAcceptInvitePage() {
         _invite_id: inviteState.id,
         _user_id: user.id,
       });
-      if ((acceptResult as any)?.error) {
-        setError(`Activation failed: ${(acceptResult as any).error}`);
+      const aResult = acceptResult as any;
+      if (aResult?.error) {
+        if (aResult.error === 'email_mismatch') {
+          setError('Email mismatch. Please use the invited email address.');
+        } else {
+          setError(`Activation failed: ${aResult.error}`);
+        }
         setSubmitting(false);
         return;
       }
