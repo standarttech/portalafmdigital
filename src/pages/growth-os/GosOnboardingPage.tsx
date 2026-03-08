@@ -128,11 +128,13 @@ export default function GosOnboardingPage() {
       is_default: editingFlow.is_default,
     }).eq('id', editingFlow.id);
     if (error) toast.error('Save failed');
-    else { toast.success('Flow saved'); loadData(); }
+    else { toast.success('Flow saved'); logGosAction('update', 'onboarding_flow', editingFlow.id, editingFlow.name); loadData(); }
   };
 
   const deleteFlow = async (id: string) => {
+    const flow = flows.find(f => f.id === id);
     await supabase.from('gos_onboarding_flows').delete().eq('id', id);
+    logGosAction('delete', 'onboarding_flow', id, flow?.name);
     toast.success('Flow deleted');
     loadData();
   };
