@@ -86,7 +86,9 @@ export default function GosLeadRoutingPage() {
   };
 
   const deleteRule = async (id: string) => {
+    const rule = rules.find(r => r.id === id);
     await supabase.from('gos_routing_rules').delete().eq('id', id);
+    logGosAction('delete', 'routing_rule', id, rule?.name);
     toast.success('Rule deleted');
     loadData();
   };

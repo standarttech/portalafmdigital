@@ -105,6 +105,7 @@ export default function GosIntegrationsPage() {
         });
       } catch (e) { console.error('Secret storage error:', e); }
     }
+    logGosAction('connect', 'integration_instance', instance?.id, connectingTo.name);
     toast.success('Connected!');
     setConnectingTo(null); setConnectSecret(''); setConnectConfig({}); setSelectedClient('');
     loadData();
