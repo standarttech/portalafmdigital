@@ -1,120 +1,81 @@
 
-# Полная система уведомлений: Email + Telegram + Web Push
 
-## Обзор
-Реализация трёхканальной системы уведомлений с настройками для каждого пользователя. Админы смогут рассылать уведомления команде и клиентам через любой канал.
+# Block A Implementation Plan
 
-## Что будет реализовано
-
-### 1. Настройки уведомлений в профиле пользователя
-Каждый пользователь сможет в своём профиле:
-- Привязать Telegram (через бота)
-- Включить/выключить Web Push
-- Выбрать какие типы уведомлений получать по какому каналу (матрица: тип x канал)
-
-### 2. Каналы доставки
-
-**Email (Resend — уже подключён)**
-- Мгновенные алерты: ошибки синхронизации, превышение бюджета
-- Еженедельные дайджесты для команды (cron-задача)
-- Месячные отчёты для клиентов (cron-задача)
-- Событийные: новые задачи, комментарии, одобрения
-
-**Telegram Bot**
-- Мгновенные push-уведомления в личку
-- Пользователь привязывает аккаунт через бота командой `/start <код>`
-- Типы: алерты, задачи, сообщения в чате, изменения статусов
-
-**Web Push (браузерные уведомления)**
-- Всплывающие уведомления даже при закрытой вкладке
-- Service Worker для фоновой обработки
-- Пользователь разрешает через кнопку в профиле
-
-### 3. Типы уведомлений
-
-| Тип | Описание | Каналы |
-|-----|----------|--------|
-| Алерты | Ошибки синхронизации, нет лидов, превышение CPL | In-App + Email + Telegram |
-| Задачи | Назначение, дедлайны, смена статуса | In-App + Telegram + Web Push |
-| Чат | Новые сообщения в поддержке | In-App + Telegram |
-| Отчёты | Еженедельный дайджест метрик | Email |
-| Одобрения | Запросы на доступ, admin approvals | In-App + Email + Telegram |
-| Клиентские | Месячные отчёты для клиентов | Email |
-
-### 4. Админская панель рассылок
-Страница для массовой рассылки: выбор получателей (команда / клиенты / все), канал, текст сообщения.
+## Overview
+Three quick wins: (1) connect task-reminders to cron via pg_cron, (2) typing indicators in chat, (3) unread badges per chat room.
 
 ---
 
-## Технический план
+## 1. Task Reminders Cron Jobs
 
-### Шаг 1: База данных
-Новые таблицы и изменения:
+**What:** Schedule `task-reminders` edge function via `pg_cron` + `pg_net`.
 
-```text
-notification_preferences (настройки каналов для каждого пользователя)
-  - user_id (FK)
-  - email_enabled (boolean, default true)
-  - telegram_enabled (boolean, default false)
-  - telegram_chat_id (text, nullable)
-  - telegram_link_code (text, nullable)
-  - webpush_enabled (boolean, default false)
-  - webpush_subscription (jsonb, nullable)
-  - alert_channels (text[], default '{in_app,email}')
-  - task_channels (text[], default '{in_app}')
-  - chat_channels (text[], default '{in_app}')
-  - report_channels (text[], default '{email}')
-
-notification_broadcasts (история массовых рассылок)
-  - id, created_by, channels, recipients_filter, subject, body, sent_at
-```
-
-RLS: пользователи видят и редактируют только свои настройки. Админы могут создавать broadcasts.
-
-### Шаг 2: Telegram Bot Edge Function
-Новая edge function `telegram-bot`:
-- Обработка webhook от Telegram (`/start <code>` для привязки)
-- Отправка сообщений через Telegram Bot API
-- Потребуется секрет `TELEGRAM_BOT_TOKEN` (пользователь создаёт бота через @BotFather)
-
-### Шаг 3: Web Push Edge Function
-Новая edge function `send-webpush`:
-- Отправка push-уведомлений через Web Push API
-- Потребуется сгенерировать VAPID-ключи (секреты `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`)
-
-### Шаг 4: Единый диспетчер уведомлений
-Новая edge function `send-notification`:
-- Принимает: user_id, type, title, message, link
-- Проверяет настройки пользователя в `notification_preferences`
-- Рассылает по нужным каналам: in-app (insert в notifications), email (Resend), telegram, web push
-- Все существующие триггеры БД будут вызывать эту функцию вместо прямого INSERT
-
-### Шаг 5: Cron-задачи для периодических отчётов
-- Еженедельный дайджест (каждый понедельник): агрегация метрик за неделю, отправка email команде
-- Месячный отчёт для клиентов: сводка по расходам и результатам
-
-### Шаг 6: UI компоненты
-- **ProfilePage** — новая секция "Notification Settings": переключатели каналов, привязка Telegram, разрешение Web Push
-- **Service Worker** — `public/sw.js` для фоновых push-уведомлений
-- **Админская рассылка** — новая страница или секция для массовых уведомлений
-- **i18n** — переводы на все 6 языков
-
-### Шаг 7: Обновление триггеров БД
-Переписать существующие триггеры (`notify_admins_new_access_request`, `notify_admins_support_message`, `notify_admins_approval_request`) чтобы они вызывали единый диспетчер через `pg_net.http_post` к edge function `send-notification`.
+**How:**
+- Enable `pg_cron` and `pg_net` extensions via migration
+- Use the **insert tool** (not migration) to create two cron schedules:
+  - `task-reminders-daily`: runs at `0 9 * * *` (9:00 UTC daily), body `{"type":"daily"}`
+  - `task-reminders-overdue`: runs at `0 */6 * * *` (every 6 hours), body `{"type":"overdue"}`
+- Both call `https://bhwvnmyvebgnxiisloqu.supabase.co/functions/v1/task-reminders` with the anon key
 
 ---
 
-## Что потребуется от вас
+## 2. Typing Indicator in Chat
 
-1. **Telegram Bot Token** — создать бота через [@BotFather](https://t.me/BotFather) в Telegram и получить токен
-2. **VAPID Keys** — будут сгенерированы автоматически при первом запуске
+**What:** Show "User is typing..." in real-time using Supabase Realtime broadcast (no DB changes needed).
 
-## Порядок реализации
-1. Таблицы БД + RLS
-2. Edge function `send-notification` (диспетчер)
-3. Telegram bot + привязка в профиле
-4. Web Push + Service Worker
-5. Email-дайджесты (cron)
-6. Админская панель рассылок
-7. Обновление триггеров БД
-8. i18n переводы
+**How (ChatPage.tsx):**
+- Add state: `typingUsers: Record<string, string>` (userId → displayName)
+- Subscribe to a broadcast channel `typing-${selectedRoom}`:
+  - On input change, broadcast `{ event: 'typing', payload: { userId, displayName } }` (throttled to 1 per 2 seconds)
+  - On receive, set `typingUsers[userId] = displayName`, clear after 3s timeout
+- Render typing indicator below messages area: "Denis is typing..." with animated dots
+- Clean up channel on room change
+
+---
+
+## 3. Unread Badges per Chat Room
+
+**What:** Track last-read timestamp per user per room. Show unread count on room list.
+
+**How:**
+- **DB migration:** Create `chat_read_status` table:
+  ```sql
+  CREATE TABLE public.chat_read_status (
+    user_id uuid NOT NULL,
+    room_id uuid NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+    last_read_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, room_id)
+  );
+  ALTER TABLE public.chat_read_status ENABLE ROW LEVEL SECURITY;
+  -- Users manage own read status
+  CREATE POLICY "Users manage own read status" ON public.chat_read_status FOR ALL
+    TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+  ```
+
+- **ChatPage.tsx changes:**
+  - On room select: upsert `chat_read_status` with `last_read_at = now()`
+  - On fetchRooms: also fetch `chat_read_status` for current user, then count messages per room where `created_at > last_read_at`
+  - Display red badge with unread count on each room item in the sidebar
+  - Also update `last_read_at` when new realtime messages arrive in the active room
+
+---
+
+## Technical Notes
+
+- Typing indicator uses Supabase Realtime **broadcast** (ephemeral, no DB writes) — zero overhead
+- Unread count query: join `chat_messages` count where `created_at > last_read_at` per room — done in a single query during room list fetch
+- All hardcoded Russian strings in the chat area touched by these changes will use translation keys
+
+---
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| Migration SQL | Create `chat_read_status` table + RLS |
+| Migration SQL | Enable `pg_cron`, `pg_net` extensions |
+| Insert SQL (non-migration) | Two `cron.schedule()` calls for task-reminders |
+| `src/pages/ChatPage.tsx` | Typing indicator broadcast + unread badges + read status upsert |
+| `src/i18n/translations.ts` | New keys: `chat.typing`, `chat.unread` |
+
