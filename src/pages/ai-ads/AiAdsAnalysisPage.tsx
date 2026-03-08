@@ -39,6 +39,7 @@ const statusColor: Record<string, string> = {
 
 export default function AiAdsAnalysisPage() {
   const { user } = useAuth();
+  const { logGosAction } = useGosAuditLog();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
