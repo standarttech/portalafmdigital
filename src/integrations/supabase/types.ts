@@ -3557,6 +3557,10 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: boolean
       }
+      has_valid_onboarding_token_for_flow: {
+        Args: { p_flow_id: string }
+        Returns: boolean
+      }
       is_agency_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agency_member: { Args: { _user_id: string }; Returns: boolean }
       no_admin_exists: { Args: never; Returns: boolean }
@@ -3590,6 +3594,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      validate_onboarding_token: { Args: { p_token: string }; Returns: Json }
     }
     Enums: {
       agency_role:
