@@ -614,7 +614,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
         <CardContent>
           <Textarea value={draft.notes || ''} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))}
             placeholder="Add notes about this campaign draft..." rows={3} className="text-sm"
-            onBlur={() => saveDraft({ ...draft })} maxLength={2000} />
+            onBlur={() => saveDraft({ notes: draft.notes })} maxLength={2000} />
         </CardContent>
       </Card>
     </div>
