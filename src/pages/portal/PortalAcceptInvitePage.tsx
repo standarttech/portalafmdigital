@@ -74,13 +74,27 @@ export default function PortalAcceptInvitePage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError('Authentication failed'); setSubmitting(false); return; }
 
+    // Verify email match before accepting
+    if (user.email?.toLowerCase() !== inviteState.email.toLowerCase()) {
+      setError(`This invite is for ${inviteState.email}. You signed in as ${user.email}. Please use the correct account.`);
+      await supabase.auth.signOut();
+      setSubmitting(false);
+      return;
+    }
+
     // Accept invite
     const { data: acceptResult } = await supabase.rpc('accept_portal_invite', {
       _invite_id: inviteState.id,
       _user_id: user.id,
     });
-    if ((acceptResult as any)?.error) {
-      setError(`Activation failed: ${(acceptResult as any).error}`);
+    const result = acceptResult as any;
+    if (result?.error) {
+      if (result.error === 'email_mismatch') {
+        setError(`This invite is for ${inviteState.email}. Please sign in with that email address.`);
+        await supabase.auth.signOut();
+      } else {
+        setError(`Activation failed: ${result.error}`);
+      }
       setSubmitting(false);
       return;
     }
