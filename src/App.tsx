@@ -34,6 +34,7 @@ import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
 import NotFound from "./pages/NotFound";
 import CrmLayout from "@/components/layout/CrmLayout";
 import AdminScaleLayout from "@/components/layout/AdminScaleLayout";
+import GrowthOsLayout from "@/components/layout/GrowthOsLayout";
 import WebsiteLayout from "@/pages/website/WebsiteLayout";
 import HomePage from "@/pages/website/HomePage";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
