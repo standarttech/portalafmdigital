@@ -25,6 +25,7 @@ const actionTypes = [
 ];
 
 export default function GosLeadRoutingPage() {
+  const { logGosAction } = useGosAuditLog();
   const { t } = useLanguage();
   const [rules, setRules] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
