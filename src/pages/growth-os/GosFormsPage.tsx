@@ -18,7 +18,6 @@ function CaptchaSettingBlock({ enabled, onToggle }: { enabled: boolean; onToggle
   const [providerStatus, setProviderStatus] = useState<'checking' | 'configured' | 'not_configured'>('checking');
 
   useEffect(() => {
-    // Check if CAPTCHA secrets are configured by looking at platform_settings
     supabase
       .from('platform_settings')
       .select('value')
@@ -30,8 +29,7 @@ function CaptchaSettingBlock({ enabled, onToggle }: { enabled: boolean; onToggle
         } else {
           setProviderStatus('not_configured');
         }
-      })
-      .catch(() => setProviderStatus('not_configured'));
+      });
   }, []);
 
   return (
