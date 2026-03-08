@@ -155,17 +155,22 @@ function PlatformSheetRow({ clientId, platform, label, fieldName, isAdmin }: { c
 function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
   const [autoSync, setAutoSync] = useState(false);
+  const [googleTrackingEnabled, setGoogleTrackingEnabled] = useState(true);
   const [metaAccounts, setMetaAccounts] = useState<{ id: string; platform_account_id: string; account_name: string | null; is_active: boolean }[]>([]);
-  const [availableAccounts, setAvailableAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [availableAccounts, setAvailableAccounts] = useState<{ id: string; name: string; status?: string; currency?: string }[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
-  const [addingAccount, setAddingAccount] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [addingAccounts, setAddingAccounts] = useState(false);
 
   useEffect(() => {
     supabase.from('clients').select('auto_sync_enabled').eq('id', clientId).single().then(({ data }) => {
       if (data?.auto_sync_enabled) setAutoSync(data.auto_sync_enabled);
     });
-    // Load linked Meta ad accounts
+    // Load google tracking pref from platform_settings
+    supabase.from('platform_settings').select('value').eq('key', `google_tracking_${clientId}`).maybeSingle().then(({ data }) => {
+      if (data?.value !== null && data?.value !== undefined) setGoogleTrackingEnabled((data.value as any)?.enabled !== false);
+    });
     loadLinkedAccounts();
   }, [clientId]);
 
@@ -191,10 +196,13 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
     setLoadingAccounts(false);
   };
 
-  const addMetaAccount = async () => {
-    if (!selectedAccountId) return;
-    setAddingAccount(true);
-    const acc = availableAccounts.find(a => a.id === selectedAccountId);
+  const toggleAccountSelection = (accId: string) => {
+    setSelectedIds(prev => prev.includes(accId) ? prev.filter(id => id !== accId) : [...prev, accId]);
+  };
+
+  const addSelectedAccounts = async () => {
+    if (selectedIds.length === 0) return;
+    setAddingAccounts(true);
     // Ensure platform_connection exists
     let { data: conn } = await supabase
       .from('platform_connections')
@@ -211,17 +219,20 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
       conn = newConn;
     }
     if (conn) {
-      await supabase.from('ad_accounts').insert({
-        client_id: clientId,
-        connection_id: conn.id,
-        platform_account_id: selectedAccountId,
-        account_name: acc?.name || selectedAccountId,
-      });
-      toast.success(`Кабинет ${acc?.name || selectedAccountId} добавлен`);
-      setSelectedAccountId('');
+      for (const accId of selectedIds) {
+        const acc = availableAccounts.find(a => a.id === accId);
+        await supabase.from('ad_accounts').insert({
+          client_id: clientId,
+          connection_id: conn.id,
+          platform_account_id: accId,
+          account_name: acc?.name || accId,
+        });
+      }
+      toast.success(`Добавлено ${selectedIds.length} кабинет(ов)`);
+      setSelectedIds([]);
       loadLinkedAccounts();
     }
-    setAddingAccount(false);
+    setAddingAccounts(false);
   };
 
   const removeMetaAccount = async (id: string) => {
@@ -249,90 +260,154 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
     toast.success(enabled ? t('clients.autoSyncEnabled') : t('clients.autoSyncDisabled'));
   };
 
+  const handleToggleGoogleTracking = async (enabled: boolean) => {
+    setGoogleTrackingEnabled(enabled);
+    await supabase.from('platform_settings').upsert({
+      key: `google_tracking_${clientId}`,
+      value: { enabled } as any,
+      updated_by: null,
+    }, { onConflict: 'key' });
+    toast.success(enabled ? 'Google Sheets отслеживание включено' : 'Google Sheets отслеживание отключено');
+  };
+
+  const filteredAvailable = availableAccounts
+    .filter(a => !metaAccounts.some(m => m.platform_account_id === a.id))
+    .filter(a => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return a.name.toLowerCase().includes(q) || a.id.includes(q);
+    });
+
+  const hasMetaAccounts = metaAccounts.length > 0;
+
   return (
     <div className="space-y-6">
-      {/* Google Sheets */}
-      <Card className="glass-card max-w-2xl">
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sheet className="h-5 w-5 text-primary" />{t('dashboard.dataSources')} — Google Sheets</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t('clients.syncSheetDesc')}</p>
-          <PlatformSheetRow clientId={clientId} platform="meta" label="Meta Ads" fieldName="meta_sheet_url" isAdmin={isAdmin} />
-          <PlatformSheetRow clientId={clientId} platform="google" label="Google Ads" fieldName="google_sheet_url" isAdmin={isAdmin} />
-          <PlatformSheetRow clientId={clientId} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" isAdmin={isAdmin} />
-          <div className="flex items-center justify-between rounded-lg border border-border p-3 sm:p-4">
-            <div className="min-w-0 flex-1 mr-3"><p className="text-sm font-medium">{t('clients.autoSync')}</p><p className="text-xs text-muted-foreground">{t('clients.autoSyncDesc')}</p></div>
-            <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} className="flex-shrink-0" />
+      {/* Meta Ads API Direct — PRIMARY */}
+      <Card className="glass-card max-w-2xl border-primary/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Zap className="h-5 w-5 text-blue-500" /> Meta Ads API — Прямое подключение
+            </CardTitle>
+            {hasMetaAccounts && <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">Основной источник</Badge>}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Meta Ads API Direct */}
-      <Card className="glass-card max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="h-5 w-5 text-blue-500" /> Meta Ads API — Прямое подключение
-          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Подключите рекламные кабинеты Meta напрямую. Данные синхронизируются автоматически каждый час.
+          <p className="text-xs text-muted-foreground">
+            Подключите рекламные кабинеты Meta напрямую. Данные синхронизируются автоматически каждый час. Этот источник имеет приоритет над Google Sheets.
           </p>
 
           {/* Linked accounts */}
           {metaAccounts.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Подключённые кабинеты</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Подключённые кабинеты ({metaAccounts.length})</p>
               {metaAccounts.map(acc => (
-                <div key={acc.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div>
-                    <p className="text-sm font-medium">{acc.account_name || acc.platform_account_id}</p>
-                    <p className="text-xs text-muted-foreground">ID: {acc.platform_account_id}</p>
+                <div key={acc.id} className="flex items-center justify-between rounded-lg border border-border/50 p-2.5 bg-secondary/20">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{acc.account_name || acc.platform_account_id}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">ID: {acc.platform_account_id}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={acc.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <Badge variant={acc.is_active ? 'default' : 'secondary'} className="text-[9px] h-5">
                       {acc.is_active ? 'Активен' : 'Неактивен'}
                     </Badge>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive"
                       onClick={() => removeMetaAccount(acc.id)}>
-                      <XCircle className="h-3.5 w-3.5" />
+                      <XCircle className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
               ))}
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={syncNow}>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={syncNow}>
                 <RefreshCw className="h-3.5 w-3.5" /> Синхронизировать сейчас
               </Button>
             </div>
           )}
 
-          {/* Add new account */}
-          <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Добавить кабинет</p>
+          {/* Add accounts — multi-select with search */}
+          <div className="space-y-3 border-t border-border/50 pt-3">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Добавить кабинеты</p>
             {availableAccounts.length === 0 ? (
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
                 {loadingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                 Загрузить список кабинетов
               </Button>
             ) : (
-              <div className="flex gap-2">
-                <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-                  <SelectTrigger className="h-9 text-sm flex-1"><SelectValue placeholder="Выберите кабинет" /></SelectTrigger>
-                  <SelectContent>
-                    {availableAccounts
-                      .filter(a => !metaAccounts.some(m => m.platform_account_id === a.id))
-                      .map(a => (
-                        <SelectItem key={a.id} value={a.id} className="text-sm">{a.name} ({a.id})</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <Button size="sm" onClick={addMetaAccount} disabled={!selectedAccountId || addingAccount} className="gap-1.5">
-                  {addingAccount ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                  Добавить
+              <div className="space-y-2">
+                {/* Search */}
+                <Input
+                  placeholder="Поиск по ID или названию..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="h-8 text-xs"
+                />
+                {/* List with checkboxes */}
+                <div className="max-h-[240px] overflow-y-auto space-y-1 border border-border/50 rounded-lg p-2 bg-secondary/10">
+                  {filteredAvailable.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">
+                      {searchQuery ? 'Нет результатов' : 'Все кабинеты уже подключены'}
+                    </p>
+                  ) : (
+                    filteredAvailable.map(a => (
+                      <label key={a.id} className="flex items-center gap-2.5 p-2 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors">
+                        <Checkbox
+                          checked={selectedIds.includes(a.id)}
+                          onCheckedChange={() => toggleAccountSelection(a.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{a.name}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">ID: {a.id}</p>
+                        </div>
+                        {a.status && (
+                          <Badge variant="outline" className={`text-[9px] flex-shrink-0 ${a.status === 'active' ? 'border-success/30 text-success' : 'border-muted text-muted-foreground'}`}>
+                            {a.status}
+                          </Badge>
+                        )}
+                      </label>
+                    ))
+                  )}
+                </div>
+                {selectedIds.length > 0 && (
+                  <Button size="sm" onClick={addSelectedAccounts} disabled={addingAccounts} className="gap-1.5 w-full">
+                    {addingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                    Добавить выбранные ({selectedIds.length})
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
+                  <RefreshCw className="h-3 w-3 mr-1.5" /> Обновить список
                 </Button>
               </div>
             )}
           </div>
         </CardContent>
+      </Card>
+
+      {/* Google Sheets — Secondary */}
+      <Card className={`glass-card max-w-2xl transition-opacity ${!googleTrackingEnabled ? 'opacity-50' : ''}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sheet className="h-5 w-5 text-primary" />{t('dashboard.dataSources')} — Google Sheets
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {!googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">Отключено</Badge>}
+              {hasMetaAccounts && googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-warning/30 text-warning">Вторичный</Badge>}
+              <Switch checked={googleTrackingEnabled} onCheckedChange={handleToggleGoogleTracking} />
+            </div>
+          </div>
+        </CardHeader>
+        {googleTrackingEnabled && (
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t('clients.syncSheetDesc')}</p>
+            <PlatformSheetRow clientId={clientId} platform="meta" label="Meta Ads" fieldName="meta_sheet_url" isAdmin={isAdmin} />
+            <PlatformSheetRow clientId={clientId} platform="google" label="Google Ads" fieldName="google_sheet_url" isAdmin={isAdmin} />
+            <PlatformSheetRow clientId={clientId} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" isAdmin={isAdmin} />
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div className="min-w-0 flex-1 mr-3"><p className="text-sm font-medium">{t('clients.autoSync')}</p><p className="text-xs text-muted-foreground">{t('clients.autoSyncDesc')}</p></div>
+              <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} className="flex-shrink-0" />
+            </div>
+          </CardContent>
+        )}
       </Card>
     </div>
   );
