@@ -612,10 +612,22 @@ function MetricsExplorer({ snapshots, clients, clientName }: {
   const [filterClient, setFilterClient] = useState('all');
 
   const filtered = snapshots.filter(s => filterClient === 'all' || s.client_id === filterClient);
-  const totalSpend = filtered.reduce((sum, s) => sum + Number(s.spend), 0);
-  const totalImpressions = filtered.reduce((sum, s) => sum + Number(s.impressions), 0);
-  const totalClicks = filtered.reduce((sum, s) => sum + Number(s.clicks), 0);
-  const totalLeads = filtered.reduce((sum, s) => sum + Number(s.leads), 0);
+
+  // Deduplicate: use only the latest snapshot per external_campaign_id to avoid double-counting
+  const latestPerCampaign = new Map<string, Snapshot>();
+  for (const s of filtered) {
+    const key = s.external_campaign_id || s.id;
+    const existing = latestPerCampaign.get(key);
+    if (!existing || new Date(s.synced_at) > new Date(existing.synced_at)) {
+      latestPerCampaign.set(key, s);
+    }
+  }
+  const latestSnapshots = Array.from(latestPerCampaign.values());
+
+  const totalSpend = latestSnapshots.reduce((sum, s) => sum + Number(s.spend), 0);
+  const totalImpressions = latestSnapshots.reduce((sum, s) => sum + Number(s.impressions), 0);
+  const totalClicks = latestSnapshots.reduce((sum, s) => sum + Number(s.clicks), 0);
+  const totalLeads = latestSnapshots.reduce((sum, s) => sum + Number(s.leads), 0);
 
   return (
     <div className="space-y-4">
@@ -627,7 +639,7 @@ function MetricsExplorer({ snapshots, clients, clientName }: {
             {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Badge variant="outline" className="text-xs text-muted-foreground">{filtered.length} snapshots</Badge>
+        <Badge variant="outline" className="text-xs text-muted-foreground">{latestSnapshots.length} campaigns · {filtered.length} snapshots</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
