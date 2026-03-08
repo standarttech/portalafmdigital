@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [viewAsRole, setViewAsRole] = useState<AgencyRole>(null);
   const [simulatedUser, setSimulatedUser] = useState<SimulatedUser | null>(null);
+  const lastAuthUserIdRef = useRef<string | null>(null);
 
   // If simulating a specific user, use their role; otherwise use viewAsRole or real role
   const effectiveRole = simulatedUser ? simulatedUser.role : (viewAsRole || agencyRole);
@@ -89,14 +90,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
-        // Skip TOKEN_REFRESHED if user hasn't actually changed — prevents tab-switch reloads
+        const nextUserId = newSession?.user?.id ?? null;
+        const prevUserId = lastAuthUserIdRef.current;
+
+        // Token refresh happens on tab switch/focus; don't reset guards or role for same user
         if (event === 'TOKEN_REFRESHED') {
           setSession(prev => {
-            // Only update if tokens actually differ
             if (prev?.access_token === newSession?.access_token) return prev;
             return newSession;
           });
-          // Don't re-fetch role or re-set user on token refresh — user is the same
           return;
         }
 
@@ -104,14 +106,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          setTimeout(() => fetchRole(newSession.user.id), 0);
+          // Re-fetch role only when auth identity actually changes
+          if (prevUserId !== nextUserId) {
+            setTimeout(() => fetchRole(newSession.user.id), 0);
+          }
         } else {
           setAgencyRole(null);
           localStorage.removeItem('afm_cached_role');
         }
 
-        // Clear MFA/FPC checks on every new sign-in so they re-run
-        if (event === 'SIGNED_IN') {
+        // Clear MFA/FPC checks only on real sign-in transitions (different user)
+        if (event === 'SIGNED_IN' && prevUserId !== nextUserId) {
           sessionStorage.removeItem('afm_mfa_checked');
           sessionStorage.removeItem('afm_fpc_checked');
         }
@@ -121,13 +126,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setViewAsRole(null);
           setSimulatedUser(null);
           localStorage.removeItem('afm_cached_role');
+          lastAuthUserIdRef.current = null;
+          return;
         }
+
+        lastAuthUserIdRef.current = nextUserId;
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      lastAuthUserIdRef.current = session?.user?.id ?? null;
       if (session?.user) {
         fetchRole(session.user.id);
       } else {
