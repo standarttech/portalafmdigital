@@ -155,12 +155,93 @@ function PlatformSheetRow({ clientId, platform, label, fieldName, isAdmin }: { c
 function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
   const [autoSync, setAutoSync] = useState(false);
+  const [metaAccounts, setMetaAccounts] = useState<{ id: string; platform_account_id: string; account_name: string | null; is_active: boolean }[]>([]);
+  const [availableAccounts, setAvailableAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [addingAccount, setAddingAccount] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState('');
 
   useEffect(() => {
     supabase.from('clients').select('auto_sync_enabled').eq('id', clientId).single().then(({ data }) => {
       if (data?.auto_sync_enabled) setAutoSync(data.auto_sync_enabled);
     });
+    // Load linked Meta ad accounts
+    loadLinkedAccounts();
   }, [clientId]);
+
+  const loadLinkedAccounts = async () => {
+    const { data } = await supabase
+      .from('ad_accounts')
+      .select('id, platform_account_id, account_name, is_active')
+      .eq('client_id', clientId);
+    setMetaAccounts(data || []);
+  };
+
+  const fetchAvailableAccounts = async () => {
+    setLoadingAccounts(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-meta-ads', {
+        body: { action: 'list_accounts' },
+      });
+      if (error) throw error;
+      setAvailableAccounts(data.accounts || []);
+    } catch (err) {
+      toast.error('Не удалось загрузить рекламные кабинеты');
+    }
+    setLoadingAccounts(false);
+  };
+
+  const addMetaAccount = async () => {
+    if (!selectedAccountId) return;
+    setAddingAccount(true);
+    const acc = availableAccounts.find(a => a.id === selectedAccountId);
+    // Ensure platform_connection exists
+    let { data: conn } = await supabase
+      .from('platform_connections')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('platform', 'meta')
+      .maybeSingle();
+    if (!conn) {
+      const { data: newConn } = await supabase
+        .from('platform_connections')
+        .insert({ client_id: clientId, platform: 'meta' as any, account_name: 'Meta Ads API' })
+        .select('id')
+        .single();
+      conn = newConn;
+    }
+    if (conn) {
+      await supabase.from('ad_accounts').insert({
+        client_id: clientId,
+        connection_id: conn.id,
+        platform_account_id: selectedAccountId,
+        account_name: acc?.name || selectedAccountId,
+      });
+      toast.success(`Кабинет ${acc?.name || selectedAccountId} добавлен`);
+      setSelectedAccountId('');
+      loadLinkedAccounts();
+    }
+    setAddingAccount(false);
+  };
+
+  const removeMetaAccount = async (id: string) => {
+    await supabase.from('ad_accounts').delete().eq('id', id);
+    toast.success('Кабинет удалён');
+    loadLinkedAccounts();
+  };
+
+  const syncNow = async () => {
+    toast.info('Синхронизация запущена...');
+    const { data, error } = await supabase.functions.invoke('sync-meta-ads', {
+      body: { action: 'sync', client_id: clientId },
+    });
+    if (error) {
+      toast.error('Ошибка синхронизации');
+    } else {
+      toast.success(`Синхронизировано: ${data.synced} записей`);
+      if (data.errors?.length) toast.warning(data.errors.join('\n'));
+    }
+  };
 
   const handleToggleAutoSync = async (enabled: boolean) => {
     setAutoSync(enabled);
@@ -170,18 +251,86 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
 
   return (
     <div className="space-y-6">
+      {/* Google Sheets */}
       <Card className="glass-card max-w-2xl">
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sheet className="h-5 w-5 text-primary" />{t('dashboard.dataSources')}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sheet className="h-5 w-5 text-primary" />{t('dashboard.dataSources')} — Google Sheets</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{t('clients.syncSheetDesc')}</p>
-          
           <PlatformSheetRow clientId={clientId} platform="meta" label="Meta Ads" fieldName="meta_sheet_url" isAdmin={isAdmin} />
           <PlatformSheetRow clientId={clientId} platform="google" label="Google Ads" fieldName="google_sheet_url" isAdmin={isAdmin} />
           <PlatformSheetRow clientId={clientId} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" isAdmin={isAdmin} />
-
           <div className="flex items-center justify-between rounded-lg border border-border p-3 sm:p-4">
             <div className="min-w-0 flex-1 mr-3"><p className="text-sm font-medium">{t('clients.autoSync')}</p><p className="text-xs text-muted-foreground">{t('clients.autoSyncDesc')}</p></div>
             <Switch checked={autoSync} onCheckedChange={handleToggleAutoSync} className="flex-shrink-0" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Meta Ads API Direct */}
+      <Card className="glass-card max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Zap className="h-5 w-5 text-blue-500" /> Meta Ads API — Прямое подключение
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Подключите рекламные кабинеты Meta напрямую. Данные синхронизируются автоматически каждый час.
+          </p>
+
+          {/* Linked accounts */}
+          {metaAccounts.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Подключённые кабинеты</p>
+              {metaAccounts.map(acc => (
+                <div key={acc.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div>
+                    <p className="text-sm font-medium">{acc.account_name || acc.platform_account_id}</p>
+                    <p className="text-xs text-muted-foreground">ID: {acc.platform_account_id}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={acc.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                      {acc.is_active ? 'Активен' : 'Неактивен'}
+                    </Badge>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeMetaAccount(acc.id)}>
+                      <XCircle className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={syncNow}>
+                <RefreshCw className="h-3.5 w-3.5" /> Синхронизировать сейчас
+              </Button>
+            </div>
+          )}
+
+          {/* Add new account */}
+          <div className="space-y-2 border-t border-border pt-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Добавить кабинет</p>
+            {availableAccounts.length === 0 ? (
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
+                {loadingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Загрузить список кабинетов
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                  <SelectTrigger className="h-9 text-sm flex-1"><SelectValue placeholder="Выберите кабинет" /></SelectTrigger>
+                  <SelectContent>
+                    {availableAccounts
+                      .filter(a => !metaAccounts.some(m => m.platform_account_id === a.id))
+                      .map(a => (
+                        <SelectItem key={a.id} value={a.id} className="text-sm">{a.name} ({a.id})</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={addMetaAccount} disabled={!selectedAccountId || addingAccount} className="gap-1.5">
+                  {addingAccount ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Добавить
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
