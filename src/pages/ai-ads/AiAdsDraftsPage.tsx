@@ -387,7 +387,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
     setItems((iRes.data as any[]) || []);
     const accs = aRes.data || [];
     setAccounts(accs);
-    setCreativeAssets((cRes.data as CreativeAssetRef[] ?? []) as any);
+    setCreativeAssets(((cRes.data as unknown as CreativeAssetRef[]) || []));
     setMetaPages([]);
     setLoading(false);
   }, [draft.id, draft.client_id]);
