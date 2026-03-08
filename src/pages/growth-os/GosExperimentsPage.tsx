@@ -158,6 +158,7 @@ export default function GosExperimentsPage() {
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from('gos_experiments').update({ status }).eq('id', id);
+    logGosAction('status_change', 'experiment', id, undefined, { afterSummary: { status } });
     toast.success(`Experiment ${status}`);
     loadData();
     if (editing?.id === id) setEditing({ ...editing, status });
