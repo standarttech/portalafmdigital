@@ -738,12 +738,16 @@ export default function ClientDetailPage() {
                     <div className="space-y-2">
                       {(['meta', 'google', 'tiktok'] as const).map(p => {
                         const hasSheet = p === 'meta' ? !!client.meta_sheet_url : p === 'google' ? !!client.google_sheet_url : !!client.tiktok_sheet_url;
+                        const hasApi = p === 'meta' ? hasMetaApiAccounts : false;
+                        const isConnected = hasSheet || hasApi;
                         return (
                           <div key={p} className="flex items-center justify-between p-2 rounded-lg border border-border/50 bg-secondary/20">
                             <span className="text-xs font-medium">{p === 'meta' ? 'Meta Ads' : p === 'google' ? 'Google Ads' : 'TikTok Ads'}</span>
-                            <Badge variant="outline" className={`text-[9px] ${hasSheet ? 'border-success/30 text-success' : 'border-border text-muted-foreground'}`}>
-                              {hasSheet ? t('dashboard.connected') : t('dashboard.notConnected')}
-                            </Badge>
+                            <div className="flex items-center gap-1.5">
+                              {hasApi && <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">API</Badge>}
+                              {hasSheet && <Badge variant="outline" className="text-[9px] border-warning/30 text-warning">Sheets</Badge>}
+                              {!isConnected && <Badge variant="outline" className="text-[9px] border-border text-muted-foreground">{t('dashboard.notConnected')}</Badge>}
+                            </div>
                           </div>
                         );
                       })}
@@ -754,7 +758,7 @@ export default function ClientDetailPage() {
             </div>
             <ClientComments clientId={id!} />
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
-              <Clock className="h-3.5 w-3.5" /><span>{t('dashboard.lastUpdated')}: {new Date().toLocaleDateString()}</span>
+              <Clock className="h-3.5 w-3.5" /><span>{t('dashboard.lastUpdated')}: {lastSyncDate || t('common.noData')}</span>
             </div>
           </TabsContent>
 
