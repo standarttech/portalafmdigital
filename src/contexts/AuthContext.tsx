@@ -99,6 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem('afm_cached_role');
         }
 
+        // Clear MFA/FPC checks on every new sign-in so they re-run
+        if (event === 'SIGNED_IN') {
+          sessionStorage.removeItem('afm_mfa_checked');
+          sessionStorage.removeItem('afm_fpc_checked');
+        }
+
         if (event === 'SIGNED_OUT') {
           setAgencyRole(null);
           setViewAsRole(null);
