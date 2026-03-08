@@ -443,6 +443,7 @@ function AppRoutes() {
         <Route path="/growth-os/landing-templates" element={<GosLandingTemplatesPage />} />
         <Route path="/growth-os/forms" element={<GosFormsPage />} />
         <Route path="/growth-os/onboarding" element={<GosOnboardingPage />} />
+        <Route path="/growth-os/onboarding/:sessionId" element={<GosOnboardingWizard />} />
         <Route path="/growth-os/integrations" element={<GosIntegrationsPage />} />
         <Route path="/growth-os/lead-routing" element={<GosLeadRoutingPage />} />
       </Route>
