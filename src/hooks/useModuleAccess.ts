@@ -13,7 +13,7 @@ export function useModuleAccess() {
 
     // Admin always has full access
     if (effectiveRole === 'AgencyAdmin') {
-      setPermissions({ can_access_afm_internal: true, can_access_adminscale: true, can_access_crm: true });
+      setPermissions({ can_access_afm_internal: true, can_access_adminscale: true, can_access_crm: true, can_access_growth_os: true });
       return;
     }
 
