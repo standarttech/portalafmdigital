@@ -86,6 +86,7 @@ const GosFormsPage = React.lazy(() => import("@/pages/growth-os/GosFormsPage"));
 const GosOnboardingPage = React.lazy(() => import("@/pages/growth-os/GosOnboardingPage"));
 const GosIntegrationsPage = React.lazy(() => import("@/pages/growth-os/GosIntegrationsPage"));
 const GosLeadRoutingPage = React.lazy(() => import("@/pages/growth-os/GosLeadRoutingPage"));
+const GosOnboardingWizard = React.lazy(() => import("@/pages/growth-os/GosOnboardingWizard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -442,6 +443,7 @@ function AppRoutes() {
         <Route path="/growth-os/landing-templates" element={<GosLandingTemplatesPage />} />
         <Route path="/growth-os/forms" element={<GosFormsPage />} />
         <Route path="/growth-os/onboarding" element={<GosOnboardingPage />} />
+        <Route path="/growth-os/onboarding/:sessionId" element={<GosOnboardingWizard />} />
         <Route path="/growth-os/integrations" element={<GosIntegrationsPage />} />
         <Route path="/growth-os/lead-routing" element={<GosLeadRoutingPage />} />
       </Route>

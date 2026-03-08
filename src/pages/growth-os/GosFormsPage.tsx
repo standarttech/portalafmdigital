@@ -241,10 +241,26 @@ export default function GosFormsPage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="store">Store in DB</SelectItem>
-                      <SelectItem value="webhook">Send Webhook</SelectItem>
-                      <SelectItem value="crm">Create CRM Lead</SelectItem>
+                      <SelectItem value="webhook">Store + Send Webhook</SelectItem>
+                      <SelectItem value="crm">Store + Create CRM Lead (not yet supported)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {editing.submit_action === 'webhook' && (
+                    <div className="mt-2">
+                      <label className="text-xs font-medium text-muted-foreground">Webhook URL</label>
+                      <Input
+                        placeholder="https://your-endpoint.com/webhook"
+                        value={(editing.settings as any)?.webhook_url || ''}
+                        onChange={e => setEditing({ ...editing, settings: { ...(editing.settings || {}), webhook_url: e.target.value } })}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">Submission data will be POSTed to this URL after saving.</p>
+                    </div>
+                  )}
+                  {editing.submit_action === 'crm' && (
+                    <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
+                      <p className="text-[11px] text-amber-400">CRM lead creation is not yet implemented. Submissions will be stored and routed, but no CRM lead will be created automatically.</p>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 

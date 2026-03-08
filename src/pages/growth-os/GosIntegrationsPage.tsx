@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Plug, Loader2, CheckCircle2, XCircle, Trash2, Zap, ShieldCheck } from 'lucide-react';
+import { Plus, Plug, Loader2, CheckCircle2, XCircle, Trash2, Zap, ShieldCheck, AlertCircle, Link2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -22,6 +23,25 @@ const categoryColors: Record<string, string> = {
   messaging: 'border-amber-500/30 text-amber-400',
   general: 'border-muted text-muted-foreground',
 };
+
+// Platform integrations that already exist outside GOS
+const PLATFORM_INTEGRATIONS = [
+  { name: 'Meta / Facebook Ads', provider: 'Meta', category: 'ads', description: 'OAuth-based Meta Ads integration with automatic data sync', managedAt: '/clients', status: 'platform' },
+  { name: 'Google Sheets', provider: 'Google', category: 'analytics', description: 'Sheet URL-based data import for metrics', managedAt: '/clients', status: 'platform' },
+  { name: 'Telegram Bot', provider: 'Telegram', category: 'messaging', description: 'Telegram bot for CRM lead notifications', managedAt: '/crm/integrations', status: 'platform' },
+  { name: 'CRM Webhooks', provider: 'Internal', category: 'crm', description: 'Inbound webhook endpoints for lead ingestion', managedAt: '/crm/webhooks', status: 'platform' },
+  { name: 'Email (Resend)', provider: 'Resend', category: 'messaging', description: 'Email notifications via Resend API', managedAt: '', status: 'platform' },
+];
+
+function getInstanceStatusBadge(inst: any) {
+  const hasError = !!inst.error_message;
+  const neverSynced = !inst.last_sync_at;
+
+  if (hasError) return { label: 'error', className: 'border-destructive/30 text-destructive bg-destructive/5' };
+  if (!inst.is_active) return { label: 'inactive', className: 'border-muted text-muted-foreground' };
+  if (neverSynced) return { label: 'never synced', className: 'border-amber-500/30 text-amber-400 bg-amber-500/5' };
+  return { label: 'active', className: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' };
+}
 
 export default function GosIntegrationsPage() {
   const { t } = useLanguage();
@@ -37,20 +57,23 @@ export default function GosIntegrationsPage() {
   const [connectConfig, setConnectConfig] = useState<Record<string, string>>({});
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState('');
+  const [platformConnections, setPlatformConnections] = useState<any[]>([]);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     setLoading(true);
-    // RLS now handles scoping — queries will return only accessible data
-    const [intRes, instRes, cRes] = await Promise.all([
+    const [intRes, instRes, cRes, pcRes] = await Promise.all([
       supabase.from('gos_integrations').select('*').order('name'),
       supabase.from('gos_integration_instances').select('*, gos_integrations(name, provider, category)').order('created_at', { ascending: false }),
       supabase.from('clients').select('id, name').order('name'),
+      // Load platform connections to show linked status
+      supabase.from('platform_connections' as any).select('id, platform, client_id, status').limit(100),
     ]);
     setIntegrations(intRes.data || []);
     setInstances(instRes.data || []);
     setClients(cRes.data || []);
+    setPlatformConnections(pcRes.data || []);
     setLoading(false);
   };
 
@@ -78,19 +101,17 @@ export default function GosIntegrationsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // First create the instance with clean config (no secrets)
     const clientId = selectedClient === 'global' ? null : (selectedClient || null);
     const { data: instance, error } = await supabase.from('gos_integration_instances').insert({
       integration_id: connectingTo.id,
       created_by: user.id,
       client_id: clientId,
-      config: connectConfig, // non-sensitive config only
+      config: connectConfig,
       is_active: true,
     }).select('id').single();
 
     if (error) { toast.error('Connection failed'); return; }
 
-    // If a secret was provided, store it securely via edge function
     if (connectSecret && instance) {
       try {
         const { data: session } = await supabase.auth.getSession();
@@ -111,7 +132,6 @@ export default function GosIntegrationsPage() {
           }
         );
         if (!res.ok) {
-          console.error('Failed to store secret securely');
           toast.error('Connected but secret storage failed — update secret later');
         }
       } catch (e) {
@@ -140,6 +160,13 @@ export default function GosIntegrationsPage() {
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
+  const hasPlatformConnection = (provider: string) => {
+    const map: Record<string, string> = { 'Meta': 'facebook', 'Google': 'google', 'Telegram': 'telegram' };
+    const platform = map[provider];
+    if (!platform) return false;
+    return platformConnections.some((pc: any) => pc.platform === platform);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -154,84 +181,141 @@ export default function GosIntegrationsPage() {
         )}
       </div>
 
-      {integrations.length === 0 && instances.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Plug className="h-12 w-12 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground mb-1">No integrations configured yet</p>
-            <p className="text-xs text-muted-foreground mb-3">Add CRM, Ad Platform, or Analytics integrations</p>
-            {isAdmin && (
-              <Button size="sm" variant="outline" onClick={() => setAddingIntegration(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add First</Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {integrations.map(int => (
-              <Card key={int.id} className="hover:border-primary/30 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium text-foreground text-sm">{int.name}</h3>
-                    <Badge variant="outline" className={`text-[10px] ${categoryColors[int.category] || categoryColors.general}`}>{int.category}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-1">{int.provider}</p>
-                  {int.description && <p className="text-xs text-muted-foreground mb-3">{int.description}</p>}
-                  <div className="flex gap-1.5">
-                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setConnectingTo(int)}>
-                      <Zap className="h-3 w-3" /> Connect
-                    </Button>
-                    {isAdmin && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteIntegration(int.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      <Tabs defaultValue="gos">
+        <TabsList>
+          <TabsTrigger value="gos">GOS Integrations</TabsTrigger>
+          <TabsTrigger value="platform">Platform Integrations</TabsTrigger>
+        </TabsList>
 
-          {instances.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-foreground mb-3">Active Connections</h2>
-              <div className="space-y-2">
-                {instances.map(inst => (
-                  <Card key={inst.id}>
-                    <CardContent className="p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {inst.is_active ? <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" /> : <XCircle className="h-4 w-4 text-destructive flex-shrink-0" />}
-                        <div className="min-w-0">
-                          <span className="text-sm text-foreground block truncate">{(inst as any).gos_integrations?.name || 'Integration'}</span>
-                          <div className="flex items-center gap-1">
-                            {inst.vault_secret_ref && <ShieldCheck className="h-3 w-3 text-emerald-400" />}
-                            {inst.error_message && <span className="text-xs text-destructive block truncate">{inst.error_message}</span>}
-                          </div>
-                        </div>
+        <TabsContent value="gos" className="mt-4 space-y-6">
+          {integrations.length === 0 && instances.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <Plug className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground mb-1">No GOS integrations configured yet</p>
+                <p className="text-xs text-muted-foreground mb-3">Add custom integrations or check Platform tab for existing connections</p>
+                {isAdmin && (
+                  <Button size="sm" variant="outline" onClick={() => setAddingIntegration(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add First</Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {integrations.map(int => (
+                  <Card key={int.id} className="hover:border-primary/30 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-medium text-foreground text-sm">{int.name}</h3>
+                        <Badge variant="outline" className={`text-[10px] ${categoryColors[int.category] || categoryColors.general}`}>{int.category}</Badge>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Switch checked={inst.is_active} onCheckedChange={() => toggleInstance(inst.id, inst.is_active)} />
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteInstance(inst.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <p className="text-xs text-muted-foreground mb-1">{int.provider}</p>
+                      {int.description && <p className="text-xs text-muted-foreground mb-3">{int.description}</p>}
+                      <div className="flex gap-1.5">
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setConnectingTo(int)}>
+                          <Zap className="h-3 w-3" /> Connect
+                        </Button>
+                        {isAdmin && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteIntegration(int.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            </div>
-          )}
-        </>
-      )}
 
-      {/* Add Integration Dialog — admin only */}
+              {instances.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground mb-3">Active Connections</h2>
+                  <div className="space-y-2">
+                    {instances.map(inst => {
+                      const statusBadge = getInstanceStatusBadge(inst);
+                      return (
+                        <Card key={inst.id}>
+                          <CardContent className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {inst.is_active && !inst.error_message ? (
+                                <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                              ) : inst.error_message ? (
+                                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <span className="text-sm text-foreground block truncate">{(inst as any).gos_integrations?.name || 'Integration'}</span>
+                                <div className="flex items-center gap-1">
+                                  {inst.vault_secret_ref && <ShieldCheck className="h-3 w-3 text-emerald-400" />}
+                                  <Badge variant="outline" className={`text-[10px] ${statusBadge.className}`}>{statusBadge.label}</Badge>
+                                  {inst.last_sync_at && (
+                                    <span className="text-[10px] text-muted-foreground">Last sync: {new Date(inst.last_sync_at).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                                {inst.error_message && <span className="text-xs text-destructive block truncate">{inst.error_message}</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Switch checked={inst.is_active} onCheckedChange={() => toggleInstance(inst.id, inst.is_active)} />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteInstance(inst.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="platform" className="mt-4">
+          <p className="text-xs text-muted-foreground mb-4">
+            These integrations are managed at the platform level. They are available for all clients and do not need to be recreated in Growth OS.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {PLATFORM_INTEGRATIONS.map(pi => {
+              const linked = hasPlatformConnection(pi.provider);
+              return (
+                <Card key={pi.name} className="hover:border-primary/20 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-medium text-foreground text-sm">{pi.name}</h3>
+                      <div className="flex gap-1">
+                        <Badge variant="outline" className={`text-[10px] ${categoryColors[pi.category] || categoryColors.general}`}>{pi.category}</Badge>
+                        {linked ? (
+                          <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">linked</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px]">available</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">{pi.description}</p>
+                    {pi.managedAt && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Link2 className="h-3 w-3" />
+                        <span>Managed in platform settings</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Add Integration Dialog */}
       <Dialog open={addingIntegration} onOpenChange={setAddingIntegration}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Add Integration</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Name</label>
-              <Input value={newInt.name} onChange={e => setNewInt({ ...newInt, name: e.target.value })} placeholder="e.g. Meta Ads" />
+              <Input value={newInt.name} onChange={e => setNewInt({ ...newInt, name: e.target.value })} placeholder="e.g. HubSpot" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Provider</label>
-              <Input value={newInt.provider} onChange={e => setNewInt({ ...newInt, provider: e.target.value })} placeholder="e.g. Facebook" />
+              <Input value={newInt.provider} onChange={e => setNewInt({ ...newInt, provider: e.target.value })} placeholder="e.g. HubSpot" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Category</label>
@@ -249,7 +333,7 @@ export default function GosIntegrationsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Connect Dialog — secrets go to Vault, not plaintext */}
+      {/* Connect Dialog */}
       <Dialog open={!!connectingTo} onOpenChange={open => { if (!open) setConnectingTo(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Connect {connectingTo?.name}</DialogTitle></DialogHeader>
