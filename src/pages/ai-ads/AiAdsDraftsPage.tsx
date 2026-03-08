@@ -580,7 +580,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
                 adsets.map(as => (
                   <AdSetEditor key={as.id} item={as} onUpdate={updateItem} onDelete={deleteItem}
                     onAddAd={() => addItem('ad', as.id)}
-                    childAds={ads.filter(a => a.parent_item_id === as.id)} />
+                    childAds={ads.filter(a => a.parent_item_id === as.id)} metaPages={metaPages} />
                 ))
               )}
             </div>
