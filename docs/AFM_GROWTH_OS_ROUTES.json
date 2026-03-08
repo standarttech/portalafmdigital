@@ -1,0 +1,223 @@
+{
+  "growth_os_routes": [
+    {
+      "path": "/growth-os",
+      "page_name": "GosOverviewPage",
+      "file": "src/pages/growth-os/GosOverviewPage.tsx",
+      "purpose": "Module hub — displays card grid linking to all 5 sub-modules",
+      "status": "implemented",
+      "components": ["Card", "CardContent", "useNavigate"],
+      "data_sources": "none — static navigation page",
+      "actions": ["Navigate to sub-modules"],
+      "missing_functionality": [
+        "No metrics or KPIs displayed",
+        "No submission counts",
+        "No active session counts",
+        "No integration health status",
+        "No recent activity feed"
+      ]
+    },
+    {
+      "path": "/growth-os/landing-templates",
+      "page_name": "GosLandingTemplatesPage",
+      "file": "src/pages/growth-os/GosLandingTemplatesPage.tsx",
+      "purpose": "Create and edit landing page templates with section-based visual editor",
+      "status": "partial — CRUD works, no public rendering",
+      "components": [
+        "SectionConfigEditor (inline)",
+        "ArrayItemsEditor (inline)",
+        "Dialog (editor)",
+        "Dialog (preview iframe)",
+        "Tabs (settings/sections/code)",
+        "Card grid for template list"
+      ],
+      "data_sources": ["supabase.from('gos_landing_templates')"],
+      "actions": [
+        "Create template with default sections",
+        "Edit template (name, description, status, sections)",
+        "Add/remove/reorder sections (8 types)",
+        "Configure section content",
+        "Generate HTML preview",
+        "View preview in iframe",
+        "Copy embed code",
+        "Duplicate template",
+        "Delete template"
+      ],
+      "missing_functionality": [
+        "Public embed route /embed/landing/:id does NOT exist — 404",
+        "No server-side rendering of templates",
+        "No image upload for hero backgrounds",
+        "No custom CSS/theming",
+        "No analytics/tracking",
+        "Published status has no actual effect",
+        "No client_id filtering in queries"
+      ]
+    },
+    {
+      "path": "/growth-os/forms",
+      "page_name": "GosFormsPage",
+      "file": "src/pages/growth-os/GosFormsPage.tsx",
+      "purpose": "Build forms with configurable fields, view submissions, generate embed code",
+      "status": "partial — CRUD + submissions viewer work, no submission ingestion",
+      "components": [
+        "Dialog (form editor with tabs: fields/settings/embed)",
+        "Dialog (submissions viewer)",
+        "Card grid for form list",
+        "Field editor with reorder/add/remove"
+      ],
+      "data_sources": [
+        "supabase.from('gos_forms')",
+        "supabase.from('gos_form_submissions')"
+      ],
+      "actions": [
+        "Create form with default fields (name, email, phone)",
+        "Edit fields (8 types, label, placeholder, required)",
+        "Reorder/add/remove fields",
+        "Change form settings (name, status, submit action)",
+        "Copy embed iframe code",
+        "View API endpoint (display only)",
+        "View submissions by form",
+        "Delete form"
+      ],
+      "missing_functionality": [
+        "Public embed route /embed/form/:id does NOT exist — 404",
+        "POST /api/form-submit/:id endpoint does NOT exist",
+        "submit_action (webhook, crm) options are UI-only — no implementation",
+        "No form validation beyond required flag",
+        "No captcha/spam protection",
+        "No email notification on submission",
+        "No webhook firing on submission",
+        "No client_id filtering in queries"
+      ]
+    },
+    {
+      "path": "/growth-os/onboarding",
+      "page_name": "GosOnboardingPage",
+      "file": "src/pages/growth-os/GosOnboardingPage.tsx",
+      "purpose": "Design multi-step onboarding flows and track client sessions",
+      "status": "partial — flow designer + session tracking work, no client-facing wizard",
+      "components": [
+        "Tabs (flows/sessions)",
+        "Dialog (flow editor with step/field builder)",
+        "Dialog (start session)",
+        "Dialog (view session details)",
+        "Progress bar on session cards",
+        "Card list for flows",
+        "Card list for sessions"
+      ],
+      "data_sources": [
+        "supabase.from('gos_onboarding_flows')",
+        "supabase.from('gos_onboarding_sessions') with clients join",
+        "supabase.from('clients')"
+      ],
+      "actions": [
+        "Create flow with 4 default steps",
+        "Edit flow (name, steps, fields per step, default flag)",
+        "Add/remove/reorder steps and fields",
+        "Start onboarding session (select client + flow)",
+        "View session details (data + progress)",
+        "Delete flow"
+      ],
+      "missing_functionality": [
+        "No client-facing onboarding wizard UI",
+        "current_step never advances (stuck at 0)",
+        "completed_at never gets set",
+        "No file upload handling for file type fields",
+        "No auto-population of client_info table",
+        "No notifications on session progress/completion",
+        "Session status never changes from in_progress",
+        "No client_id filtering in queries"
+      ]
+    },
+    {
+      "path": "/growth-os/integrations",
+      "page_name": "GosIntegrationsPage",
+      "file": "src/pages/growth-os/GosIntegrationsPage.tsx",
+      "purpose": "Register third-party integrations and manage connection instances",
+      "status": "partial — CRUD catalog + connection management, no actual integration logic",
+      "components": [
+        "Dialog (add integration)",
+        "Dialog (connect integration)",
+        "Card grid for integrations",
+        "Card list for active connections",
+        "Switch for toggle active",
+        "Select for category and client"
+      ],
+      "data_sources": [
+        "supabase.from('gos_integrations')",
+        "supabase.from('gos_integration_instances') with gos_integrations join",
+        "supabase.from('clients')"
+      ],
+      "actions": [
+        "Add integration (name, provider, category, description)",
+        "Connect integration (select client, enter API key, account ID)",
+        "Toggle connection active/inactive",
+        "Delete integration",
+        "Delete connection"
+      ],
+      "missing_functionality": [
+        "API keys stored in plaintext JSONB — CRITICAL SECURITY",
+        "No connection validation/testing",
+        "No actual sync logic for any provider",
+        "No OAuth flows",
+        "No token refresh",
+        "config_schema field unused — no dynamic form generation",
+        "icon_url and is_global fields unused",
+        "error_message and last_sync_at never populated",
+        "No client_id filtering in queries"
+      ]
+    },
+    {
+      "path": "/growth-os/lead-routing",
+      "page_name": "GosLeadRoutingPage",
+      "file": "src/pages/growth-os/GosLeadRoutingPage.tsx",
+      "purpose": "Define condition-based rules to automatically route incoming leads",
+      "status": "partial — rule CRUD + log viewer work, no routing engine",
+      "components": [
+        "Tabs (rules/log)",
+        "Dialog (rule editor with conditions + actions)",
+        "Card list for rules with priority ordering",
+        "Card list for routing log",
+        "Switch for rule active toggle",
+        "Select for condition fields/operators/action types"
+      ],
+      "data_sources": [
+        "supabase.from('gos_routing_rules')",
+        "supabase.from('gos_routing_log')"
+      ],
+      "actions": [
+        "Create rule with default condition",
+        "Edit rule (name, description, priority, conditions, action type, action config)",
+        "Add/remove conditions",
+        "Configure action parameters",
+        "Toggle rule active/inactive",
+        "Delete rule",
+        "View routing log"
+      ],
+      "missing_functionality": [
+        "No routing engine (Edge Function or trigger) evaluates rules",
+        "gos_routing_log is always empty — nothing writes to it",
+        "No integration with CRM leads or form submissions",
+        "No real-time evaluation",
+        "No fallback/default routing",
+        "No rule testing/simulation",
+        "Action configs reference user IDs and pipeline IDs as raw text input — no select/lookup",
+        "No client_id filtering in queries"
+      ]
+    }
+  ],
+  "guard": {
+    "component": "ModuleGuard",
+    "file": "src/components/guards/ModuleGuard.tsx",
+    "module_key": "growth_os",
+    "permission_flag": "can_access_growth_os",
+    "table": "user_permissions",
+    "admin_bypass": true
+  },
+  "layout": {
+    "component": "GrowthOsLayout",
+    "file": "src/components/layout/GrowthOsLayout.tsx",
+    "sidebar_items": 6,
+    "theme": "Emerald accent (hsl 160,70%,40-50%)"
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "growth_os_integration_hub": {
+    "name": "GOS Integration Hub",
+    "purpose": "Generic catalog to register and connect third-party services with API keys",
+    "status": "placeholder — CRUD shell with no actual integration logic",
+    "auth_method": "Plaintext API key entered via dialog input, stored in JSONB",
+    "config_location": "Connect dialog in src/pages/growth-os/GosIntegrationsPage.tsx lines 201-226",
+    "storage_location": "gos_integration_instances.config column (JSONB) — PLAINTEXT, not Vault",
+    "sync_logic": "none — no Edge Function, no trigger, no cron job",
+    "reconnect_logic": "none",
+    "error_handling": "error_message column exists on gos_integration_instances but is never populated",
+    "missing_pieces": [
+      "Connection validation / health check",
+      "Actual API calls to any provider",
+      "OAuth flows",
+      "Token refresh logic",
+      "Vault storage for secrets",
+      "Dynamic config form based on config_schema",
+      "Sync scheduling",
+      "Error reporting and alerting",
+      "Icon display from icon_url",
+      "Global vs client-specific filtering via is_global"
+    ]
+  },
+  "platform_integrations": [
+    {
+      "name": "Meta / Facebook Ads",
+      "status": "implemented in platform — NOT connected to Growth OS",
+      "auth_method": "OAuth via meta-oauth Edge Function, tokens stored in Supabase Vault",
+      "config_location": "Platform connection settings, CRM integrations page",
+      "storage_location": "platform_connections table with token_reference (UUID) pointing to Vault",
+      "sync_logic": "sync-meta-ads Edge Function, can be triggered manually or via cron",
+      "reconnect_logic": "meta-oauth Edge Function handles token refresh",
+      "error_handling": "raw_api_logs table stores request/response/errors",
+      "missing_pieces_for_gos": ["No link between GOS integration hub and platform Meta connection"]
+    },
+    {
+      "name": "Google Sheets",
+      "status": "implemented in platform — NOT connected to Growth OS",
+      "auth_method": "Sheet URL-based (public sheets), no OAuth",
+      "config_location": "Client detail page, google_sheet_url column on clients table",
+      "storage_location": "clients.google_sheet_url, clients.meta_sheet_url, clients.tiktok_sheet_url",
+      "sync_logic": "sync-google-sheet Edge Function",
+      "reconnect_logic": "none — URL-based",
+      "error_handling": "Basic toast errors in UI",
+      "missing_pieces_for_gos": ["No integration between GOS and Google Sheets sync"]
+    },
+    {
+      "name": "Telegram Bot",
+      "status": "implemented in platform — NOT connected to Growth OS",
+      "auth_method": "Bot token stored in Vault",
+      "config_location": "CRM bot profiles (crm_bot_profiles table)",
+      "storage_location": "Vault via store-bot-token Edge Function, reference in crm_bot_profiles.bot_token_ref",
+      "sync_logic": "telegram-bot Edge Function handles webhook messages",
+      "reconnect_logic": "test-bot-token Edge Function for validation",
+      "error_handling": "Logs in crm_bot_profiles",
+      "missing_pieces_for_gos": ["No link between GOS notifications and Telegram"]
+    },
+    {
+      "name": "CRM Webhooks",
+      "status": "implemented in CRM module — NOT connected to Growth OS",
+      "auth_method": "Secret key per endpoint (auto-generated hex)",
+      "config_location": "CRM webhooks page",
+      "storage_location": "crm_webhook_endpoints table with secret_key and field_mapping",
+      "sync_logic": "crm-webhook Edge Function processes incoming webhooks, creates leads",
+      "reconnect_logic": "none — webhook endpoints are static",
+      "error_handling": "crm_webhook_logs table with status and response_message",
+      "missing_pieces_for_gos": [
+        "GOS form submissions should be able to create CRM leads via this webhook system",
+        "GOS routing rules reference 'webhook' action but cannot trigger CRM webhooks"
+      ]
+    },
+    {
+      "name": "Email (Resend)",
+      "status": "implemented in platform — NOT connected to Growth OS",
+      "auth_method": "RESEND_API_KEY in Vault secrets",
+      "config_location": "send-notification Edge Function",
+      "storage_location": "Vault",
+      "sync_logic": "send-notification Edge Function sends emails on events",
+      "reconnect_logic": "none — API key based",
+      "error_handling": "Edge Function logs",
+      "missing_pieces_for_gos": [
+        "No email notification on form submission",
+        "No email notification on onboarding completion",
+        "GOS routing 'notify' action cannot send emails"
+      ]
+    },
+    {
+      "name": "Web Push Notifications",
+      "status": "implemented in platform — NOT connected to Growth OS",
+      "auth_method": "VAPID keys in Vault",
+      "config_location": "send-webpush + get-vapid-key Edge Functions",
+      "storage_location": "Vault (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY), push_subscriptions table",
+      "sync_logic": "send-webpush Edge Function",
+      "reconnect_logic": "none",
+      "error_handling": "Edge Function logs",
+      "missing_pieces_for_gos": ["No push notification on GOS events"]
+    }
+  ],
+  "integrations_not_present": [
+    {
+      "name": "Google Ads",
+      "status": "missing — referenced in onboarding flow defaults but no implementation",
+      "notes": "Onboarding flow has 'Google Ads Access' checkbox field but no actual Google Ads API integration exists anywhere in the platform"
+    },
+    {
+      "name": "TikTok Ads",
+      "status": "missing — clients table has tiktok_sheet_url but no TikTok API integration",
+      "notes": "Data comes via Google Sheets only, not TikTok API"
+    },
+    {
+      "name": "LeadConnector / GoHighLevel",
+      "status": "missing",
+      "notes": "Not referenced in codebase"
+    },
+    {
+      "name": "Zapier / Make",
+      "status": "missing",
+      "notes": "No webhook-out system for external automation platforms"
+    }
+  ]
+}
