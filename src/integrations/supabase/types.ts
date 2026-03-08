@@ -4250,6 +4250,53 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_notification_preferences: {
+        Row: {
+          campaign_launched: boolean
+          created_at: string
+          file_shared: boolean
+          id: string
+          optimization_update: boolean
+          portal_access_updated: boolean
+          portal_user_id: string
+          recommendation_added: boolean
+          report_available: boolean
+          updated_at: string
+        }
+        Insert: {
+          campaign_launched?: boolean
+          created_at?: string
+          file_shared?: boolean
+          id?: string
+          optimization_update?: boolean
+          portal_access_updated?: boolean
+          portal_user_id: string
+          recommendation_added?: boolean
+          report_available?: boolean
+          updated_at?: string
+        }
+        Update: {
+          campaign_launched?: boolean
+          created_at?: string
+          file_shared?: boolean
+          id?: string
+          optimization_update?: boolean
+          portal_access_updated?: boolean
+          portal_user_id?: string
+          recommendation_added?: boolean
+          report_available?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_notification_preferences_portal_user_id_fkey"
+            columns: ["portal_user_id"]
+            isOneToOne: true
+            referencedRelation: "client_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_notifications: {
         Row: {
           client_id: string
@@ -5191,6 +5238,10 @@ export type Database = {
       is_agency_admin: { Args: { _user_id: string }; Returns: boolean }
       is_agency_member: { Args: { _user_id: string }; Returns: boolean }
       no_admin_exists: { Args: never; Returns: boolean }
+      portal_notification_enabled: {
+        Args: { _client_id: string; _type: string }
+        Returns: boolean
+      }
       store_gos_secret: {
         Args: { _secret_name: string; _secret_value: string }
         Returns: string
