@@ -608,9 +608,9 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
                   <p className="text-sm text-muted-foreground">{adsets.length === 0 ? 'Create an ad set first, then add ads to it.' : 'No ads yet. Add one from the dropdown above.'}</p>
                 </CardContent></Card>
               ) : (
-                ads.map(ad => {
+              ads.map(ad => {
                   const parentName = adsets.find(as => as.id === ad.parent_item_id)?.name || 'Unassigned';
-                  return <AdEditor key={ad.id} item={ad} parentName={parentName} adsets={adsets} onUpdate={updateItem} onDelete={deleteItem} metaPages={metaPages} />;
+                  return <AdEditor key={ad.id} item={ad} parentName={parentName} adsets={adsets} onUpdate={updateItem} onDelete={deleteItem} metaPages={metaPages} creativeAssets={creativeAssets} />;
                 })
               )}
             </div>
