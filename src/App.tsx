@@ -86,6 +86,7 @@ const GosFormsPage = React.lazy(() => import("@/pages/growth-os/GosFormsPage"));
 const GosOnboardingPage = React.lazy(() => import("@/pages/growth-os/GosOnboardingPage"));
 const GosIntegrationsPage = React.lazy(() => import("@/pages/growth-os/GosIntegrationsPage"));
 const GosLeadRoutingPage = React.lazy(() => import("@/pages/growth-os/GosLeadRoutingPage"));
+const GosOnboardingWizard = React.lazy(() => import("@/pages/growth-os/GosOnboardingWizard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
