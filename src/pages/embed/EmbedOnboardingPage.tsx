@@ -35,16 +35,15 @@ export default function EmbedOnboardingPage() {
   const loadSession = useCallback(async () => {
     if (!token) { setError('Invalid link'); setLoading(false); return; }
 
-    // Validate token — also check revoked_at
-    const { data: tokenData, error: tokenError } = await supabase
-      .from('gos_onboarding_tokens')
-      .select('session_id, expires_at, revoked_at, client_label')
-      .eq('token', token)
-      .single();
+    // Validate token via secure RPC (no direct table access for anon)
+    const { data: tokenResult, error: rpcError } = await supabase
+      .rpc('validate_onboarding_token', { p_token: token });
 
-    if (tokenError || !tokenData) { setError('Invalid or expired link'); setLoading(false); return; }
-    if (tokenData.revoked_at) { setError('This link has been revoked'); setLoading(false); return; }
-    if (new Date(tokenData.expires_at) < new Date()) { setError('This link has expired'); setLoading(false); return; }
+    if (rpcError || !tokenResult) { setError('Invalid or expired link'); setLoading(false); return; }
+    const tokenData = tokenResult as any;
+    if (tokenData.error === 'revoked') { setError('This link has been revoked'); setLoading(false); return; }
+    if (tokenData.error === 'expired') { setError('This link has expired'); setLoading(false); return; }
+    if (tokenData.error) { setError('Invalid or expired link'); setLoading(false); return; }
 
     if (tokenData.client_label) setClientLabel(tokenData.client_label);
 
