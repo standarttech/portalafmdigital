@@ -79,7 +79,7 @@ export default function PerformanceChart({ chartData, className }: Props) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
+        <div className="h-[220px] sm:h-[300px]">
           {data.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">{t('common.noData')}</div>
           ) : (

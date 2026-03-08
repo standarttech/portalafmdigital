@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { motion } from 'framer-motion';
+// Using CSS animations instead of framer-motion stagger for performance
 import { Info, GripVertical } from 'lucide-react';
 import {
   DndContext,
