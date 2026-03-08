@@ -946,8 +946,37 @@ function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages }: {
               </Select>
             </div>
             <div className="sm:col-span-2"><Label className="text-xs">Destination URL</Label><Input value={cfg.destination_url || ''} onChange={e => setCfg((c: any) => ({ ...c, destination_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="https://..." /></div>
-            <div><Label className="text-xs">Facebook Page ID</Label><Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="Required for Meta ad creation" /></div>
-            <div className="sm:col-span-2"><Label className="text-xs">Creative Reference (optional)</Label><Input value={cfg.creative_ref || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_ref: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="Link or reference to creative asset" /></div>
+            <div><Label className="text-xs">Facebook Page ID</Label>
+              {metaPages.length > 0 ? (
+                <Select value={cfg.page_id || '__manual__'} onValueChange={v => { const val = v === '__manual__' ? '' : v; setCfg((c: any) => ({ ...c, page_id: val })); setTimeout(save, 0); }}>
+                  <SelectTrigger className="text-sm"><SelectValue placeholder="Select page" /></SelectTrigger>
+                  <SelectContent>
+                    {metaPages.map(p => <SelectItem key={p.id} value={p.page_id}>{p.name} ({p.page_id})</SelectItem>)}
+                    <SelectItem value="__manual__">Enter manually...</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="No linked pages found — enter manually" />
+              )}
+              {cfg.page_id === '' && metaPages.length === 0 && <p className="text-[10px] text-amber-400 mt-0.5">Connect an ad account to auto-discover pages</p>}
+            </div>
+            <div><Label className="text-xs">Creative Type</Label>
+              <Select value={cfg.creative_type || 'text_only'} onValueChange={v => { setCfg((c: any) => ({ ...c, creative_type: v })); setTimeout(save, 0); }}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text_only">Text Only</SelectItem>
+                  <SelectItem value="image_url">Image (URL)</SelectItem>
+                  <SelectItem value="video_url">Video (URL)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(cfg.creative_type === 'image_url' || cfg.creative_type === 'video_url') && (
+              <div className="sm:col-span-2"><Label className="text-xs">{cfg.creative_type === 'image_url' ? 'Image' : 'Video'} URL</Label>
+                <Input value={cfg.creative_asset_url || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_asset_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={1000} placeholder="https://..." />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Direct URL to creative asset. Meta upload from URL is not yet automated.</p>
+              </div>
+            )}
+            <div className="sm:col-span-2"><Label className="text-xs">Creative Reference / Notes (optional)</Label><Input value={cfg.creative_ref || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_ref: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="Internal reference, asset library ID, etc." /></div>
           </div>
         </CardContent>
       )}
