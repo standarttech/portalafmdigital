@@ -9,11 +9,6 @@ const corsHeaders = {
 
 const META_API = "https://graph.facebook.com/v21.0";
 
-/**
- * Sync performance data for launched campaigns.
- * Reuses existing daily_metrics / ad_level_metrics tables.
- * Fetches latest insights for external IDs stored in launch_requests.
- */
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -22,23 +17,33 @@ serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   try {
+    // Support both user-auth and cron/service calls
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Missing authorization header");
+    const cronSecret = req.headers.get("x-cron-secret");
+    let isServiceCall = false;
 
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !user) throw new Error("Unauthorized");
+    if (cronSecret) {
+      // Scheduled cron call — validate service role key as cron secret
+      if (cronSecret !== serviceRoleKey) throw new Error("Invalid cron secret");
+      isServiceCall = true;
+    } else if (authHeader) {
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user }, error: authErr } = await userClient.auth.getUser();
+      if (authErr || !user) throw new Error("Unauthorized");
+    } else {
+      // Also accept service role in Authorization for pg_net calls
+      throw new Error("Missing authorization");
+    }
 
     const svc = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json().catch(() => ({}));
     const { launch_request_id, client_id } = body;
 
-    // Build query for launched requests
     let query = svc.from("launch_requests")
-      .select("id, client_id, ad_account_id, platform, external_campaign_id, external_ids, execution_status, draft_id, metadata")
+      .select("id, client_id, ad_account_id, platform, external_campaign_id, external_ids, execution_status, draft_id, metadata, executed_at")
       .in("status", ["completed"])
       .not("external_campaign_id", "is", null);
 
@@ -54,6 +59,7 @@ serve(async (req) => {
     }
 
     const results: any[] = [];
+    const now = new Date().toISOString();
 
     for (const lr of launches) {
       const result: any = { launch_request_id: lr.id, campaign_id: lr.external_campaign_id, status: "skipped", metrics: null, errors: [] };
@@ -64,7 +70,6 @@ serve(async (req) => {
         continue;
       }
 
-      // Find ad account and token
       if (!lr.ad_account_id) {
         result.errors.push("No ad account linked");
         results.push(result);
@@ -84,7 +89,6 @@ serve(async (req) => {
       const { data: token } = await svc.rpc("get_social_token", { _token_reference: conn.token_reference });
       if (!token) { result.errors.push("Failed to decrypt access token"); results.push(result); continue; }
 
-      // Fetch campaign-level insights (last 7 days)
       const dateTo = new Date().toISOString().split("T")[0];
       const dateFrom = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
 
@@ -125,26 +129,172 @@ serve(async (req) => {
           result.status = "synced_no_data";
         }
 
-        // Sync ad set and ad statuses from external_ids
+        // Write to campaign_performance_snapshots
+        await svc.from("campaign_performance_snapshots").insert({
+          client_id: lr.client_id,
+          launch_request_id: lr.id,
+          platform: lr.platform,
+          entity_level: "campaign",
+          external_campaign_id: lr.external_campaign_id,
+          entity_name: result.campaign_name,
+          entity_status: result.campaign_status,
+          spend: result.metrics.spend,
+          impressions: result.metrics.impressions,
+          clicks: result.metrics.clicks,
+          ctr: result.metrics.ctr,
+          cpc: result.metrics.cpc,
+          leads: result.metrics.leads,
+          purchases: result.metrics.purchases,
+          revenue: result.metrics.revenue,
+          date_window_start: dateFrom,
+          date_window_end: dateTo,
+          synced_at: now,
+        });
+
+        // Sync ad set and ad statuses
         const extAdsets = lr.external_ids?.adsets || {};
         const extAds = lr.external_ids?.ads || {};
         result.adset_statuses = {};
         result.ad_statuses = {};
 
-        for (const [, extId] of Object.entries(extAdsets)) {
+        for (const [localId, extId] of Object.entries(extAdsets)) {
           try {
             const asRes = await fetch(`${META_API}/${extId}?fields=name,effective_status&access_token=${token}`);
             const asData = await asRes.json();
-            if (!asData.error) result.adset_statuses[String(extId)] = asData.effective_status || "unknown";
+            if (!asData.error) {
+              result.adset_statuses[String(extId)] = asData.effective_status || "unknown";
+              // Write adset snapshot
+              await svc.from("campaign_performance_snapshots").insert({
+                client_id: lr.client_id,
+                launch_request_id: lr.id,
+                platform: lr.platform,
+                entity_level: "adset",
+                external_campaign_id: lr.external_campaign_id,
+                external_adset_id: String(extId),
+                entity_name: asData.name || localId,
+                entity_status: asData.effective_status || "unknown",
+                date_window_start: dateFrom,
+                date_window_end: dateTo,
+                synced_at: now,
+              });
+            }
           } catch { /* non-critical */ }
         }
 
-        for (const [, extId] of Object.entries(extAds)) {
+        for (const [localId, extId] of Object.entries(extAds)) {
           try {
             const adRes = await fetch(`${META_API}/${extId}?fields=name,effective_status&access_token=${token}`);
             const adData = await adRes.json();
-            if (!adData.error) result.ad_statuses[String(extId)] = adData.effective_status || "unknown";
+            if (!adData.error) {
+              result.ad_statuses[String(extId)] = adData.effective_status || "unknown";
+              await svc.from("campaign_performance_snapshots").insert({
+                client_id: lr.client_id,
+                launch_request_id: lr.id,
+                platform: lr.platform,
+                entity_level: "ad",
+                external_campaign_id: lr.external_campaign_id,
+                external_ad_id: String(extId),
+                entity_name: adData.name || localId,
+                entity_status: adData.effective_status || "unknown",
+                date_window_start: dateFrom,
+                date_window_end: dateTo,
+                synced_at: now,
+              });
+            }
           } catch { /* non-critical */ }
+        }
+
+        // ── Auto-generate recommendations ──
+        const m = result.metrics;
+        const executedAt = lr.executed_at ? new Date(lr.executed_at).getTime() : 0;
+        const hoursSinceLaunch = executedAt ? (Date.now() - executedAt) / 3600000 : 0;
+
+        const recsToUpsert: any[] = [];
+
+        if (m.impressions === 0 && m.spend === 0 && hoursSinceLaunch > 24) {
+          recsToUpsert.push({
+            client_id: lr.client_id,
+            title: "Investigate zero delivery",
+            description: `Campaign ${lr.external_campaign_id} has 0 impressions after ${Math.round(hoursSinceLaunch)}h. Check targeting, bidding, and account status.`,
+            recommendation_type: "no_delivery_check",
+            priority: "high",
+            status: "new",
+            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
+          });
+        }
+
+        if (m.spend > 50 && m.leads === 0 && m.purchases === 0) {
+          recsToUpsert.push({
+            client_id: lr.client_id,
+            title: "Consider pausing underperformer",
+            description: `$${m.spend.toFixed(2)} spent with zero conversions. Pause or restructure.`,
+            recommendation_type: "pause_loser",
+            priority: "high",
+            status: "new",
+            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
+          });
+        }
+
+        if (m.ctr > 1.5 && m.leads > 3 && m.spend > 5) {
+          recsToUpsert.push({
+            client_id: lr.client_id,
+            title: "Scale winning campaign",
+            description: `Strong CTR (${m.ctr.toFixed(1)}%) and ${m.leads} leads. Consider increasing budget or duplicating.`,
+            recommendation_type: "increase_budget",
+            priority: "medium",
+            status: "new",
+            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
+          });
+        }
+
+        if (m.impressions > 500 && m.ctr < 0.5) {
+          recsToUpsert.push({
+            client_id: lr.client_id,
+            title: "Fix creative or targeting",
+            description: `Low CTR (${m.ctr.toFixed(2)}%) with ${m.impressions} impressions. Review ad creative or audience.`,
+            recommendation_type: "fix_creative_issue",
+            priority: "medium",
+            status: "new",
+            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
+          });
+        }
+
+        if (result.campaign_status && ["DISAPPROVED", "WITH_ISSUES"].includes(result.campaign_status)) {
+          recsToUpsert.push({
+            client_id: lr.client_id,
+            title: "Investigate platform rejection",
+            description: `Campaign reported as ${result.campaign_status} by Meta. Review ad policies.`,
+            recommendation_type: "investigate_rejection",
+            priority: "high",
+            status: "new",
+            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
+          });
+        }
+
+        if (lr.execution_status === "execution_partial") {
+          recsToUpsert.push({
+            client_id: lr.client_id,
+            title: "Relaunch with fixes",
+            description: `Partial execution — some entities failed. Fix issues and relaunch.`,
+            recommendation_type: "relaunch_with_changes",
+            priority: "high",
+            status: "new",
+            metadata: { source: "auto_sync", launch_request_id: lr.id, external_campaign_id: lr.external_campaign_id },
+          });
+        }
+
+        // Deduplicate: only insert if no existing 'new' rec of same type for same launch
+        for (const rec of recsToUpsert) {
+          const { data: existing } = await svc.from("ai_recommendations")
+            .select("id")
+            .eq("client_id", rec.client_id)
+            .eq("recommendation_type", rec.recommendation_type)
+            .eq("status", "new")
+            .filter("metadata->>launch_request_id", "eq", lr.id)
+            .limit(1);
+          if (!existing || existing.length === 0) {
+            await svc.from("ai_recommendations").insert(rec);
+          }
         }
 
       } catch (e: any) {
@@ -152,11 +302,11 @@ serve(async (req) => {
         result.errors.push(e.message);
       }
 
-      // Store sync metadata on launch request
+      // Update launch_requests.metadata summary
       await svc.from("launch_requests").update({
         metadata: {
           ...(lr as any).metadata,
-          last_sync_at: new Date().toISOString(),
+          last_sync_at: now,
           last_sync_status: result.status,
           last_sync_metrics: result.metrics,
           campaign_status: result.campaign_status,
