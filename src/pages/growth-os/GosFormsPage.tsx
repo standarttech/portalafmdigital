@@ -92,6 +92,7 @@ const fieldTypes = [
 ];
 
 export default function GosFormsPage() {
+  const { logGosAction } = useGosAuditLog();
   const { t } = useLanguage();
   const [forms, setForms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
