@@ -100,6 +100,12 @@ const AiAdsDraftsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsDraftsPage"
 const AiAdsExecutionsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsExecutionsPage"));
 const AiAdsRecommendationsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsRecommendationsPage"));
 import AiAdsLayout from "@/components/layout/AiAdsLayout";
+import AiInfraLayout from "@/components/layout/AiInfraLayout";
+const AiInfraProvidersPage = React.lazy(() => import("@/pages/ai-infra/AiInfraProvidersPage"));
+const AiInfraRoutesPage = React.lazy(() => import("@/pages/ai-infra/AiInfraRoutesPage"));
+const AiInfraTasksPage = React.lazy(() => import("@/pages/ai-infra/AiInfraTasksPage"));
+const AiInfraLogsPage = React.lazy(() => import("@/pages/ai-infra/AiInfraLogsPage"));
+const AiInfraHealthPage = React.lazy(() => import("@/pages/ai-infra/AiInfraHealthPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
