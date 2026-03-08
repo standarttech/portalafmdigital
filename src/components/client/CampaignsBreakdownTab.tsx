@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { isAfmCampaign } from '@/lib/afmCampaignFilter';
 import CampaignColumnSettings, { type ColumnDef } from './CampaignColumnSettings';
 
 type Level = 'campaign' | 'adset' | 'ad';
@@ -50,7 +51,8 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
         .select('id, campaign_name, status, platform_campaign_id')
         .eq('client_id', clientId);
 
-      const realCampaigns = (campaigns || []).filter(c => !c.platform_campaign_id.startsWith('sheets-'));
+      // AFM FILTER: only campaigns with "AFM" in name
+      const realCampaigns = (campaigns || []).filter(c => !c.platform_campaign_id.startsWith('sheets-') && isAfmCampaign(c.campaign_name));
       if (!realCampaigns.length) { setData([]); setLoading(false); return; }
 
       let query = supabase
@@ -84,6 +86,8 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
         .select('platform_id, name, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, status, parent_platform_id, date')
         .eq('client_id', clientId)
         .eq('level', level);
+
+      // Note: at adset/ad level, parent campaign was already AFM-filtered via breadcrumb navigation
 
       if (current.platformId) query = query.eq('parent_platform_id', current.platformId);
       if (dateFrom) query = query.gte('date', dateFrom);

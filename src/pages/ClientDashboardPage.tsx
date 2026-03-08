@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { motion } from 'framer-motion';
 import {
   Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
@@ -114,13 +115,18 @@ export default function ClientDashboardPage() {
     if (clientIds.length === 0) return;
     const cid = clientIds[0];
 
+    // AFM FILTER: get only AFM campaign IDs for this client
+    const afmIds = await getAfmCampaignIds(cid);
+
     const [metricsRes, campaignsRes, budgetRes, reportsRes, adAccountsRes, commentsRes] = await Promise.all([
-      supabase.from('daily_metrics')
-        .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-        .eq('client_id', cid).order('date', { ascending: true }),
+      afmIds.length > 0
+        ? supabase.from('daily_metrics')
+            .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
+            .eq('client_id', cid).in('campaign_id', afmIds).order('date', { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
       supabase.from('campaigns')
         .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
-        .eq('client_id', cid),
+        .eq('client_id', cid).ilike('campaign_name', '%AFM%'),
       supabase.from('budget_plans')
         .select('planned_spend, planned_leads, month')
         .eq('client_id', cid)

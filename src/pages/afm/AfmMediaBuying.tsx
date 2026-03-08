@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { supabase } from '@/integrations/supabase/client';
+import { isAfmCampaign, getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -129,10 +130,14 @@ function CampaignBreakdown({ clientId, dateRange, t, formatCurrency, formatNumbe
       }
 
       const { data } = await query;
+      // AFM FILTER: at campaign level, filter by name containing AFM
+      const filtered = currentLevel === 'campaign'
+        ? (data || []).filter((r: any) => isAfmCampaign(r.name))
+        : data || [];
       if (data) {
         // Aggregate by platform_id
         const agg: Record<string, AdLevelRow> = {};
-        data.forEach((r: any) => {
+        filtered.forEach((r: any) => {
           if (!agg[r.platform_id]) {
             agg[r.platform_id] = { ...r, spend: 0, impressions: 0, link_clicks: 0, leads: 0, purchases: 0, revenue: 0 };
           }
@@ -253,11 +258,16 @@ export default function AfmMediaBuying() {
     const toStr = format(dateRange.to, 'yyyy-MM-dd');
     const monthStr = format(new Date(), 'yyyy-MM-01');
 
-    Promise.all([
-      supabase.from('daily_metrics')
-        .select('date, spend, leads, impressions, link_clicks')
-        .eq('client_id', selectedClientId)
-        .gte('date', fromStr).lte('date', toStr).order('date'),
+    // AFM FILTER: only AFM campaign metrics
+    getAfmCampaignIds(selectedClientId).then(afmIds => {
+      Promise.all([
+        afmIds.length > 0
+          ? supabase.from('daily_metrics')
+              .select('date, spend, leads, impressions, link_clicks')
+              .eq('client_id', selectedClientId)
+              .in('campaign_id', afmIds)
+              .gte('date', fromStr).lte('date', toStr).order('date')
+          : Promise.resolve({ data: [], error: null }),
       supabase.from('budget_plans')
         .select('id, month, planned_spend, planned_leads, planned_cpl')
         .eq('client_id', selectedClientId).eq('month', monthStr).maybeSingle(),
@@ -275,6 +285,7 @@ export default function AfmMediaBuying() {
       if (tg.data) { setTargetCpl(String(tg.data.target_cpl || '')); setTargetLeads(String(tg.data.target_leads || '')); setTargetRoas(String(tg.data.target_roas || '')); }
       else { setTargetCpl(''); setTargetLeads(''); setTargetRoas(''); }
       setHasApiAccounts((aa.data || []).length > 0);
+    });
     });
   }, [selectedClientId, dateRange]);
 

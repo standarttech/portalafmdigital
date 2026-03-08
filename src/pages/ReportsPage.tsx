@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { motion } from 'framer-motion';
 import { FileText, Plus, Clock, Calendar, Send, Download, Trash2, Loader2, Eye } from 'lucide-react';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
@@ -148,19 +149,24 @@ export default function ReportsPage() {
     if (!selectedClientId || !dateFrom || !dateTo) { toast.error(t('auth.allFieldsRequired')); return; }
     setCreating(true);
 
-    // Fetch real metrics for the report
-    const { data: metrics } = await supabase
-      .from('daily_metrics')
-      .select('date, spend, impressions, link_clicks, leads, campaign_id')
-      .eq('client_id', selectedClientId)
-      .gte('date', dateFrom)
-      .lte('date', dateTo)
-      .order('date');
+    // AFM FILTER: only AFM campaigns
+    const afmIds = await getAfmCampaignIds(selectedClientId);
+    const { data: metrics } = afmIds.length > 0
+      ? await supabase
+          .from('daily_metrics')
+          .select('date, spend, impressions, link_clicks, leads, campaign_id')
+          .eq('client_id', selectedClientId)
+          .in('campaign_id', afmIds)
+          .gte('date', dateFrom)
+          .lte('date', dateTo)
+          .order('date')
+      : { data: [] };
 
     const { data: campaigns } = await supabase
       .from('campaigns')
       .select('id, campaign_name, status')
-      .eq('client_id', selectedClientId);
+      .eq('client_id', selectedClientId)
+      .ilike('campaign_name', '%AFM%');
 
     const client = clients.find(c => c.id === selectedClientId);
     const totals = (metrics || []).reduce((acc, m) => ({

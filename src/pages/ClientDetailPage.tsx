@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -320,23 +321,26 @@ export default function ClientDetailPage() {
 
   const fetchDailyMetrics = useCallback(async () => {
     if (!id) return;
+    // AFM FILTER: first get AFM campaign IDs, then filter daily_metrics
+    const afmIds = await getAfmCampaignIds(id);
+    if (afmIds.length === 0) { setDailyMetrics([]); return; }
     const { data } = await supabase.from('daily_metrics')
       .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-      .eq('client_id', id).order('date', { ascending: true });
+      .eq('client_id', id).in('campaign_id', afmIds).order('date', { ascending: true });
     if (data) setDailyMetrics(data as DailyRow[]);
   }, [id]);
 
   const fetchCampaigns = useCallback(async () => {
     if (!id) return;
-    // Fetch campaigns with their ad_account platform info to enable platform filtering
+    // AFM FILTER: only show campaigns with "AFM" in name
     const { data } = await supabase
       .from('campaigns')
       .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
       .eq('client_id', id)
+      .ilike('campaign_name', '%AFM%')
       .order('campaign_name');
     if (data) {
       setCampaigns(data as any);
-      // Build campaign_id -> platform map
       const map: Record<string, string> = {};
       (data as any[]).forEach((c: any) => {
         const platform = c.ad_accounts?.platform_connections?.platform;

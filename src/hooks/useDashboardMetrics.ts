@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { subDays, format, differenceInDays } from 'date-fns';
+import { getAllAfmCampaignIds, isAfmCampaign } from '@/lib/afmCampaignFilter';
 import type { DashboardFilters, DateRange } from '@/components/dashboard/dashboardData';
 
 export interface KpiData {
@@ -116,8 +117,24 @@ export function useDashboardMetrics(
         return;
       }
 
-      // If platform filter is active, get campaign IDs for that platform
-      let platformCampaignIds: string[] | null = null;
+      // AFM FILTER: Only include campaigns with "AFM" in the name
+      const afmCampaignIds = await getAllAfmCampaignIds(
+        filters.clientIds && filters.clientIds.length > 0 ? filters.clientIds : undefined
+      );
+
+      if (afmCampaignIds.length === 0) {
+        setKpis({
+          spend: 0, leads: 0, clicks: 0, impressions: 0, cpl: 0, ctr: 0,
+          activeClients: 0, activeCampaigns: 0, revenue: 0, purchases: 0, roas: 0,
+          prevSpend: 0, prevLeads: 0, prevClicks: 0, prevImpressions: 0, prevCpl: 0, prevCtr: 0,
+          prevRevenue: 0, prevPurchases: 0, prevRoas: 0,
+        });
+        setChartData([]); setClientsData([]); setPlatformData([]); setLoading(false);
+        return;
+      }
+
+      // If platform filter is active, intersect with platform campaign IDs
+      let filteredCampaignIds = afmCampaignIds;
       if (filters.platform !== 'all') {
         const { data: connections } = await supabase
           .from('platform_connections')
@@ -138,12 +155,13 @@ export function useDashboardMetrics(
               .select('id')
               .in('ad_account_id', adAccountIds);
             
-            platformCampaignIds = campaigns?.map(c => c.id) || [];
+            const platformIds = new Set(campaigns?.map(c => c.id) || []);
+            filteredCampaignIds = afmCampaignIds.filter(id => platformIds.has(id));
           } else {
-            platformCampaignIds = [];
+            filteredCampaignIds = [];
           }
         } else {
-          platformCampaignIds = [];
+          filteredCampaignIds = [];
         }
       }
 
@@ -169,23 +187,17 @@ export function useDashboardMetrics(
         return;
       }
 
-      if (platformCampaignIds !== null) {
-        if (platformCampaignIds.length === 0) {
-          // No campaigns for this platform — empty result
-          setKpis({
-            spend: 0, leads: 0, clicks: 0, impressions: 0, cpl: 0, ctr: 0,
-            activeClients: 0, activeCampaigns: 0, revenue: 0, purchases: 0, roas: 0,
-            prevSpend: 0, prevLeads: 0, prevClicks: 0, prevImpressions: 0, prevCpl: 0, prevCtr: 0,
-            prevRevenue: 0, prevPurchases: 0, prevRoas: 0,
-          });
-          setChartData([]);
-          setClientsData([]);
-          setPlatformData([]);
-          setLoading(false);
-          return;
-        }
-        query = query.in('campaign_id', platformCampaignIds);
+      if (filteredCampaignIds.length === 0) {
+        setKpis({
+          spend: 0, leads: 0, clicks: 0, impressions: 0, cpl: 0, ctr: 0,
+          activeClients: 0, activeCampaigns: 0, revenue: 0, purchases: 0, roas: 0,
+          prevSpend: 0, prevLeads: 0, prevClicks: 0, prevImpressions: 0, prevCpl: 0, prevCtr: 0,
+          prevRevenue: 0, prevPurchases: 0, prevRoas: 0,
+        });
+        setChartData([]); setClientsData([]); setPlatformData([]); setLoading(false);
+        return;
       }
+      query = query.in('campaign_id', filteredCampaignIds);
 
       const { data: currentMetrics } = await query;
 
@@ -200,9 +212,7 @@ export function useDashboardMetrics(
         prevQuery = prevQuery.in('client_id', filters.clientIds);
       }
 
-      if (platformCampaignIds !== null && platformCampaignIds.length > 0) {
-        prevQuery = prevQuery.in('campaign_id', platformCampaignIds);
-      }
+      prevQuery = prevQuery.in('campaign_id', filteredCampaignIds);
 
       const { data: prevMetrics } = await prevQuery;
 
@@ -245,7 +255,8 @@ export function useDashboardMetrics(
       let activeCampaignsQuery = supabase
         .from('campaigns')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .ilike('campaign_name', '%AFM%');
 
       if (filters.clientIds && filters.clientIds.length > 0) {
         activeCampaignsQuery = activeCampaignsQuery.in('client_id', filters.clientIds);
