@@ -3743,6 +3743,140 @@ export type Database = {
         }
         Relationships: []
       }
+      optimization_action_logs: {
+        Row: {
+          action_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string
+          payload: Json | null
+          status: string
+          step: string
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string
+          payload?: Json | null
+          status?: string
+          step?: string
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string
+          payload?: Json | null
+          status?: string
+          step?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "optimization_action_logs_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "optimization_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      optimization_actions: {
+        Row: {
+          action_type: string
+          approved_by: string | null
+          client_id: string
+          created_at: string
+          error_message: string | null
+          executed_at: string | null
+          executed_by: string | null
+          external_ad_id: string | null
+          external_adset_id: string | null
+          external_campaign_id: string | null
+          id: string
+          input_payload: Json | null
+          launch_request_id: string | null
+          normalized_payload: Json | null
+          platform: string
+          proposed_by: string
+          rationale: string
+          recommendation_id: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          result_payload: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          action_type?: string
+          approved_by?: string | null
+          client_id: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          executed_by?: string | null
+          external_ad_id?: string | null
+          external_adset_id?: string | null
+          external_campaign_id?: string | null
+          id?: string
+          input_payload?: Json | null
+          launch_request_id?: string | null
+          normalized_payload?: Json | null
+          platform?: string
+          proposed_by: string
+          rationale?: string
+          recommendation_id?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          result_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          approved_by?: string | null
+          client_id?: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          executed_by?: string | null
+          external_ad_id?: string | null
+          external_adset_id?: string | null
+          external_campaign_id?: string | null
+          id?: string
+          input_payload?: Json | null
+          launch_request_id?: string | null
+          normalized_payload?: Json | null
+          platform?: string
+          proposed_by?: string
+          rationale?: string
+          recommendation_id?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          result_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "optimization_actions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "optimization_actions_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_recommendations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_connections: {
         Row: {
           account_name: string | null
