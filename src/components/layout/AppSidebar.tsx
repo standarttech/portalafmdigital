@@ -67,6 +67,12 @@ const moduleColorMap: Record<string, { idle: string; active: string; icon: strin
     icon: 'text-[hsl(270,70%,50%)]',
     dot: 'bg-[hsl(270,70%,50%)]',
   },
+  cyan: {
+    idle: 'text-[hsl(200,70%,50%)] border-[hsl(200,40%,18%)]/50 hover:bg-[hsl(200,30%,12%)] hover:border-[hsl(200,40%,25%)]',
+    active: 'bg-[hsl(200,30%,14%)] text-[hsl(200,70%,60%)] border-[hsl(200,50%,30%)]',
+    icon: 'text-[hsl(200,70%,50%)]',
+    dot: 'bg-[hsl(200,70%,50%)]',
+  },
 };
 
 /* ── Regular nav sections ── */
