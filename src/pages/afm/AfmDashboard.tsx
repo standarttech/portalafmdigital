@@ -640,7 +640,7 @@ export default function AfmDashboard() {
                     ))}
                   </div>
                   <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setVisibleColumns(CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.other)}>
-                    Reset
+                    {t('afm.dash.reset' as any)}
                   </Button>
                 </PopoverContent>
               </Popover>
