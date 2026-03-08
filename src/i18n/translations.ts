@@ -1085,6 +1085,21 @@ export const translations = {
   'columns.deleted': t('Preset deleted', 'Шаблон удалён', 'Modello eliminato', 'Plantilla eliminada', 'تم حذف القالب', 'Modèle supprimé'),
   'columns.applied': t('Preset applied', 'Шаблон применён', 'Modello applicato', 'Plantilla aplicada', 'تم تطبيق القالب', 'Modèle appliqué'),
 
+  // Growth OS
+  'nav.growthOs': t('Growth OS', 'Growth OS', 'Growth OS', 'Growth OS', 'Growth OS', 'Growth OS'),
+  'gos.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
+  'gos.overviewDesc': t('Manage your growth tools, templates, and automations in one place', 'Управляйте инструментами роста, шаблонами и автоматизациями в одном месте', 'Gestisci strumenti di crescita, modelli e automazioni', 'Gestiona herramientas de crecimiento, plantillas y automatizaciones', 'إدارة أدوات النمو والقوالب والأتمتة', 'Gérez vos outils de croissance, modèles et automatisations'),
+  'gos.landingTemplates': t('Landing Templates', 'Шаблоны лендингов', 'Template Landing', 'Plantillas de Landing', 'قوالب الصفحات', 'Templates Landing'),
+  'gos.landingTemplatesDesc': t('Create and manage landing page templates for clients', 'Создавайте и управляйте шаблонами лендингов для клиентов', 'Crea e gestisci template per landing page', 'Crea y gestiona plantillas de landing pages', 'إنشاء وإدارة قوالب صفحات الهبوط', 'Créez et gérez des templates de landing pages'),
+  'gos.formBuilder': t('Form Builder', 'Конструктор форм', 'Generatore di moduli', 'Constructor de formularios', 'منشئ النماذج', 'Constructeur de formulaires'),
+  'gos.formBuilderDesc': t('Build reusable forms with custom fields and submission routing', 'Создавайте многоразовые формы с кастомными полями и маршрутизацией заявок', 'Crea moduli riutilizzabili con campi personalizzati', 'Crea formularios reutilizables con campos personalizados', 'بناء نماذج قابلة لإعادة الاستخدام', 'Construisez des formulaires réutilisables'),
+  'gos.onboarding': t('Onboarding', 'Онбординг', 'Onboarding', 'Onboarding', 'الإعداد', 'Onboarding'),
+  'gos.onboardingDesc': t('Step-by-step client onboarding wizard with progress tracking', 'Пошаговый мастер онбординга клиентов с отслеживанием прогресса', 'Wizard di onboarding passo-passo per i clienti', 'Asistente de incorporación paso a paso', 'معالج إعداد العملاء خطوة بخطوة', 'Assistant d\'intégration étape par étape'),
+  'gos.integrations': t('Integrations', 'Интеграции', 'Integrazioni', 'Integraciones', 'التكاملات', 'Intégrations'),
+  'gos.integrationsDesc': t('Connect external tools, CRMs, and ad platforms in one hub', 'Подключайте внешние инструменты, CRM и рекламные платформы в одном хабе', 'Collega strumenti esterni, CRM e piattaforme pubblicitarie', 'Conecta herramientas externas, CRMs y plataformas de publicidad', 'ربط الأدوات الخارجية والCRM ومنصات الإعلانات', 'Connectez outils externes, CRM et plateformes pub'),
+  'gos.leadRouting': t('Lead Routing', 'Маршрутизация лидов', 'Routing dei lead', 'Enrutamiento de leads', 'توجيه العملاء', 'Routage des leads'),
+  'gos.leadRoutingDesc': t('Rule-based lead distribution to reps, pipelines, and automations', 'Распределение лидов по правилам между сотрудниками, воронками и автоматизациями', 'Distribuzione lead basata su regole', 'Distribución de leads basada en reglas', 'توزيع العملاء المحتملين بناءً على القواعد', 'Distribution de leads basée sur des règles'),
+
 } as const;
 
 export type TranslationKey = keyof typeof translations;
