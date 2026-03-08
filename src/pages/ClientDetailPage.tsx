@@ -421,6 +421,17 @@ export default function ClientDetailPage() {
 
   useEffect(() => { fetchClient(); fetchDailyMetrics(); fetchCampaigns(); fetchTasks(); fetchTargets(); fetchAllClients(); fetchBudgetPlan(); fetchProjectHistory(); fetchStatusHistory(); }, [fetchClient, fetchDailyMetrics, fetchCampaigns, fetchTasks, fetchTargets, fetchAllClients, fetchBudgetPlan, fetchProjectHistory, fetchStatusHistory]);
 
+  // Fetch meta API accounts status and last sync date
+  useEffect(() => {
+    if (!id) return;
+    supabase.from('ad_accounts').select('id').eq('client_id', id).eq('is_active', true).limit(1)
+      .then(({ data }) => setHasMetaApiAccounts((data?.length || 0) > 0));
+    supabase.from('daily_metrics').select('date').eq('client_id', id).order('date', { ascending: false }).limit(1)
+      .then(({ data }) => {
+        if (data?.[0]) setLastSyncDate(data[0].date);
+      });
+  }, [id]);
+
   // Set default date range on mount
   useEffect(() => {
     setCustomDateRange({ from: subDays(new Date(), 29), to: new Date() });
