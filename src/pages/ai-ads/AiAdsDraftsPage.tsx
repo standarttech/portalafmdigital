@@ -36,7 +36,12 @@ interface Draft {
 interface DraftItem {
   id: string; draft_id: string; item_type: string; parent_item_id: string | null;
   name: string; status: string; config: any; sort_order: number;
+  creative_asset_id: string | null;
   validation_errors: any[]; created_at: string; updated_at: string;
+}
+
+interface CreativeAssetRef {
+  id: string; name: string; asset_type: string; url: string | null; status: string; tags: string[];
 }
 
 interface Client { id: string; name: string; }
@@ -112,6 +117,10 @@ function validateDraft(draft: Draft, items: DraftItem[]): ValidationError[] {
     if (!cfg.destination_url) errors.push({ field: `ad_${idx}_destination`, message: `Ad "${ad.name || idx + 1}": Destination URL is required`, severity: 'error', section: 'ads' });
     if (!ad.parent_item_id) errors.push({ field: `ad_${idx}_parent`, message: `Ad "${ad.name || idx + 1}": Not assigned to any ad set`, severity: 'error', section: 'ads' });
     if (!cfg.page_id) errors.push({ field: `ad_${idx}_page_id`, message: `Ad "${ad.name || idx + 1}": Facebook Page ID is required for Meta execution`, severity: 'warning', section: 'ads' });
+    // Creative validation
+    if ((cfg.creative_type === 'image_url' || cfg.creative_type === 'video_url') && !ad.creative_asset_id && !cfg.creative_asset_url) {
+      errors.push({ field: `ad_${idx}_creative`, message: `Ad "${ad.name || idx + 1}": Image/video expected but no creative asset linked`, severity: 'warning', section: 'ads' });
+    }
   });
 
   return errors;
@@ -154,6 +163,7 @@ function buildPreviewPayload(draft: Draft, items: DraftItem[]): any {
           creative_type: ad.config?.creative_type || 'text_only',
           creative_asset_url: ad.config?.creative_asset_url || null,
           creative_ref: ad.config?.creative_ref || null,
+          creative_asset_id: ad.creative_asset_id || null,
         },
       })),
     })),
@@ -363,21 +373,21 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const [items, setItems] = useState<DraftItem[]>([]);
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
   const [metaPages, setMetaPages] = useState<MetaPage[]>([]);
+  const [creativeAssets, setCreativeAssets] = useState<CreativeAssetRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   const loadItems = useCallback(async () => {
-    const [iRes, aRes] = await Promise.all([
+    const [iRes, aRes, cRes] = await Promise.all([
       supabase.from('campaign_draft_items' as any).select('*').eq('draft_id', draft.id).order('sort_order'),
       supabase.from('ad_accounts').select('id, account_name, platform_account_id, client_id, connection_id').eq('client_id', draft.client_id).eq('is_active', true),
+      supabase.from('creative_assets' as any).select('id, name, asset_type, url, status, tags').eq('client_id', draft.client_id).eq('status', 'active').order('name'),
     ]);
     setItems((iRes.data as any[]) || []);
     const accs = aRes.data || [];
     setAccounts(accs);
-    // Note: Real Meta page discovery requires a dedicated Graph API call.
-    // Ad account IDs are NOT page IDs — we don't fake page discovery.
-    // MetaPages will remain empty until a page discovery edge function is implemented.
+    setCreativeAssets(((cRes.data as unknown as CreativeAssetRef[]) || []));
     setMetaPages([]);
     setLoading(false);
   }, [draft.id, draft.client_id]);
@@ -598,9 +608,9 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
                   <p className="text-sm text-muted-foreground">{adsets.length === 0 ? 'Create an ad set first, then add ads to it.' : 'No ads yet. Add one from the dropdown above.'}</p>
                 </CardContent></Card>
               ) : (
-                ads.map(ad => {
+              ads.map(ad => {
                   const parentName = adsets.find(as => as.id === ad.parent_item_id)?.name || 'Unassigned';
-                  return <AdEditor key={ad.id} item={ad} parentName={parentName} adsets={adsets} onUpdate={updateItem} onDelete={deleteItem} metaPages={metaPages} />;
+                  return <AdEditor key={ad.id} item={ad} parentName={parentName} adsets={adsets} onUpdate={updateItem} onDelete={deleteItem} metaPages={metaPages} creativeAssets={creativeAssets} />;
                 })
               )}
             </div>
@@ -882,16 +892,24 @@ function AdSetEditor({ item, onUpdate, onDelete, onAddAd, childAds, metaPages }:
 
 // ── Ad Editor ──
 
-function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages }: {
+function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages, creativeAssets }: {
   item: DraftItem; parentName: string; adsets: DraftItem[];
   onUpdate: (id: string, u: Partial<DraftItem>) => void; onDelete: (id: string) => void;
-  metaPages: MetaPage[];
+  metaPages: MetaPage[]; creativeAssets: CreativeAssetRef[];
 }) {
   const [expanded, setExpanded] = useState(true);
   const [cfg, setCfg] = useState(item.config || {});
   const [name, setName] = useState(item.name);
+  const selectedAsset = creativeAssets.find(a => a.id === item.creative_asset_id);
 
   const save = () => onUpdate(item.id, { name, config: cfg });
+  const linkAsset = (assetId: string | null) => {
+    const asset = creativeAssets.find(a => a.id === assetId);
+    onUpdate(item.id, {
+      creative_asset_id: assetId,
+      config: { ...cfg, creative_asset_url: asset?.url || cfg.creative_asset_url, creative_ref: asset ? `asset:${asset.name}` : cfg.creative_ref },
+    } as any);
+  };
 
   return (
     <Card>
@@ -900,6 +918,7 @@ function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages }: {
           {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
           <ImageIcon className="h-4 w-4 text-violet-400" />
           <span className="font-semibold text-sm text-foreground flex-1">{item.name}</span>
+          {selectedAsset && <Badge variant="outline" className="text-[9px] text-cyan-400 border-cyan-400/30">🎨 {selectedAsset.name}</Badge>}
           <Badge variant="secondary" className="text-[10px]">{parentName}</Badge>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={e => { e.stopPropagation(); onDelete(item.id); }}>
             <Trash2 className="h-3.5 w-3.5" />
@@ -941,8 +960,8 @@ function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages }: {
             </div>
             <div className="sm:col-span-2"><Label className="text-xs">Destination URL</Label><Input value={cfg.destination_url || ''} onChange={e => setCfg((c: any) => ({ ...c, destination_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="https://..." /></div>
             <div><Label className="text-xs">Facebook Page ID</Label>
-              <Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="Enter Facebook Page ID (required for Meta ads)" />
-              {!cfg.page_id && <p className="text-[10px] text-amber-400 mt-0.5">Required for Meta ad creation. Find it in your Facebook Page settings.</p>}
+              <Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="Enter Facebook Page ID" />
+              {!cfg.page_id && <p className="text-[10px] text-amber-400 mt-0.5">Required for Meta ad creation.</p>}
             </div>
             <div><Label className="text-xs">Creative Type</Label>
               <Select value={cfg.creative_type || 'text_only'} onValueChange={v => { setCfg((c: any) => ({ ...c, creative_type: v })); setTimeout(save, 0); }}>
@@ -954,14 +973,44 @@ function AdEditor({ item, parentName, adsets, onUpdate, onDelete, metaPages }: {
                 </SelectContent>
               </Select>
             </div>
-            {(cfg.creative_type === 'image_url' || cfg.creative_type === 'video_url') && (
-              <div className="sm:col-span-2"><Label className="text-xs">{cfg.creative_type === 'image_url' ? 'Image' : 'Video'} URL</Label>
-                <Input value={cfg.creative_asset_url || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_asset_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={1000} placeholder="https://..." />
-                <p className="text-[10px] text-muted-foreground mt-0.5">Direct URL to creative asset. Meta upload from URL is not yet automated.</p>
-              </div>
-            )}
-            <div className="sm:col-span-2"><Label className="text-xs">Creative Reference / Notes (optional)</Label><Input value={cfg.creative_ref || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_ref: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="Internal reference, asset library ID, etc." /></div>
           </div>
+
+          {/* Creative Asset Picker */}
+          <div className="space-y-2 p-3 rounded-lg border border-muted-foreground/10 bg-muted/10">
+            <Label className="text-xs font-semibold">Creative Asset</Label>
+            {selectedAsset ? (
+              <div className="flex items-center gap-3">
+                {selectedAsset.url && selectedAsset.asset_type === 'image' && (
+                  <img src={selectedAsset.url} alt={selectedAsset.name} className="h-10 w-10 rounded object-cover" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{selectedAsset.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{selectedAsset.asset_type} · internal asset</p>
+                </div>
+                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => linkAsset(null)}>Clear</Button>
+              </div>
+            ) : (
+              <Select value="__none__" onValueChange={v => { if (v !== '__none__') linkAsset(v); }}>
+                <SelectTrigger className="text-sm"><SelectValue placeholder="Select creative asset..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No asset selected</SelectItem>
+                  {creativeAssets.map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} ({a.asset_type})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-[10px] text-muted-foreground">Assets from your Creative Library. Meta upload is not automated — asset serves as internal reference.</p>
+          </div>
+
+          {(cfg.creative_type === 'image_url' || cfg.creative_type === 'video_url') && !selectedAsset && (
+            <div className="sm:col-span-2"><Label className="text-xs">{cfg.creative_type === 'image_url' ? 'Image' : 'Video'} URL</Label>
+              <Input value={cfg.creative_asset_url || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_asset_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={1000} placeholder="https://..." />
+            </div>
+          )}
+          <div><Label className="text-xs">Creative Reference / Notes (optional)</Label><Input value={cfg.creative_ref || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_ref: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="Internal reference, asset library ID, etc." /></div>
         </CardContent>
       )}
     </Card>
