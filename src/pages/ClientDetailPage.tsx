@@ -1155,8 +1155,13 @@ export default function ClientDetailPage() {
               </CardContent>
             </Card>
           </TabsContent>
+          </TabsContent>
 
-          {/* HISTORY TAB — replaces Campaigns */}
+          {/* CAMPAIGNS TAB */}
+          <TabsContent value="campaigns" className="space-y-4">
+            <CampaignsBreakdownTab clientId={id!} />
+          </TabsContent>
+
           <TabsContent value="history" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">{t('history.title' as TranslationKey)}</h3>
