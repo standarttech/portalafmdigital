@@ -82,7 +82,7 @@ export default function GosLeadRoutingPage() {
       is_active: editingRule.is_active,
     }).eq('id', editingRule.id);
     if (error) toast.error('Save failed');
-    else { toast.success('Rule saved'); setEditingRule(null); loadData(); }
+    else { toast.success('Rule saved'); logGosAction('update', 'routing_rule', editingRule.id, editingRule.name); setEditingRule(null); loadData(); }
   };
 
   const deleteRule = async (id: string) => {
