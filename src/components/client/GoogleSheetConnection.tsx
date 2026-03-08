@@ -223,7 +223,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
           {/* Linked accounts */}
           {metaAccounts.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.linkedAccounts' as TranslationKey) || 'Linked Accounts'} ({metaAccounts.length})</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.linkedAccounts')} ({metaAccounts.length})</p>
               {metaAccounts.map(acc => (
                 <div key={acc.id} className="flex items-center justify-between rounded-lg border border-border/50 p-2.5 bg-secondary/20">
                   <div className="min-w-0">
