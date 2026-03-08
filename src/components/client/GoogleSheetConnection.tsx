@@ -272,7 +272,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
 
           {/* Add accounts — multi-select with search */}
           <div className="space-y-3 border-t border-border/50 pt-3">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.addAccounts' as TranslationKey) || 'Add Accounts'}</p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.addAccounts')}</p>
             {availableAccounts.length === 0 ? (
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
                 {loadingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
