@@ -117,7 +117,7 @@ function StageColumn({ stage, leads, onLeadClick, agencyUsers }: {
   });
 
   return (
-    <div className="flex-shrink-0 w-[280px] flex flex-col max-h-full">
+    <div className="flex-shrink-0 w-[240px] sm:w-[280px] flex flex-col max-h-full">
       <div className="flex items-center gap-2 mb-2 px-1">
         <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: stage.color }} />
         <span className="text-sm font-semibold text-foreground truncate">{stage.name}</span>
