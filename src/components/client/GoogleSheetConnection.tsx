@@ -217,7 +217,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            {t('clients.metaApiDesc' as TranslationKey) || 'Connect Meta ad accounts directly. Data syncs automatically every hour. This source has priority over Google Sheets.'}
+            {t('clients.metaApiDesc')}
           </p>
 
           {/* Linked accounts */}
