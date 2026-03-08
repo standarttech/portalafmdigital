@@ -321,9 +321,26 @@ serve(async (req) => {
           }
         }
 
-        // Batch insert all new recs
+        // Batch insert all new recs + update preset trigger stats
         if (recsToInsert.length > 0) {
           await svc.from("ai_recommendations").insert(recsToInsert);
+
+          // Collect unique preset IDs that actually triggered
+          const triggeredPresetIds = new Set<string>();
+          for (const rec of recsToInsert) {
+            const pid = rec.metadata?.evidence?.preset_id;
+            if (pid) triggeredPresetIds.add(pid);
+          }
+          // Increment trigger_count and update last_triggered_at for each
+          for (const pid of triggeredPresetIds) {
+            const preset = (presets || []).find((p: any) => p.id === pid);
+            if (preset) {
+              await svc.from("optimization_presets").update({
+                trigger_count: (preset.trigger_count || 0) + 1,
+                last_triggered_at: now,
+              }).eq("id", pid);
+            }
+          }
         }
 
       } catch (e: any) {

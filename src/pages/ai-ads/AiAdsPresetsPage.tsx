@@ -132,6 +132,18 @@ export default function AiAdsPresetsPage() {
                       <Badge variant="outline" className={`text-[9px] ${p.proposed_priority === 'high' ? 'text-destructive border-destructive/30' : p.proposed_priority === 'medium' ? 'text-amber-400 border-amber-400/30' : 'text-muted-foreground'}`}>{p.proposed_priority}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{p.description}</p>
+                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                      {(p.trigger_count ?? 0) > 0 ? (
+                        <>
+                          <span className="text-[10px] text-muted-foreground">Triggered <strong className="text-foreground">{p.trigger_count}</strong> time{p.trigger_count !== 1 ? 's' : ''}</span>
+                          {p.last_triggered_at && (
+                            <span className="text-[10px] text-muted-foreground">· Last: {new Date(p.last_triggered_at).toLocaleDateString()}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground italic">Never triggered</span>
+                      )}
+                    </div>
                     {Object.entries(p.rule_condition || {}).filter(([k]) => k !== 'type').length > 0 && (
                       <div className="flex gap-2 mt-1.5 flex-wrap">
                         {Object.entries(p.rule_condition).filter(([k]) => k !== 'type').map(([k, v]) => (
