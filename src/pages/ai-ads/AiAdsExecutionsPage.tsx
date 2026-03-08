@@ -549,6 +549,25 @@ function LaunchRequestDetail({ lr: initialLr, clientName, isAdmin, clients, onBa
         return;
       }
 
+      const meta = lr.metadata || {};
+      const metrics = meta.last_sync_metrics;
+      const metricsStr = metrics
+        ? `Spend: $${metrics.spend}, Impressions: ${metrics.impressions}, Clicks: ${metrics.clicks}, CTR: ${metrics.ctr?.toFixed?.(2) || metrics.ctr}%, CPC: $${metrics.cpc?.toFixed?.(2) || metrics.cpc}, Leads: ${metrics.leads}, Purchases: ${metrics.purchases}`
+        : 'No performance data synced yet — metrics unavailable.';
+      const campaignStatus = meta.campaign_status || 'unknown';
+
+      const prompt = `Post-launch optimization review for campaign "${draft.campaign_name || draft.name}" (${lr.platform}).
+External Campaign ID: ${lr.external_campaign_id || 'N/A'}
+Execution status: ${lr.execution_status}
+Platform campaign status: ${campaignStatus}
+Ad sets created: ${lr.external_ids?.adsets ? Object.keys(lr.external_ids.adsets).length : 0}
+Ads created: ${lr.external_ids?.ads ? Object.keys(lr.external_ids.ads).length : 0}
+
+Performance metrics (last 7 days):
+${metricsStr}
+
+Analyze the campaign performance, identify optimization opportunities, and recommend specific next actions. Consider budget adjustments, targeting changes, creative improvements, and structural modifications.`;
+
       const { data: sess, error } = await supabase.from('ai_campaign_sessions' as any).insert({
         client_id: draft.client_id,
         title: `Post-Launch Review: ${draft.campaign_name || draft.name}`,
@@ -559,27 +578,22 @@ function LaunchRequestDetail({ lr: initialLr, clientName, isAdmin, clients, onBa
           external_campaign_id: lr.external_campaign_id,
           external_ids: lr.external_ids,
           platform: lr.platform,
+          performance_metrics: metrics || null,
+          campaign_status: campaignStatus,
         },
       }).select().single();
       if (error) throw error;
       const sessionId = (sess as any).id;
-      const prompt = `Post-launch optimization review for campaign "${draft.campaign_name || draft.name}" (${lr.platform}).
-External Campaign ID: ${lr.external_campaign_id || 'N/A'}
-Execution status: ${lr.execution_status}
-Ad sets created: ${lr.external_ids?.adsets ? Object.keys(lr.external_ids.adsets).length : 0}
-Ads created: ${lr.external_ids?.ads ? Object.keys(lr.external_ids.ads).length : 0}
-
-Review campaign structure, identify optimization opportunities, and recommend next actions.`;
 
       await supabase.from('ai_analysis_runs' as any).insert({
         session_id: sessionId,
         client_id: draft.client_id,
         created_by: user.id,
         prompt,
-        analysis_type: 'campaign_review',
+        analysis_type: 'optimization_review',
         status: 'queued',
       });
-      logGosAction('create_optimization_review', 'launch_request', lr.id, `Optimization review for #${lr.id.slice(0, 8)}`, { clientId: draft.client_id, metadata: { sessionId } });
+      logGosAction('create_optimization_review', 'launch_request', lr.id, `Optimization review for #${lr.id.slice(0, 8)}`, { clientId: draft.client_id, metadata: { sessionId, hasMetrics: !!metrics } });
       toast.success('Optimization review session created — go to AI Analysis to run it');
     } catch (e: any) { toast.error(e.message); } finally { setCreatingReview(false); }
   };
