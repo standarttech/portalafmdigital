@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DollarSign, Users, TrendingUp, Plus, Phone, Mail,
@@ -146,6 +147,7 @@ function LeadForm({ initial, onSave, onCancel, title }: LeadFormProps) {
 }
 
 export default function AfmSales() {
+  const { t } = useLanguage();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -271,14 +273,14 @@ export default function AfmSales() {
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-5">
       <motion.div variants={item}>
-        <h1 className="text-2xl font-bold text-foreground">Sales & CRM</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Управление лидами, сделками и эффективностью команды</p>
+        <h1 className="text-2xl font-bold text-foreground">{t('afm.sales.title' as any)}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{t('afm.sales.subtitle' as any)}</p>
       </motion.div>
 
       <Tabs defaultValue="crm" className="space-y-4">
         <TabsList className="h-9">
-          <TabsTrigger value="crm" className="text-xs gap-1.5"><Circle className="h-3 w-3" />CRM & Лиды</TabsTrigger>
-          <TabsTrigger value="performance" className="text-xs gap-1.5"><Star className="h-3 w-3" />Предоставление</TabsTrigger>
+          <TabsTrigger value="crm" className="text-xs gap-1.5"><Circle className="h-3 w-3" />{t('afm.sales.crmTab' as any)}</TabsTrigger>
+          <TabsTrigger value="performance" className="text-xs gap-1.5"><Star className="h-3 w-3" />{t('afm.sales.performanceTab' as any)}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="crm" className="space-y-5">

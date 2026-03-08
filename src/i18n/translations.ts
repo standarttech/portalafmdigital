@@ -1086,6 +1086,32 @@ export const translations = {
   'columns.deleted': t('Preset deleted', 'Шаблон удалён', 'Modello eliminato', 'Plantilla eliminada', 'تم حذف القالب', 'Modèle supprimé'),
   'columns.applied': t('Preset applied', 'Шаблон применён', 'Modello applicato', 'Plantilla aplicada', 'تم تطبيق القالب', 'Modèle appliqué'),
 
+  // AFM Sales page
+  'afm.sales.title': t('Sales & CRM', 'Продажи и CRM', 'Vendite e CRM', 'Ventas y CRM', 'المبيعات وCRM', 'Ventes et CRM'),
+  'afm.sales.subtitle': t('Manage leads, deals and team performance', 'Управление лидами, сделками и эффективностью команды', 'Gestione lead, trattative ed efficienza del team', 'Gestión de leads, acuerdos y rendimiento del equipo', 'إدارة العملاء والصفقات وأداء الفريق', 'Gestion des leads, transactions et performance'),
+  'afm.sales.crmTab': t('CRM & Leads', 'CRM и Лиды', 'CRM e Lead', 'CRM y Leads', 'CRM والعملاء', 'CRM et Leads'),
+  'afm.sales.performanceTab': t('Performance', 'Эффективность', 'Performance', 'Rendimiento', 'الأداء', 'Performance'),
+  'afm.sales.pipeline': t('Pipeline', 'Воронка', 'Pipeline', 'Pipeline', 'خط الأنابيب', 'Pipeline'),
+  'afm.sales.closed': t('Closed', 'Закрыто', 'Chiuso', 'Cerrado', 'مغلق', 'Clôturé'),
+  'afm.sales.conversion': t('Conversion', 'Конверсия', 'Conversione', 'Conversión', 'التحويل', 'Conversion'),
+
+  // AFM Finance page
+  'afm.finance.title': t('Finance', 'Финансы', 'Finanze', 'Finanzas', 'المالية', 'Finance'),
+  'afm.finance.subtitle': t('Revenue planning and financial control', 'Планирование доходов и финансовый контроль', 'Pianificazione delle entrate e controllo finanziario', 'Planificación de ingresos y control financiero', 'تخطيط الإيرادات والرقابة المالية', 'Planification des revenus et contrôle financier'),
+  'afm.finance.incomeTab': t('Annual Income Plan', 'План по доходу на год', 'Piano entrate annuale', 'Plan de ingresos anual', 'خطة الدخل السنوية', 'Plan de revenus annuel'),
+  'afm.finance.planningTab': t('Financial Planning', 'Финансовое планирование', 'Pianificazione finanziaria', 'Planificación financiera', 'التخطيط المالي', 'Planification financière'),
+  'afm.finance.incomeTitle': t('Income Plan — 12 months', 'План по доходу — 12 месяцев', 'Piano entrate — 12 mesi', 'Plan de ingresos — 12 meses', 'خطة الدخل — 12 شهرًا', 'Plan de revenus — 12 mois'),
+  'afm.finance.incomeDesc': t('Enter new clients and renewals. Percentages are editable. Data saves automatically.', 'Введите количество новых клиентов и продлений. Проценты редактируемые. Данные сохраняются автоматически.', 'Inserisci nuovi clienti e rinnovi. Le percentuali sono modificabili. I dati vengono salvati.', 'Ingrese nuevos clientes y renovaciones. Los porcentajes son editables. Los datos se guardan.', 'أدخل العملاء الجدد والتجديدات. النسب قابلة للتعديل. البيانات تُحفظ تلقائياً.', 'Saisissez les nouveaux clients et renouvellements. Les pourcentages sont modifiables. Sauvegarde automatique.'),
+  'afm.finance.planningTitle': t('Financial Planning', 'Финансовое планирование', 'Pianificazione finanziaria', 'Planificación financiera', 'التخطيط المالي', 'Planification financière'),
+  'afm.finance.planningDesc': t('Add clients, expenses and salaries. Funds and dividends are calculated automatically. Everything is saved.', 'Добавляйте клиентов, расходы и зарплаты. Фонды и дивиденды считаются автоматически. Всё сохраняется.', 'Aggiungi clienti, spese e stipendi. Fondi e dividendi calcolati automaticamente.', 'Añada clientes, gastos y salarios. Fondos y dividendos se calculan automáticamente.', 'أضف العملاء والمصروفات والرواتب. الأموال والأرباح تُحسب تلقائياً.', 'Ajoutez clients, dépenses et salaires. Fonds et dividendes calculés automatiquement.'),
+
+  // AFM Dashboard extras
+  'afm.dash.columns': t('Columns', 'Колонки', 'Colonne', 'Columnas', 'الأعمدة', 'Colonnes'),
+  'afm.dash.absolute': t('Absolute', 'Абсолютные', 'Assoluto', 'Absoluto', 'مطلق', 'Absolu'),
+  'afm.dash.normalized': t('Normalized', 'Нормализован.', 'Normalizzato', 'Normalizado', 'موحد', 'Normalisé'),
+  'afm.dash.reset': t('Reset', 'Сбросить', 'Reimposta', 'Restablecer', 'إعادة تعيين', 'Réinitialiser'),
+  'afm.dash.apiConnection': t('API Connection', 'API подключение', 'Connessione API', 'Conexión API', 'اتصال API', 'Connexion API'),
+
   // Growth OS
   'nav.growthOs': t('Growth OS', 'Growth OS', 'Growth OS', 'Growth OS', 'Growth OS', 'Growth OS'),
   'gos.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
