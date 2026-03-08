@@ -99,7 +99,7 @@ export default function PortalDashboardPage() {
       prevPromise = supabase.from('campaign_performance_snapshots' as any).select('*')
         .eq('client_id', clientId).eq('entity_level', 'campaign')
         .gte('synced_at', prev.from.toISOString()).lte('synced_at', prev.to.toISOString())
-        .limit(200);
+        .order('synced_at', { ascending: false }).limit(200);
     }
 
     const [sRes, lRes, rRes, aRes, pRes] = await Promise.all([
