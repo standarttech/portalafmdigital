@@ -86,7 +86,7 @@ function Navbar() {
             </a>
           </div>
           <LanguageSwitcher />
-          <Link to="/login"
+          <Link to="/auth"
             className="px-5 py-2 rounded-lg bg-[hsl(42,87%,55%)] text-[hsl(228,30%,6%)] text-sm font-bold hover:bg-[hsl(42,87%,65%)] transition-colors">
             {t('nav.clientPortal')}
           </Link>
