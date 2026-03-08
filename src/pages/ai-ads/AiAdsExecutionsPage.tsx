@@ -685,8 +685,8 @@ Review campaign structure, identify optimization opportunities, and recommend ne
                   <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><RefreshCw className="h-4 w-4 text-blue-400" /> Post-Launch Actions</CardTitle></CardHeader>
                   <CardContent>
                     <p className="text-xs text-muted-foreground mb-3">Create an AI-powered optimization review session for this launched campaign.</p>
-                    <Button size="sm" variant="outline" className="gap-1.5" onClick={createOptimizationReview}>
-                      <BarChart3 className="h-3.5 w-3.5" /> Create Optimization Review
+                    <Button size="sm" variant="outline" className="gap-1.5" onClick={createOptimizationReview} disabled={creatingReview}>
+                      {creatingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BarChart3 className="h-3.5 w-3.5" />} Create Optimization Review
                     </Button>
                   </CardContent>
                 </Card>
