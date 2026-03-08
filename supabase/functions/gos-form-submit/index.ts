@@ -81,6 +81,38 @@ function evaluateRule(rule: RoutingRule, submissionData: Record<string, any>, me
   return conditions.every((cond: RoutingCondition) => evaluateCondition(cond, combinedData));
 }
 
+/**
+ * SSRF Protection: Validates that a webhook URL targets a public internet host.
+ * Blocks: private IPs (10.x, 172.16-31.x, 192.168.x, 127.x), link-local (169.254.x),
+ * localhost, and non-http(s) schemes.
+ */
+function isUrlSafeForWebhook(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Only allow http/https
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    // Block localhost variants
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') return false;
+    // Block common internal/private IP ranges
+    const ipMatch = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipMatch) {
+      const [, a, b] = ipMatch.map(Number);
+      if (a === 10) return false;                           // 10.0.0.0/8
+      if (a === 172 && b >= 16 && b <= 31) return false;   // 172.16.0.0/12
+      if (a === 192 && b === 168) return false;             // 192.168.0.0/16
+      if (a === 169 && b === 254) return false;             // 169.254.0.0/16 (AWS metadata etc)
+      if (a === 127) return false;                          // 127.0.0.0/8
+      if (a === 0) return false;                            // 0.0.0.0/8
+    }
+    // Block .internal, .local TLDs
+    if (hostname.endsWith('.internal') || hostname.endsWith('.local') || hostname.endsWith('.localhost')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -186,23 +218,29 @@ Deno.serve(async (req) => {
       const settings = (form.settings || {}) as Record<string, any>;
       const webhookUrl = settings.webhook_url;
       if (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.startsWith('http')) {
-        try {
-          const webhookRes = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              form_id: formId,
-              form_name: form.name,
-              submission_id: submission.id,
-              data: submissionData,
-              source,
-              submitted_at: new Date().toISOString(),
-            }),
-          });
-          actionResults.webhook = webhookRes.ok ? 'sent' : `failed_${webhookRes.status}`;
-        } catch (e) {
-          actionResults.webhook = 'error';
-          console.error('Webhook error:', e);
+        // SSRF protection: validate URL targets public internet only
+        if (!isUrlSafeForWebhook(webhookUrl)) {
+          actionResults.webhook = 'blocked_ssrf_protection';
+          console.warn('Webhook URL blocked by SSRF protection:', webhookUrl);
+        } else {
+          try {
+            const webhookRes = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                form_id: formId,
+                form_name: form.name,
+                submission_id: submission.id,
+                data: submissionData,
+                source,
+                submitted_at: new Date().toISOString(),
+              }),
+            });
+            actionResults.webhook = webhookRes.ok ? 'sent' : `failed_${webhookRes.status}`;
+          } catch (e) {
+            actionResults.webhook = 'error';
+            console.error('Webhook error:', e);
+          }
         }
       } else {
         actionResults.webhook = 'no_url_configured';

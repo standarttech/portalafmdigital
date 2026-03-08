@@ -68,7 +68,7 @@ export default function GosIntegrationsPage() {
       supabase.from('gos_integration_instances').select('*, gos_integrations(name, provider, category)').order('created_at', { ascending: false }),
       supabase.from('clients').select('id, name').order('name'),
       // Load platform connections to show linked status
-      supabase.from('platform_connections' as any).select('id, platform, client_id, status').limit(100),
+      supabase.from('platform_connections').select('id, platform, client_id, status').limit(100),
     ]);
     setIntegrations(intRes.data || []);
     setInstances(instRes.data || []);
