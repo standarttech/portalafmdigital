@@ -1,14 +1,47 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, AlertTriangle, Activity, Zap, TrendingUp, Clock, Lightbulb } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, CheckCircle2, AlertTriangle, Activity, Zap, TrendingUp, Clock, Lightbulb, Download } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import PortalDateFilter, { type DateRange } from '@/components/portal/PortalDateFilter';
+import PeriodComparison from '@/components/portal/PeriodComparison';
+import { exportPerformanceSummary } from '@/lib/portalExport';
+import { toast } from 'sonner';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
+
+function getPreviousPeriod(range: DateRange): { from: Date; to: Date; label: string } {
+  const duration = range.to.getTime() - range.from.getTime();
+  return {
+    from: new Date(range.from.getTime() - duration),
+    to: new Date(range.from.getTime() - 1),
+    label: 'previous period',
+  };
+}
+
+function dedup(snapshots: any[]): any[] {
+  const map = new Map<string, any>();
+  for (const s of snapshots) {
+    const key = s.external_campaign_id || s.id;
+    const ex = map.get(key);
+    if (!ex || new Date(s.synced_at) > new Date(ex.synced_at)) map.set(key, s);
+  }
+  return Array.from(map.values());
+}
+
+function sumMetrics(snaps: any[]) {
+  const latest = dedup(snaps);
+  return {
+    spend: latest.reduce((s, snap) => s + Number(snap.spend || 0), 0),
+    clicks: latest.reduce((s, snap) => s + Number(snap.clicks || 0), 0),
+    leads: latest.reduce((s, snap) => s + Number(snap.leads || 0), 0),
+    revenue: latest.reduce((s, snap) => s + Number(snap.revenue || 0), 0),
+  };
+}
 
 export default function PortalDashboardPage() {
   const { portalUser, branding, isAdmin } = useOutletContext<Ctx>();
@@ -16,6 +49,7 @@ export default function PortalDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [clientName, setClientName] = useState('');
   const [snapshots, setSnapshots] = useState<any[]>([]);
+  const [prevSnapshots, setPrevSnapshots] = useState<any[]>([]);
   const [launches, setLaunches] = useState<any[]>([]);
   const [recs, setRecs] = useState<any[]>([]);
   const [actions, setActions] = useState<any[]>([]);
@@ -58,14 +92,26 @@ export default function PortalDashboardPage() {
       actQ = actQ.gte('created_at', from).lte('created_at', to);
     }
 
-    const [sRes, lRes, rRes, aRes] = await Promise.all([
+    // Fetch previous period data for comparison
+    let prevPromise: Promise<any> = Promise.resolve({ data: [] });
+    if (dateRange) {
+      const prev = getPreviousPeriod(dateRange);
+      prevPromise = supabase.from('campaign_performance_snapshots' as any).select('*')
+        .eq('client_id', clientId).eq('entity_level', 'campaign')
+        .gte('synced_at', prev.from.toISOString()).lte('synced_at', prev.to.toISOString())
+        .limit(200);
+    }
+
+    const [sRes, lRes, rRes, aRes, pRes] = await Promise.all([
       snapQ.order('synced_at', { ascending: false }).limit(200),
       launchQ.order('executed_at', { ascending: false }).limit(50),
       recQ.order('created_at', { ascending: false }).limit(100),
       actQ.order('created_at', { ascending: false }).limit(100),
+      prevPromise,
     ]);
 
     setSnapshots((sRes.data as any[]) || []);
+    setPrevSnapshots((pRes.data as any[]) || []);
     setLaunches((lRes.data as any[]) || []);
     setRecs((rRes.data as any[]) || []);
     setActions((aRes.data as any[]) || []);
@@ -74,22 +120,12 @@ export default function PortalDashboardPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const latestMap = new Map<string, any>();
-  for (const s of snapshots) {
-    const key = s.external_campaign_id || s.id;
-    const ex = latestMap.get(key);
-    if (!ex || new Date(s.synced_at) > new Date(ex.synced_at)) latestMap.set(key, s);
-  }
-  const latest = Array.from(latestMap.values());
-
-  const totalSpend = latest.reduce((s, snap) => s + Number(snap.spend || 0), 0);
-  const totalClicks = latest.reduce((s, snap) => s + Number(snap.clicks || 0), 0);
-  const totalLeads = latest.reduce((s, snap) => s + Number(snap.leads || 0), 0);
-  const totalRevenue = latest.reduce((s, snap) => s + Number(snap.revenue || 0), 0);
+  const current = sumMetrics(snapshots);
+  const previous = sumMetrics(prevSnapshots);
+  const latest = dedup(snapshots);
 
   const activeCampaigns = launches.filter(l => l.metadata?.campaign_status === 'ACTIVE').length;
   const issuesCampaigns = launches.filter(l => ['DISAPPROVED', 'WITH_ISSUES'].includes(l.metadata?.campaign_status)).length;
-
   const activeRecs = recs.filter(r => ['new', 'reviewed'].includes(r.status));
   const executedActions = actions.filter(a => a.status === 'executed').length;
   const pendingActions = actions.filter(a => ['proposed', 'approved'].includes(a.status)).length;
@@ -103,36 +139,59 @@ export default function PortalDashboardPage() {
       .replace(/payload|config field/gi, 'setting');
   };
 
+  const handleExport = () => {
+    const ok = exportPerformanceSummary(latest, dateRange?.label || 'all-time');
+    if (ok) {
+      toast.success('Report exported');
+      // Audit
+      supabase.from('audit_log').insert({
+        action: 'portal_report_exported', entity_type: 'portal_export',
+        entity_id: portalUser?.client_id || selectedClient || 'unknown',
+        user_id: user?.id,
+        details: { period: dateRange?.label || 'all-time', rows: latest.length },
+      });
+    } else {
+      toast.error('No data to export');
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   const title = branding?.portal_title || 'Performance Portal';
+  const showComparison = dateRange && prevSnapshots.length > 0;
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {clientName ? `${clientName} — ` : ''}Campaign performance overview
-          {lastSync && <span className="ml-2 text-[10px]">· Updated: {new Date(lastSync).toLocaleString()}</span>}
-        </p>
-        {isAdmin && !portalUser && clients.length > 1 && (
-          <select className="mt-2 text-xs border rounded px-2 py-1 bg-background text-foreground"
-            value={selectedClient || ''} onChange={e => setSelectedClient(e.target.value)}>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {clientName ? `${clientName} — ` : ''}Campaign performance overview
+            {lastSync && <span className="ml-2 text-[10px]">· Updated: {new Date(lastSync).toLocaleString()}</span>}
+          </p>
+          {isAdmin && !portalUser && clients.length > 1 && (
+            <select className="mt-2 text-xs border rounded px-2 py-1 bg-background text-foreground"
+              value={selectedClient || ''} onChange={e => setSelectedClient(e.target.value)}>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+        </div>
+        {latest.length > 0 && (
+          <Button size="sm" variant="outline" onClick={handleExport} className="gap-1.5 text-xs shrink-0">
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </Button>
         )}
       </div>
 
-      {/* Date filter */}
       <PortalDateFilter value={dateRange} onChange={setDateRange} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Spend', value: `$${totalSpend.toFixed(0)}` },
-          { label: 'Clicks', value: totalClicks.toLocaleString() },
-          { label: 'Leads', value: String(totalLeads) },
-          { label: 'Revenue', value: `$${totalRevenue.toFixed(0)}` },
+          { label: 'Total Spend', value: `$${current.spend.toFixed(0)}` },
+          { label: 'Clicks', value: current.clicks.toLocaleString() },
+          { label: 'Leads', value: String(current.leads) },
+          { label: 'Revenue', value: `$${current.revenue.toFixed(0)}` },
         ].map(kpi => (
           <Card key={kpi.label}>
             <CardContent className="p-4 text-center">
@@ -142,6 +201,22 @@ export default function PortalDashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* Period Comparison */}
+      {showComparison && (
+        <PeriodComparison
+          previousLabel="previous period"
+          metrics={[
+            { label: 'Spend', current: current.spend, previous: previous.spend, format: 'currency' },
+            { label: 'Clicks', current: current.clicks, previous: previous.clicks },
+            { label: 'Leads', current: current.leads, previous: previous.leads },
+            { label: 'Revenue', current: current.revenue, previous: previous.revenue, format: 'currency' },
+          ]}
+        />
+      )}
+      {dateRange && prevSnapshots.length === 0 && snapshots.length > 0 && (
+        <p className="text-[10px] text-muted-foreground italic">Comparison unavailable — not enough data for the previous period.</p>
+      )}
 
       {/* Delivery Health */}
       <Card>
@@ -187,22 +262,10 @@ export default function PortalDashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="text-center">
-              <p className="text-xl font-bold text-foreground">{recs.length}</p>
-              <p className="text-[10px] text-muted-foreground">Total Insights</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-emerald-500">{recs.filter(r => ['dismissed', 'converted_to_draft'].includes(r.status)).length}</p>
-              <p className="text-[10px] text-muted-foreground">Resolved</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-foreground">{executedActions}</p>
-              <p className="text-[10px] text-muted-foreground">Actions Completed</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-amber-500">{pendingActions}</p>
-              <p className="text-[10px] text-muted-foreground">In Progress</p>
-            </div>
+            <div className="text-center"><p className="text-xl font-bold text-foreground">{recs.length}</p><p className="text-[10px] text-muted-foreground">Total Insights</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-emerald-500">{recs.filter(r => ['dismissed', 'converted_to_draft'].includes(r.status)).length}</p><p className="text-[10px] text-muted-foreground">Resolved</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-foreground">{executedActions}</p><p className="text-[10px] text-muted-foreground">Actions Completed</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-amber-500">{pendingActions}</p><p className="text-[10px] text-muted-foreground">In Progress</p></div>
           </div>
         </CardContent>
       </Card>
