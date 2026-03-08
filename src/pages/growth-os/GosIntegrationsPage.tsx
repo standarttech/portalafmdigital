@@ -144,7 +144,9 @@ export default function GosIntegrationsPage() {
   };
 
   const deleteInstance = async (id: string) => {
+    const inst = instances.find(i => i.id === id);
     await supabase.from('gos_integration_instances').delete().eq('id', id);
+    logGosAction('delete', 'integration_instance', id, (inst as any)?.gos_integrations?.name);
     toast.success('Connection removed'); loadData();
   };
 
