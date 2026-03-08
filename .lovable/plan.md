@@ -1,120 +1,53 @@
 
-# Полная система уведомлений: Email + Telegram + Web Push
 
-## Обзор
-Реализация трёхканальной системы уведомлений с настройками для каждого пользователя. Админы смогут рассылать уведомления команде и клиентам через любой канал.
+# Что уже сделано и что можно улучшить
 
-## Что будет реализовано
+## Уже реализовано
+- Notification system: таблицы, preferences UI, Telegram bot, send-notification dispatcher, broadcasts page
+- Meta OAuth integration (в AFM Internal / Social Media)
+- Dashboard с KPI, графиками, drag-and-drop виджетами
+- CRM с Kanban, лидами, аналитикой, webhooks
+- AFM Internal: дашборд, медиабаинг, соцсети, финансы, планирование
+- Клиентский портал, чат, задачи, отчёты, аудит, календарь
+- MFA, force password change, invite flow
+- i18n (6 языков), branding, модульная система доступа
 
-### 1. Настройки уведомлений в профиле пользователя
-Каждый пользователь сможет в своём профиле:
-- Привязать Telegram (через бота)
-- Включить/выключить Web Push
-- Выбрать какие типы уведомлений получать по какому каналу (матрица: тип x канал)
+## Что можно сделать дальше
 
-### 2. Каналы доставки
+### 1. Мобильная оптимизация всех страниц (приоритет)
+Ты уже заметил что на телефоне громоздко. Сейчас отключены только анимации и убраны кнопки из хедера. Нужно пройти по каждой странице:
+- **Dashboard**: KPI-карточки в 1 колонку, графики с горизонтальным скроллом
+- **CRM Kanban**: горизонтальный скролл колонок вместо сжатия
+- **Client Detail**: tabs в scroll-area, таблицы с фиксированными колонками
+- **Reports/Audit/Users**: адаптивные таблицы, карточный вид на мобилке
+- **AFM Internal**: все вложенные страницы (finance, media, sales)
+- **Sidebar**: проверить ширину и закрытие на тач-устройствах
 
-**Email (Resend — уже подключён)**
-- Мгновенные алерты: ошибки синхронизации, превышение бюджета
-- Еженедельные дайджесты для команды (cron-задача)
-- Месячные отчёты для клиентов (cron-задача)
-- Событийные: новые задачи, комментарии, одобрения
+### 2. Web Push уведомления (из plan.md — не реализовано)
+Service Worker `public/sw.js` существует, но Web Push подписка не работает:
+- Генерация VAPID ключей
+- Edge function `send-webpush` для отправки push через Web Push Protocol
+- Кнопка "Разрешить уведомления" в профиле с реальной подпиской
+- Отправка push при новых задачах/алертах
 
-**Telegram Bot**
-- Мгновенные push-уведомления в личку
-- Пользователь привязывает аккаунт через бота командой `/start <код>`
-- Типы: алерты, задачи, сообщения в чате, изменения статусов
+### 3. Cron-задачи для дайджестов (из plan.md — не реализовано)
+- Еженедельный email-дайджест метрик для команды (понедельник утром)
+- Месячный отчёт для клиентов (1-го числа)
+- Настройка через `supabase/config.toml` cron schedules
 
-**Web Push (браузерные уведомления)**
-- Всплывающие уведомления даже при закрытой вкладке
-- Service Worker для фоновой обработки
-- Пользователь разрешает через кнопку в профиле
+### 4. Обновление триггеров БД на единый диспетчер (из plan.md — не реализовано)
+Существующие триггеры (`notify_admins_new_access_request`, `notify_admins_support_message`) делают прямой INSERT в notifications. Нужно переписать на вызов edge function `send-notification` через `pg_net.http_post` для мультиканальной доставки.
 
-### 3. Типы уведомлений
+### 5. Улучшение анимаций и производительности
+- Заменить тяжёлые framer-motion stagger-анимации на CSS transitions
+- Lazy load тяжёлых страниц (AFM, CRM, AdminScale)
+- Виртуализация длинных списков (таблицы клиентов, лидов CRM)
 
-| Тип | Описание | Каналы |
-|-----|----------|--------|
-| Алерты | Ошибки синхронизации, нет лидов, превышение CPL | In-App + Email + Telegram |
-| Задачи | Назначение, дедлайны, смена статуса | In-App + Telegram + Web Push |
-| Чат | Новые сообщения в поддержке | In-App + Telegram |
-| Отчёты | Еженедельный дайджест метрик | Email |
-| Одобрения | Запросы на доступ, admin approvals | In-App + Email + Telegram |
-| Клиентские | Месячные отчёты для клиентов | Email |
-
-### 4. Админская панель рассылок
-Страница для массовой рассылки: выбор получателей (команда / клиенты / все), канал, текст сообщения.
-
----
-
-## Технический план
-
-### Шаг 1: База данных
-Новые таблицы и изменения:
-
-```text
-notification_preferences (настройки каналов для каждого пользователя)
-  - user_id (FK)
-  - email_enabled (boolean, default true)
-  - telegram_enabled (boolean, default false)
-  - telegram_chat_id (text, nullable)
-  - telegram_link_code (text, nullable)
-  - webpush_enabled (boolean, default false)
-  - webpush_subscription (jsonb, nullable)
-  - alert_channels (text[], default '{in_app,email}')
-  - task_channels (text[], default '{in_app}')
-  - chat_channels (text[], default '{in_app}')
-  - report_channels (text[], default '{email}')
-
-notification_broadcasts (история массовых рассылок)
-  - id, created_by, channels, recipients_filter, subject, body, sent_at
-```
-
-RLS: пользователи видят и редактируют только свои настройки. Админы могут создавать broadcasts.
-
-### Шаг 2: Telegram Bot Edge Function
-Новая edge function `telegram-bot`:
-- Обработка webhook от Telegram (`/start <code>` для привязки)
-- Отправка сообщений через Telegram Bot API
-- Потребуется секрет `TELEGRAM_BOT_TOKEN` (пользователь создаёт бота через @BotFather)
-
-### Шаг 3: Web Push Edge Function
-Новая edge function `send-webpush`:
-- Отправка push-уведомлений через Web Push API
-- Потребуется сгенерировать VAPID-ключи (секреты `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`)
-
-### Шаг 4: Единый диспетчер уведомлений
-Новая edge function `send-notification`:
-- Принимает: user_id, type, title, message, link
-- Проверяет настройки пользователя в `notification_preferences`
-- Рассылает по нужным каналам: in-app (insert в notifications), email (Resend), telegram, web push
-- Все существующие триггеры БД будут вызывать эту функцию вместо прямого INSERT
-
-### Шаг 5: Cron-задачи для периодических отчётов
-- Еженедельный дайджест (каждый понедельник): агрегация метрик за неделю, отправка email команде
-- Месячный отчёт для клиентов: сводка по расходам и результатам
-
-### Шаг 6: UI компоненты
-- **ProfilePage** — новая секция "Notification Settings": переключатели каналов, привязка Telegram, разрешение Web Push
-- **Service Worker** — `public/sw.js` для фоновых push-уведомлений
-- **Админская рассылка** — новая страница или секция для массовых уведомлений
-- **i18n** — переводы на все 6 языков
-
-### Шаг 7: Обновление триггеров БД
-Переписать существующие триггеры (`notify_admins_new_access_request`, `notify_admins_support_message`, `notify_admins_approval_request`) чтобы они вызывали единый диспетчер через `pg_net.http_post` к edge function `send-notification`.
+### 6. Google/TikTok Ads интеграция
+Meta подключена, но Google Ads и TikTok Ads упоминаются в описании проекта без реализации прямого API.
 
 ---
 
-## Что потребуется от вас
+## Рекомендация
+Начать с **мобильной оптимизации** — это влияет на всех пользователей прямо сейчас. Затем **Web Push** и **cron-дайджесты** для завершения системы уведомлений из plan.md.
 
-1. **Telegram Bot Token** — создать бота через [@BotFather](https://t.me/BotFather) в Telegram и получить токен
-2. **VAPID Keys** — будут сгенерированы автоматически при первом запуске
-
-## Порядок реализации
-1. Таблицы БД + RLS
-2. Edge function `send-notification` (диспетчер)
-3. Telegram bot + привязка в профиле
-4. Web Push + Service Worker
-5. Email-дайджесты (cron)
-6. Админская панель рассылок
-7. Обновление триггеров БД
-8. i18n переводы
