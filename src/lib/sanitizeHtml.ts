@@ -6,7 +6,7 @@
 
 const DANGEROUS_TAGS = /(<script[\s>][\s\S]*?<\/script>|<iframe[\s>][\s\S]*?<\/iframe>|<object[\s>][\s\S]*?<\/object>|<embed[\s>][\s\S]*?<\/embed>|<applet[\s>][\s\S]*?<\/applet>|<form[\s>][\s\S]*?<\/form>|<link[\s>][\s\S]*?>|<meta[\s>][\s\S]*?>|<base[\s>][\s\S]*?>)/gi;
 
-const EVENT_HANDLERS = /\s+on\w+\s*=\s*["'][^"']*["']/gi;
+const EVENT_HANDLERS = /\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
 
 const JAVASCRIPT_URLS = /(?:href|src|action)\s*=\s*["']javascript:/gi;
 
