@@ -565,8 +565,7 @@ function ProposeDialog({ open, onOpenChange, clients, recs, userId, onCreated }:
         recommendation_id: recId !== 'none' ? recId : null,
         external_campaign_id: extCampaignId || null,
         external_adset_id: extAdsetId || null,
-        input_payload: input,
-        metadata: recId !== 'none' ? { source: 'recommendation' } : {},
+        input_payload: Object.keys(input).length > 0 ? input : (recId !== 'none' ? { source: 'recommendation' } : {}),
       }).select().single();
       if (error) throw error;
 
