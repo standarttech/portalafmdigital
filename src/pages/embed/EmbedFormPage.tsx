@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { selectVariant, type ExperimentConfig } from '@/lib/experimentRuntime';
 
 interface FormField {
   id: string;
@@ -28,37 +29,85 @@ export default function EmbedFormPage() {
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [honeypot, setHoneypot] = useState('');
+  const [resolvedVariantId, setResolvedVariantId] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) { setNotFound(true); setLoading(false); return; }
-    loadForm();
+    resolveForm();
   }, [id]);
 
-  const loadForm = async () => {
-    const { data, error } = await supabase
+  const resolveForm = async () => {
+    // First load the form directly
+    const { data: directForm, error: directErr } = await supabase
       .from('gos_forms')
-      .select('id, name, description, fields, status, settings, client_id')
+      .select('id, name, description, fields, status, settings, client_id, experiment_id')
       .eq('id', id!)
       .single();
 
-    if (error || !data || (data.status !== 'published' && data.status !== 'active')) {
-      setNotFound(true);
-    } else {
-      setForm(data);
-      const initial: Record<string, any> = {};
-      for (const field of (data.fields as unknown as FormField[]) || []) {
-        initial[field.id] = field.type === 'checkbox' ? false : '';
-      }
-      setFormData(initial);
-      // Write analytics: form_view
-      supabase.from('gos_analytics_events').insert({
-        event_type: 'form_view',
-        entity_type: 'form',
-        entity_id: data.id,
-        client_id: data.client_id,
-        referrer: document.referrer?.substring(0, 500) || null,
-      }).then(() => {});
+    if (directErr || !directForm) {
+      setNotFound(true); setLoading(false); return;
     }
+
+    // If this form is part of a running experiment, resolve variant
+    if (directForm.experiment_id) {
+      const { data: exp } = await supabase
+        .from('gos_experiments')
+        .select('id, status, winner_id, traffic_split')
+        .eq('id', directForm.experiment_id)
+        .single();
+
+      if (exp && (exp.status === 'running' || exp.winner_id)) {
+        const split = (exp.traffic_split || {}) as Record<string, number>;
+        const config: ExperimentConfig = {
+          id: exp.id,
+          status: exp.status,
+          winner_id: exp.winner_id,
+          traffic_split: split,
+        };
+        const selectedId = selectVariant(config);
+
+        // If selected variant is different from requested form, load that form instead
+        if (selectedId && selectedId !== id) {
+          const { data: variantForm } = await supabase
+            .from('gos_forms')
+            .select('id, name, description, fields, status, settings, client_id, experiment_id')
+            .eq('id', selectedId)
+            .single();
+          if (variantForm && (variantForm.status === 'published' || variantForm.status === 'active')) {
+            initForm(variantForm, selectedId);
+            return;
+          }
+        }
+        // Use the original form as the selected variant
+        setResolvedVariantId(selectedId || id!);
+      }
+    }
+
+    // No experiment or not running — use form directly
+    if (directForm.status !== 'published' && directForm.status !== 'active') {
+      setNotFound(true); setLoading(false); return;
+    }
+    initForm(directForm, resolvedVariantId || null);
+  };
+
+  const initForm = (data: any, variantId: string | null) => {
+    setForm(data);
+    setResolvedVariantId(variantId || data.id);
+    const initial: Record<string, any> = {};
+    for (const field of (data.fields as unknown as FormField[]) || []) {
+      initial[field.id] = field.type === 'checkbox' ? false : '';
+    }
+    setFormData(initial);
+    // Write analytics: form_view with variant_id
+    supabase.from('gos_analytics_events').insert({
+      event_type: 'form_view',
+      entity_type: 'form',
+      entity_id: data.id,
+      client_id: data.client_id,
+      variant_id: variantId || data.id,
+      referrer: document.referrer?.substring(0, 500) || null,
+    }).then(() => {});
     setLoading(false);
   };
 
@@ -102,6 +151,8 @@ export default function EmbedFormPage() {
             form_id: form.id,
             data: formData,
             source: 'embed',
+            variant_id: resolvedVariantId || undefined,
+            captcha_token: captchaToken || undefined,
             _hp_check: honeypot,
           }),
         }
@@ -177,6 +228,8 @@ export default function EmbedFormPage() {
               {renderField(field)}
             </div>
           ))}
+          {/* CAPTCHA integration point — render provider widget here when configured */}
+          {/* <div id="captcha-container" /> */}
           {/* Honeypot field — hidden from real users, bots fill it */}
           <div style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
             <input type="text" name="_hp_check" tabIndex={-1} autoComplete="off" value={honeypot} onChange={e => setHoneypot(e.target.value)} />
