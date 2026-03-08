@@ -614,7 +614,7 @@ export default function AfmDashboard() {
           {/* DAILY STATS TAB */}
           <TabsContent value="daily" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold">Ежедневная статистика</h3>
+              <h3 className="text-base sm:text-lg font-semibold">{t('afm.dash.dailyStats' as any)}</h3>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
