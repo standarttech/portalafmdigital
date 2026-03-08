@@ -157,6 +157,22 @@ async function syncClient(supabase: any, clientId: string, platform: string = "g
 
   if (clientError || !client) throw new Error("Client not found");
 
+  // Skip Google Sheets sync for platforms that have a direct API connection
+  if (platform === "meta") {
+    const { data: directAccounts } = await supabase
+      .from("ad_accounts")
+      .select("id")
+      .eq("client_id", clientId)
+      .eq("is_active", true)
+      .not("platform_account_id", "like", "sheets-%")
+      .limit(1);
+    
+    if (directAccounts && directAccounts.length > 0) {
+      console.log(`Skipping Sheets sync for client ${clientId} platform ${platform} — direct API connection active`);
+      return 0;
+    }
+  }
+
   // Pick the correct sheet URL based on platform
   const sheetUrlMap: Record<string, string | null> = {
     meta: client.meta_sheet_url,
