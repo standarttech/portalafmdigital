@@ -224,6 +224,7 @@ export default function TaskBoardPage() {
       assigned_to: assigneeIds[0] || null,
       due_date: formDueDate || null,
       status: formStatus,
+      priority: formPriority,
       created_by: user?.id || null,
     };
 
