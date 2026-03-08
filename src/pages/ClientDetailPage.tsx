@@ -162,6 +162,7 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [addingAccounts, setAddingAccounts] = useState(false);
+  const [metaAutoSync, setMetaAutoSync] = useState(true);
 
   useEffect(() => {
     supabase.from('clients').select('auto_sync_enabled').eq('id', clientId).single().then(({ data }) => {
