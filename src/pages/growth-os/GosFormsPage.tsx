@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, FormInput, Loader2, Settings2, X, ChevronUp, ChevronDown, Inbox, Copy, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 
 /** CAPTCHA provider status block with real status check */
 function CaptchaSettingBlock({ enabled, onToggle }: { enabled: boolean; onToggle: (v: boolean) => void }) {
@@ -91,6 +92,7 @@ const fieldTypes = [
 ];
 
 export default function GosFormsPage() {
+  const { logGosAction } = useGosAuditLog();
   const { t } = useLanguage();
   const [forms, setForms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,6 +133,7 @@ export default function GosFormsPage() {
       ],
     }).select().single();
     if (error) { toast.error('Failed to create form'); return; }
+    logGosAction('create', 'form', data?.id, 'New Form');
     setEditing(data);
     loadForms();
   };
@@ -146,11 +149,13 @@ export default function GosFormsPage() {
       settings: editing.settings,
     }).eq('id', editing.id);
     if (error) toast.error('Save failed');
-    else { toast.success('Form saved'); loadForms(); }
+    else { toast.success('Form saved'); logGosAction('update', 'form', editing.id, editing.name); loadForms(); }
   };
 
   const deleteForm = async (id: string) => {
+    const form = forms.find(f => f.id === id);
     await supabase.from('gos_forms').delete().eq('id', id);
+    logGosAction('delete', 'form', id, form?.name);
     toast.success('Form deleted');
     loadForms();
   };

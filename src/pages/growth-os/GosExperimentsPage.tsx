@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, FlaskConical, Loader2, Trash2, Settings2, Trophy, BarChart3, Eye, Inbox, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 
 interface VariantStats {
   variantId: string;
@@ -86,6 +87,7 @@ function useExperimentStats(experimentId: string | null, variants: any[]) {
 const VARIANT_COLORS = ['hsl(160,70%,45%)', 'hsl(200,80%,50%)', 'hsl(280,70%,55%)', 'hsl(340,70%,50%)'];
 
 export default function GosExperimentsPage() {
+  const { logGosAction } = useGosAuditLog();
   const [experiments, setExperiments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -116,7 +118,7 @@ export default function GosExperimentsPage() {
       created_by: user.id,
     });
     if (error) toast.error('Failed');
-    else { toast.success('Experiment created'); setCreating(false); setNewExp({ name: '', entity_type: 'landing' }); loadData(); }
+    else { toast.success('Experiment created'); logGosAction('create', 'experiment', undefined, newExp.name); setCreating(false); setNewExp({ name: '', entity_type: 'landing' }); loadData(); }
   };
 
   const openEditor = async (exp: any) => {
@@ -156,6 +158,7 @@ export default function GosExperimentsPage() {
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from('gos_experiments').update({ status }).eq('id', id);
+    logGosAction('status_change', 'experiment', id, undefined, { afterSummary: { status } });
     toast.success(`Experiment ${status}`);
     loadData();
     if (editing?.id === id) setEditing({ ...editing, status });
@@ -164,6 +167,7 @@ export default function GosExperimentsPage() {
   const declareWinner = async (winnerId: string) => {
     if (!editing) return;
     await supabase.from('gos_experiments').update({ winner_id: winnerId, status: 'completed' }).eq('id', editing.id);
+    logGosAction('declare_winner', 'experiment', editing.id, editing.name, { metadata: { winner_id: winnerId } });
     toast.success('Winner declared!');
     setEditing(null);
     loadData();

@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Plus, GitBranch, Loader2, Activity, ArrowRight, Settings2, Trash2, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import type { TranslationKey } from '@/i18n/translations';
 
 const operators = ['equals', 'not_equals', 'contains', 'starts_with', 'greater_than', 'less_than'];
@@ -24,6 +25,7 @@ const actionTypes = [
 ];
 
 export default function GosLeadRoutingPage() {
+  const { logGosAction } = useGosAuditLog();
   const { t } = useLanguage();
   const [rules, setRules] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
@@ -66,6 +68,7 @@ export default function GosLeadRoutingPage() {
       action_config: {},
     }).select().single();
     if (error) { toast.error('Failed to create rule'); return; }
+    logGosAction('create', 'routing_rule', data?.id, 'New Routing Rule');
     setEditingRule(data);
     loadData();
   };
@@ -79,11 +82,13 @@ export default function GosLeadRoutingPage() {
       is_active: editingRule.is_active,
     }).eq('id', editingRule.id);
     if (error) toast.error('Save failed');
-    else { toast.success('Rule saved'); setEditingRule(null); loadData(); }
+    else { toast.success('Rule saved'); logGosAction('update', 'routing_rule', editingRule.id, editingRule.name); setEditingRule(null); loadData(); }
   };
 
   const deleteRule = async (id: string) => {
+    const rule = rules.find(r => r.id === id);
     await supabase.from('gos_routing_rules').delete().eq('id', id);
+    logGosAction('delete', 'routing_rule', id, rule?.name);
     toast.success('Rule deleted');
     loadData();
   };

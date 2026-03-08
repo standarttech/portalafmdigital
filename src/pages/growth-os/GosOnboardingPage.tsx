@@ -16,6 +16,7 @@ import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, S
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import type { TranslationKey } from '@/i18n/translations';
 
 const stepFieldTypes = ['text', 'email', 'tel', 'url', 'select', 'file', 'checkbox'];
@@ -31,6 +32,7 @@ const TTL_OPTIONS = [
 export default function GosOnboardingPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { logGosAction } = useGosAuditLog();
   const [flows, setFlows] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,7 @@ export default function GosOnboardingPage() {
       { onConflict: 'key' }
     );
     toast.success(enabled ? 'Branding enabled' : 'Branding hidden');
+    logGosAction('branding_changed', 'settings', 'gos_show_branding', 'Branding Toggle', { afterSummary: { enabled } });
   };
 
   const loadData = async () => {
@@ -111,6 +114,7 @@ export default function GosOnboardingPage() {
       ],
     }).select().single();
     if (error) { toast.error('Failed to create flow'); return; }
+    logGosAction('create', 'onboarding_flow', data?.id, 'New Onboarding Flow');
     setEditingFlow(data);
     loadData();
   };
@@ -124,11 +128,13 @@ export default function GosOnboardingPage() {
       is_default: editingFlow.is_default,
     }).eq('id', editingFlow.id);
     if (error) toast.error('Save failed');
-    else { toast.success('Flow saved'); loadData(); }
+    else { toast.success('Flow saved'); logGosAction('update', 'onboarding_flow', editingFlow.id, editingFlow.name); loadData(); }
   };
 
   const deleteFlow = async (id: string) => {
+    const flow = flows.find(f => f.id === id);
     await supabase.from('gos_onboarding_flows').delete().eq('id', id);
+    logGosAction('delete', 'onboarding_flow', id, flow?.name);
     toast.success('Flow deleted');
     loadData();
   };
@@ -190,6 +196,7 @@ export default function GosOnboardingPage() {
       const link = `${window.location.origin}/embed/onboarding/${token.token}`;
       navigator.clipboard.writeText(link);
       toast.success(`Link generated (expires in ${ttlDays} days) and copied!`);
+      logGosAction('generate_link', 'onboarding_token', sessionId, clientName, { metadata: { ttl_days: ttlDays } });
     }
     loadTokens(sessionId);
   };
@@ -205,6 +212,7 @@ export default function GosOnboardingPage() {
       .eq('id', revokeConfirm.tokenId);
     setRevokeConfirm({ open: false, tokenId: '', tokenSnippet: '' });
     if (error) { toast.error('Failed to revoke'); return; }
+    logGosAction('revoke_link', 'onboarding_token', revokeConfirm.tokenId, revokeConfirm.tokenSnippet);
     toast.success('Link revoked');
     if (managingTokens) loadTokens(managingTokens);
   };

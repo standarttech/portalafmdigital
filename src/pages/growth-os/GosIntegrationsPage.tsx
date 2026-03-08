@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Plug, Loader2, CheckCircle2, XCircle, Trash2, Zap, ShieldCheck, AlertCircle, Link2, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 
 const categories = ['crm', 'ads', 'analytics', 'messaging', 'general'];
 const categoryColors: Record<string, string> = {
@@ -40,6 +41,7 @@ function getInstanceStatusBadge(inst: any) {
 }
 
 export default function GosIntegrationsPage() {
+  const { logGosAction } = useGosAuditLog();
   const { t } = useLanguage();
   const { effectiveRole } = useAuth();
   const isAdmin = effectiveRole === 'AgencyAdmin';
@@ -77,7 +79,7 @@ export default function GosIntegrationsPage() {
     if (!newInt.name || !newInt.provider) { toast.error('Name and provider are required'); return; }
     const { error } = await supabase.from('gos_integrations').insert({ name: newInt.name, provider: newInt.provider, category: newInt.category, description: newInt.description, config_schema: {} });
     if (error) toast.error('Failed to create');
-    else { toast.success('Integration added'); setAddingIntegration(false); setNewInt({ name: '', provider: '', category: 'general', description: '' }); loadData(); }
+    else { toast.success('Integration added'); logGosAction('create', 'integration', undefined, newInt.name); setAddingIntegration(false); setNewInt({ name: '', provider: '', category: 'general', description: '' }); loadData(); }
   };
 
   const deleteIntegration = async (id: string) => {
@@ -103,6 +105,7 @@ export default function GosIntegrationsPage() {
         });
       } catch (e) { console.error('Secret storage error:', e); }
     }
+    logGosAction('connect', 'integration_instance', instance?.id, connectingTo.name);
     toast.success('Connected!');
     setConnectingTo(null); setConnectSecret(''); setConnectConfig({}); setSelectedClient('');
     loadData();
