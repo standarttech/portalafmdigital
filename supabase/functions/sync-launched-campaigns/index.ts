@@ -285,11 +285,12 @@ serve(async (req) => {
 
         // Deduplicate: only insert if no existing 'new' rec of same type for same launch
         for (const rec of recsToUpsert) {
+          // Check for any non-dismissed rec of same type for same launch (prevents spam after review)
           const { data: existing } = await svc.from("ai_recommendations")
-            .select("id")
+            .select("id, status")
             .eq("client_id", rec.client_id)
             .eq("recommendation_type", rec.recommendation_type)
-            .eq("status", "new")
+            .in("status", ["new", "reviewed"])
             .filter("metadata->>launch_request_id", "eq", lr.id)
             .limit(1);
           if (!existing || existing.length === 0) {
