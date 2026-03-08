@@ -379,16 +379,15 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   const loadItems = useCallback(async () => {
-    const [iRes, aRes] = await Promise.all([
+    const [iRes, aRes, cRes] = await Promise.all([
       supabase.from('campaign_draft_items' as any).select('*').eq('draft_id', draft.id).order('sort_order'),
       supabase.from('ad_accounts').select('id, account_name, platform_account_id, client_id, connection_id').eq('client_id', draft.client_id).eq('is_active', true),
+      supabase.from('creative_assets' as any).select('id, name, asset_type, url, status, tags').eq('client_id', draft.client_id).eq('status', 'active').order('name'),
     ]);
     setItems((iRes.data as any[]) || []);
     const accs = aRes.data || [];
     setAccounts(accs);
-    // Note: Real Meta page discovery requires a dedicated Graph API call.
-    // Ad account IDs are NOT page IDs — we don't fake page discovery.
-    // MetaPages will remain empty until a page discovery edge function is implemented.
+    setCreativeAssets((cRes.data as CreativeAssetRef[] ?? []) as any);
     setMetaPages([]);
     setLoading(false);
   }, [draft.id, draft.client_id]);
