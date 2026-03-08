@@ -207,7 +207,7 @@ export default function TaskBoardPage() {
     setFormClient(task.client_id ?? AGENCY_SENTINEL);
     setFormAssignees(task.assignee_ids || (task.assigned_to ? [task.assigned_to] : []));
     setFormDueDate(task.due_date || '');
-    setFormStatus(task.status);
+    setFormStatus(task.status); setFormPriority(task.priority || 'medium');
     setDialogOpen(true);
   };
 
