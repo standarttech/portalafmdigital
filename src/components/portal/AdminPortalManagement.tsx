@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AdminPortalFiles from '@/components/portal/AdminPortalFiles';
+import PortalActivityPanel from '@/components/portal/PortalActivityPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
