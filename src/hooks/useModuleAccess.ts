@@ -39,5 +39,6 @@ export function useModuleAccess() {
     canAccessAfmInternal: permissions.can_access_afm_internal ?? false,
     canAccessAdminScale: permissions.can_access_adminscale ?? false,
     canAccessCrm: permissions.can_access_crm ?? false,
+    canAccessGrowthOs: permissions.can_access_growth_os ?? false,
   };
 }
