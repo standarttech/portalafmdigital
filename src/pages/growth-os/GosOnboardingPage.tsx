@@ -196,6 +196,7 @@ export default function GosOnboardingPage() {
       const link = `${window.location.origin}/embed/onboarding/${token.token}`;
       navigator.clipboard.writeText(link);
       toast.success(`Link generated (expires in ${ttlDays} days) and copied!`);
+      logGosAction('generate_link', 'onboarding_token', sessionId, clientName, { metadata: { ttl_days: ttlDays } });
     }
     loadTokens(sessionId);
   };
