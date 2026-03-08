@@ -5,20 +5,28 @@ import { AlertTriangle, TrendingUp, RefreshCw, CheckCircle2, TrendingDown } from
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { format, subDays } from 'date-fns';
+import { toClientCategory, type ClientCategory } from './categoryMetrics';
 
 interface AlertItem {
   id: string;
-  type: 'no_leads' | 'high_cpl' | 'sync_delay' | 'spend_spike';
+  type: 'no_conversions' | 'high_cost' | 'sync_delay' | 'spend_spike';
   clientId?: string;
   message: string;
 }
 
 const typeConfig = {
-  no_leads: { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10' },
-  high_cpl: { icon: TrendingUp, color: 'text-warning', bg: 'bg-warning/10' },
+  no_conversions: { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10' },
+  high_cost: { icon: TrendingUp, color: 'text-warning', bg: 'bg-warning/10' },
   sync_delay: { icon: RefreshCw, color: 'text-info', bg: 'bg-info/10' },
   spend_spike: { icon: TrendingDown, color: 'text-orange-400', bg: 'bg-orange-500/10' },
 };
+
+/** Categories where the primary conversion is purchases/revenue, not leads */
+const ECOM_CATEGORIES: ClientCategory[] = ['ecom', 'info_product', 'saas'];
+
+function isEcomLike(cat: ClientCategory) {
+  return ECOM_CATEGORIES.includes(cat);
+}
 
 export default function AttentionRequired() {
   const { t } = useLanguage();
@@ -44,82 +52,112 @@ export default function AttentionRequired() {
         });
       });
 
-      // Anomaly detection: check last 3 days vs previous 7 days for active clients
+      // Anomaly detection per client category
       const today = format(new Date(), 'yyyy-MM-dd');
       const threeDaysAgo = format(subDays(new Date(), 3), 'yyyy-MM-dd');
       const tenDaysAgo = format(subDays(new Date(), 10), 'yyyy-MM-dd');
 
       const { data: activeClients } = await supabase
         .from('clients')
-        .select('id, name')
+        .select('id, name, category')
         .eq('status', 'active');
 
       if (activeClients && activeClients.length > 0) {
         const clientIds = activeClients.map(c => c.id);
-        const nameMap: Record<string, string> = {};
-        activeClients.forEach(c => { nameMap[c.id] = c.name; });
+        const clientMap: Record<string, { name: string; category: ClientCategory }> = {};
+        activeClients.forEach(c => {
+          clientMap[c.id] = { name: c.name, category: toClientCategory(c.category) };
+        });
 
         const { data: recentMetrics } = await supabase
           .from('daily_metrics')
-          .select('client_id, date, spend, leads')
+          .select('client_id, date, spend, leads, purchases, revenue')
           .in('client_id', clientIds)
           .gte('date', tenDaysAgo)
           .lte('date', today);
 
         if (recentMetrics) {
-          // Group by client
-          const byClient: Record<string, { recent: { spend: number; leads: number; days: number }; prev: { spend: number; leads: number; days: number } }> = {};
-          
+          const byClient: Record<string, {
+            recent: { spend: number; leads: number; purchases: number; revenue: number; days: number };
+            prev: { spend: number; leads: number; purchases: number; revenue: number; days: number };
+          }> = {};
+
           recentMetrics.forEach(m => {
             if (!byClient[m.client_id]) {
               byClient[m.client_id] = {
-                recent: { spend: 0, leads: 0, days: 0 },
-                prev: { spend: 0, leads: 0, days: 0 },
+                recent: { spend: 0, leads: 0, purchases: 0, revenue: 0, days: 0 },
+                prev: { spend: 0, leads: 0, purchases: 0, revenue: 0, days: 0 },
               };
             }
             const bucket = m.date >= threeDaysAgo ? 'recent' : 'prev';
-            byClient[m.client_id][bucket].spend += Number(m.spend);
-            byClient[m.client_id][bucket].leads += m.leads;
-            byClient[m.client_id][bucket].days += 1;
+            const b = byClient[m.client_id][bucket];
+            b.spend += Number(m.spend);
+            b.leads += m.leads;
+            b.purchases += (m.purchases || 0);
+            b.revenue += Number(m.revenue || 0);
+            b.days += 1;
           });
 
           Object.entries(byClient).forEach(([clientId, data]) => {
-            const name = nameMap[clientId] || 'Client';
-            
-            // Alert: active client spending but 0 leads in last 3 days
-            if (data.recent.spend > 50 && data.recent.leads === 0 && data.recent.days >= 2) {
+            const info = clientMap[clientId];
+            if (!info) return;
+            const { name, category } = info;
+            const ecom = isEcomLike(category);
+
+            // Choose the right conversion metric based on category
+            const recentConversions = ecom ? data.recent.purchases : data.recent.leads;
+            const prevConversions = ecom ? data.prev.purchases : data.prev.leads;
+            const conversionLabel = ecom ? 'purchases' : 'leads';
+
+            // Alert: active client spending but 0 conversions in last 3 days
+            if (data.recent.spend > 50 && recentConversions === 0 && data.recent.days >= 2) {
               result.push({
-                id: `no-leads-${clientId}`,
-                type: 'no_leads',
+                id: `no-conv-${clientId}`,
+                type: 'no_conversions',
                 clientId,
-                message: `${name}: No leads in ${data.recent.days} days (spent $${data.recent.spend.toFixed(0)})`,
+                message: `${name}: No ${conversionLabel} in ${data.recent.days} days (spent $${data.recent.spend.toFixed(0)})`,
               });
             }
 
-            // Alert: CPL spike > 50% compared to previous period
-            if (data.prev.leads > 0 && data.recent.leads > 0 && data.prev.days >= 3) {
-              const prevCpl = data.prev.spend / data.prev.leads;
-              const recentCpl = data.recent.spend / data.recent.leads;
-              if (prevCpl > 0 && recentCpl > prevCpl * 1.5) {
+            // Alert: cost per conversion spike > 50%
+            if (prevConversions > 0 && recentConversions > 0 && data.prev.days >= 3) {
+              const prevCost = data.prev.spend / prevConversions;
+              const recentCost = data.recent.spend / recentConversions;
+              const costLabel = ecom ? 'CPS' : 'CPL';
+              if (prevCost > 0 && recentCost > prevCost * 1.5) {
                 result.push({
-                  id: `high-cpl-${clientId}`,
-                  type: 'high_cpl',
+                  id: `high-cost-${clientId}`,
+                  type: 'high_cost',
                   clientId,
-                  message: `${name}: CPL spike $${recentCpl.toFixed(1)} vs $${prevCpl.toFixed(1)} avg (+${(((recentCpl - prevCpl) / prevCpl) * 100).toFixed(0)}%)`,
+                  message: `${name}: ${costLabel} spike $${recentCost.toFixed(1)} vs $${prevCost.toFixed(1)} avg (+${(((recentCost - prevCost) / prevCost) * 100).toFixed(0)}%)`,
                 });
               }
             }
 
-            // Alert: spend spike > 50% 
+            // Alert: daily spend spike > 50%
             if (data.prev.days >= 3 && data.recent.days >= 2) {
-              const prevDailySpend = data.prev.spend / data.prev.days;
-              const recentDailySpend = data.recent.spend / data.recent.days;
-              if (prevDailySpend > 10 && recentDailySpend > prevDailySpend * 1.5) {
+              const prevDaily = data.prev.spend / data.prev.days;
+              const recentDaily = data.recent.spend / data.recent.days;
+              if (prevDaily > 10 && recentDaily > prevDaily * 1.5) {
                 result.push({
                   id: `spend-spike-${clientId}`,
                   type: 'spend_spike',
                   clientId,
-                  message: `${name}: Daily spend $${recentDailySpend.toFixed(0)}/day vs $${prevDailySpend.toFixed(0)}/day avg (+${(((recentDailySpend - prevDailySpend) / prevDailySpend) * 100).toFixed(0)}%)`,
+                  message: `${name}: Daily spend $${recentDaily.toFixed(0)}/day vs $${prevDaily.toFixed(0)}/day (+${(((recentDaily - prevDaily) / prevDaily) * 100).toFixed(0)}%)`,
+                });
+              }
+            }
+
+            // Ecom-specific: ROAS drop > 40%
+            if (ecom && data.prev.days >= 3 && data.recent.days >= 2 && data.prev.spend > 0 && data.recent.spend > 0) {
+              const prevRoas = data.prev.revenue / data.prev.spend;
+              const recentRoas = data.recent.revenue / data.recent.spend;
+              if (prevRoas > 0.5 && recentRoas < prevRoas * 0.6) {
+                result.push({
+                  id: `roas-drop-${clientId}`,
+                  type: 'high_cost',
+                  clientId,
+                  message: `${name}: ROAS drop ${recentRoas.toFixed(2)}x vs ${prevRoas.toFixed(2)}x avg (-${(((prevRoas - recentRoas) / prevRoas) * 100).toFixed(0)}%)`,
                 });
               }
             }
