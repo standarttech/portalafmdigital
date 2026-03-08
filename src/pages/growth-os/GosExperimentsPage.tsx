@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, FlaskConical, Loader2, Trash2, Settings2, Trophy, BarChart3, Eye, Inbox, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 
 interface VariantStats {
   variantId: string;
