@@ -71,7 +71,7 @@ export default function AuthPage() {
         >
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
-              <img src={logoAfm} alt="AFM DIGITAL" className="h-28 w-auto" />
+            <img src={logoAfm} alt="AFM DIGITAL" className="h-36 w-auto" />
             </div>
           </div>
 
