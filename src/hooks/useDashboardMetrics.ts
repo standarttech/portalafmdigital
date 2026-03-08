@@ -255,7 +255,8 @@ export function useDashboardMetrics(
       let activeCampaignsQuery = supabase
         .from('campaigns')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .ilike('campaign_name', '%AFM%');
 
       if (filters.clientIds && filters.clientIds.length > 0) {
         activeCampaignsQuery = activeCampaignsQuery.in('client_id', filters.clientIds);
