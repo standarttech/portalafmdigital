@@ -181,12 +181,12 @@ export default function ClientDashboardPage() {
     return currentMonthMetrics.reduce((sum, m) => sum + m.leads, 0);
   }, [currentMonthMetrics]);
 
-  // Platform-specific spend check — if no sheet URL, show 0 for that platform
+  // Platform-specific spend check — check both sheet URLs and direct Meta API accounts
   const platformHasData = useMemo(() => ({
-    meta: !!client?.meta_sheet_url,
+    meta: !!client?.meta_sheet_url || hasMetaApiAccounts,
     google: !!client?.google_sheet_url,
     tiktok: !!client?.tiktok_sheet_url,
-  }), [client]);
+  }), [client, hasMetaApiAccounts]);
 
   // Daily table data
   const dailyTableData = useMemo(() => {
