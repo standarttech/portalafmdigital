@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Plug, Loader2, CheckCircle2, XCircle, Settings2, Trash2, Zap } from 'lucide-react';
+import { Plus, Plug, Loader2, CheckCircle2, XCircle, Trash2, Zap, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -24,12 +25,15 @@ const categoryColors: Record<string, string> = {
 
 export default function GosIntegrationsPage() {
   const { t } = useLanguage();
+  const { effectiveRole } = useAuth();
+  const isAdmin = effectiveRole === 'AgencyAdmin';
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [instances, setInstances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingIntegration, setAddingIntegration] = useState(false);
   const [connectingTo, setConnectingTo] = useState<any | null>(null);
   const [newInt, setNewInt] = useState({ name: '', provider: '', category: 'general', description: '' });
+  const [connectSecret, setConnectSecret] = useState('');
   const [connectConfig, setConnectConfig] = useState<Record<string, string>>({});
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState('');
@@ -38,6 +42,7 @@ export default function GosIntegrationsPage() {
 
   const loadData = async () => {
     setLoading(true);
+    // RLS now handles scoping — queries will return only accessible data
     const [intRes, instRes, cRes] = await Promise.all([
       supabase.from('gos_integrations').select('*').order('name'),
       supabase.from('gos_integration_instances').select('*, gos_integrations(name, provider, category)').order('created_at', { ascending: false }),
@@ -72,15 +77,54 @@ export default function GosIntegrationsPage() {
     if (!connectingTo) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { error } = await supabase.from('gos_integration_instances').insert({
+
+    // First create the instance with clean config (no secrets)
+    const clientId = selectedClient === 'global' ? null : (selectedClient || null);
+    const { data: instance, error } = await supabase.from('gos_integration_instances').insert({
       integration_id: connectingTo.id,
       created_by: user.id,
-      client_id: selectedClient || null,
-      config: connectConfig,
+      client_id: clientId,
+      config: connectConfig, // non-sensitive config only
       is_active: true,
-    });
-    if (error) toast.error('Connection failed');
-    else { toast.success('Connected!'); setConnectingTo(null); setConnectConfig({}); setSelectedClient(''); loadData(); }
+    }).select('id').single();
+
+    if (error) { toast.error('Connection failed'); return; }
+
+    // If a secret was provided, store it securely via edge function
+    if (connectSecret && instance) {
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/gos-store-secret`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.session?.access_token}`,
+            },
+            body: JSON.stringify({
+              instance_id: instance.id,
+              secret_value: connectSecret,
+              config: connectConfig,
+            }),
+          }
+        );
+        if (!res.ok) {
+          console.error('Failed to store secret securely');
+          toast.error('Connected but secret storage failed — update secret later');
+        }
+      } catch (e) {
+        console.error('Secret storage error:', e);
+      }
+    }
+
+    toast.success('Connected!');
+    setConnectingTo(null);
+    setConnectSecret('');
+    setConnectConfig({});
+    setSelectedClient('');
+    loadData();
   };
 
   const toggleInstance = async (id: string, active: boolean) => {
@@ -103,19 +147,22 @@ export default function GosIntegrationsPage() {
           <h1 className="text-xl font-bold text-foreground">{t('gos.integrations' as TranslationKey)}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t('gos.integrationsDesc' as TranslationKey)}</p>
         </div>
-        <Button size="sm" onClick={() => setAddingIntegration(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" /> Add Integration
-        </Button>
+        {isAdmin && (
+          <Button size="sm" onClick={() => setAddingIntegration(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Add Integration
+          </Button>
+        )}
       </div>
 
-      {/* Available Integrations */}
       {integrations.length === 0 && instances.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Plug className="h-12 w-12 text-muted-foreground/50 mb-3" />
             <p className="text-sm text-muted-foreground mb-1">No integrations configured yet</p>
             <p className="text-xs text-muted-foreground mb-3">Add CRM, Ad Platform, or Analytics integrations</p>
-            <Button size="sm" variant="outline" onClick={() => setAddingIntegration(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add First</Button>
+            {isAdmin && (
+              <Button size="sm" variant="outline" onClick={() => setAddingIntegration(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add First</Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -134,7 +181,9 @@ export default function GosIntegrationsPage() {
                     <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setConnectingTo(int)}>
                       <Zap className="h-3 w-3" /> Connect
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteIntegration(int.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteIntegration(int.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -152,7 +201,10 @@ export default function GosIntegrationsPage() {
                         {inst.is_active ? <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" /> : <XCircle className="h-4 w-4 text-destructive flex-shrink-0" />}
                         <div className="min-w-0">
                           <span className="text-sm text-foreground block truncate">{(inst as any).gos_integrations?.name || 'Integration'}</span>
-                          {inst.error_message && <span className="text-xs text-destructive block truncate">{inst.error_message}</span>}
+                          <div className="flex items-center gap-1">
+                            {inst.vault_secret_ref && <ShieldCheck className="h-3 w-3 text-emerald-400" />}
+                            {inst.error_message && <span className="text-xs text-destructive block truncate">{inst.error_message}</span>}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -168,7 +220,7 @@ export default function GosIntegrationsPage() {
         </>
       )}
 
-      {/* Add Integration Dialog */}
+      {/* Add Integration Dialog — admin only */}
       <Dialog open={addingIntegration} onOpenChange={setAddingIntegration}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Add Integration</DialogTitle></DialogHeader>
@@ -197,7 +249,7 @@ export default function GosIntegrationsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Connect Dialog */}
+      {/* Connect Dialog — secrets go to Vault, not plaintext */}
       <Dialog open={!!connectingTo} onOpenChange={open => { if (!open) setConnectingTo(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Connect {connectingTo?.name}</DialogTitle></DialogHeader>
@@ -213,8 +265,16 @@ export default function GosIntegrationsPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">API Key / Token</label>
-              <Input type="password" value={connectConfig.api_key || ''} onChange={e => setConnectConfig({ ...connectConfig, api_key: e.target.value })} placeholder="Enter API key..." />
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <ShieldCheck className="h-3 w-3 text-emerald-400" /> API Key / Token (stored securely)
+              </label>
+              <Input
+                type="password"
+                value={connectSecret}
+                onChange={e => setConnectSecret(e.target.value)}
+                placeholder="Enter API key..."
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Stored in encrypted vault — never visible again after save</p>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Account ID (optional)</label>

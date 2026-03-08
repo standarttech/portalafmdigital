@@ -32,6 +32,8 @@ import ScalingStackThanks from "@/scaling-stack/ScalingStackThanks";
 import ScalingStackPrivacy from "@/scaling-stack/ScalingStackPrivacy";
 import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
 import NotFound from "./pages/NotFound";
+const EmbedFormPage = React.lazy(() => import("@/pages/embed/EmbedFormPage"));
+const EmbedLandingPage = React.lazy(() => import("@/pages/embed/EmbedLandingPage"));
 import CrmLayout from "@/components/layout/CrmLayout";
 import AdminScaleLayout from "@/components/layout/AdminScaleLayout";
 import GrowthOsLayout from "@/components/layout/GrowthOsLayout";
@@ -203,6 +205,17 @@ function AppRoutes() {
 
   // Public routes — always accessible
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+
+  // Public embed routes — no auth, no layout
+  if (currentPath.startsWith("/embed/")) {
+    return (
+      <Routes>
+        <Route path="/embed/form/:id" element={<EmbedFormPage />} />
+        <Route path="/embed/landing/:id" element={<EmbedLandingPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
 
   if (currentPath.startsWith("/scaling-stack")) {
     return (

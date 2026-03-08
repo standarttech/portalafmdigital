@@ -36,6 +36,7 @@ export default function GosFormsPage() {
 
   const loadForms = async () => {
     setLoading(true);
+    // RLS handles scoping — only forms the user has access to are returned
     const { data } = await supabase.from('gos_forms').select('*').order('updated_at', { ascending: false });
     setForms(data || []);
     setLoading(false);
@@ -47,6 +48,8 @@ export default function GosFormsPage() {
     const { data, error } = await supabase.from('gos_forms').insert({
       name: 'New Form',
       created_by: user.id,
+      // Note: client_id is null = global form. 
+      // Users can set client_id via future UI enhancement.
       fields: [
         { id: 'name', type: 'text', label: 'Name', required: true, placeholder: 'Your name' },
         { id: 'email', type: 'email', label: 'Email', required: true, placeholder: 'email@example.com' },
@@ -80,11 +83,11 @@ export default function GosFormsPage() {
 
   const loadSubmissions = async (formId: string) => {
     setViewingSubmissions(formId);
+    // RLS scopes submissions through parent form's client access
     const { data } = await supabase.from('gos_form_submissions').select('*').eq('form_id', formId).order('created_at', { ascending: false }).limit(100);
     setSubmissions(data || []);
   };
 
-  // Field editor helpers
   const addField = () => {
     if (!editing) return;
     const id = `field_${Date.now()}`;
@@ -112,7 +115,17 @@ export default function GosFormsPage() {
     setEditing({ ...editing, fields });
   };
 
+  // Use real edge function URL for embed code
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   const embedCode = editing ? `<iframe src="${window.location.origin}/embed/form/${editing.id}" width="100%" height="500" frameborder="0"></iframe>` : '';
+  const apiEndpoint = editing ? `https://${projectId}.supabase.co/functions/v1/gos-form-submit` : '';
+
+  const statusColor: Record<string, string> = {
+    draft: 'bg-muted text-muted-foreground',
+    published: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    archived: 'bg-destructive/10 text-destructive',
+  };
 
   return (
     <div className="space-y-6">
@@ -143,7 +156,7 @@ export default function GosFormsPage() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-medium text-foreground text-sm truncate flex-1">{form.name}</h3>
-                  <Badge variant="outline" className="text-[10px]">{form.status}</Badge>
+                  <Badge className={`text-[10px] ${statusColor[form.status] || statusColor.draft}`}>{form.status}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">{(form.fields || []).length} fields · {form.submit_action}</p>
                 <div className="flex gap-1.5">
@@ -216,10 +229,11 @@ export default function GosFormsPage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
                       <SelectItem value="archived">Archived</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Only published forms accept public submissions and can be embedded.</p>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Submit Action</label>
@@ -236,6 +250,11 @@ export default function GosFormsPage() {
 
               <TabsContent value="embed" className="flex-1 overflow-auto p-1">
                 <div className="space-y-3">
+                  {editing.status !== 'published' && (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                      <p className="text-xs text-amber-400">⚠ Form must be published before it can accept public submissions.</p>
+                    </div>
+                  )}
                   <div className="rounded-lg bg-muted p-4">
                     <p className="text-xs text-muted-foreground mb-2">Embed code (iframe):</p>
                     <code className="text-xs text-foreground break-all block bg-background p-3 rounded border border-border">{embedCode}</code>
@@ -244,10 +263,13 @@ export default function GosFormsPage() {
                     </Button>
                   </div>
                   <div className="rounded-lg bg-muted p-4">
-                    <p className="text-xs text-muted-foreground mb-2">API endpoint:</p>
+                    <p className="text-xs text-muted-foreground mb-2">API endpoint (POST):</p>
                     <code className="text-xs text-foreground break-all block bg-background p-3 rounded border border-border">
-                      POST /api/form-submit/{editing.id}
+                      {apiEndpoint}
                     </code>
+                    <p className="text-[10px] text-muted-foreground mt-2">
+                      Body: {`{"form_id": "${editing.id}", "data": {"name": "...", "email": "..."}, "source": "api"}`}
+                    </p>
                   </div>
                 </div>
               </TabsContent>
@@ -277,7 +299,7 @@ export default function GosFormsPage() {
                     <Badge variant="outline" className="text-[10px]">{sub.source || 'direct'}</Badge>
                   </div>
                   <div className="grid grid-cols-2 gap-1">
-                    {Object.entries(sub.data || {}).map(([key, val]) => (
+                    {Object.entries((sub.data as Record<string, unknown>) || {}).map(([key, val]) => (
                       <div key={key}>
                         <span className="text-[10px] text-muted-foreground">{key}:</span>
                         <span className="text-xs text-foreground ml-1">{String(val)}</span>
