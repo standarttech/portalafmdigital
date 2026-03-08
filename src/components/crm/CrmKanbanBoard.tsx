@@ -205,7 +205,7 @@ export default function CrmKanbanBoard({ stages, leads, onMoveLead, onLeadClick,
       onDragEnd={handleDragEnd}
     >
       <ScrollArea className="w-full">
-        <div className="flex gap-3 pb-4 min-h-[400px]" style={{ minWidth: stages.length * 296 }}>
+        <div className="flex gap-2 sm:gap-3 pb-4 min-h-[400px]" style={{ minWidth: stages.length * 256 }}>
           {stages.map(stage => (
             <StageColumn
               key={stage.id}
