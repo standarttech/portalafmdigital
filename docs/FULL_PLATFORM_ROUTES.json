@@ -1,0 +1,20 @@
+{
+  "route_groups": {
+    "public_website": ["/", "/home", "/about", "/services", "/case-studies", "/contact", "/privacy", "/terms", "/cookies"],
+    "auth": ["/auth", "/request-access", "/invite", "/set-password", "/setup"],
+    "internal_app": ["/dashboard", "/clients", "/clients/:id", "/users", "/presence", "/sync", "/reports", "/audit", "/decomposition", "/budget", "/broadcasts", "/calendar", "/tasks", "/chat", "/profile", "/glossary", "/branding"],
+    "portal": ["/portal", "/portal/campaigns", "/portal/recommendations", "/portal/reports", "/portal/files", "/portal/settings"],
+    "portal_auth": ["/portal/login", "/portal/accept-invite"],
+    "crm": ["/crm", "/crm/leads", "/crm/analytics", "/crm/integrations", "/crm/webhooks", "/crm/settings"],
+    "afm_internal": ["/afm-internal", "/afm-internal/media", "/afm-internal/social", "/afm-internal/sales", "/afm-internal/stats", "/afm-internal/tools", "/afm-internal/finance", "/afm-internal/income-plan", "/afm-internal/financial-planning", "/afm-internal/settings"],
+    "adminscale": ["/adminscale", "/adminscale/editor", "/adminscale/overview", "/adminscale/reference"],
+    "growth_os": ["/growth-os", "/growth-os/landing-templates", "/growth-os/forms", "/growth-os/onboarding", "/growth-os/onboarding/:sessionId", "/growth-os/integrations", "/growth-os/lead-routing", "/growth-os/analytics", "/growth-os/experiments", "/growth-os/health", "/growth-os/integrity"],
+    "ai_ads": ["/ai-ads", "/ai-ads/accounts", "/ai-ads/analysis", "/ai-ads/recommendations", "/ai-ads/hypotheses", "/ai-ads/drafts", "/ai-ads/executions", "/ai-ads/intelligence", "/ai-ads/optimization", "/ai-ads/creatives", "/ai-ads/presets", "/ai-ads/client-report"],
+    "ai_infra": ["/ai-infra", "/ai-infra/providers", "/ai-infra/routes", "/ai-infra/tasks", "/ai-infra/logs", "/ai-infra/health"],
+    "embeds": ["/embed/form/:id", "/embed/landing/:id", "/embed/onboarding/:token"],
+    "scaling_stack": ["/scaling-stack", "/scaling-stack2", "/scaling-stack/apply", "/scaling-stack/apply/thanks", "/scaling-stack/privacy", "/scaling-stack/terms"]
+  },
+  "total_routes": 95,
+  "guarded_modules": ["crm", "afm_internal", "adminscale", "growth_os", "ai_ads", "ai_infra"],
+  "guard_mechanism": "ModuleGuard component checking user_permissions table"
+}

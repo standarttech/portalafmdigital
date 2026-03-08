@@ -87,13 +87,18 @@ export default function AdminPortalFiles() {
 
     if (error) { toast.error(error.message); setSaving(false); return; }
 
-    // Create portal notification for file shared
-    await supabase.from('portal_notifications' as any).insert({
-      client_id: fClientId,
-      type: 'file_shared',
-      title: 'New file shared',
-      message: `"${fTitle}" has been shared with you.`,
-    } as any);
+    // Create portal notification for file shared (respects preferences via DB function)
+    const { data: prefEnabled } = await supabase.rpc('portal_notification_enabled' as any, {
+      _client_id: fClientId, _type: 'file_shared',
+    });
+    if (prefEnabled !== false) {
+      await supabase.from('portal_notifications' as any).insert({
+        client_id: fClientId,
+        type: 'file_shared',
+        title: 'New file shared',
+        message: `"${fTitle}" has been shared with you.`,
+      } as any);
+    }
 
     // Audit
     await supabase.from('audit_log').insert({

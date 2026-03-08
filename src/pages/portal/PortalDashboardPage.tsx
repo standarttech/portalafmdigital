@@ -9,32 +9,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import PortalDateFilter, { type DateRange } from '@/components/portal/PortalDateFilter';
 import PeriodComparison from '@/components/portal/PeriodComparison';
 import { exportPerformanceSummary } from '@/lib/portalExport';
+import { getPreviousPeriod } from '@/lib/portalPeriod';
 import { toast } from 'sonner';
-import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
 
-/** Calendar-correct previous period */
-function getPreviousPeriod(range: DateRange): { from: Date; to: Date; label: string } {
-  // For "Previous month" → use the month before that
-  if (range.label === 'Previous month') {
-    const refMonth = subMonths(range.from, 1);
-    return { from: startOfMonth(refMonth), to: endOfMonth(refMonth), label: 'month before' };
-  }
-  // For "This month" → use previous calendar month
-  if (range.label === 'This month') {
-    const prev = subMonths(new Date(), 1);
-    return { from: startOfMonth(prev), to: endOfMonth(prev), label: 'previous month' };
-  }
-  // Duration-based for 7d/30d
-  const duration = range.to.getTime() - range.from.getTime();
-  return {
-    from: new Date(range.from.getTime() - duration),
-    to: new Date(range.from.getTime() - 1),
-    label: 'previous period',
-  };
-}
 
 function dedup(snapshots: any[]): any[] {
   const map = new Map<string, any>();
