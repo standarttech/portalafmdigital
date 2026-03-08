@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Plug, Loader2, CheckCircle2, XCircle, Trash2, Zap, ShieldCheck, AlertCircle, Link2, ExternalLink } from 'lucide-react';
+import { Plus, Plug, Loader2, CheckCircle2, XCircle, Trash2, Zap, ShieldCheck, AlertCircle, Link2, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
 
@@ -24,7 +24,6 @@ const categoryColors: Record<string, string> = {
   general: 'border-muted text-muted-foreground',
 };
 
-// Platform integrations that already exist outside GOS
 const PLATFORM_INTEGRATIONS = [
   { name: 'Meta / Facebook Ads', provider: 'Meta', category: 'ads', description: 'OAuth-based Meta Ads integration with automatic data sync', managedAt: '/clients', status: 'platform' },
   { name: 'Google Sheets', provider: 'Google', category: 'analytics', description: 'Sheet URL-based data import for metrics', managedAt: '/clients', status: 'platform' },
@@ -34,12 +33,9 @@ const PLATFORM_INTEGRATIONS = [
 ];
 
 function getInstanceStatusBadge(inst: any) {
-  const hasError = !!inst.error_message;
-  const neverSynced = !inst.last_sync_at;
-
-  if (hasError) return { label: 'error', className: 'border-destructive/30 text-destructive bg-destructive/5' };
+  if (inst.error_message) return { label: 'error', className: 'border-destructive/30 text-destructive bg-destructive/5' };
   if (!inst.is_active) return { label: 'inactive', className: 'border-muted text-muted-foreground' };
-  if (neverSynced) return { label: 'never synced', className: 'border-amber-500/30 text-amber-400 bg-amber-500/5' };
+  if (!inst.last_sync_at) return { label: 'never synced', className: 'border-amber-500/30 text-amber-400 bg-amber-500/5' };
   return { label: 'active', className: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' };
 }
 
@@ -58,6 +54,7 @@ export default function GosIntegrationsPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState('');
   const [platformConnections, setPlatformConnections] = useState<any[]>([]);
+  const [testingInstance, setTestingInstance] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -67,7 +64,6 @@ export default function GosIntegrationsPage() {
       supabase.from('gos_integrations').select('*').order('name'),
       supabase.from('gos_integration_instances').select('*, gos_integrations(name, provider, category)').order('created_at', { ascending: false }),
       supabase.from('clients').select('id, name').order('name'),
-      // Load platform connections to show linked status
       supabase.from('platform_connections').select('id, platform, client_id, status').limit(100),
     ]);
     setIntegrations(intRes.data || []);
@@ -79,92 +75,79 @@ export default function GosIntegrationsPage() {
 
   const createIntegration = async () => {
     if (!newInt.name || !newInt.provider) { toast.error('Name and provider are required'); return; }
-    const { error } = await supabase.from('gos_integrations').insert({
-      name: newInt.name,
-      provider: newInt.provider,
-      category: newInt.category,
-      description: newInt.description,
-      config_schema: {},
-    });
+    const { error } = await supabase.from('gos_integrations').insert({ name: newInt.name, provider: newInt.provider, category: newInt.category, description: newInt.description, config_schema: {} });
     if (error) toast.error('Failed to create');
     else { toast.success('Integration added'); setAddingIntegration(false); setNewInt({ name: '', provider: '', category: 'general', description: '' }); loadData(); }
   };
 
   const deleteIntegration = async (id: string) => {
     await supabase.from('gos_integrations').delete().eq('id', id);
-    toast.success('Integration removed');
-    loadData();
+    toast.success('Integration removed'); loadData();
   };
 
   const connectIntegration = async () => {
     if (!connectingTo) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     const clientId = selectedClient === 'global' ? null : (selectedClient || null);
-    const { data: instance, error } = await supabase.from('gos_integration_instances').insert({
-      integration_id: connectingTo.id,
-      created_by: user.id,
-      client_id: clientId,
-      config: connectConfig,
-      is_active: true,
-    }).select('id').single();
-
+    const { data: instance, error } = await supabase.from('gos_integration_instances').insert({ integration_id: connectingTo.id, created_by: user.id, client_id: clientId, config: connectConfig, is_active: true }).select('id').single();
     if (error) { toast.error('Connection failed'); return; }
-
     if (connectSecret && instance) {
       try {
         const { data: session } = await supabase.auth.getSession();
         const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        const res = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/gos-store-secret`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session?.session?.access_token}`,
-            },
-            body: JSON.stringify({
-              instance_id: instance.id,
-              secret_value: connectSecret,
-              config: connectConfig,
-            }),
-          }
-        );
-        if (!res.ok) {
-          toast.error('Connected but secret storage failed — update secret later');
-        }
-      } catch (e) {
-        console.error('Secret storage error:', e);
-      }
+        await fetch(`https://${projectId}.supabase.co/functions/v1/gos-store-secret`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.session?.access_token}` },
+          body: JSON.stringify({ instance_id: instance.id, secret_value: connectSecret, config: connectConfig }),
+        });
+      } catch (e) { console.error('Secret storage error:', e); }
     }
-
     toast.success('Connected!');
-    setConnectingTo(null);
-    setConnectSecret('');
-    setConnectConfig({});
-    setSelectedClient('');
+    setConnectingTo(null); setConnectSecret(''); setConnectConfig({}); setSelectedClient('');
     loadData();
   };
 
+  const testConnection = async (instanceId: string) => {
+    setTestingInstance(instanceId);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/gos-test-connection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.session?.access_token}` },
+        body: JSON.stringify({ instance_id: instanceId }),
+      });
+      const result = await res.json();
+      if (result.status === 'healthy') {
+        toast.success(`Connection healthy: ${result.message}`);
+      } else if (result.status === 'failed') {
+        toast.error(`Connection failed: ${result.message}`);
+      } else {
+        toast.info(result.message || 'Test not available for this integration');
+      }
+      loadData();
+    } catch {
+      toast.error('Test failed');
+    } finally {
+      setTestingInstance(null);
+    }
+  };
+
   const toggleInstance = async (id: string, active: boolean) => {
-    await supabase.from('gos_integration_instances').update({ is_active: !active }).eq('id', id);
-    loadData();
+    await supabase.from('gos_integration_instances').update({ is_active: !active }).eq('id', id); loadData();
   };
 
   const deleteInstance = async (id: string) => {
     await supabase.from('gos_integration_instances').delete().eq('id', id);
-    toast.success('Connection removed');
-    loadData();
+    toast.success('Connection removed'); loadData();
   };
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   const hasPlatformConnection = (provider: string) => {
     const map: Record<string, string> = { 'Meta': 'facebook', 'Google': 'google', 'Telegram': 'telegram' };
-    const platform = map[provider];
-    if (!platform) return false;
-    return platformConnections.some((pc: any) => pc.platform === platform);
+    return platformConnections.some((pc: any) => pc.platform === map[provider]);
   };
 
   return (
@@ -174,11 +157,7 @@ export default function GosIntegrationsPage() {
           <h1 className="text-xl font-bold text-foreground">{t('gos.integrations' as TranslationKey)}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t('gos.integrationsDesc' as TranslationKey)}</p>
         </div>
-        {isAdmin && (
-          <Button size="sm" onClick={() => setAddingIntegration(true)} className="gap-1.5">
-            <Plus className="h-4 w-4" /> Add Integration
-          </Button>
-        )}
+        {isAdmin && <Button size="sm" onClick={() => setAddingIntegration(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add Integration</Button>}
       </div>
 
       <Tabs defaultValue="gos">
@@ -193,10 +172,7 @@ export default function GosIntegrationsPage() {
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <Plug className="h-12 w-12 text-muted-foreground/50 mb-3" />
                 <p className="text-sm text-muted-foreground mb-1">No GOS integrations configured yet</p>
-                <p className="text-xs text-muted-foreground mb-3">Add custom integrations or check Platform tab for existing connections</p>
-                {isAdmin && (
-                  <Button size="sm" variant="outline" onClick={() => setAddingIntegration(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add First</Button>
-                )}
+                {isAdmin && <Button size="sm" variant="outline" onClick={() => setAddingIntegration(true)} className="gap-1.5 mt-3"><Plus className="h-4 w-4" /> Add First</Button>}
               </CardContent>
             </Card>
           ) : (
@@ -212,48 +188,39 @@ export default function GosIntegrationsPage() {
                       <p className="text-xs text-muted-foreground mb-1">{int.provider}</p>
                       {int.description && <p className="text-xs text-muted-foreground mb-3">{int.description}</p>}
                       <div className="flex gap-1.5">
-                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setConnectingTo(int)}>
-                          <Zap className="h-3 w-3" /> Connect
-                        </Button>
-                        {isAdmin && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteIntegration(int.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                        )}
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setConnectingTo(int)}><Zap className="h-3 w-3" /> Connect</Button>
+                        {isAdmin && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteIntegration(int.id)}><Trash2 className="h-3.5 w-3.5" /></Button>}
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-
               {instances.length > 0 && (
                 <div>
                   <h2 className="text-sm font-semibold text-foreground mb-3">Active Connections</h2>
                   <div className="space-y-2">
                     {instances.map(inst => {
                       const statusBadge = getInstanceStatusBadge(inst);
+                      const isTesting = testingInstance === inst.id;
                       return (
                         <Card key={inst.id}>
                           <CardContent className="p-3 flex items-center justify-between">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {inst.is_active && !inst.error_message ? (
-                                <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                              ) : inst.error_message ? (
-                                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-                              ) : (
-                                <XCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              )}
+                              {inst.is_active && !inst.error_message ? <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" /> : inst.error_message ? <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" /> : <XCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
                               <div className="min-w-0">
                                 <span className="text-sm text-foreground block truncate">{(inst as any).gos_integrations?.name || 'Integration'}</span>
                                 <div className="flex items-center gap-1">
                                   {inst.vault_secret_ref && <ShieldCheck className="h-3 w-3 text-emerald-400" />}
                                   <Badge variant="outline" className={`text-[10px] ${statusBadge.className}`}>{statusBadge.label}</Badge>
-                                  {inst.last_sync_at && (
-                                    <span className="text-[10px] text-muted-foreground">Last sync: {new Date(inst.last_sync_at).toLocaleDateString()}</span>
-                                  )}
+                                  {inst.last_sync_at && <span className="text-[10px] text-muted-foreground">Tested: {new Date(inst.last_sync_at).toLocaleDateString()}</span>}
                                 </div>
                                 {inst.error_message && <span className="text-xs text-destructive block truncate">{inst.error_message}</span>}
                               </div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => testConnection(inst.id)} disabled={isTesting} title="Test connection">
+                                {isTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wifi className="h-3.5 w-3.5" />}
+                              </Button>
                               <Switch checked={inst.is_active} onCheckedChange={() => toggleInstance(inst.id, inst.is_active)} />
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteInstance(inst.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                             </div>
@@ -269,9 +236,7 @@ export default function GosIntegrationsPage() {
         </TabsContent>
 
         <TabsContent value="platform" className="mt-4">
-          <p className="text-xs text-muted-foreground mb-4">
-            These integrations are managed at the platform level. They are available for all clients and do not need to be recreated in Growth OS.
-          </p>
+          <p className="text-xs text-muted-foreground mb-4">These integrations are managed at the platform level.</p>
           <div className="grid gap-3 md:grid-cols-2">
             {PLATFORM_INTEGRATIONS.map(pi => {
               const linked = hasPlatformConnection(pi.provider);
@@ -282,20 +247,11 @@ export default function GosIntegrationsPage() {
                       <h3 className="font-medium text-foreground text-sm">{pi.name}</h3>
                       <div className="flex gap-1">
                         <Badge variant="outline" className={`text-[10px] ${categoryColors[pi.category] || categoryColors.general}`}>{pi.category}</Badge>
-                        {linked ? (
-                          <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">linked</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]">available</Badge>
-                        )}
+                        {linked ? <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">linked</Badge> : <Badge variant="outline" className="text-[10px]">available</Badge>}
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mb-3">{pi.description}</p>
-                    {pi.managedAt && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Link2 className="h-3 w-3" />
-                        <span>Managed in platform settings</span>
-                      </div>
-                    )}
+                    {pi.managedAt && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Link2 className="h-3 w-3" /><span>Managed in platform settings</span></div>}
                   </CardContent>
                 </Card>
               );
@@ -309,25 +265,15 @@ export default function GosIntegrationsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Add Integration</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Name</label>
-              <Input value={newInt.name} onChange={e => setNewInt({ ...newInt, name: e.target.value })} placeholder="e.g. HubSpot" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Provider</label>
-              <Input value={newInt.provider} onChange={e => setNewInt({ ...newInt, provider: e.target.value })} placeholder="e.g. HubSpot" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Category</label>
+            <div><label className="text-xs font-medium text-muted-foreground">Name</label><Input value={newInt.name} onChange={e => setNewInt({ ...newInt, name: e.target.value })} placeholder="e.g. HubSpot" /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Provider</label><Input value={newInt.provider} onChange={e => setNewInt({ ...newInt, provider: e.target.value })} placeholder="e.g. HubSpot" /></div>
+            <div><label className="text-xs font-medium text-muted-foreground">Category</label>
               <Select value={newInt.category} onValueChange={v => setNewInt({ ...newInt, category: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <Textarea value={newInt.description} onChange={e => setNewInt({ ...newInt, description: e.target.value })} rows={2} />
-            </div>
+            <div><label className="text-xs font-medium text-muted-foreground">Description</label><Textarea value={newInt.description} onChange={e => setNewInt({ ...newInt, description: e.target.value })} rows={2} /></div>
           </div>
           <DialogFooter><Button size="sm" onClick={createIntegration}>Add</Button></DialogFooter>
         </DialogContent>
@@ -349,20 +295,9 @@ export default function GosIntegrationsPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <ShieldCheck className="h-3 w-3 text-emerald-400" /> API Key / Token (stored securely)
-              </label>
-              <Input
-                type="password"
-                value={connectSecret}
-                onChange={e => setConnectSecret(e.target.value)}
-                placeholder="Enter API key..."
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">Stored in encrypted vault — never visible again after save</p>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Account ID (optional)</label>
-              <Input value={connectConfig.account_id || ''} onChange={e => setConnectConfig({ ...connectConfig, account_id: e.target.value })} />
+              <label className="text-xs font-medium text-muted-foreground">API Key / Secret</label>
+              <Input type="password" value={connectSecret} onChange={e => setConnectSecret(e.target.value)} placeholder="Stored securely in vault" />
+              <p className="text-[10px] text-muted-foreground mt-1">Secret is stored in vault and never exposed in UI.</p>
             </div>
           </div>
           <DialogFooter><Button size="sm" onClick={connectIntegration}>Connect</Button></DialogFooter>
