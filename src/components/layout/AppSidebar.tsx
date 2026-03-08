@@ -129,6 +129,7 @@ const navSections: NavSection[] = [
   {
     id: 'account', labelKey: 'nav.profile' as TranslationKey,
     items: [
+      { key: 'nav.portal' as TranslationKey, icon: BarChart3, path: '/portal' },
       { key: 'nav.glossary', icon: BookOpen, path: '/glossary' },
       { key: 'nav.profile', icon: UserCircle, path: '/profile' },
     ],

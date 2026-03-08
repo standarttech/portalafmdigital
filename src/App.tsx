@@ -434,6 +434,7 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/branding" element={<BrandingPage />} />
+        <Route path="/portal" element={<ClientPortalPage />} />
       </Route>
       {/* CRM — guarded by module permission */}
       <Route element={<ModuleGuard module="crm"><CrmLayout /></ModuleGuard>}>
