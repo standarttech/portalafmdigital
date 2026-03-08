@@ -44,16 +44,16 @@ export default function EmbedOnboardingPage() {
     if (tokenError || !tokenData) { setError('Invalid or expired link'); setLoading(false); return; }
     if (new Date(tokenData.expires_at) < new Date()) { setError('This link has expired'); setLoading(false); return; }
 
-    // Load session
+    // Load session — no join to clients table (anon user has no access to clients)
     const { data: sess, error: sessError } = await supabase
       .from('gos_onboarding_sessions')
-      .select('*, clients(name, id)')
+      .select('*')
       .eq('id', tokenData.session_id)
       .single();
 
     if (sessError || !sess) { setError('Session not found'); setLoading(false); return; }
 
-    setClientName((sess as any).clients?.name || '');
+    // Client name not available to anon users — skip
 
     if (sess.status === 'completed') {
       setSession(sess);
