@@ -331,7 +331,15 @@ function SectionConfigEditor({ type, config, onChange }: { type: string; config:
     case 'form':
       return <Input placeholder="Form ID" value={config.form_id || ''} onChange={e => update('form_id', e.target.value)} className="text-sm" />;
     case 'custom_html':
-      return <Textarea placeholder="<div>Your HTML</div>" value={config.html || ''} onChange={e => update('html', e.target.value)} rows={4} className="font-mono text-xs" />;
+      return (
+        <div className="space-y-2">
+          <Textarea placeholder="<div>Your HTML</div>" value={config.html || ''} onChange={e => update('html', e.target.value)} rows={4} className="font-mono text-xs" />
+          <p className="text-[10px] text-muted-foreground">
+            Allowed tags: div, span, p, h1-h6, a, img, ul, ol, li, table, details, video, section, article, blockquote, pre, code.
+            Scripts, iframes, forms, and event handlers are stripped for security.
+          </p>
+        </div>
+      );
     default:
       return <p className="text-xs text-muted-foreground">No editor for this section type</p>;
   }
