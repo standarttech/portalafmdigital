@@ -1780,6 +1780,412 @@ export type Database = {
           },
         ]
       }
+      gos_form_submissions: {
+        Row: {
+          created_at: string
+          data: Json
+          form_id: string
+          id: string
+          ip_address: string | null
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          form_id: string
+          id?: string
+          ip_address?: string | null
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          form_id?: string
+          id?: string
+          ip_address?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_form_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "gos_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gos_forms: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          fields: Json
+          id: string
+          name: string
+          settings: Json
+          status: string
+          submit_action: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fields?: Json
+          id?: string
+          name: string
+          settings?: Json
+          status?: string
+          submit_action?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fields?: Json
+          id?: string
+          name?: string
+          settings?: Json
+          status?: string
+          submit_action?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_forms_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gos_integration_instances: {
+        Row: {
+          client_id: string | null
+          config: Json
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          integration_id: string
+          is_active: boolean
+          last_sync_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          integration_id: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          integration_id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_integration_instances_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gos_integration_instances_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "gos_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gos_integrations: {
+        Row: {
+          category: string
+          config_schema: Json
+          created_at: string
+          description: string | null
+          icon_url: string | null
+          id: string
+          is_global: boolean
+          name: string
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          config_schema?: Json
+          created_at?: string
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          is_global?: boolean
+          name: string
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          config_schema?: Json
+          created_at?: string
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          is_global?: boolean
+          name?: string
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gos_landing_templates: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          sections: Json
+          settings: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          sections?: Json
+          settings?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          sections?: Json
+          settings?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_landing_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gos_onboarding_flows: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_default: boolean
+          name: string
+          steps: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          steps?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          steps?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gos_onboarding_sessions: {
+        Row: {
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          current_step: number
+          data: Json
+          flow_id: string | null
+          id: string
+          started_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          data?: Json
+          flow_id?: string | null
+          id?: string
+          started_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          data?: Json
+          flow_id?: string | null
+          id?: string
+          started_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_onboarding_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gos_onboarding_sessions_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "gos_onboarding_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gos_routing_log: {
+        Row: {
+          action_taken: string | null
+          created_at: string
+          id: string
+          lead_id: string | null
+          lead_source: string | null
+          matched_conditions: Json | null
+          routed_to: string | null
+          rule_id: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          lead_source?: string | null
+          matched_conditions?: Json | null
+          routed_to?: string | null
+          rule_id?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          lead_source?: string | null
+          matched_conditions?: Json | null
+          routed_to?: string | null
+          rule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_routing_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "gos_routing_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gos_routing_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          client_id: string | null
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type?: string
+          client_id?: string | null
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          client_id?: string | null
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_routing_rules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -2528,6 +2934,7 @@ export type Database = {
           can_access_adminscale: boolean
           can_access_afm_internal: boolean
           can_access_crm: boolean
+          can_access_growth_os: boolean
           can_add_clients: boolean
           can_assign_clients_to_users: boolean
           can_connect_integrations: boolean
@@ -2547,6 +2954,7 @@ export type Database = {
           can_access_adminscale?: boolean
           can_access_afm_internal?: boolean
           can_access_crm?: boolean
+          can_access_growth_os?: boolean
           can_add_clients?: boolean
           can_assign_clients_to_users?: boolean
           can_connect_integrations?: boolean
@@ -2566,6 +2974,7 @@ export type Database = {
           can_access_adminscale?: boolean
           can_access_afm_internal?: boolean
           can_access_crm?: boolean
+          can_access_growth_os?: boolean
           can_add_clients?: boolean
           can_assign_clients_to_users?: boolean
           can_connect_integrations?: boolean
