@@ -86,19 +86,34 @@ export default function AiAdsHypothesesPage() {
 
   const convertToDraft = async (thread: Thread) => {
     if (!user) return;
+    const campaignName = `${thread.title.slice(0, 80)}`;
     const { data, error } = await supabase.from('campaign_drafts' as any).insert({
-      client_id: thread.client_id,
-      created_by: user.id,
-      name: `Draft: ${thread.title}`,
+      client_id: thread.client_id, created_by: user.id,
+      name: campaignName, campaign_name: campaignName,
       draft_type: 'campaign',
+      source_type: 'hypothesis', source_entity_id: thread.id,
       hypothesis_id: thread.id,
-      notes: `Created from hypothesis: ${thread.title}`,
+      ad_account_id: thread.ad_account_id || null,
+      notes: `Created from validated hypothesis: ${thread.title}`,
       metadata: { source: 'hypothesis', hypothesis_id: thread.id },
     }).select().single();
     if (error) { toast.error('Failed to create draft'); return; }
+    const draftId = (data as any).id;
+    // Create starter ad set + ad
+    await supabase.from('campaign_draft_items' as any).insert([
+      { draft_id: draftId, item_type: 'adset', name: 'Ad Set 1', sort_order: 0, config: { geo: '', age_min: 18, age_max: 65, gender: 'all', interests: '', placements: 'automatic', daily_budget: 0, optimization_goal: '' } },
+    ]);
+    const { data: adsetData } = await supabase.from('campaign_draft_items' as any).select('id').eq('draft_id', draftId).eq('item_type', 'adset').limit(1).single();
+    if (adsetData) {
+      await supabase.from('campaign_draft_items' as any).insert({
+        draft_id: draftId, item_type: 'ad', name: 'Ad 1', sort_order: 0,
+        parent_item_id: (adsetData as any).id,
+        config: { primary_text: '', headline: '', cta: 'LEARN_MORE', destination_url: '', creative_ref: '' },
+      });
+    }
     await updateThreadStatus(thread.id, 'converted');
-    logGosAction('create', 'campaign_draft', (data as any).id, `Draft: ${thread.title}`, { clientId: thread.client_id, metadata: { source: 'hypothesis', hypothesisId: thread.id } });
-    toast.success('Campaign draft created from hypothesis');
+    logGosAction('create', 'campaign_draft', draftId, campaignName, { clientId: thread.client_id, metadata: { source: 'hypothesis', hypothesisId: thread.id } });
+    toast.success('Campaign draft created with starter structure');
   };
 
   const filtered = threads.filter(t => {

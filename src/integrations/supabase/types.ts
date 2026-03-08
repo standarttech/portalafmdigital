@@ -1126,8 +1126,12 @@ export type Database = {
           id: string
           item_type: string
           name: string
+          parent_item_id: string | null
           position: number
+          sort_order: number
+          status: string
           updated_at: string
+          validation_errors: Json | null
         }
         Insert: {
           config?: Json | null
@@ -1136,8 +1140,12 @@ export type Database = {
           id?: string
           item_type?: string
           name: string
+          parent_item_id?: string | null
           position?: number
+          sort_order?: number
+          status?: string
           updated_at?: string
+          validation_errors?: Json | null
         }
         Update: {
           config?: Json | null
@@ -1146,8 +1154,12 @@ export type Database = {
           id?: string
           item_type?: string
           name?: string
+          parent_item_id?: string | null
           position?: number
+          sort_order?: number
+          status?: string
           updated_at?: string
+          validation_errors?: Json | null
         }
         Relationships: [
           {
@@ -1157,11 +1169,22 @@ export type Database = {
             referencedRelation: "campaign_drafts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaign_draft_items_parent_item_id_fkey"
+            columns: ["parent_item_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_draft_items"
+            referencedColumns: ["id"]
+          },
         ]
       }
       campaign_drafts: {
         Row: {
           ad_account_id: string | null
+          bid_strategy: string
+          budget_mode: string
+          buying_type: string
+          campaign_name: string
           client_id: string
           config: Json | null
           created_at: string
@@ -1172,14 +1195,25 @@ export type Database = {
           metadata: Json | null
           name: string
           notes: string | null
+          objective: string
           platform: string
+          preview_payload: Json | null
           recommendation_id: string | null
           session_id: string | null
+          source_entity_id: string | null
+          source_type: string
           status: string
+          total_budget: number
           updated_at: string
+          validation_errors: Json | null
+          validation_status: string
         }
         Insert: {
           ad_account_id?: string | null
+          bid_strategy?: string
+          budget_mode?: string
+          buying_type?: string
+          campaign_name?: string
           client_id: string
           config?: Json | null
           created_at?: string
@@ -1190,14 +1224,25 @@ export type Database = {
           metadata?: Json | null
           name: string
           notes?: string | null
+          objective?: string
           platform?: string
+          preview_payload?: Json | null
           recommendation_id?: string | null
           session_id?: string | null
+          source_entity_id?: string | null
+          source_type?: string
           status?: string
+          total_budget?: number
           updated_at?: string
+          validation_errors?: Json | null
+          validation_status?: string
         }
         Update: {
           ad_account_id?: string | null
+          bid_strategy?: string
+          budget_mode?: string
+          buying_type?: string
+          campaign_name?: string
           client_id?: string
           config?: Json | null
           created_at?: string
@@ -1208,11 +1253,18 @@ export type Database = {
           metadata?: Json | null
           name?: string
           notes?: string | null
+          objective?: string
           platform?: string
+          preview_payload?: Json | null
           recommendation_id?: string | null
           session_id?: string | null
+          source_entity_id?: string | null
+          source_type?: string
           status?: string
+          total_budget?: number
           updated_at?: string
+          validation_errors?: Json | null
+          validation_status?: string
         }
         Relationships: [
           {
