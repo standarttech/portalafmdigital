@@ -31,15 +31,15 @@ import ScalingStackApply from "@/scaling-stack/ScalingStackApply";
 import ScalingStackThanks from "@/scaling-stack/ScalingStackThanks";
 import ScalingStackPrivacy from "@/scaling-stack/ScalingStackPrivacy";
 import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import NotFound from "./pages/NotFound";
-const EmbedFormPage = React.lazy(() => import("@/pages/embed/EmbedFormPage"));
-const EmbedLandingPage = React.lazy(() => import("@/pages/embed/EmbedLandingPage"));
 import CrmLayout from "@/components/layout/CrmLayout";
 import AdminScaleLayout from "@/components/layout/AdminScaleLayout";
 import GrowthOsLayout from "@/components/layout/GrowthOsLayout";
 import WebsiteLayout from "@/pages/website/WebsiteLayout";
 import HomePage from "@/pages/website/HomePage";
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+const EmbedFormPage = React.lazy(() => import("@/pages/embed/EmbedFormPage"));
+const EmbedLandingPage = React.lazy(() => import("@/pages/embed/EmbedLandingPage"));
 import { supabase } from "@/integrations/supabase/client";
 
 // Lazy-loaded heavy pages
