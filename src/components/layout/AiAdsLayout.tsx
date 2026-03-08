@@ -16,6 +16,7 @@ const navItems = [
   { label: 'Overview', icon: Bot, path: '/ai-ads' },
   { label: 'Ad Accounts', icon: MonitorSmartphone, path: '/ai-ads/accounts' },
   { label: 'AI Analysis', icon: BrainCircuit, path: '/ai-ads/analysis' },
+  { label: 'Recommendations', icon: TrendingUp, path: '/ai-ads/recommendations' },
   { label: 'Hypotheses', icon: Lightbulb, path: '/ai-ads/hypotheses' },
   { label: 'Campaign Drafts', icon: FileStack, path: '/ai-ads/drafts' },
   { label: 'Executions', icon: Rocket, path: '/ai-ads/executions' },
