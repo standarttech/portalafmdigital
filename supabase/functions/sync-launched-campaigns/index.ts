@@ -313,7 +313,7 @@ serve(async (req) => {
           }
 
           if (cond.type === "high_cpc" && m.cpc > (cond.cpc_threshold || 10) && m.clicks >= (cond.min_clicks || 5)) {
-            addRec("fix_creative_issue", "High CPC alert",
+            addRec("high_cpc_alert", "High CPC alert",
               `CPC is $${m.cpc.toFixed(2)} with ${m.clicks} clicks. Preset: "${preset.name}"`,
               preset.proposed_priority || "medium",
               { cpc: m.cpc, clicks: m.clicks, preset_id: preset.id, preset_name: preset.name });
