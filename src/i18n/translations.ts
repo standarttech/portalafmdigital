@@ -1071,6 +1071,16 @@ export const translations = {
   'campaigns.noDataAtLevel': t('No data at this level for selected period.', 'Нет данных на этом уровне за выбранный период.', 'Nessun dato a questo livello.', 'Sin datos en este nivel.', 'لا توجد بيانات على هذا المستوى.', 'Aucune donnée à ce niveau.'),
   'auth.alreadyLoggedIn': t('You are already logged in', 'Вы уже авторизованы', 'Sei già connesso', 'Ya has iniciado sesión', 'أنت مسجل الدخول بالفعل', 'Vous êtes déjà connecté'),
   'auth.goToDashboard': t('Go to Dashboard', 'Войти в панель', 'Vai alla dashboard', 'Ir al panel', 'الذهاب إلى لوحة التحكم', 'Aller au tableau de bord'),
+  'columns.settings': t('Column Settings', 'Настройки колонок', 'Impostazioni colonne', 'Configuración de columnas', 'إعدادات الأعمدة', 'Paramètres des colonnes'),
+  'columns.toggleColumns': t('Toggle columns', 'Выбор колонок', 'Scegli colonne', 'Seleccionar columnas', 'تبديل الأعمدة', 'Basculer les colonnes'),
+  'columns.presets': t('Presets', 'Шаблоны', 'Modelli', 'Plantillas', 'القوالب', 'Modèles'),
+  'columns.savePreset': t('Save as preset', 'Сохранить как шаблон', 'Salva come modello', 'Guardar como plantilla', 'حفظ كقالب', 'Enregistrer comme modèle'),
+  'columns.presetName': t('Preset name', 'Название шаблона', 'Nome modello', 'Nombre de plantilla', 'اسم القالب', 'Nom du modèle'),
+  'columns.deletePreset': t('Delete preset', 'Удалить шаблон', 'Elimina modello', 'Eliminar plantilla', 'حذف القالب', 'Supprimer le modèle'),
+  'columns.resetToDefault': t('Reset to default', 'Сбросить по умолчанию', 'Ripristina predefinito', 'Restablecer predeterminado', 'إعادة تعيين', 'Réinitialiser par défaut'),
+  'columns.saved': t('Preset saved', 'Шаблон сохранён', 'Modello salvato', 'Plantilla guardada', 'تم حفظ القالب', 'Modèle enregistré'),
+  'columns.deleted': t('Preset deleted', 'Шаблон удалён', 'Modello eliminato', 'Plantilla eliminada', 'تم حذف القالب', 'Modèle supprimé'),
+  'columns.applied': t('Preset applied', 'Шаблон применён', 'Modello applicato', 'Plantilla aplicada', 'تم تطبيق القالب', 'Modèle appliqué'),
 
 } as const;
 
