@@ -112,6 +112,7 @@ const PortalRecommendationsPage = React.lazy(() => import("@/pages/portal/Portal
 const PortalReportsPage = React.lazy(() => import("@/pages/portal/PortalReportsPage"));
 const PortalSettingsPage = React.lazy(() => import("@/pages/portal/PortalSettingsPage"));
 const PortalLoginPage = React.lazy(() => import("@/pages/portal/PortalLoginPage"));
+const PortalAcceptInvitePage = React.lazy(() => import("@/pages/portal/PortalAcceptInvitePage"));
 import AiAdsLayout from "@/components/layout/AiAdsLayout";
 import AiInfraLayout from "@/components/layout/AiInfraLayout";
 const AiInfraProvidersPage = React.lazy(() => import("@/pages/ai-infra/AiInfraProvidersPage"));
@@ -251,11 +252,12 @@ function AppRoutes() {
     );
   }
 
-  // Portal login is always accessible (separate client auth)
-  if (currentPath === "/portal/login") {
+  // Portal login and accept-invite are always accessible (separate client auth)
+  if (currentPath === "/portal/login" || currentPath === "/portal/accept-invite") {
     return (
       <Routes>
         <Route path="/portal/login" element={<PortalLoginPage />} />
+        <Route path="/portal/accept-invite" element={<PortalAcceptInvitePage />} />
         <Route path="*" element={<Navigate to="/portal/login" replace />} />
       </Routes>
     );
