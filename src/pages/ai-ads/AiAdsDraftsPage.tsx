@@ -445,6 +445,62 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
     toast.success('Preview payload generated');
   };
 
+  const submitForReview = async () => {
+    if (!user) return;
+    // Run validation first
+    const errors = validateDraft(draft, items);
+    const hasErrors = errors.some(e => e.severity === 'error');
+    if (hasErrors) {
+      toast.error('Fix validation errors before submitting');
+      setValidationErrors(errors);
+      saveDraft({ validation_status: 'invalid', validation_errors: errors as any[] });
+      return;
+    }
+    // Generate preview payload
+    const payload = buildPreviewPayload(draft, items);
+    // Create launch request
+    const { data: lr, error } = await supabase.from('launch_requests' as any).insert({
+      draft_id: draft.id,
+      client_id: draft.client_id,
+      ad_account_id: draft.ad_account_id,
+      platform: draft.platform,
+      requested_by: user.id,
+      normalized_payload: payload,
+      notes: draft.notes || '',
+    }).select().single();
+    if (error) { toast.error('Failed to submit: ' + error.message); return; }
+    // Update draft status
+    saveDraft({ status: 'ready_for_review', preview_payload: payload });
+    logGosAction('submit_for_review', 'campaign_draft', draft.id, draft.campaign_name || draft.name, { clientId: draft.client_id, metadata: { launchRequestId: (lr as any).id } });
+    toast.success('Draft submitted for review');
+  };
+
+  const resubmit = async () => {
+    if (!user) return;
+    const errors = validateDraft(draft, items);
+    const hasErrors = errors.some(e => e.severity === 'error');
+    if (hasErrors) {
+      toast.error('Fix validation errors before resubmitting');
+      setValidationErrors(errors);
+      saveDraft({ validation_status: 'invalid', validation_errors: errors as any[] });
+      return;
+    }
+    const payload = buildPreviewPayload(draft, items);
+    const { data: lr, error } = await supabase.from('launch_requests' as any).insert({
+      draft_id: draft.id,
+      client_id: draft.client_id,
+      ad_account_id: draft.ad_account_id,
+      platform: draft.platform,
+      requested_by: user.id,
+      normalized_payload: payload,
+      notes: `Resubmission: ${draft.notes || ''}`,
+    }).select().single();
+    if (error) { toast.error('Failed to resubmit: ' + error.message); return; }
+    saveDraft({ status: 'ready_for_review', preview_payload: payload });
+    logGosAction('resubmit_for_review', 'campaign_draft', draft.id, draft.campaign_name || draft.name, { clientId: draft.client_id, metadata: { launchRequestId: (lr as any).id } });
+    toast.success('Draft resubmitted for review');
+  };
+
   const adsets = items.filter(i => i.item_type === 'adset');
   const ads = items.filter(i => i.item_type === 'ad');
 
