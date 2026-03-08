@@ -41,6 +41,7 @@ function getInstanceStatusBadge(inst: any) {
 }
 
 export default function GosIntegrationsPage() {
+  const { logGosAction } = useGosAuditLog();
   const { t } = useLanguage();
   const { effectiveRole } = useAuth();
   const isAdmin = effectiveRole === 'AgencyAdmin';
