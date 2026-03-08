@@ -100,11 +100,15 @@ export default function EmbedFormPage() {
 
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/gos-form-submit`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+          },
           body: JSON.stringify({
             form_id: form.id,
             data: formData,
