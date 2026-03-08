@@ -359,6 +359,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
+  const [metaPages, setMetaPages] = useState<MetaPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -366,10 +367,24 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const loadItems = useCallback(async () => {
     const [iRes, aRes] = await Promise.all([
       supabase.from('campaign_draft_items' as any).select('*').eq('draft_id', draft.id).order('sort_order'),
-      supabase.from('ad_accounts').select('id, account_name, platform_account_id, client_id').eq('client_id', draft.client_id).eq('is_active', true),
+      supabase.from('ad_accounts').select('id, account_name, platform_account_id, client_id, connection_id').eq('client_id', draft.client_id).eq('is_active', true),
     ]);
     setItems((iRes.data as any[]) || []);
-    setAccounts(aRes.data || []);
+    const accs = aRes.data || [];
+    setAccounts(accs);
+    // Attempt to fetch Meta pages from platform_connections metadata for connected accounts
+    const pages: MetaPage[] = [];
+    for (const acc of accs) {
+      if (acc.connection_id) {
+        const { data: conn } = await supabase.from('platform_connections').select('id, account_name').eq('id', acc.connection_id).single();
+        if (conn) {
+          // Use the platform_account_id as a potential page source hint
+          // Real Meta page discovery would need a dedicated edge function; for now expose account info
+          pages.push({ id: acc.id, name: conn.account_name || acc.platform_account_id, page_id: acc.platform_account_id });
+        }
+      }
+    }
+    setMetaPages(pages);
     setLoading(false);
   }, [draft.id, draft.client_id]);
 
