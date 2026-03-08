@@ -515,15 +515,15 @@ export default function ClientDashboardPage() {
                   }}
                 />
                 <Card className="glass-card">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">Spend by Platform</CardTitle></CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">{t('clients.spendByPlatform')}</CardTitle></CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       {(['meta', 'google', 'tiktok'] as const).map(p => {
                         const hasSheet = platformHasData[p];
                         const label = p === 'meta' ? 'Meta Ads' : p === 'google' ? 'Google Ads' : 'TikTok Ads';
-                        // Compute platform spend
                         const platformMetrics = dailyMetrics.filter(m => (campaignPlatformMap[m.campaign_id] as string) === (p as string));
                         const platformSpend = platformMetrics.reduce((s, m) => s + Number(m.spend), 0);
+                        const sourceLabel = p === 'meta' && hasMetaApiAccounts ? 'API' : hasSheet ? 'Sheets' : '';
                         return (
                           <div key={p} className="flex items-center justify-between p-2 rounded-lg border border-border/50 bg-secondary/20">
                             <div>
@@ -532,15 +532,37 @@ export default function ClientDashboardPage() {
                                 <p className="text-[10px] text-muted-foreground">{formatCurrency(platformSpend)}</p>
                               )}
                             </div>
-                            <Badge variant="outline" className={`text-[9px] ${hasSheet ? 'border-success/30 text-success' : 'border-border text-muted-foreground'}`}>
-                              {hasSheet ? 'Connected' : 'Not connected'}
-                            </Badge>
+                            <div className="flex items-center gap-1.5">
+                              {sourceLabel && (
+                                <Badge variant="outline" className="text-[8px] border-primary/30 text-primary">{sourceLabel}</Badge>
+                              )}
+                              <Badge variant="outline" className={`text-[9px] ${hasSheet ? 'border-success/30 text-success' : 'border-border text-muted-foreground'}`}>
+                                {hasSheet ? t('common.connected') : t('common.notConnected')}
+                              </Badge>
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Recommendations from team */}
+                {recommendations.length > 0 && (
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm sm:text-base">{t('clients.recommendations')}</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {recommendations.slice(0, 5).map(rec => (
+                          <div key={rec.id} className="p-2.5 rounded-lg bg-secondary/30 border border-border/30">
+                            <p className="text-xs text-foreground">{rec.content}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1">— {rec.user_name} · {format(new Date(rec.created_at), 'dd.MM.yyyy')}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </TabsContent>
