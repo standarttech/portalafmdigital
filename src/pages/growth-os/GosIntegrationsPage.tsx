@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Plug, Loader2, CheckCircle2, XCircle, Trash2, Zap, ShieldCheck, AlertCircle, Link2, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 
 const categories = ['crm', 'ads', 'analytics', 'messaging', 'general'];
 const categoryColors: Record<string, string> = {
