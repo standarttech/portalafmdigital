@@ -7,6 +7,7 @@ import { BrainCircuit, Plus, Loader2, Clock, CheckCircle2, XCircle, Search } fro
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
 
 interface Session {
