@@ -415,6 +415,7 @@ function AppRoutes() {
           <Route path="/portal/campaigns" element={<PortalCampaignsPage />} />
           <Route path="/portal/recommendations" element={<PortalRecommendationsPage />} />
           <Route path="/portal/reports" element={<PortalReportsPage />} />
+          <Route path="/portal/files" element={<PortalFilesPage />} />
           <Route path="/portal/settings" element={<PortalSettingsPage />} />
         </Route>
         <Route element={<MainLayout />}>
