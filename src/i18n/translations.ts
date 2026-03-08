@@ -1069,8 +1069,6 @@ export const translations = {
   'campaigns.ads': t('Ads', 'Объявления', 'Annunci', 'Anuncios', 'الإعلانات', 'Publicités'),
   'campaigns.noDataForPeriod': t('No data for selected period. Connect a Meta Ads account and run sync.', 'Нет данных за выбранный период. Подключите аккаунт Meta Ads и запустите синхронизацию.', 'Nessun dato per il periodo selezionato.', 'Sin datos para el período seleccionado.', 'لا توجد بيانات للفترة المحددة.', 'Aucune donnée pour la période sélectionnée.'),
   'campaigns.noDataAtLevel': t('No data at this level for selected period.', 'Нет данных на этом уровне за выбранный период.', 'Nessun dato a questo livello.', 'Sin datos en este nivel.', 'لا توجد بيانات على هذا المستوى.', 'Aucune donnée à ce niveau.'),
-  'common.back': t('Back', 'Назад', 'Indietro', 'Atrás', 'رجوع', 'Retour'),
-  'common.name': t('Name', 'Название', 'Nome', 'Nombre', 'الاسم', 'Nom'),
   'auth.alreadyLoggedIn': t('You are already logged in', 'Вы уже авторизованы', 'Sei già connesso', 'Ya has iniciado sesión', 'أنت مسجل الدخول بالفعل', 'Vous êtes déjà connecté'),
   'auth.goToDashboard': t('Go to Dashboard', 'Войти в панель', 'Vai alla dashboard', 'Ir al panel', 'الذهاب إلى لوحة التحكم', 'Aller au tableau de bord'),
 
