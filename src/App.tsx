@@ -34,6 +34,7 @@ import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
 import NotFound from "./pages/NotFound";
 import CrmLayout from "@/components/layout/CrmLayout";
 import AdminScaleLayout from "@/components/layout/AdminScaleLayout";
+import GrowthOsLayout from "@/components/layout/GrowthOsLayout";
 import WebsiteLayout from "@/pages/website/WebsiteLayout";
 import HomePage from "@/pages/website/HomePage";
 import React, { useState, useEffect, useCallback, Suspense } from "react";
@@ -77,6 +78,12 @@ const BudgetPlannerPage = React.lazy(() => import("@/pages/BudgetPlannerPage"));
 const CalendarPage = React.lazy(() => import("@/pages/CalendarPage"));
 const TaskBoardPage = React.lazy(() => import("@/pages/TaskBoardPage"));
 const ReportsPage = React.lazy(() => import("@/pages/ReportsPage"));
+const GosOverviewPage = React.lazy(() => import("@/pages/growth-os/GosOverviewPage"));
+const GosLandingTemplatesPage = React.lazy(() => import("@/pages/growth-os/GosLandingTemplatesPage"));
+const GosFormsPage = React.lazy(() => import("@/pages/growth-os/GosFormsPage"));
+const GosOnboardingPage = React.lazy(() => import("@/pages/growth-os/GosOnboardingPage"));
+const GosIntegrationsPage = React.lazy(() => import("@/pages/growth-os/GosIntegrationsPage"));
+const GosLeadRoutingPage = React.lazy(() => import("@/pages/growth-os/GosLeadRoutingPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -415,6 +422,15 @@ function AppRoutes() {
         <Route path="/adminscale/editor" element={<AdminScaleEditor />} />
         <Route path="/adminscale/overview" element={<AdminScaleOverview />} />
         <Route path="/adminscale/reference" element={<AdminScaleReference />} />
+      </Route>
+      {/* Growth OS — guarded */}
+      <Route element={<ModuleGuard module="growth_os"><GrowthOsLayout /></ModuleGuard>}>
+        <Route path="/growth-os" element={<GosOverviewPage />} />
+        <Route path="/growth-os/landing-templates" element={<GosLandingTemplatesPage />} />
+        <Route path="/growth-os/forms" element={<GosFormsPage />} />
+        <Route path="/growth-os/onboarding" element={<GosOnboardingPage />} />
+        <Route path="/growth-os/integrations" element={<GosIntegrationsPage />} />
+        <Route path="/growth-os/lead-routing" element={<GosLeadRoutingPage />} />
       </Route>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
