@@ -372,10 +372,10 @@ export default function AfmDashboard() {
             <CardContent className="p-6 flex flex-col items-center text-center gap-3">
               <Zap className="h-10 w-10 text-warning" />
               <p className="text-sm font-medium text-foreground">
-                Для отслеживания внутреннего медиабаинга необходимо создать клиента «AFM Digital» с категорией «agency» в разделе Клиенты.
+                {t('afm.dash.setupRequired' as any)}
               </p>
               <p className="text-xs text-muted-foreground">
-                Этот клиент будет скрыт из общего списка клиентов и не будет учитываться в статистике. Все данные будут отображаться здесь.
+                {t('afm.dash.setupHidden' as any)}
               </p>
             </CardContent>
           </Card>
