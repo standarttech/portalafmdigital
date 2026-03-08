@@ -565,6 +565,196 @@ export type Database = {
           },
         ]
       }
+      ai_provider_health_checks: {
+        Row: {
+          checked_at: string
+          error_message: string | null
+          id: string
+          latency_ms: number | null
+          metadata: Json | null
+          provider_id: string
+          status: string
+        }
+        Insert: {
+          checked_at?: string
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          provider_id: string
+          status?: string
+        }
+        Update: {
+          checked_at?: string
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          provider_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_provider_health_checks_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "ai_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_provider_routes: {
+        Row: {
+          created_at: string
+          fallback_provider_id: string | null
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          primary_provider_id: string
+          priority: number
+          retry_limit: number
+          task_type: string
+          timeout_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fallback_provider_id?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          primary_provider_id: string
+          priority?: number
+          retry_limit?: number
+          task_type: string
+          timeout_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fallback_provider_id?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          primary_provider_id?: string
+          priority?: number
+          retry_limit?: number
+          task_type?: string
+          timeout_seconds?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_provider_routes_fallback_provider_id_fkey"
+            columns: ["fallback_provider_id"]
+            isOneToOne: false
+            referencedRelation: "ai_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_provider_routes_primary_provider_id_fkey"
+            columns: ["primary_provider_id"]
+            isOneToOne: false
+            referencedRelation: "ai_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_provider_secrets: {
+        Row: {
+          created_at: string
+          id: string
+          provider_id: string
+          secret_label: string
+          secret_ref: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          provider_id: string
+          secret_label?: string
+          secret_ref?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          provider_id?: string
+          secret_label?: string
+          secret_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_provider_secrets_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "ai_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_providers: {
+        Row: {
+          auth_type: string
+          base_url: string | null
+          category: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          metadata: Json | null
+          name: string
+          provider_type: string
+          slug: string
+          supports_chat: boolean
+          supports_images: boolean
+          supports_structured_output: boolean
+          supports_text: boolean
+          supports_workflows: boolean
+          updated_at: string
+        }
+        Insert: {
+          auth_type?: string
+          base_url?: string | null
+          category?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          metadata?: Json | null
+          name: string
+          provider_type?: string
+          slug: string
+          supports_chat?: boolean
+          supports_images?: boolean
+          supports_structured_output?: boolean
+          supports_text?: boolean
+          supports_workflows?: boolean
+          updated_at?: string
+        }
+        Update: {
+          auth_type?: string
+          base_url?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          metadata?: Json | null
+          name?: string
+          provider_type?: string
+          slug?: string
+          supports_chat?: boolean
+          supports_images?: boolean
+          supports_structured_output?: boolean
+          supports_text?: boolean
+          supports_workflows?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_recommendations: {
         Row: {
           acted_on_at: string | null
@@ -628,6 +818,187 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "ai_campaign_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_task_logs: {
+        Row: {
+          created_at: string
+          id: string
+          level: string
+          message: string
+          metadata: Json | null
+          provider_id: string | null
+          step_type: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level?: string
+          message: string
+          metadata?: Json | null
+          provider_id?: string | null
+          step_type?: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json | null
+          provider_id?: string | null
+          step_type?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_task_logs_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "ai_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_task_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "ai_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_task_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          input_template: Json | null
+          is_active: boolean
+          metadata: Json | null
+          name: string
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          input_template?: Json | null
+          is_active?: boolean
+          metadata?: Json | null
+          name: string
+          task_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          input_template?: Json | null
+          is_active?: boolean
+          metadata?: Json | null
+          name?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_tasks: {
+        Row: {
+          attempt_count: number
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          failed_at: string | null
+          id: string
+          input_payload: Json | null
+          metadata: Json | null
+          normalized_input: Json | null
+          output_payload: Json | null
+          provider_route_id: string | null
+          requested_by: string
+          selected_provider_id: string | null
+          source_entity_id: string | null
+          source_entity_type: string | null
+          source_module: string
+          started_at: string | null
+          status: string
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          input_payload?: Json | null
+          metadata?: Json | null
+          normalized_input?: Json | null
+          output_payload?: Json | null
+          provider_route_id?: string | null
+          requested_by: string
+          selected_provider_id?: string | null
+          source_entity_id?: string | null
+          source_entity_type?: string | null
+          source_module?: string
+          started_at?: string | null
+          status?: string
+          task_type: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          input_payload?: Json | null
+          metadata?: Json | null
+          normalized_input?: Json | null
+          output_payload?: Json | null
+          provider_route_id?: string | null
+          requested_by?: string
+          selected_provider_id?: string | null
+          source_entity_id?: string | null
+          source_entity_type?: string | null
+          source_module?: string
+          started_at?: string | null
+          status?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_tasks_provider_route_id_fkey"
+            columns: ["provider_route_id"]
+            isOneToOne: false
+            referencedRelation: "ai_provider_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_tasks_selected_provider_id_fkey"
+            columns: ["selected_provider_id"]
+            isOneToOne: false
+            referencedRelation: "ai_providers"
             referencedColumns: ["id"]
           },
         ]
@@ -3722,6 +4093,7 @@ export type Database = {
           can_connect_integrations: boolean
           can_edit_clients: boolean
           can_edit_metrics_override: boolean
+          can_manage_ai_infra: boolean
           can_manage_crm_integrations: boolean
           can_manage_tasks: boolean
           can_publish_reports: boolean
@@ -3743,6 +4115,7 @@ export type Database = {
           can_connect_integrations?: boolean
           can_edit_clients?: boolean
           can_edit_metrics_override?: boolean
+          can_manage_ai_infra?: boolean
           can_manage_crm_integrations?: boolean
           can_manage_tasks?: boolean
           can_publish_reports?: boolean
@@ -3764,6 +4137,7 @@ export type Database = {
           can_connect_integrations?: boolean
           can_edit_clients?: boolean
           can_edit_metrics_override?: boolean
+          can_manage_ai_infra?: boolean
           can_manage_crm_integrations?: boolean
           can_manage_tasks?: boolean
           can_publish_reports?: boolean

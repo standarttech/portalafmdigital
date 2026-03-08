@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ModuleGuardProps {
-  module: 'afm_internal' | 'adminscale' | 'crm' | 'growth_os' | 'ai_ads';
+  module: 'afm_internal' | 'adminscale' | 'crm' | 'growth_os' | 'ai_ads' | 'ai_infra';
   children: React.ReactElement;
 }
 
@@ -24,7 +24,7 @@ export default function ModuleGuard({ module, children }: ModuleGuardProps) {
     if (effectiveRole === 'AgencyAdmin') { setAllowed(true); return; }
 
     const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
-    const permKey = `can_access_${module}`;
+    const permKey = module === 'ai_infra' ? 'can_manage_ai_infra' : `can_access_${module}`;
     supabase.from('user_permissions')
       .select(permKey)
       .eq('user_id', targetUserId)

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-const MODULE_KEYS = ['can_access_afm_internal', 'can_access_adminscale', 'can_access_crm', 'can_access_growth_os', 'can_access_ai_ads'] as const;
+const MODULE_KEYS = ['can_access_afm_internal', 'can_access_adminscale', 'can_access_crm', 'can_access_growth_os', 'can_access_ai_ads', 'can_manage_ai_infra'] as const;
 
 export function useModuleAccess() {
   const { user, effectiveRole, simulatedUser } = useAuth();
@@ -13,7 +13,7 @@ export function useModuleAccess() {
 
     // Admin always has full access
     if (effectiveRole === 'AgencyAdmin') {
-      setPermissions({ can_access_afm_internal: true, can_access_adminscale: true, can_access_crm: true, can_access_growth_os: true, can_access_ai_ads: true });
+      setPermissions({ can_access_afm_internal: true, can_access_adminscale: true, can_access_crm: true, can_access_growth_os: true, can_access_ai_ads: true, can_manage_ai_infra: true });
       return;
     }
 
@@ -30,7 +30,7 @@ export function useModuleAccess() {
           MODULE_KEYS.forEach(k => { p[k] = !!(data as any)[k]; });
           setPermissions(p);
         } else {
-          setPermissions({ can_access_afm_internal: false, can_access_adminscale: false, can_access_crm: false, can_access_growth_os: false, can_access_ai_ads: false });
+          setPermissions({ can_access_afm_internal: false, can_access_adminscale: false, can_access_crm: false, can_access_growth_os: false, can_access_ai_ads: false, can_manage_ai_infra: false });
         }
       });
   }, [user, effectiveRole, simulatedUser]);
@@ -41,5 +41,6 @@ export function useModuleAccess() {
     canAccessCrm: permissions.can_access_crm ?? false,
     canAccessGrowthOs: permissions.can_access_growth_os ?? false,
     canAccessAiAds: permissions.can_access_ai_ads ?? false,
+    canManageAiInfra: permissions.can_manage_ai_infra ?? false,
   };
 }

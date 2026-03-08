@@ -45,3 +45,9 @@ verify_jwt = false
 [functions.ai-ads-analyze]
 verify_jwt = false
 
+[functions.ai-router]
+verify_jwt = false
+
+[functions.ai-provider-health]
+verify_jwt = false
+

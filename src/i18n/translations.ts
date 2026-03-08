@@ -1103,6 +1103,9 @@ export const translations = {
   // AI Ads Copilot
   'nav.aiAds': t('AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot'),
 
+  // AI Infrastructure
+  'nav.aiInfra': t('AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure'),
+
 } as const;
 
 export type TranslationKey = keyof typeof translations;
