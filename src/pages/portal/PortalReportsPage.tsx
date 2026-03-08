@@ -66,13 +66,14 @@ export default function PortalReportsPage() {
       return q;
     };
 
-    let prevPromise: Promise<any> = Promise.resolve({ data: [] });
+    let prevData: any[] = [];
     if (dateRange && clientId) {
       const prev = getPreviousPeriod(dateRange);
-      prevPromise = supabase.from('campaign_performance_snapshots' as any).select('*')
+      const { data: pd } = await supabase.from('campaign_performance_snapshots' as any).select('*')
         .eq('client_id', clientId).eq('entity_level', 'campaign')
         .gte('synced_at', prev.from.toISOString()).lte('synced_at', prev.to.toISOString())
-        .order('synced_at', { ascending: false }).limit(300).then(r => r);
+        .order('synced_at', { ascending: false }).limit(300);
+      prevData = (pd as any[]) || [];
     }
 
     const [sRes, lRes, aRes, rRes, fRes, pRes] = await Promise.all([
