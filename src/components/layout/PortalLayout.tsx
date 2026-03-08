@@ -3,15 +3,17 @@ import { usePortalAuth } from '@/hooks/usePortalAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
-  LayoutDashboard, Megaphone, Lightbulb, FileText, Settings, LogOut, Loader2,
+  LayoutDashboard, Megaphone, Lightbulb, FileText, Settings, LogOut, Loader2, FolderOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import PortalNotificationBell from '@/components/portal/PortalNotificationBell';
 
 const portalNav = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/portal' },
   { label: 'Campaigns', icon: Megaphone, path: '/portal/campaigns' },
   { label: 'Recommendations', icon: Lightbulb, path: '/portal/recommendations' },
   { label: 'Reports', icon: FileText, path: '/portal/reports' },
+  { label: 'Files', icon: FolderOpen, path: '/portal/files' },
   { label: 'Settings', icon: Settings, path: '/portal/settings' },
 ];
 
@@ -53,7 +55,8 @@ export default function PortalLayout() {
               P
             </div>
           )}
-          <span className="font-semibold text-sidebar-foreground text-sm truncate">{title}</span>
+          <span className="font-semibold text-sidebar-foreground text-sm truncate flex-1">{title}</span>
+          <PortalNotificationBell clientId={portalUser?.client_id || null} />
         </div>
 
         {/* Nav */}

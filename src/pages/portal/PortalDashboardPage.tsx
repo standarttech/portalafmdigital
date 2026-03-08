@@ -5,13 +5,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import PortalDateFilter, { type DateRange } from '@/components/portal/PortalDateFilter';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
 
 export default function PortalDashboardPage() {
   const { portalUser, branding, isAdmin } = useOutletContext<Ctx>();
-  const { user, agencyRole } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [clientName, setClientName] = useState('');
   const [snapshots, setSnapshots] = useState<any[]>([]);
@@ -20,11 +21,11 @@ export default function PortalDashboardPage() {
   const [actions, setActions] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clients, setClients] = useState<{id:string;name:string}[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | null>(null);
 
   const load = useCallback(async () => {
     let clientId = portalUser?.client_id || null;
 
-    // Admin preview: let them pick a client
     if (isAdmin && !clientId) {
       const { data: cl } = await supabase.from('clients').select('id, name').order('name').limit(50);
       setClients(cl || []);
@@ -39,17 +40,29 @@ export default function PortalDashboardPage() {
     const { data: c } = await supabase.from('clients').select('name').eq('id', clientId).maybeSingle();
     setClientName(c?.name || '');
 
+    let snapQ = supabase.from('campaign_performance_snapshots' as any).select('*')
+      .eq('client_id', clientId).eq('entity_level', 'campaign');
+    let launchQ = supabase.from('launch_requests' as any).select('id, client_id, status, execution_status, external_campaign_id, metadata, executed_at, platform')
+      .eq('client_id', clientId).not('external_campaign_id', 'is', null);
+    let recQ = supabase.from('ai_recommendations' as any).select('id, client_id, priority, status, recommendation_type, title, description, created_at')
+      .eq('client_id', clientId);
+    let actQ = supabase.from('optimization_actions' as any).select('id, client_id, status, action_type, created_at')
+      .eq('client_id', clientId);
+
+    if (dateRange) {
+      const from = dateRange.from.toISOString();
+      const to = dateRange.to.toISOString();
+      snapQ = snapQ.gte('synced_at', from).lte('synced_at', to);
+      launchQ = launchQ.gte('executed_at', from).lte('executed_at', to);
+      recQ = recQ.gte('created_at', from).lte('created_at', to);
+      actQ = actQ.gte('created_at', from).lte('created_at', to);
+    }
+
     const [sRes, lRes, rRes, aRes] = await Promise.all([
-      supabase.from('campaign_performance_snapshots' as any).select('*')
-        .eq('client_id', clientId).eq('entity_level', 'campaign')
-        .order('synced_at', { ascending: false }).limit(200),
-      supabase.from('launch_requests' as any).select('id, client_id, status, execution_status, external_campaign_id, metadata, executed_at, platform')
-        .eq('client_id', clientId).not('external_campaign_id', 'is', null)
-        .order('executed_at', { ascending: false }).limit(50),
-      supabase.from('ai_recommendations' as any).select('id, client_id, priority, status, recommendation_type, title, description, created_at')
-        .eq('client_id', clientId).order('created_at', { ascending: false }).limit(100),
-      supabase.from('optimization_actions' as any).select('id, client_id, status, action_type, created_at')
-        .eq('client_id', clientId).order('created_at', { ascending: false }).limit(100),
+      snapQ.order('synced_at', { ascending: false }).limit(200),
+      launchQ.order('executed_at', { ascending: false }).limit(50),
+      recQ.order('created_at', { ascending: false }).limit(100),
+      actQ.order('created_at', { ascending: false }).limit(100),
     ]);
 
     setSnapshots((sRes.data as any[]) || []);
@@ -57,11 +70,10 @@ export default function PortalDashboardPage() {
     setRecs((rRes.data as any[]) || []);
     setActions((aRes.data as any[]) || []);
     setLoading(false);
-  }, [portalUser, isAdmin, selectedClient]);
+  }, [portalUser, isAdmin, selectedClient, dateRange]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Deduplicate snapshots
   const latestMap = new Map<string, any>();
   for (const s of snapshots) {
     const key = s.external_campaign_id || s.id;
@@ -83,10 +95,8 @@ export default function PortalDashboardPage() {
   const pendingActions = actions.filter(a => ['proposed', 'approved'].includes(a.status)).length;
   const lastSync = snapshots.length > 0 ? snapshots[0].synced_at : null;
 
-  // Client-safe recommendation title transform
   const safeTitle = (r: any) => {
     const t = r.title || '';
-    // Strip internal jargon patterns
     return t
       .replace(/page_id|ad_account_id|adset_id|campaign_id/gi, 'configuration')
       .replace(/fix\s/gi, 'Adjust ')
@@ -112,6 +122,9 @@ export default function PortalDashboardPage() {
           </select>
         )}
       </div>
+
+      {/* Date filter */}
+      <PortalDateFilter value={dateRange} onChange={setDateRange} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
