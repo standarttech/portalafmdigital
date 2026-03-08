@@ -92,6 +92,13 @@ const GosExperimentsPage = React.lazy(() => import("@/pages/growth-os/GosExperim
 const GosSystemHealthPage = React.lazy(() => import("@/pages/growth-os/GosSystemHealthPage"));
 const GosIntegrityChecksPage = React.lazy(() => import("@/pages/growth-os/GosIntegrityChecksPage"));
 const EmbedOnboardingPage = React.lazy(() => import("@/pages/embed/EmbedOnboardingPage"));
+const AiAdsOverviewPage = React.lazy(() => import("@/pages/ai-ads/AiAdsOverviewPage"));
+const AiAdsAccountsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsAccountsPage"));
+const AiAdsAnalysisPage = React.lazy(() => import("@/pages/ai-ads/AiAdsAnalysisPage"));
+const AiAdsHypothesesPage = React.lazy(() => import("@/pages/ai-ads/AiAdsHypothesesPage"));
+const AiAdsDraftsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsDraftsPage"));
+const AiAdsExecutionsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsExecutionsPage"));
+import AiAdsLayout from "@/components/layout/AiAdsLayout";
 
 const queryClient = new QueryClient({
   defaultOptions: {
