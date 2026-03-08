@@ -346,7 +346,7 @@ function AppRoutes() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/glossary" element={<GlossaryPage />} />
         </Route>
-        <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/auth" element={<AuthPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     );
