@@ -43,7 +43,8 @@ export default function AttentionRequired() {
         .select('id, sync_status, sync_error, account_name, client_id')
         .eq('sync_status', 'error');
 
-      (syncErrors || []).forEach(s => {
+      // Filter out Google Sheets-originated errors (act_sheets-*)
+      (syncErrors || []).filter(s => !s.sync_error?.includes('act_sheets-')).forEach(s => {
         result.push({
           id: `sync-${s.id}`,
           type: 'sync_delay',
