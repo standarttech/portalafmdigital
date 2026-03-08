@@ -609,6 +609,49 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
         </Tabs>
       )}
 
+      {/* Status Actions */}
+      {draft.status === 'draft' && (
+        <Card className="border-amber-400/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Submit for Review</p>
+                <p className="text-xs text-muted-foreground">Send this draft to admin for approval before execution.</p>
+              </div>
+              <Button size="sm" className="gap-1.5" onClick={submitForReview} disabled={saving}>
+                <Rocket className="h-3.5 w-3.5" /> Submit for Review
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {draft.status === 'rejected' && (
+        <Card className="border-destructive/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Draft was rejected</p>
+                <p className="text-xs text-muted-foreground">Make changes and resubmit when ready.</p>
+              </div>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={resubmit} disabled={saving}>
+                <Rocket className="h-3.5 w-3.5" /> Resubmit
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {(draft.status === 'executed' || draft.status === 'approved' || draft.status === 'ready_for_review' || draft.status === 'submitted_for_execution') && (
+        <Card className="border-blue-400/20">
+          <CardContent className="p-4 flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground capitalize">{(statusConfig[draft.status] || statusConfig.draft).label}</p>
+              <p className="text-xs text-muted-foreground">Go to Executions page to view launch status and details.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Notes */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Notes & Rationale</CardTitle></CardHeader>
