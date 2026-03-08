@@ -1454,7 +1454,11 @@ export default function ClientDetailPage() {
 
           {/* CAMPAIGNS TAB */}
           <TabsContent value="campaigns" className="space-y-4">
-            <CampaignsBreakdownTab clientId={id!} />
+            <CampaignsBreakdownTab
+              clientId={id!}
+              dateFrom={customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
+              dateTo={customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
+            />
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
