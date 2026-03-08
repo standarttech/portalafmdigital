@@ -251,6 +251,16 @@ function AppRoutes() {
     );
   }
 
+  // Portal login is always accessible (separate client auth)
+  if (currentPath === "/portal/login") {
+    return (
+      <Routes>
+        <Route path="/portal/login" element={<PortalLoginPage />} />
+        <Route path="*" element={<Navigate to="/portal/login" replace />} />
+      </Routes>
+    );
+  }
+
   if (currentPath.startsWith("/scaling-stack")) {
     return (
       <Routes>
