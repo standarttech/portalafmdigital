@@ -1780,6 +1780,53 @@ export type Database = {
           },
         ]
       }
+      gos_analytics_events: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id: string
+          ip_hash: string | null
+          metadata: Json | null
+          referrer: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json | null
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          event_type?: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json | null
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gos_analytics_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gos_form_submissions: {
         Row: {
           created_at: string
@@ -2094,6 +2141,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      gos_rate_limits: {
+        Row: {
+          form_id: string
+          id: string
+          ip_hash: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          form_id: string
+          id?: string
+          ip_hash: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          form_id?: string
+          id?: string
+          ip_hash?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
       }
       gos_routing_log: {
         Row: {
