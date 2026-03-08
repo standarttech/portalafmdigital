@@ -266,7 +266,7 @@ function AfmMetaApiSection({ clientId }: { clientId: string }) {
   );
 }
 
-
+export default function AfmDashboard() {
   const { t, formatCurrency, formatNumber } = useLanguage();
   const { agencyRole } = useAuth();
   const isAdmin = agencyRole === 'AgencyAdmin';
