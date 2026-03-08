@@ -4,6 +4,7 @@ import { Users, TrendingUp, DollarSign, Target, BarChart3, Star, AlertTriangle, 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { getAllAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { useLanguage } from '@/i18n/LanguageContext';
 import type { TranslationKey } from '@/i18n/translations';
 import { format, subDays, startOfMonth } from 'date-fns';
