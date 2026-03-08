@@ -585,6 +585,11 @@ function OptimizationQueue({ recs, clients, clientName, onRefresh }: {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5 shrink-0">
+                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
+                    window.location.href = '/ai-ads/optimization';
+                  }}>
+                    <Zap className="h-3 w-3 mr-1" /> Propose Action
+                  </Button>
                   <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => duplicateToDraft(r)}>
                     <FileStack className="h-3 w-3 mr-1" /> New Draft
                   </Button>
