@@ -459,7 +459,14 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/branding" element={<BrandingPage />} />
-        <Route path="/portal" element={<ClientPortalPage />} />
+      </Route>
+      {/* Client Portal — admin can preview with isolated layout */}
+      <Route element={<PortalLayout />}>
+        <Route path="/portal" element={<PortalDashboardPage />} />
+        <Route path="/portal/campaigns" element={<PortalCampaignsPage />} />
+        <Route path="/portal/recommendations" element={<PortalRecommendationsPage />} />
+        <Route path="/portal/reports" element={<PortalReportsPage />} />
+        <Route path="/portal/settings" element={<PortalSettingsPage />} />
       </Route>
       {/* CRM — guarded by module permission */}
       <Route element={<ModuleGuard module="crm"><CrmLayout /></ModuleGuard>}>
