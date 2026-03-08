@@ -3953,10 +3953,12 @@ export type Database = {
           description: string
           id: string
           is_active: boolean
+          last_triggered_at: string | null
           name: string
           proposed_action_type: string
           proposed_priority: string
           rule_condition: Json
+          trigger_count: number
           updated_at: string
         }
         Insert: {
@@ -3965,10 +3967,12 @@ export type Database = {
           description?: string
           id?: string
           is_active?: boolean
+          last_triggered_at?: string | null
           name: string
           proposed_action_type?: string
           proposed_priority?: string
           rule_condition?: Json
+          trigger_count?: number
           updated_at?: string
         }
         Update: {
@@ -3977,10 +3981,12 @@ export type Database = {
           description?: string
           id?: string
           is_active?: boolean
+          last_triggered_at?: string | null
           name?: string
           proposed_action_type?: string
           proposed_priority?: string
           rule_condition?: Json
+          trigger_count?: number
           updated_at?: string
         }
         Relationships: []
