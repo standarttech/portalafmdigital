@@ -12,14 +12,14 @@ import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
 
-const PREF_TYPES = [
+const PREF_TYPES: { key: string; label: string; desc: string; mandatory?: boolean }[] = [
   { key: 'campaign_launched', label: 'Campaign launches', desc: 'When a new campaign goes live' },
   { key: 'optimization_update', label: 'Optimization updates', desc: 'When optimizations are completed' },
   { key: 'recommendation_added', label: 'New insights', desc: 'When new recommendations are available' },
   { key: 'report_available', label: 'Reports', desc: 'When new reports are shared' },
   { key: 'file_shared', label: 'Shared files', desc: 'When files or documents are shared' },
   { key: 'portal_access_updated', label: 'Account updates', desc: 'Portal access and security updates (always on)', mandatory: true },
-] as const;
+];
 
 type PrefKey = typeof PREF_TYPES[number]['key'];
 
