@@ -639,7 +639,7 @@ function MetricsExplorer({ snapshots, clients, clientName }: {
             {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Badge variant="outline" className="text-xs text-muted-foreground">{filtered.length} snapshots</Badge>
+        <Badge variant="outline" className="text-xs text-muted-foreground">{latestSnapshots.length} campaigns · {filtered.length} snapshots</Badge>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
