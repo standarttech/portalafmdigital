@@ -576,6 +576,7 @@ function CampaignsBreakdownTab({ clientId }: { clientId: string }) {
 }
 
 export default function ClientDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, formatCurrency, formatNumber } = useLanguage();
   const { user, effectiveRole, simulatedUser } = useAuth();
