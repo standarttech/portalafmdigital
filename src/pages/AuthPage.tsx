@@ -86,7 +86,7 @@ export default function AuthPage() {
                     {displayName || user.email}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {t('auth.alreadyLoggedIn') || 'Вы уже авторизованы'}
+                    {'Вы уже авторизованы'}
                   </p>
                 </div>
                 <Button
