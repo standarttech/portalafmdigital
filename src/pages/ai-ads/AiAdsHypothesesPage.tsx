@@ -78,7 +78,7 @@ export default function AiAdsHypothesesPage() {
     const { error } = await supabase.from('hypothesis_threads' as any).update({ status: newStatus }).eq('id', threadId);
     if (error) { toast.error('Failed to update status'); return; }
     const thread = threads.find(t => t.id === threadId);
-    logGosAction('update', 'hypothesis_thread', threadId, thread?.title || '', { status: newStatus });
+    logGosAction('update', 'hypothesis_thread', threadId, thread?.title || '', { clientId: thread?.client_id, metadata: { status: newStatus } });
     setThreads(prev => prev.map(t => t.id === threadId ? { ...t, status: newStatus } : t));
     if (selectedThread?.id === threadId) setSelectedThread(prev => prev ? { ...prev, status: newStatus } : null);
     toast.success(`Status updated to ${newStatus}`);
