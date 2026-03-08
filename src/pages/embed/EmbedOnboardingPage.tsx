@@ -88,7 +88,7 @@ export default function EmbedOnboardingPage() {
 
   const handleFileUpload = async (fieldKey: string, file: globalThis.File) => {
     if (!session) return;
-    const clientId = (session as any).clients?.id || 'unknown';
+    const clientId = session.client_id || 'unknown';
     const filePath = `${clientId}/${session.id}/${fieldKey}/${file.name}`;
     setUploading(fieldKey);
     try {
