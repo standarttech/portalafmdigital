@@ -105,6 +105,13 @@ const AiAdsCreativesPage = React.lazy(() => import("@/pages/ai-ads/AiAdsCreative
 const AiAdsPresetsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsPresetsPage"));
 const AiAdsClientReportPage = React.lazy(() => import("@/pages/ai-ads/AiAdsClientReportPage"));
 const ClientPortalPage = React.lazy(() => import("@/pages/portal/ClientPortalPage"));
+const PortalLayout = React.lazy(() => import("@/components/layout/PortalLayout"));
+const PortalDashboardPage = React.lazy(() => import("@/pages/portal/PortalDashboardPage"));
+const PortalCampaignsPage = React.lazy(() => import("@/pages/portal/PortalCampaignsPage"));
+const PortalRecommendationsPage = React.lazy(() => import("@/pages/portal/PortalRecommendationsPage"));
+const PortalReportsPage = React.lazy(() => import("@/pages/portal/PortalReportsPage"));
+const PortalSettingsPage = React.lazy(() => import("@/pages/portal/PortalSettingsPage"));
+const PortalLoginPage = React.lazy(() => import("@/pages/portal/PortalLoginPage"));
 import AiAdsLayout from "@/components/layout/AiAdsLayout";
 import AiInfraLayout from "@/components/layout/AiInfraLayout";
 const AiInfraProvidersPage = React.lazy(() => import("@/pages/ai-infra/AiInfraProvidersPage"));
@@ -240,6 +247,16 @@ function AppRoutes() {
         <Route path="/embed/landing/:id" element={<EmbedLandingPage />} />
         <Route path="/embed/onboarding/:token" element={<EmbedOnboardingPage />} />
         <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
+
+  // Portal login is always accessible (separate client auth)
+  if (currentPath === "/portal/login") {
+    return (
+      <Routes>
+        <Route path="/portal/login" element={<PortalLoginPage />} />
+        <Route path="*" element={<Navigate to="/portal/login" replace />} />
       </Routes>
     );
   }
@@ -389,13 +406,21 @@ function AppRoutes() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/cookies" element={<CookiePolicyPage />} />
         </Route>
+        {/* Client Portal — isolated layout */}
+        <Route element={<PortalLayout />}>
+          <Route path="/portal" element={<PortalDashboardPage />} />
+          <Route path="/portal/campaigns" element={<PortalCampaignsPage />} />
+          <Route path="/portal/recommendations" element={<PortalRecommendationsPage />} />
+          <Route path="/portal/reports" element={<PortalReportsPage />} />
+          <Route path="/portal/settings" element={<PortalSettingsPage />} />
+        </Route>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<ClientDashboardPage />} />
-          <Route path="/portal" element={<ClientPortalPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/glossary" element={<GlossaryPage />} />
         </Route>
+        <Route path="/portal/login" element={<Navigate to="/portal" replace />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
@@ -434,7 +459,14 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/branding" element={<BrandingPage />} />
-        <Route path="/portal" element={<ClientPortalPage />} />
+      </Route>
+      {/* Client Portal — admin can preview with isolated layout */}
+      <Route element={<PortalLayout />}>
+        <Route path="/portal" element={<PortalDashboardPage />} />
+        <Route path="/portal/campaigns" element={<PortalCampaignsPage />} />
+        <Route path="/portal/recommendations" element={<PortalRecommendationsPage />} />
+        <Route path="/portal/reports" element={<PortalReportsPage />} />
+        <Route path="/portal/settings" element={<PortalSettingsPage />} />
       </Route>
       {/* CRM — guarded by module permission */}
       <Route element={<ModuleGuard module="crm"><CrmLayout /></ModuleGuard>}>

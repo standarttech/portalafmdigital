@@ -1,4 +1,5 @@
 import { useLanguage } from '@/i18n/LanguageContext';
+import AdminPortalManagement from '@/components/portal/AdminPortalManagement';
 import AdminApprovalsPanel from '@/components/shared/AdminApprovalsPanel';
 import { motion } from 'framer-motion';
 import { Users, Plus, Search, Shield, UserCheck, Mail, Clock, CheckCircle2, XCircle, Copy, RefreshCw, Key, Trash2, Settings2, Building2, Camera, Loader2 as LoaderIcon } from 'lucide-react';
@@ -451,6 +452,7 @@ export default function UsersPage() {
               <TabsTrigger value="invitations" className="gap-1.5 text-xs sm:text-sm"><Mail className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabInvitations')}</span><span className="sm:hidden">Inv</span></TabsTrigger>
               <TabsTrigger value="clients" className="gap-1.5 text-xs sm:text-sm"><Building2 className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabClients')}</span><span className="sm:hidden">Cli</span></TabsTrigger>
               <TabsTrigger value="approvals" className="gap-1.5 text-xs sm:text-sm"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Approvals</span><span className="sm:hidden">Appr</span></TabsTrigger>
+              <TabsTrigger value="portal" className="gap-1.5 text-xs sm:text-sm"><UserCheck className="h-4 w-4" /><span className="hidden sm:inline">Portal</span><span className="sm:hidden">Port</span></TabsTrigger>
             </TabsList>
           </div>
 
@@ -733,6 +735,11 @@ export default function UsersPage() {
           {/* APPROVALS TAB */}
           <TabsContent value="approvals">
             <AdminApprovalsPanel />
+          </TabsContent>
+
+          {/* PORTAL TAB */}
+          <TabsContent value="portal">
+            <AdminPortalManagement />
           </TabsContent>
         </Tabs>
       </motion.div>

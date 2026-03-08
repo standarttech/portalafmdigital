@@ -1712,6 +1712,141 @@ export type Database = {
           },
         ]
       }
+      client_portal_branding: {
+        Row: {
+          accent_color: string | null
+          agency_label: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          portal_title: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          agency_label?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          portal_title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          agency_label?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          portal_title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_branding_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_portal_invites: {
+        Row: {
+          accepted_at: string | null
+          client_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          status: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          client_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          status?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          client_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_invites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_portal_users: {
+        Row: {
+          activated_at: string | null
+          client_id: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          invited_at: string
+          last_login_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          client_id: string
+          created_at?: string
+          email: string
+          full_name?: string
+          id?: string
+          invited_at?: string
+          last_login_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          client_id?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          invited_at?: string
+          last_login_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_users_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_status_history: {
         Row: {
           changed_at: string
@@ -4910,6 +5045,10 @@ export type Database = {
         Args: { _invitation_id: string }
         Returns: undefined
       }
+      accept_portal_invite: {
+        Args: { _invite_id: string; _user_id: string }
+        Returns: Json
+      }
       delete_gos_secret: { Args: { _secret_ref: string }; Returns: undefined }
       delete_social_token: {
         Args: { _token_reference: string }
@@ -4979,6 +5118,7 @@ export type Database = {
         Returns: undefined
       }
       validate_onboarding_token: { Args: { p_token: string }; Returns: Json }
+      validate_portal_invite: { Args: { _token: string }; Returns: Json }
     }
     Enums: {
       agency_role:
