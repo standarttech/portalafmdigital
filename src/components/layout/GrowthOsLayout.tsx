@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Rocket, FileCode2, FormInput,
-  ClipboardCheck, Plug, GitBranch, BarChart3
+  ClipboardCheck, Plug, GitBranch, BarChart3, TrendingUp, FlaskConical
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
@@ -27,6 +27,8 @@ const gosNavItems: GosNavItem[] = [
   { labelKey: 'gos.onboarding' as TranslationKey, icon: ClipboardCheck, path: '/growth-os/onboarding' },
   { labelKey: 'gos.integrations' as TranslationKey, icon: Plug, path: '/growth-os/integrations' },
   { labelKey: 'gos.leadRouting' as TranslationKey, icon: GitBranch, path: '/growth-os/lead-routing' },
+  { labelKey: 'gos.analytics' as TranslationKey, icon: TrendingUp, path: '/growth-os/analytics' },
+  { labelKey: 'gos.experiments' as TranslationKey, icon: FlaskConical, path: '/growth-os/experiments' },
 ];
 
 function GosSidebarContent({ onNavigate }: { onNavigate?: () => void }) {

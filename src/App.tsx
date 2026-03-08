@@ -450,6 +450,8 @@ function AppRoutes() {
         <Route path="/growth-os/onboarding/:sessionId" element={<GosOnboardingWizard />} />
         <Route path="/growth-os/integrations" element={<GosIntegrationsPage />} />
         <Route path="/growth-os/lead-routing" element={<GosLeadRoutingPage />} />
+        <Route path="/growth-os/analytics" element={<GosAnalyticsPage />} />
+        <Route path="/growth-os/experiments" element={<GosExperimentsPage />} />
       </Route>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
