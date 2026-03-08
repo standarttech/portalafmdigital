@@ -172,6 +172,10 @@ function GoogleSheetConnection({ clientId, isAdmin }: { clientId: string; isAdmi
     supabase.from('platform_settings').select('value').eq('key', `google_tracking_${clientId}`).maybeSingle().then(({ data }) => {
       if (data?.value !== null && data?.value !== undefined) setGoogleTrackingEnabled((data.value as any)?.enabled !== false);
     });
+    // Load meta auto-sync pref
+    supabase.from('platform_settings').select('value').eq('key', `meta_auto_sync_${clientId}`).maybeSingle().then(({ data }) => {
+      if (data?.value !== null && data?.value !== undefined) setMetaAutoSync((data.value as any)?.enabled !== false);
+    });
     loadLinkedAccounts();
   }, [clientId]);
 
