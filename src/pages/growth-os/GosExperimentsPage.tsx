@@ -87,6 +87,7 @@ function useExperimentStats(experimentId: string | null, variants: any[]) {
 const VARIANT_COLORS = ['hsl(160,70%,45%)', 'hsl(200,80%,50%)', 'hsl(280,70%,55%)', 'hsl(340,70%,50%)'];
 
 export default function GosExperimentsPage() {
+  const { logGosAction } = useGosAuditLog();
   const [experiments, setExperiments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
