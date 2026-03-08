@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle2, AlertTriangle, Activity, Zap, TrendingUp, Clock, Lightbulb, Download } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertTriangle, Activity, Zap, TrendingUp, Clock, Lightbulb, Download, FileText } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOutletContext } from 'react-router-dom';
@@ -10,11 +10,24 @@ import PortalDateFilter, { type DateRange } from '@/components/portal/PortalDate
 import PeriodComparison from '@/components/portal/PeriodComparison';
 import { exportPerformanceSummary } from '@/lib/portalExport';
 import { toast } from 'sonner';
+import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
 
+/** Calendar-correct previous period */
 function getPreviousPeriod(range: DateRange): { from: Date; to: Date; label: string } {
+  // For "Previous month" → use the month before that
+  if (range.label === 'Previous month') {
+    const refMonth = subMonths(range.from, 1);
+    return { from: startOfMonth(refMonth), to: endOfMonth(refMonth), label: 'month before' };
+  }
+  // For "This month" → use previous calendar month
+  if (range.label === 'This month') {
+    const prev = subMonths(new Date(), 1);
+    return { from: startOfMonth(prev), to: endOfMonth(prev), label: 'previous month' };
+  }
+  // Duration-based for 7d/30d
   const duration = range.to.getTime() - range.from.getTime();
   return {
     from: new Date(range.from.getTime() - duration),
@@ -56,6 +69,7 @@ export default function PortalDashboardPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clients, setClients] = useState<{id:string;name:string}[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const load = useCallback(async () => {
     let clientId = portalUser?.client_id || null;
@@ -92,7 +106,6 @@ export default function PortalDashboardPage() {
       actQ = actQ.gte('created_at', from).lte('created_at', to);
     }
 
-    // Fetch previous period data for comparison
     let prevData: any[] = [];
     if (dateRange) {
       const prev = getPreviousPeriod(dateRange);
@@ -143,7 +156,6 @@ export default function PortalDashboardPage() {
     const ok = exportPerformanceSummary(latest, dateRange?.label || 'all-time');
     if (ok) {
       toast.success('Report exported');
-      // Audit
       supabase.from('audit_log').insert({
         action: 'portal_report_exported', entity_type: 'portal_export',
         entity_id: portalUser?.client_id || selectedClient || 'unknown',
@@ -155,14 +167,49 @@ export default function PortalDashboardPage() {
     }
   };
 
+  const handlePdfExport = async () => {
+    const clientId = portalUser?.client_id || selectedClient;
+    if (!clientId) return;
+    setPdfLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('portal-pdf-report', {
+        body: {
+          client_id: clientId,
+          period_label: dateRange?.label || 'All Time',
+          date_from: dateRange?.from.toISOString() || null,
+          date_to: dateRange?.to.toISOString() || null,
+        },
+      });
+
+      if (error) throw error;
+
+      // data is HTML string - download as file
+      const blob = new Blob([data], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-${clientName || 'client'}-${dateRange?.label || 'all-time'}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Report downloaded — open in browser and use Print → Save as PDF');
+    } catch (err) {
+      console.error('PDF export error:', err);
+      toast.error('Could not generate report. Please try again.');
+    }
+    setPdfLoading(false);
+  };
+
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   const title = branding?.portal_title || 'Performance Portal';
   const showComparison = dateRange && prevSnapshots.length > 0;
+  const prevLabel = dateRange ? getPreviousPeriod(dateRange).label : 'previous period';
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -176,11 +223,18 @@ export default function PortalDashboardPage() {
             </select>
           )}
         </div>
-        {latest.length > 0 && (
-          <Button size="sm" variant="outline" onClick={handleExport} className="gap-1.5 text-xs shrink-0">
-            <Download className="h-3.5 w-3.5" /> Export CSV
-          </Button>
-        )}
+        <div className="flex gap-2 shrink-0 flex-wrap">
+          {latest.length > 0 && (
+            <>
+              <Button size="sm" variant="outline" onClick={handleExport} className="gap-1.5 text-xs">
+                <Download className="h-3.5 w-3.5" /> CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={handlePdfExport} disabled={pdfLoading} className="gap-1.5 text-xs">
+                {pdfLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Report
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <PortalDateFilter value={dateRange} onChange={setDateRange} />
@@ -205,7 +259,7 @@ export default function PortalDashboardPage() {
       {/* Period Comparison */}
       {showComparison && (
         <PeriodComparison
-          previousLabel="previous period"
+          previousLabel={prevLabel}
           metrics={[
             { label: 'Spend', current: current.spend, previous: previous.spend, format: 'currency' },
             { label: 'Clicks', current: current.clicks, previous: previous.clicks },
@@ -215,7 +269,7 @@ export default function PortalDashboardPage() {
         />
       )}
       {dateRange && prevSnapshots.length === 0 && snapshots.length > 0 && (
-        <p className="text-[10px] text-muted-foreground italic">Comparison unavailable — not enough data for the previous period.</p>
+        <p className="text-[10px] text-muted-foreground italic">Comparison unavailable — not enough data for the {prevLabel}.</p>
       )}
 
       {/* Delivery Health */}

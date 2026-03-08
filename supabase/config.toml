@@ -60,3 +60,6 @@ verify_jwt = false
 [functions.execute-optimization]
 verify_jwt = false
 
+[functions.portal-pdf-report]
+verify_jwt = false
+

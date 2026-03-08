@@ -10,13 +10,22 @@ import PortalDateFilter, { type DateRange } from '@/components/portal/PortalDate
 import PeriodComparison from '@/components/portal/PeriodComparison';
 import { exportPerformanceSummary } from '@/lib/portalExport';
 import { toast } from 'sonner';
+import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
 
 function getPreviousPeriod(range: DateRange) {
+  if (range.label === 'Previous month') {
+    const refMonth = subMonths(range.from, 1);
+    return { from: startOfMonth(refMonth), to: endOfMonth(refMonth), label: 'month before' };
+  }
+  if (range.label === 'This month') {
+    const prev = subMonths(new Date(), 1);
+    return { from: startOfMonth(prev), to: endOfMonth(prev), label: 'previous month' };
+  }
   const duration = range.to.getTime() - range.from.getTime();
-  return { from: new Date(range.from.getTime() - duration), to: new Date(range.from.getTime() - 1) };
+  return { from: new Date(range.from.getTime() - duration), to: new Date(range.from.getTime() - 1), label: 'previous period' };
 }
 
 function dedup(snapshots: any[]): any[] {
@@ -107,6 +116,7 @@ export default function PortalReportsPage() {
   const totalActions = actions.length;
   const activeRecs = recs.filter(r => ['new', 'reviewed'].includes(r.status));
   const showComparison = dateRange && prevSnapshots.length > 0;
+  const prevLabel = dateRange ? getPreviousPeriod(dateRange).label : 'previous period';
 
   const handleExport = () => {
     const ok = exportPerformanceSummary(latest, dateRange?.label || 'all-time');
@@ -123,8 +133,8 @@ export default function PortalReportsPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-foreground">Reports</h1>
           <p className="text-sm text-muted-foreground">
@@ -160,7 +170,7 @@ export default function PortalReportsPage() {
           )}
           {showComparison && (
             <PeriodComparison
-              previousLabel="previous period"
+              previousLabel={prevLabel}
               metrics={[
                 { label: 'Spend', current: cur.spend, previous: prev.spend, format: 'currency' },
                 { label: 'Clicks', current: cur.clicks, previous: prev.clicks },
@@ -170,7 +180,7 @@ export default function PortalReportsPage() {
             />
           )}
           {dateRange && prevSnapshots.length === 0 && snapshots.length > 0 && (
-            <p className="text-[10px] text-muted-foreground italic">Comparison unavailable — not enough data for the previous period.</p>
+            <p className="text-[10px] text-muted-foreground italic">Comparison unavailable — not enough data for the {prevLabel}.</p>
           )}
         </CardContent>
       </Card>

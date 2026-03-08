@@ -1,19 +1,98 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut, User, Shield, Bell, Key, Clock } from 'lucide-react';
+import { LogOut, User, Shield, Bell, Key, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEffect, useState, useCallback } from 'react';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
+
+const PREF_TYPES: { key: string; label: string; desc: string; mandatory?: boolean }[] = [
+  { key: 'campaign_launched', label: 'Campaign launches', desc: 'When a new campaign goes live' },
+  { key: 'optimization_update', label: 'Optimization updates', desc: 'When optimizations are completed' },
+  { key: 'recommendation_added', label: 'New insights', desc: 'When new recommendations are available' },
+  { key: 'report_available', label: 'Reports', desc: 'When new reports are shared' },
+  { key: 'file_shared', label: 'Shared files', desc: 'When files or documents are shared' },
+  { key: 'portal_access_updated', label: 'Account updates', desc: 'Portal access and security updates (always on)', mandatory: true },
+];
+
+type PrefKey = 'campaign_launched' | 'optimization_update' | 'recommendation_added' | 'report_available' | 'file_shared' | 'portal_access_updated';
 
 export default function PortalSettingsPage() {
   const { portalUser, branding, isAdmin } = useOutletContext<Ctx>();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [prefs, setPrefs] = useState<Record<PrefKey, boolean>>({
+    campaign_launched: true,
+    optimization_update: true,
+    recommendation_added: true,
+    report_available: true,
+    file_shared: true,
+    portal_access_updated: true,
+  });
+  const [prefsLoading, setPrefLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const loadPrefs = useCallback(async () => {
+    if (!portalUser?.id) { setPrefLoading(false); return; }
+    const { data } = await supabase
+      .from('portal_notification_preferences' as any)
+      .select('*')
+      .eq('portal_user_id', portalUser.id)
+      .maybeSingle();
+    if (data) {
+      const d = data as any;
+      setPrefs({
+        campaign_launched: d.campaign_launched ?? true,
+        optimization_update: d.optimization_update ?? true,
+        recommendation_added: d.recommendation_added ?? true,
+        report_available: d.report_available ?? true,
+        file_shared: d.file_shared ?? true,
+        portal_access_updated: true, // always on
+      });
+    }
+    setPrefLoading(false);
+  }, [portalUser]);
+
+  useEffect(() => { loadPrefs(); }, [loadPrefs]);
+
+  const savePrefs = async () => {
+    if (!portalUser?.id) return;
+    setSaving(true);
+    const payload = {
+      portal_user_id: portalUser.id,
+      campaign_launched: prefs.campaign_launched,
+      optimization_update: prefs.optimization_update,
+      recommendation_added: prefs.recommendation_added,
+      report_available: prefs.report_available,
+      file_shared: prefs.file_shared,
+      portal_access_updated: true,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('portal_notification_preferences' as any)
+      .upsert(payload as any, { onConflict: 'portal_user_id' });
+
+    if (error) {
+      toast.error('Could not save preferences');
+    } else {
+      toast.success('Notification preferences saved');
+      supabase.from('audit_log').insert({
+        action: 'portal_notification_preferences_updated',
+        entity_type: 'portal_notification_preferences',
+        entity_id: portalUser.id,
+        user_id: user?.id,
+        details: prefs,
+      });
+    }
+    setSaving(false);
+  };
 
   const handleLogout = async () => {
     await supabase.from('audit_log').insert({
@@ -46,11 +125,10 @@ export default function PortalSettingsPage() {
     }
   };
 
-  // Session info
   const sessionStarted = user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : null;
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
       <div>
         <h1 className="text-xl font-bold text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground">Your portal account information</p>
@@ -65,7 +143,7 @@ export default function PortalSettingsPage() {
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Email</span>
-            <span className="text-sm text-foreground">{portalUser?.email || user?.email || '—'}</span>
+            <span className="text-sm text-foreground truncate ml-4">{portalUser?.email || user?.email || '—'}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Name</span>
@@ -104,7 +182,6 @@ export default function PortalSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Session info */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -122,16 +199,39 @@ export default function PortalSettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Notification Preferences */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Bell className="h-4 w-4 text-primary" /> Notifications
+            <Bell className="h-4 w-4 text-primary" /> Notification Preferences
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            You'll receive notifications for new reports, campaign updates, and shared files. Notification preferences will be available in a future update.
-          </p>
+        <CardContent className="space-y-4">
+          {prefsLoading ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+          ) : portalUser ? (
+            <>
+              {PREF_TYPES.map(pt => (
+                <div key={pt.key} className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground">{pt.label}</p>
+                    <p className="text-[10px] text-muted-foreground">{pt.desc}</p>
+                  </div>
+                  <Switch
+                    checked={prefs[pt.key]}
+                    onCheckedChange={v => pt.mandatory ? null : setPrefs(p => ({ ...p, [pt.key]: v }))}
+                    disabled={pt.mandatory}
+                  />
+                </div>
+              ))}
+              <Button size="sm" onClick={savePrefs} disabled={saving} className="gap-2">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Save Preferences
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Notification preferences are available for portal users.</p>
+          )}
         </CardContent>
       </Card>
 
