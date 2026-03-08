@@ -1056,6 +1056,13 @@ export const translations = {
   'clients.metaAutoSyncDisabled': t('Meta auto-sync disabled', 'Авто-синхронизация Meta отключена', 'Sincronizzazione automatica Meta disattivata', 'Sincronización automática Meta desactivada', 'تم تعطيل المزامنة التلقائية', 'Synchronisation auto Meta désactivée'),
   'clients.addAccounts': t('Add Accounts', 'Добавить аккаунты', 'Aggiungi account', 'Añadir cuentas', 'إضافة حسابات', 'Ajouter des comptes'),
   'clients.loadAccountsList': t('Load accounts list', 'Загрузить список аккаунтов', 'Carica lista account', 'Cargar lista de cuentas', 'تحميل قائمة الحسابات', 'Charger la liste des comptes'),
+  'clients.searchAccounts': t('Search by ID or name...', 'Поиск по ID или имени...', 'Cerca per ID o nome...', 'Buscar por ID o nombre...', 'البحث بالمعرف أو الاسم...', 'Rechercher par ID ou nom...'),
+  'clients.allAccountsConnected': t('All accounts already connected', 'Все аккаунты уже подключены', 'Tutti gli account già collegati', 'Todas las cuentas ya conectadas', 'جميع الحسابات متصلة بالفعل', 'Tous les comptes déjà connectés'),
+  'clients.addSelected': t('Add selected', 'Добавить выбранные', 'Aggiungi selezionati', 'Añadir seleccionados', 'إضافة المحدد', 'Ajouter la sélection'),
+  'clients.refreshList': t('Refresh list', 'Обновить список', 'Aggiorna lista', 'Actualizar lista', 'تحديث القائمة', 'Rafraîchir la liste'),
+  'clients.secondary': t('Secondary', 'Вторичный', 'Secondario', 'Secundario', 'ثانوي', 'Secondaire'),
+  'common.noResults': t('No results', 'Нет результатов', 'Nessun risultato', 'Sin resultados', 'لا توجد نتائج', 'Aucun résultat'),
+  'common.disabled': t('Disabled', 'Отключено', 'Disabilitato', 'Desactivado', 'معطل', 'Désactivé'),
 
 } as const;
 
