@@ -664,7 +664,10 @@ function CampaignSettingsTab({ draft, accounts, clients, onSave, saving }: {
             </div>
             <div><Label>Source</Label><Input value={local.source_type} disabled className="bg-muted/30" /></div>
           </div>
-          <Button size="sm" onClick={() => onSave(local)} disabled={saving}>
+          <Button size="sm" onClick={() => onSave({
+            campaign_name: local.campaign_name, objective: local.objective, platform: local.platform,
+            ad_account_id: local.ad_account_id, buying_type: local.buying_type,
+          })} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Campaign Settings
           </Button>
         </CardContent>
