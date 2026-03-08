@@ -34,6 +34,8 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
 const recTypes = [
   'restructure_campaign', 'test_new_angle', 'kill_underperformer', 'duplicate_winner',
   'adjust_budget', 'change_audience', 'improve_creative', 'improve_landing', 'launch_new_test',
+  'no_delivery_check', 'pause_loser', 'increase_budget', 'reduce_budget',
+  'fix_creative_issue', 'fix_targeting_issue', 'investigate_rejection', 'relaunch_with_changes',
 ];
 
 export default function AiAdsRecommendationsPage() {
