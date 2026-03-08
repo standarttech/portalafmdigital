@@ -126,10 +126,10 @@ export default function AppHeader() {
         <div className="flex items-center gap-0.5 sm:gap-2 flex-shrink-0">
           <NotificationCenter />
 
-          {/* Theme */}
+          {/* Theme - hide on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hidden sm:flex">
                 <Palette className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -143,12 +143,12 @@ export default function AppHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* FX */}
+          {/* FX - hide on mobile */}
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon"
-                  className={cn("h-8 w-8 transition-colors",
+                  className={cn("h-8 w-8 transition-colors hidden sm:flex",
                     isFuturistic ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground"
                   )} onClick={toggleFx}>
                   <Sparkles className={cn("h-4 w-4", isFuturistic && "animate-pulse")} />
