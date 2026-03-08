@@ -1155,7 +1155,6 @@ export default function ClientDetailPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          </TabsContent>
 
           {/* CAMPAIGNS TAB */}
           <TabsContent value="campaigns" className="space-y-4">
