@@ -38,7 +38,7 @@ serve(async (req) => {
 
     // Build query for launched requests
     let query = svc.from("launch_requests")
-      .select("id, client_id, ad_account_id, platform, external_campaign_id, external_ids, execution_status, draft_id")
+      .select("id, client_id, ad_account_id, platform, external_campaign_id, external_ids, execution_status, draft_id, metadata")
       .in("status", ["completed"])
       .not("external_campaign_id", "is", null);
 
