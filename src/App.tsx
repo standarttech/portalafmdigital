@@ -111,6 +111,7 @@ const PortalCampaignsPage = React.lazy(() => import("@/pages/portal/PortalCampai
 const PortalRecommendationsPage = React.lazy(() => import("@/pages/portal/PortalRecommendationsPage"));
 const PortalReportsPage = React.lazy(() => import("@/pages/portal/PortalReportsPage"));
 const PortalSettingsPage = React.lazy(() => import("@/pages/portal/PortalSettingsPage"));
+const PortalFilesPage = React.lazy(() => import("@/pages/portal/PortalFilesPage"));
 const PortalLoginPage = React.lazy(() => import("@/pages/portal/PortalLoginPage"));
 const PortalAcceptInvitePage = React.lazy(() => import("@/pages/portal/PortalAcceptInvitePage"));
 import AiAdsLayout from "@/components/layout/AiAdsLayout";
@@ -414,6 +415,7 @@ function AppRoutes() {
           <Route path="/portal/campaigns" element={<PortalCampaignsPage />} />
           <Route path="/portal/recommendations" element={<PortalRecommendationsPage />} />
           <Route path="/portal/reports" element={<PortalReportsPage />} />
+          <Route path="/portal/files" element={<PortalFilesPage />} />
           <Route path="/portal/settings" element={<PortalSettingsPage />} />
         </Route>
         <Route element={<MainLayout />}>
@@ -468,6 +470,7 @@ function AppRoutes() {
         <Route path="/portal/campaigns" element={<PortalCampaignsPage />} />
         <Route path="/portal/recommendations" element={<PortalRecommendationsPage />} />
         <Route path="/portal/reports" element={<PortalReportsPage />} />
+        <Route path="/portal/files" element={<PortalFilesPage />} />
         <Route path="/portal/settings" element={<PortalSettingsPage />} />
       </Route>
       {/* CRM — guarded by module permission */}

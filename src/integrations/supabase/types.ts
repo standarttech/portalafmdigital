@@ -1753,6 +1753,56 @@ export type Database = {
           },
         ]
       }
+      client_portal_files: {
+        Row: {
+          client_id: string
+          created_at: string
+          description: string | null
+          external_url: string | null
+          file_type: string
+          id: string
+          is_visible_in_portal: boolean
+          storage_path: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          file_type?: string
+          id?: string
+          is_visible_in_portal?: boolean
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          file_type?: string
+          id?: string
+          is_visible_in_portal?: boolean
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_files_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_portal_invites: {
         Row: {
           accepted_at: string | null
@@ -4199,6 +4249,60 @@ export type Database = {
           value?: Json | null
         }
         Relationships: []
+      }
+      portal_notifications: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          metadata: Json | null
+          portal_user_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          metadata?: Json | null
+          portal_user_id?: string | null
+          title?: string
+          type?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          metadata?: Json | null
+          portal_user_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_notifications_portal_user_id_fkey"
+            columns: ["portal_user_id"]
+            isOneToOne: false
+            referencedRelation: "client_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_events: {
         Row: {

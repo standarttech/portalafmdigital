@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut, User, Clock, Shield } from 'lucide-react';
+import { LogOut, User, Shield, Bell, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PortalUser, PortalBranding } from '@/types/portal';
 
@@ -25,6 +25,19 @@ export default function PortalSettingsPage() {
     await signOut();
     navigate('/portal/login', { replace: true });
     toast.success('Signed out successfully');
+  };
+
+  const handleResetPassword = async () => {
+    const email = portalUser?.email || user?.email;
+    if (!email) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/portal/login`,
+    });
+    if (error) {
+      toast.error('Could not send reset email. Please try again later.');
+    } else {
+      toast.success('Password reset email sent. Check your inbox.');
+    }
   };
 
   return (
@@ -75,14 +88,43 @@ export default function PortalSettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            To change your password, use the "Forgot password" option on the sign-in page. A reset link will be sent to your email.
-          </p>
-          <Button variant="destructive" size="sm" onClick={handleLogout} className="gap-2">
-            <LogOut className="h-4 w-4" /> Sign Out
+          <Button variant="outline" size="sm" onClick={handleResetPassword} className="gap-2">
+            <Key className="h-4 w-4" /> Reset Password
           </Button>
+          <p className="text-xs text-muted-foreground">A password reset link will be sent to your email address.</p>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Bell className="h-4 w-4 text-primary" /> Notifications
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            You'll receive notifications for new reports, campaign updates, and shared files. Notification preferences will be available in a future update.
+          </p>
+        </CardContent>
+      </Card>
+
+      {branding && (
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            {branding.logo_url && <img src={branding.logo_url} alt="" className="h-8 w-8 object-contain rounded" />}
+            <div>
+              <p className="text-sm font-medium text-foreground">{branding.portal_title || 'Performance Portal'}</p>
+              {branding.agency_label && <p className="text-xs text-muted-foreground">Powered by {branding.agency_label}</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="pt-2">
+        <Button variant="destructive" size="sm" onClick={handleLogout} className="gap-2">
+          <LogOut className="h-4 w-4" /> Sign Out
+        </Button>
+      </div>
 
       {isAdmin && !portalUser && (
         <Card className="border-amber-500/20">
