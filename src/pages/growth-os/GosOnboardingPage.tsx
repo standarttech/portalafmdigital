@@ -10,12 +10,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, ExternalLink, Copy, Link2, Ban, Clock, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import type { TranslationKey } from '@/i18n/translations';
 
 const stepFieldTypes = ['text', 'email', 'tel', 'url', 'select', 'file', 'checkbox'];
+
+const TTL_OPTIONS = [
+  { value: '1', label: '1 day' },
+  { value: '3', label: '3 days' },
+  { value: '7', label: '7 days' },
+  { value: '14', label: '14 days' },
+  { value: '30', label: '30 days' },
+];
 
 export default function GosOnboardingPage() {
   const { t } = useLanguage();
@@ -32,6 +43,10 @@ export default function GosOnboardingPage() {
   const [managingTokens, setManagingTokens] = useState<string | null>(null);
   const [sessionTokens, setSessionTokens] = useState<any[]>([]);
   const [tokensLoading, setTokensLoading] = useState(false);
+  // Revoke confirmation state
+  const [revokeConfirm, setRevokeConfirm] = useState<{ open: boolean; tokenId: string; tokenSnippet: string }>({ open: false, tokenId: '', tokenSnippet: '' });
+  // TTL selection state
+  const [linkTtlDays, setLinkTtlDays] = useState('7');
 
   useEffect(() => { loadData(); }, []);
 
@@ -134,28 +149,41 @@ export default function GosOnboardingPage() {
   const generateToken = async (sessionId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    // Find client name for label
     const sess = sessions.find(s => s.id === sessionId);
     const clientName = (sess as any)?.clients?.name || '';
+    const ttlDays = parseInt(linkTtlDays, 10) || 7;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + ttlDays);
+
     const { data: token, error } = await supabase
       .from('gos_onboarding_tokens')
-      .insert({ session_id: sessionId, created_by: user.id, client_label: clientName })
+      .insert({
+        session_id: sessionId,
+        created_by: user.id,
+        client_label: clientName,
+        expires_at: expiresAt.toISOString(),
+      })
       .select('token')
       .single();
     if (error) { toast.error('Failed to generate link'); return; }
     if (token) {
       const link = `${window.location.origin}/embed/onboarding/${token.token}`;
       navigator.clipboard.writeText(link);
-      toast.success('Link generated and copied!');
+      toast.success(`Link generated (expires in ${ttlDays} days) and copied!`);
     }
     loadTokens(sessionId);
   };
 
-  const revokeToken = async (tokenId: string) => {
+  const confirmRevoke = (tok: any) => {
+    setRevokeConfirm({ open: true, tokenId: tok.id, tokenSnippet: tok.token?.slice(0, 12) || '' });
+  };
+
+  const executeRevoke = async () => {
     const { error } = await supabase
       .from('gos_onboarding_tokens')
       .update({ revoked_at: new Date().toISOString() })
-      .eq('id', tokenId);
+      .eq('id', revokeConfirm.tokenId);
+    setRevokeConfirm({ open: false, tokenId: '', tokenSnippet: '' });
     if (error) { toast.error('Failed to revoke'); return; }
     toast.success('Link revoked');
     if (managingTokens) loadTokens(managingTokens);
@@ -354,8 +382,21 @@ export default function GosOnboardingPage() {
             <DialogTitle className="flex items-center gap-2"><Link2 className="h-5 w-5 text-primary" /> Client Access Links</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {/* TTL selector */}
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <label className="text-xs font-medium text-foreground">Link expiration</label>
+              <RadioGroup value={linkTtlDays} onValueChange={setLinkTtlDays} className="flex flex-wrap gap-2">
+                {TTL_OPTIONS.map(opt => (
+                  <div key={opt.value} className="flex items-center gap-1.5">
+                    <RadioGroupItem value={opt.value} id={`ttl-${opt.value}`} />
+                    <Label htmlFor={`ttl-${opt.value}`} className="text-xs cursor-pointer">{opt.label}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
             <Button size="sm" onClick={() => managingTokens && generateToken(managingTokens)} className="gap-1.5 w-full">
-              <Plus className="h-4 w-4" /> Generate New Link
+              <Plus className="h-4 w-4" /> Generate New Link ({TTL_OPTIONS.find(o => o.value === linkTtlDays)?.label || '7 days'})
             </Button>
 
             {tokensLoading ? (
@@ -378,7 +419,7 @@ export default function GosOnboardingPage() {
                               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyTokenLink(tok.token)}>
                                 <Copy className="h-3 w-3" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => revokeToken(tok.id)}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => confirmRevoke(tok)}>
                                 <Ban className="h-3 w-3" />
                               </Button>
                             </>
@@ -403,6 +444,18 @@ export default function GosOnboardingPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Revoke Confirmation Dialog */}
+      <ConfirmDialog
+        open={revokeConfirm.open}
+        onOpenChange={open => { if (!open) setRevokeConfirm({ open: false, tokenId: '', tokenSnippet: '' }); }}
+        title="Revoke Access Link"
+        description={`This will permanently disable the link ending in "...${revokeConfirm.tokenSnippet}...". The client will no longer be able to access onboarding through this link. This action cannot be undone.`}
+        confirmLabel="Revoke Link"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={executeRevoke}
+      />
 
       {/* Flow Editor */}
       {editingFlow && (

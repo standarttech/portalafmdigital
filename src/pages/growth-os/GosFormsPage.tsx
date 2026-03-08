@@ -302,23 +302,10 @@ export default function GosFormsPage() {
                   )}
                 </div>
                 {/* CAPTCHA Setting */}
-                <div className="rounded-lg border border-border p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-xs font-medium text-foreground">CAPTCHA Protection</label>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Require CAPTCHA verification on submit</p>
-                    </div>
-                    <Switch
-                      checked={!!(editing.settings as any)?.captcha_enabled}
-                      onCheckedChange={v => setEditing({ ...editing, settings: { ...(editing.settings || {}), captcha_enabled: v } })}
-                    />
-                  </div>
-                  {(editing.settings as any)?.captcha_enabled && (
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
-                      <p className="text-[10px] text-amber-400">⚠ Requires CAPTCHA_PROVIDER + CAPTCHA_SECRET server secrets. Without them this has no effect.</p>
-                    </div>
-                  )}
-                </div>
+                <CaptchaSettingBlock
+                  enabled={!!(editing.settings as any)?.captcha_enabled}
+                  onToggle={v => setEditing({ ...editing, settings: { ...(editing.settings || {}), captcha_enabled: v } })}
+                />
               </TabsContent>
 
               <TabsContent value="embed" className="flex-1 overflow-auto p-1">
