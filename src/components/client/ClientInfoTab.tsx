@@ -50,9 +50,7 @@ const defaultInfo: ClientInfo = {
 
 export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
   const { t } = useLanguage();
-  const { effectiveRole } = useAuth();
-  const isClient = effectiveRole === 'Client';
-  const canEdit = isAdmin || effectiveRole === 'MediaBuyer' || isClient;
+  const canEdit = true; // Only agency users see this tab now
 
   const [info, setInfo] = useState<ClientInfo>(defaultInfo);
   const [saving, setSaving] = useState(false);
