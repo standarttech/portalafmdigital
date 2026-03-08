@@ -218,23 +218,29 @@ Deno.serve(async (req) => {
       const settings = (form.settings || {}) as Record<string, any>;
       const webhookUrl = settings.webhook_url;
       if (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.startsWith('http')) {
-        try {
-          const webhookRes = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              form_id: formId,
-              form_name: form.name,
-              submission_id: submission.id,
-              data: submissionData,
-              source,
-              submitted_at: new Date().toISOString(),
-            }),
-          });
-          actionResults.webhook = webhookRes.ok ? 'sent' : `failed_${webhookRes.status}`;
-        } catch (e) {
-          actionResults.webhook = 'error';
-          console.error('Webhook error:', e);
+        // SSRF protection: validate URL targets public internet only
+        if (!isUrlSafeForWebhook(webhookUrl)) {
+          actionResults.webhook = 'blocked_ssrf_protection';
+          console.warn('Webhook URL blocked by SSRF protection:', webhookUrl);
+        } else {
+          try {
+            const webhookRes = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                form_id: formId,
+                form_name: form.name,
+                submission_id: submission.id,
+                data: submissionData,
+                source,
+                submitted_at: new Date().toISOString(),
+              }),
+            });
+            actionResults.webhook = webhookRes.ok ? 'sent' : `failed_${webhookRes.status}`;
+          } catch (e) {
+            actionResults.webhook = 'error';
+            console.error('Webhook error:', e);
+          }
         }
       } else {
         actionResults.webhook = 'no_url_configured';
