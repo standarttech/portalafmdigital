@@ -114,6 +114,7 @@ export default function GosOnboardingPage() {
       ],
     }).select().single();
     if (error) { toast.error('Failed to create flow'); return; }
+    logGosAction('create', 'onboarding_flow', data?.id, 'New Onboarding Flow');
     setEditingFlow(data);
     loadData();
   };
