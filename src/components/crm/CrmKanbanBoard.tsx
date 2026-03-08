@@ -221,7 +221,7 @@ export default function CrmKanbanBoard({ stages, leads, onMoveLead, onLeadClick,
 
       <DragOverlay>
         {activeLead && (
-          <div className="bg-card border border-primary/40 rounded-lg p-3 shadow-xl ring-2 ring-primary/20 w-[264px] rotate-2">
+          <div className="bg-card border border-primary/40 rounded-lg p-3 shadow-xl ring-2 ring-primary/20 w-[224px] sm:w-[264px] rotate-2">
             <span className="text-sm font-medium text-foreground">
               {activeLead.full_name || `${activeLead.first_name} ${activeLead.last_name}`.trim() || activeLead.email || 'Unnamed'}
             </span>
