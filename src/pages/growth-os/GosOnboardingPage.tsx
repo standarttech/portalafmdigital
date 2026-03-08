@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, Eye } from 'lucide-react';
+import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, ExternalLink } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
@@ -18,6 +19,7 @@ const stepFieldTypes = ['text', 'email', 'tel', 'url', 'select', 'file', 'checkb
 
 export default function GosOnboardingPage() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [flows, setFlows] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ export default function GosOnboardingPage() {
     setLoading(true);
     const [flowsRes, sessionsRes, clientsRes] = await Promise.all([
       supabase.from('gos_onboarding_flows').select('*').order('created_at', { ascending: false }),
-      supabase.from('gos_onboarding_sessions').select('*, clients(name)').order('created_at', { ascending: false }).limit(50),
+      supabase.from('gos_onboarding_sessions').select('*, clients(name), gos_onboarding_flows(name, steps)').order('updated_at', { ascending: false }).limit(50),
       supabase.from('clients').select('id, name').order('name'),
     ]);
     setFlows(flowsRes.data || []);
@@ -97,19 +99,20 @@ export default function GosOnboardingPage() {
     if (!selectedClient || !selectedFlow) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from('gos_onboarding_sessions').insert({
+    const { data, error } = await supabase.from('gos_onboarding_sessions').insert({
       client_id: selectedClient,
       flow_id: selectedFlow,
       started_by: user.id,
       current_step: 0,
       data: {},
       status: 'in_progress',
-    });
+    }).select('id').single();
+    if (error) { toast.error('Failed to start session'); return; }
     toast.success('Onboarding session started');
     setStartingSession(false);
     setSelectedClient('');
     setSelectedFlow('');
-    loadData();
+    if (data) navigate(`/growth-os/onboarding/${data.id}`);
   };
 
   // Step editor helpers
@@ -237,20 +240,42 @@ export default function GosOnboardingPage() {
           ) : (
             <div className="space-y-2">
               {sessions.map(s => {
-                const flow = flows.find(f => f.id === s.flow_id);
-                const totalSteps = flow ? (flow.steps || []).length : 1;
-                const progress = totalSteps > 0 ? ((s.current_step + 1) / totalSteps) * 100 : 0;
+                const flowData = (s as any).gos_onboarding_flows;
+                const flowSteps = flowData?.steps || [];
+                const totalSteps = Array.isArray(flowSteps) ? flowSteps.length : 0;
+                const progress = s.status === 'completed' ? 100 : totalSteps > 0 ? (s.current_step / totalSteps) * 100 : 0;
                 return (
-                  <Card key={s.id} className="hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setViewingSession(s)}>
+                  <Card key={s.id} className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <span className="text-sm font-medium text-foreground">{(s as any).clients?.name || 'Unknown'}</span>
-                          <span className="text-xs text-muted-foreground ml-2">Step {s.current_step + 1}/{totalSteps}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-medium text-foreground truncate">{(s as any).clients?.name || 'Unknown'}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {s.status === 'completed' ? `${totalSteps}/${totalSteps}` : `${s.current_step + 1}/${totalSteps}`}
+                          </span>
+                          {flowData?.name && <span className="text-xs text-muted-foreground/70 truncate">· {flowData.name}</span>}
                         </div>
-                        <Badge className={`text-[10px] ${sessionStatusColor[s.status] || ''}`}>{s.status}</Badge>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge className={`text-[10px] ${sessionStatusColor[s.status] || ''}`}>{s.status}</Badge>
+                          {s.status === 'in_progress' && (
+                            <Button variant="outline" size="sm" className="h-6 text-xs gap-1" onClick={() => navigate(`/growth-os/onboarding/${s.id}`)}>
+                              <ExternalLink className="h-3 w-3" /> Continue
+                            </Button>
+                          )}
+                          {s.status === 'completed' && (
+                            <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => setViewingSession(s)}>
+                              View
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <Progress value={Math.min(progress, 100)} className="h-1.5" />
+                      {s.completed_at && (
+                        <p className="text-[10px] text-muted-foreground mt-1">Completed {new Date(s.completed_at).toLocaleDateString()}</p>
+                      )}
+                      {!s.completed_at && s.updated_at && (
+                        <p className="text-[10px] text-muted-foreground mt-1">Last updated {new Date(s.updated_at).toLocaleDateString()}</p>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -370,11 +395,17 @@ export default function GosOnboardingPage() {
                 <span className="text-muted-foreground">Current Step:</span>
                 <span className="text-foreground">{viewingSession.current_step + 1}</span>
               </div>
-              {viewingSession.data && Object.keys(viewingSession.data).length > 0 && (
+              {viewingSession.completed_at && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Completed:</span>
+                  <span className="text-foreground">{new Date(viewingSession.completed_at).toLocaleString()}</span>
+                </div>
+              )}
+              {viewingSession.data && typeof viewingSession.data === 'object' && Object.keys(viewingSession.data).length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1">Collected Data:</p>
                   <div className="bg-muted rounded-lg p-3 space-y-1">
-                    {Object.entries(viewingSession.data).map(([k, v]) => (
+                    {Object.entries(viewingSession.data as Record<string, unknown>).map(([k, v]) => (
                       <div key={k} className="flex justify-between text-xs">
                         <span className="text-muted-foreground">{k}:</span>
                         <span className="text-foreground">{String(v)}</span>
@@ -382,6 +413,11 @@ export default function GosOnboardingPage() {
                     ))}
                   </div>
                 </div>
+              )}
+              {viewingSession.status === 'in_progress' && (
+                <Button className="w-full" onClick={() => { setViewingSession(null); navigate(`/growth-os/onboarding/${viewingSession.id}`); }}>
+                  <ExternalLink className="h-4 w-4 mr-2" /> Continue Onboarding
+                </Button>
               )}
             </div>
           )}
