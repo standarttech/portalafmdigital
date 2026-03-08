@@ -678,6 +678,32 @@ export type Database = {
           },
         ]
       }
+      chat_read_status: {
+        Row: {
+          last_read_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          last_read_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          last_read_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_read_status_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_rooms: {
         Row: {
           client_id: string | null
