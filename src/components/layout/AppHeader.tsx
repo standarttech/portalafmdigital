@@ -114,7 +114,7 @@ export default function AppHeader() {
 
       {/* Main Header */}
       <header className={cn(
-        "h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between pl-14 sm:pl-4 lg:pl-6 pr-3 sm:pr-4 lg:pr-6 overflow-hidden",
+        "h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between pl-14 sm:pl-4 lg:pl-6 pr-3 sm:pr-4 lg:pr-6",
         isFuturistic && "bg-card/30 border-border/30"
       )}>
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
