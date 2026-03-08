@@ -417,6 +417,9 @@ export default function AdminPortalManagement() {
         </CardContent>
       </Card>
 
+      {/* Portal Activity Monitor */}
+      <PortalActivityPanel />
+
       {/* Portal Files Management */}
       <AdminPortalFiles />
 
