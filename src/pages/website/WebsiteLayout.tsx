@@ -132,7 +132,7 @@ function Navbar() {
                   <Facebook className="h-4 w-4" /> Facebook
                 </a>
               </div>
-              <Link to="/login" onClick={() => setOpen(false)}
+              <Link to="/auth" onClick={() => setOpen(false)}
                 className="mt-2 px-5 py-2.5 rounded-lg bg-[hsl(42,87%,55%)] text-[hsl(228,30%,6%)] text-sm font-bold text-center">
                 {t('nav.clientPortal')}
               </Link>
