@@ -14,6 +14,9 @@ interface GosMetrics {
   integrationErrors: number;
   activeRules: number;
   routingLogs7d: number;
+  landingViews7d: number;
+  formViews7d: number;
+  formConversionRate: number;
   recentSubmissions: any[];
   recentRoutingLogs: any[];
   onboardingSessions: any[];
@@ -29,21 +32,11 @@ export function useGosMetrics() {
       const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
       const [
-        landingsRes,
-        formsRes,
-        subsAllRes,
-        subs7dRes,
-        subs30dRes,
-        onbActiveRes,
-        onbCompletedRes,
-        intActiveRes,
-        intErrorRes,
-        rulesActiveRes,
-        logs7dRes,
-        recentSubsRes,
-        recentLogsRes,
-        onbSessionsRes,
-        intInstancesRes,
+        landingsRes, formsRes, subsAllRes, subs7dRes, subs30dRes,
+        onbActiveRes, onbCompletedRes, intActiveRes, intErrorRes,
+        rulesActiveRes, logs7dRes, recentSubsRes, recentLogsRes,
+        onbSessionsRes, intInstancesRes,
+        landingViews7dRes, formViews7dRes, formSubmitSuccess7dRes,
       ] = await Promise.all([
         supabase.from('gos_landing_templates').select('id', { count: 'exact', head: true }).eq('status', 'published'),
         supabase.from('gos_forms').select('id', { count: 'exact', head: true }).eq('status', 'published'),
@@ -60,10 +53,17 @@ export function useGosMetrics() {
         supabase.from('gos_routing_log').select('id, lead_source, routed_to, action_taken, created_at').order('created_at', { ascending: false }).limit(5),
         supabase.from('gos_onboarding_sessions').select('id, status, current_step, created_at, updated_at, clients(name), gos_onboarding_flows(name, steps)').order('updated_at', { ascending: false }).limit(5),
         supabase.from('gos_integration_instances').select('id, is_active, error_message, last_sync_at, created_at, gos_integrations(name, provider)').order('created_at', { ascending: false }).limit(5),
+        // Analytics
+        supabase.from('gos_analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'landing_view').gte('created_at', d7),
+        supabase.from('gos_analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'form_view').gte('created_at', d7),
+        supabase.from('gos_analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'form_submit_success').gte('created_at', d7),
       ]);
 
       const totalOnb = (onbActiveRes.count || 0) + (onbCompletedRes.count || 0);
       const completionRate = totalOnb > 0 ? Math.round(((onbCompletedRes.count || 0) / totalOnb) * 100) : 0;
+      const fViews = formViews7dRes.count || 0;
+      const fSubmits = formSubmitSuccess7dRes.count || 0;
+      const convRate = fViews > 0 ? Math.round((fSubmits / fViews) * 100) : 0;
 
       return {
         publishedLandings: landingsRes.count || 0,
@@ -78,6 +78,9 @@ export function useGosMetrics() {
         integrationErrors: intErrorRes.count || 0,
         activeRules: rulesActiveRes.count || 0,
         routingLogs7d: logs7dRes.count || 0,
+        landingViews7d: landingViews7dRes.count || 0,
+        formViews7d: fViews,
+        formConversionRate: convRate,
         recentSubmissions: recentSubsRes.data || [],
         recentRoutingLogs: recentLogsRes.data || [],
         onboardingSessions: onbSessionsRes.data || [],
