@@ -320,9 +320,12 @@ export default function ClientDetailPage() {
 
   const fetchDailyMetrics = useCallback(async () => {
     if (!id) return;
+    // AFM FILTER: first get AFM campaign IDs, then filter daily_metrics
+    const afmIds = await getAfmCampaignIds(id);
+    if (afmIds.length === 0) { setDailyMetrics([]); return; }
     const { data } = await supabase.from('daily_metrics')
       .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-      .eq('client_id', id).order('date', { ascending: true });
+      .eq('client_id', id).in('campaign_id', afmIds).order('date', { ascending: true });
     if (data) setDailyMetrics(data as DailyRow[]);
   }, [id]);
 
