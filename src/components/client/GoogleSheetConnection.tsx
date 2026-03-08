@@ -334,8 +334,8 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
               <Sheet className="h-5 w-5 text-primary" />{t('dashboard.dataSources')} — Google Sheets
             </CardTitle>
             <div className="flex items-center gap-2">
-              {!googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">{t('common.disabled' as TranslationKey) || 'Disabled'}</Badge>}
-              {hasMetaAccounts && googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-warning/30 text-warning">{t('clients.secondary' as TranslationKey) || 'Secondary'}</Badge>}
+              {!googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">{t('common.disabled')}</Badge>}
+              {hasMetaAccounts && googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-warning/30 text-warning">{t('clients.secondary')}</Badge>}
               <Switch checked={googleTrackingEnabled} onCheckedChange={handleToggleGoogleTracking} />
             </div>
           </div>
