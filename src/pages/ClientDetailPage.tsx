@@ -14,6 +14,8 @@ import ConversionFunnel from '@/components/client/ConversionFunnel';
 import ClientComments from '@/components/client/ClientComments';
 import ClientWebhooks from '@/components/client/ClientWebhooks';
 import ClientInfoTab from '@/components/client/ClientInfoTab';
+import GoogleSheetConnection from '@/components/client/GoogleSheetConnection';
+import CampaignsBreakdownTab from '@/components/client/CampaignsBreakdownTab';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import { MetricTooltip } from '@/components/shared/MetricTooltip';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
