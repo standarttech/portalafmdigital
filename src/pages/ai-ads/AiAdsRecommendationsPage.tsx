@@ -78,7 +78,7 @@ export default function AiAdsRecommendationsPage() {
     }).select().single();
     if (error) { toast.error('Failed to create draft'); return; }
     await updateStatus(rec, 'converted_to_draft');
-    logGosAction('create', 'campaign_draft', (data as any).id, `Draft: ${rec.title}`, { source: 'recommendation', recommendationId: rec.id, clientId: rec.client_id });
+    logGosAction('create', 'campaign_draft', (data as any).id, `Draft: ${rec.title}`, { clientId: rec.client_id, metadata: { source: 'recommendation', recommendationId: rec.id } });
     toast.success('Campaign draft created');
   };
 
