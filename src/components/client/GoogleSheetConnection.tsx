@@ -210,20 +210,20 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Zap className="h-5 w-5 text-blue-500" /> Meta Ads API — {t('clients.directConnection' as TranslationKey) || 'Direct Connection'}
+              <Zap className="h-5 w-5 text-blue-500" /> Meta Ads API — {t('clients.directConnection')}
             </CardTitle>
-            {hasMetaAccounts && <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">{t('clients.primarySource' as TranslationKey) || 'Primary Source'}</Badge>}
+            {hasMetaAccounts && <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">{t('clients.primarySource')}</Badge>}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            {t('clients.metaApiDesc' as TranslationKey) || 'Connect Meta ad accounts directly. Data syncs automatically every hour. This source has priority over Google Sheets.'}
+            {t('clients.metaApiDesc')}
           </p>
 
           {/* Linked accounts */}
           {metaAccounts.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.linkedAccounts' as TranslationKey) || 'Linked Accounts'} ({metaAccounts.length})</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.linkedAccounts')} ({metaAccounts.length})</p>
               {metaAccounts.map(acc => (
                 <div key={acc.id} className="flex items-center justify-between rounded-lg border border-border/50 p-2.5 bg-secondary/20">
                   <div className="min-w-0">
@@ -243,7 +243,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
               ))}
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8" onClick={syncNow}>
-                  <RefreshCw className="h-3.5 w-3.5" /> {t('clients.syncNow' as TranslationKey) || 'Sync Now'}
+                  <RefreshCw className="h-3.5 w-3.5" /> {t('clients.syncNow')}
                 </Button>
               </div>
               {/* Meta Auto-sync toggle */}
@@ -251,10 +251,10 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                 <div className="min-w-0 flex-1 mr-3">
                   <p className="text-sm font-medium flex items-center gap-1.5">
                     <CalendarClock className="h-3.5 w-3.5 text-primary" />
-                    {t('clients.metaAutoSync' as TranslationKey) || 'Meta Auto-sync'}
+                    {t('clients.metaAutoSync')}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {t('clients.metaAutoSyncDesc' as TranslationKey) || 'Data is pulled every hour for the last 3 days (covers Facebook attribution window). Manual sync — 30 days.'}
+                    {t('clients.metaAutoSyncDesc')}
                   </p>
                 </div>
                 <Switch checked={metaAutoSync} onCheckedChange={async (enabled) => {
@@ -264,7 +264,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                     value: { enabled } as any,
                     updated_by: null,
                   }, { onConflict: 'key' });
-                  toast.success(enabled ? t('clients.metaAutoSyncEnabled' as TranslationKey) || 'Meta auto-sync enabled' : t('clients.metaAutoSyncDisabled' as TranslationKey) || 'Meta auto-sync disabled');
+                  toast.success(enabled ? t('clients.metaAutoSyncEnabled') : t('clients.metaAutoSyncDisabled'));
                 }} className="flex-shrink-0" />
               </div>
             </div>
@@ -272,16 +272,16 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
 
           {/* Add accounts — multi-select with search */}
           <div className="space-y-3 border-t border-border/50 pt-3">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.addAccounts' as TranslationKey) || 'Add Accounts'}</p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t('clients.addAccounts')}</p>
             {availableAccounts.length === 0 ? (
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
                 {loadingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                {t('clients.loadAccountsList' as TranslationKey) || 'Load accounts list'}
+                {t('clients.loadAccountsList')}
               </Button>
             ) : (
               <div className="space-y-2">
                 <Input
-                  placeholder={t('clients.searchAccounts' as TranslationKey) || 'Search by ID or name...'}
+                  placeholder={t('clients.searchAccounts')}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="h-8 text-xs"
@@ -289,7 +289,7 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                 <div className="max-h-[240px] overflow-y-auto space-y-1 border border-border/50 rounded-lg p-2 bg-secondary/10">
                   {filteredAvailable.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">
-                      {searchQuery ? t('common.noResults' as TranslationKey) || 'No results' : t('clients.allAccountsConnected' as TranslationKey) || 'All accounts already connected'}
+                      {searchQuery ? t('common.noResults') : t('clients.allAccountsConnected')}
                     </p>
                   ) : (
                     filteredAvailable.map(a => (
@@ -314,11 +314,11 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
                 {selectedIds.length > 0 && (
                   <Button size="sm" onClick={addSelectedAccounts} disabled={addingAccounts} className="gap-1.5 w-full">
                     {addingAccounts ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                    {t('clients.addSelected' as TranslationKey) || 'Add selected'} ({selectedIds.length})
+                    {t('clients.addSelected')} ({selectedIds.length})
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={fetchAvailableAccounts} disabled={loadingAccounts}>
-                  <RefreshCw className="h-3 w-3 mr-1.5" /> {t('clients.refreshList' as TranslationKey) || 'Refresh list'}
+                  <RefreshCw className="h-3 w-3 mr-1.5" /> {t('clients.refreshList')}
                 </Button>
               </div>
             )}
@@ -334,8 +334,8 @@ export default function GoogleSheetConnection({ clientId, isAdmin }: { clientId:
               <Sheet className="h-5 w-5 text-primary" />{t('dashboard.dataSources')} — Google Sheets
             </CardTitle>
             <div className="flex items-center gap-2">
-              {!googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">{t('common.disabled' as TranslationKey) || 'Disabled'}</Badge>}
-              {hasMetaAccounts && googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-warning/30 text-warning">{t('clients.secondary' as TranslationKey) || 'Secondary'}</Badge>}
+              {!googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">{t('common.disabled')}</Badge>}
+              {hasMetaAccounts && googleTrackingEnabled && <Badge variant="outline" className="text-[10px] border-warning/30 text-warning">{t('clients.secondary')}</Badge>}
               <Switch checked={googleTrackingEnabled} onCheckedChange={handleToggleGoogleTracking} />
             </div>
           </div>
