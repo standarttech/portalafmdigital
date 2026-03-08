@@ -137,7 +137,7 @@ function CampaignBreakdown({ clientId, dateRange, t, formatCurrency, formatNumbe
       if (data) {
         // Aggregate by platform_id
         const agg: Record<string, AdLevelRow> = {};
-        data.forEach((r: any) => {
+        filtered.forEach((r: any) => {
           if (!agg[r.platform_id]) {
             agg[r.platform_id] = { ...r, spend: 0, impressions: 0, link_clicks: 0, leads: 0, purchases: 0, revenue: 0 };
           }
