@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { ArrowLeft, ChevronDown, Loader2, Play } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Loader2, Play, Layers, LayoutGrid, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import type { TranslationKey } from '@/i18n/translations';
+
+type Level = 'campaign' | 'adset' | 'ad';
 
 export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { clientId: string; dateFrom?: string; dateTo?: string }) {
   const { t, formatCurrency, formatNumber } = useLanguage();
-  const [breadcrumb, setBreadcrumb] = useState<{ level: 'campaign' | 'adset' | 'ad'; platformId?: string; name?: string }[]>([
+  const [breadcrumb, setBreadcrumb] = useState<{ level: Level; platformId?: string; name?: string }[]>([
     { level: 'campaign' },
   ]);
   const [data, setData] = useState<any[]>([]);
@@ -18,6 +19,9 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const current = breadcrumb[breadcrumb.length - 1];
+
+  // Whether we're in "flat view" mode (no parent filter) vs drill-down
+  const isFlatView = breadcrumb.length === 1;
 
   useEffect(() => {
     loadData();
@@ -62,12 +66,14 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
       });
       setData(Object.values(agg).filter(a => a.spend > 0 || a.impressions > 0 || a.leads > 0));
     } else {
+      // For adset/ad level — if flat view (no parent), load ALL items of that level
       let query = supabase
         .from('ad_level_metrics')
         .select('platform_id, name, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, status, parent_platform_id, date')
         .eq('client_id', clientId)
         .eq('level', level);
 
+      // Only filter by parent when drilling down (not flat view)
       if (current.platformId) query = query.eq('parent_platform_id', current.platformId);
       if (dateFrom) query = query.gte('date', dateFrom);
       if (dateTo) query = query.lte('date', dateTo);
@@ -79,6 +85,7 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
         if (!agg[r.platform_id]) {
           agg[r.platform_id] = {
             name: r.name, platform_id: r.platform_id, status: r.status,
+            parent_platform_id: r.parent_platform_id,
             spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0,
           };
         }
@@ -109,6 +116,11 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
     setBreadcrumb(prev => prev.slice(0, index + 1));
   };
 
+  // Switch to flat view of a specific level (no parent filter)
+  const switchLevel = (level: Level) => {
+    setBreadcrumb([{ level }]);
+  };
+
   const sorted = useMemo(() => {
     return [...data].sort((a, b) => {
       const av = a[sortKey] ?? 0;
@@ -118,16 +130,16 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
   }, [data, sortKey, sortDir]);
 
   const cols = [
-    { key: 'name', label: t('common.name' as TranslationKey) || 'Name', right: false },
-    { key: 'spend', label: t('metric.spend' as TranslationKey), right: true },
-    { key: 'impressions', label: t('metric.impressions' as TranslationKey), right: true },
-    { key: 'clicks', label: t('metric.clicks' as TranslationKey), right: true },
-    { key: 'cpc', label: t('metric.cpc' as TranslationKey), right: true },
-    { key: 'ctr', label: t('metric.ctr' as TranslationKey), right: true },
-    { key: 'leads', label: t('metric.leads' as TranslationKey), right: true },
-    { key: 'cpl', label: t('metric.cpl' as TranslationKey), right: true },
-    { key: 'purchases', label: t('metric.purchases' as TranslationKey), right: true },
-    { key: 'revenue', label: t('metric.revenue' as TranslationKey), right: true },
+    { key: 'name', label: t('common.name'), right: false },
+    { key: 'spend', label: t('metric.spend'), right: true },
+    { key: 'impressions', label: t('metric.impressions'), right: true },
+    { key: 'clicks', label: t('metric.clicks'), right: true },
+    { key: 'cpc', label: t('metric.cpc'), right: true },
+    { key: 'ctr', label: t('metric.ctr'), right: true },
+    { key: 'leads', label: t('metric.leads'), right: true },
+    { key: 'cpl', label: t('metric.cpl'), right: true },
+    { key: 'purchases', label: t('metric.purchases'), right: true },
+    { key: 'revenue', label: t('metric.revenue'), right: true },
   ];
 
   const formatVal = (key: string, row: any) => {
@@ -150,27 +162,64 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
 
   const canDrillDown = current.level !== 'ad';
   const levelLabels: Record<string, string> = {
-     campaign: t('campaigns.campaigns'),
-     adset: t('campaigns.adsets'),
-     ad: t('campaigns.ads'),
+    campaign: t('campaigns.campaigns'),
+    adset: t('campaigns.adsets'),
+    ad: t('campaigns.ads'),
   };
+
+  const levelIcons: Record<string, React.ReactNode> = {
+    campaign: <Layers className="h-3.5 w-3.5" />,
+    adset: <LayoutGrid className="h-3.5 w-3.5" />,
+    ad: <FileText className="h-3.5 w-3.5" />,
+  };
+
+  const levels: Level[] = ['campaign', 'adset', 'ad'];
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-1.5 text-sm">
-          {breadcrumb.map((b, i) => (
-            <span key={i} className="flex items-center gap-1.5">
-              {i > 0 && <span className="text-muted-foreground">/</span>}
-              <button
-                onClick={() => navigateTo(i)}
-                className={`hover:underline transition-colors ${i === breadcrumb.length - 1 ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                {b.name || levelLabels[b.level]}
-              </button>
-            </span>
-          ))}
+        <div className="flex items-center gap-2">
+          {/* Level switcher tabs */}
+          {isFlatView && (
+            <div className="flex items-center gap-1 bg-secondary/30 rounded-lg p-0.5">
+              {levels.map(lvl => (
+                <button
+                  key={lvl}
+                  onClick={() => switchLevel(lvl)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    current.level === lvl
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                  }`}
+                >
+                  {levelIcons[lvl]}
+                  {levelLabels[lvl]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Breadcrumb (shown when drilling down) */}
+          {!isFlatView && (
+            <div className="flex items-center gap-1.5 text-sm">
+              {breadcrumb.map((b, i) => (
+                <span key={i} className="flex items-center gap-1.5">
+                  {i > 0 && <span className="text-muted-foreground">/</span>}
+                  <button
+                    onClick={() => navigateTo(i)}
+                    className={`hover:underline transition-colors ${i === breadcrumb.length - 1 ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {b.name || levelLabels[b.level]}
+                  </button>
+                </span>
+              ))}
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground ml-1" onClick={() => switchLevel('campaign')}>
+                <ArrowLeft className="h-3 w-3 mr-1" /> {t('common.total')}
+              </Button>
+            </div>
+          )}
         </div>
+
         {dateFrom && dateTo && (
           <Badge variant="outline" className="text-[10px] text-muted-foreground">
             {dateFrom} → {dateTo}
@@ -187,12 +236,12 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
               <Play className="h-8 w-8 text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">
                 {current.level === 'campaign'
-                  ? t('campaigns.noDataForPeriod' as TranslationKey) || 'No data for selected period. Connect a Meta Ads account and run sync.'
-                  : t('campaigns.noDataAtLevel' as TranslationKey) || 'No data at this level for selected period.'}
+                  ? t('campaigns.noDataForPeriod')
+                  : t('campaigns.noDataAtLevel')}
               </p>
-              {current.level !== 'campaign' && (
+              {!isFlatView && (
                 <Button variant="ghost" size="sm" className="mt-2" onClick={() => navigateTo(breadcrumb.length - 2)}>
-                  <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> {t('common.back' as TranslationKey) || 'Back'}
+                  <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> {t('common.back')}
                 </Button>
               )}
             </div>
