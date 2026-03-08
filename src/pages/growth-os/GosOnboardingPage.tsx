@@ -4,43 +4,167 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ClipboardCheck, Loader2, PlayCircle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, Eye } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
 import type { TranslationKey } from '@/i18n/translations';
+
+const stepFieldTypes = ['text', 'email', 'tel', 'url', 'select', 'file', 'checkbox'];
 
 export default function GosOnboardingPage() {
   const { t } = useLanguage();
   const [flows, setFlows] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingFlow, setEditingFlow] = useState<any | null>(null);
+  const [viewingSession, setViewingSession] = useState<any | null>(null);
+  const [clients, setClients] = useState<any[]>([]);
+  const [startingSession, setStartingSession] = useState(false);
+  const [selectedClient, setSelectedClient] = useState('');
+  const [selectedFlow, setSelectedFlow] = useState('');
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     setLoading(true);
-    const [flowsRes, sessionsRes] = await Promise.all([
+    const [flowsRes, sessionsRes, clientsRes] = await Promise.all([
       supabase.from('gos_onboarding_flows').select('*').order('created_at', { ascending: false }),
       supabase.from('gos_onboarding_sessions').select('*, clients(name)').order('created_at', { ascending: false }).limit(50),
+      supabase.from('clients').select('id, name').order('name'),
     ]);
     setFlows(flowsRes.data || []);
     setSessions(sessionsRes.data || []);
+    setClients(clientsRes.data || []);
     setLoading(false);
   };
 
   const createFlow = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from('gos_onboarding_flows').insert({
+    const { data, error } = await supabase.from('gos_onboarding_flows').insert({
       name: 'New Onboarding Flow',
       created_by: user.id,
       steps: [
-        { id: 'info', title: 'Business Info', fields: ['company_name', 'niche', 'website'] },
-        { id: 'goals', title: 'Goals & KPIs', fields: ['target_cpl', 'monthly_budget', 'target_leads'] },
-        { id: 'platforms', title: 'Ad Platforms', fields: ['meta_access', 'google_access', 'tiktok_access'] },
-        { id: 'assets', title: 'Brand Assets', fields: ['logo', 'brand_guidelines', 'creatives'] },
+        { id: 'info', title: 'Business Info', description: 'Basic company information', fields: [
+          { key: 'company_name', label: 'Company Name', type: 'text', required: true },
+          { key: 'website', label: 'Website', type: 'url', required: false },
+          { key: 'niche', label: 'Business Niche', type: 'text', required: true },
+        ]},
+        { id: 'goals', title: 'Goals & KPIs', description: 'Target metrics', fields: [
+          { key: 'monthly_budget', label: 'Monthly Budget', type: 'text', required: true },
+          { key: 'target_cpl', label: 'Target CPL', type: 'text', required: false },
+          { key: 'target_leads', label: 'Monthly Lead Target', type: 'text', required: false },
+        ]},
+        { id: 'platforms', title: 'Ad Platforms', description: 'Platform access setup', fields: [
+          { key: 'meta_access', label: 'Meta Ads Access', type: 'checkbox', required: false },
+          { key: 'google_access', label: 'Google Ads Access', type: 'checkbox', required: false },
+        ]},
+        { id: 'assets', title: 'Brand Assets', description: 'Upload brand materials', fields: [
+          { key: 'logo', label: 'Logo URL', type: 'url', required: false },
+          { key: 'brand_guidelines', label: 'Brand Guidelines URL', type: 'url', required: false },
+        ]},
       ],
-    });
+    }).select().single();
+    if (error) { toast.error('Failed to create flow'); return; }
+    setEditingFlow(data);
     loadData();
+  };
+
+  const saveFlow = async () => {
+    if (!editingFlow) return;
+    const { error } = await supabase.from('gos_onboarding_flows').update({
+      name: editingFlow.name,
+      description: editingFlow.description,
+      steps: editingFlow.steps,
+      is_default: editingFlow.is_default,
+    }).eq('id', editingFlow.id);
+    if (error) toast.error('Save failed');
+    else { toast.success('Flow saved'); loadData(); }
+  };
+
+  const deleteFlow = async (id: string) => {
+    await supabase.from('gos_onboarding_flows').delete().eq('id', id);
+    toast.success('Flow deleted');
+    loadData();
+  };
+
+  const startSession = async () => {
+    if (!selectedClient || !selectedFlow) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('gos_onboarding_sessions').insert({
+      client_id: selectedClient,
+      flow_id: selectedFlow,
+      started_by: user.id,
+      current_step: 0,
+      data: {},
+      status: 'in_progress',
+    });
+    toast.success('Onboarding session started');
+    setStartingSession(false);
+    setSelectedClient('');
+    setSelectedFlow('');
+    loadData();
+  };
+
+  // Step editor helpers
+  const addStep = () => {
+    if (!editingFlow) return;
+    const steps = [...(editingFlow.steps || []), {
+      id: `step_${Date.now()}`,
+      title: 'New Step',
+      description: '',
+      fields: [{ key: 'field_1', label: 'Field', type: 'text', required: false }],
+    }];
+    setEditingFlow({ ...editingFlow, steps });
+  };
+
+  const updateStep = (idx: number, key: string, value: any) => {
+    if (!editingFlow) return;
+    const steps = (editingFlow.steps || []).map((s: any, i: number) => i === idx ? { ...s, [key]: value } : s);
+    setEditingFlow({ ...editingFlow, steps });
+  };
+
+  const removeStep = (idx: number) => {
+    if (!editingFlow) return;
+    setEditingFlow({ ...editingFlow, steps: (editingFlow.steps || []).filter((_: any, i: number) => i !== idx) });
+  };
+
+  const moveStep = (idx: number, dir: -1 | 1) => {
+    if (!editingFlow) return;
+    const steps = [...(editingFlow.steps || [])];
+    const target = idx + dir;
+    if (target < 0 || target >= steps.length) return;
+    [steps[idx], steps[target]] = [steps[target], steps[idx]];
+    setEditingFlow({ ...editingFlow, steps });
+  };
+
+  const addFieldToStep = (stepIdx: number) => {
+    if (!editingFlow) return;
+    const steps = [...(editingFlow.steps || [])];
+    steps[stepIdx] = { ...steps[stepIdx], fields: [...(steps[stepIdx].fields || []), { key: `field_${Date.now()}`, label: 'New Field', type: 'text', required: false }] };
+    setEditingFlow({ ...editingFlow, steps });
+  };
+
+  const updateStepField = (stepIdx: number, fieldIdx: number, key: string, value: any) => {
+    if (!editingFlow) return;
+    const steps = [...(editingFlow.steps || [])];
+    const fields = [...(steps[stepIdx].fields || [])];
+    fields[fieldIdx] = { ...fields[fieldIdx], [key]: value };
+    steps[stepIdx] = { ...steps[stepIdx], fields };
+    setEditingFlow({ ...editingFlow, steps });
+  };
+
+  const removeStepField = (stepIdx: number, fieldIdx: number) => {
+    if (!editingFlow) return;
+    const steps = [...(editingFlow.steps || [])];
+    steps[stepIdx] = { ...steps[stepIdx], fields: steps[stepIdx].fields.filter((_: any, i: number) => i !== fieldIdx) };
+    setEditingFlow({ ...editingFlow, steps });
   };
 
   const sessionStatusColor: Record<string, string> = {
@@ -49,9 +173,7 @@ export default function GosOnboardingPage() {
     abandoned: 'bg-muted text-muted-foreground',
   };
 
-  if (loading) {
-    return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-  }
+  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="space-y-6">
@@ -60,9 +182,14 @@ export default function GosOnboardingPage() {
           <h1 className="text-xl font-bold text-foreground">{t('gos.onboarding' as TranslationKey)}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t('gos.onboardingDesc' as TranslationKey)}</p>
         </div>
-        <Button size="sm" onClick={createFlow} className="gap-1.5">
-          <Plus className="h-4 w-4" /> New Flow
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setStartingSession(true)} className="gap-1.5">
+            <PlayCircle className="h-4 w-4" /> Start Session
+          </Button>
+          <Button size="sm" onClick={createFlow} className="gap-1.5">
+            <Plus className="h-4 w-4" /> New Flow
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="flows">
@@ -70,15 +197,14 @@ export default function GosOnboardingPage() {
           <TabsTrigger value="flows">Flows ({flows.length})</TabsTrigger>
           <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
         </TabsList>
+
         <TabsContent value="flows" className="mt-4">
           {flows.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <ClipboardCheck className="h-12 w-12 text-muted-foreground/50 mb-3" />
                 <p className="text-sm text-muted-foreground mb-3">No onboarding flows yet</p>
-                <Button size="sm" variant="outline" onClick={createFlow} className="gap-1.5">
-                  <Plus className="h-4 w-4" /> Create First Flow
-                </Button>
+                <Button size="sm" variant="outline" onClick={createFlow} className="gap-1.5"><Plus className="h-4 w-4" /> Create First Flow</Button>
               </CardContent>
             </Card>
           ) : (
@@ -88,35 +214,179 @@ export default function GosOnboardingPage() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-medium text-foreground text-sm">{flow.name}</h3>
-                      {flow.is_default && <Badge className="text-[10px] bg-primary/10 text-primary">Default</Badge>}
+                      <div className="flex items-center gap-1.5">
+                        {flow.is_default && <Badge className="text-[10px] bg-primary/10 text-primary">Default</Badge>}
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">{(flow.steps || []).length} steps</p>
+                    {flow.description && <p className="text-xs text-muted-foreground mb-2">{flow.description}</p>}
+                    <p className="text-xs text-muted-foreground mb-3">{(flow.steps || []).length} steps</p>
+                    <div className="flex gap-1.5">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingFlow(flow)}><Settings2 className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteFlow(flow.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           )}
         </TabsContent>
+
         <TabsContent value="sessions" className="mt-4">
           {sessions.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No active onboarding sessions</p>
           ) : (
             <div className="space-y-2">
-              {sessions.map(s => (
-                <Card key={s.id}>
-                  <CardContent className="p-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-foreground">{(s as any).clients?.name || 'Unknown client'}</span>
-                      <span className="text-xs text-muted-foreground ml-2">Step {s.current_step + 1}</span>
-                    </div>
-                    <Badge className={`text-[10px] ${sessionStatusColor[s.status] || ''}`}>{s.status}</Badge>
-                  </CardContent>
-                </Card>
-              ))}
+              {sessions.map(s => {
+                const flow = flows.find(f => f.id === s.flow_id);
+                const totalSteps = flow ? (flow.steps || []).length : 1;
+                const progress = totalSteps > 0 ? ((s.current_step + 1) / totalSteps) * 100 : 0;
+                return (
+                  <Card key={s.id} className="hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setViewingSession(s)}>
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <span className="text-sm font-medium text-foreground">{(s as any).clients?.name || 'Unknown'}</span>
+                          <span className="text-xs text-muted-foreground ml-2">Step {s.current_step + 1}/{totalSteps}</span>
+                        </div>
+                        <Badge className={`text-[10px] ${sessionStatusColor[s.status] || ''}`}>{s.status}</Badge>
+                      </div>
+                      <Progress value={Math.min(progress, 100)} className="h-1.5" />
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Flow Editor */}
+      {editingFlow && (
+        <Dialog open={!!editingFlow} onOpenChange={open => { if (!open) setEditingFlow(null); }}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Edit Onboarding Flow</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto space-y-4 p-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Flow Name</label>
+                  <Input value={editingFlow.name || ''} onChange={e => setEditingFlow({ ...editingFlow, name: e.target.value })} />
+                </div>
+                <div className="flex items-end gap-3">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={!!editingFlow.is_default} onCheckedChange={v => setEditingFlow({ ...editingFlow, is_default: v })} />
+                    <span className="text-xs text-muted-foreground">Default flow</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Steps</h3>
+                {(editingFlow.steps || []).map((step: any, idx: number) => (
+                  <Card key={step.id || idx} className="border-border/50">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">Step {idx + 1}</Badge>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveStep(idx, -1)} disabled={idx === 0}><ChevronUp className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => moveStep(idx, 1)} disabled={idx === (editingFlow.steps || []).length - 1}><ChevronDown className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeStep(idx)}><X className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        <Input placeholder="Step title" value={step.title || ''} onChange={e => updateStep(idx, 'title', e.target.value)} className="text-xs h-8" />
+                        <Input placeholder="Description" value={step.description || ''} onChange={e => updateStep(idx, 'description', e.target.value)} className="text-xs h-8" />
+                      </div>
+                      <div className="space-y-1.5 pl-3 border-l-2 border-border/50">
+                        {(step.fields || []).map((field: any, fIdx: number) => (
+                          <div key={fIdx} className="flex gap-2 items-center">
+                            <Input placeholder="Label" value={field.label || ''} onChange={e => updateStepField(idx, fIdx, 'label', e.target.value)} className="text-xs h-7 flex-1" />
+                            <Select value={field.type || 'text'} onValueChange={v => updateStepField(idx, fIdx, 'type', v)}>
+                              <SelectTrigger className="text-xs h-7 w-24"><SelectValue /></SelectTrigger>
+                              <SelectContent>{stepFieldTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                            </Select>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive flex-shrink-0" onClick={() => removeStepField(idx, fIdx)}><X className="h-3 w-3" /></Button>
+                          </div>
+                        ))}
+                        <Button variant="ghost" size="sm" onClick={() => addFieldToStep(idx)} className="text-xs h-6"><Plus className="h-3 w-3 mr-1" /> Field</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                <Button variant="outline" size="sm" onClick={addStep} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add Step</Button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button size="sm" onClick={saveFlow}>Save Flow</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Start Session Dialog */}
+      <Dialog open={startingSession} onOpenChange={setStartingSession}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Start Onboarding Session</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Client</label>
+              <Select value={selectedClient} onValueChange={setSelectedClient}>
+                <SelectTrigger><SelectValue placeholder="Select client..." /></SelectTrigger>
+                <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Flow</label>
+              <Select value={selectedFlow} onValueChange={setSelectedFlow}>
+                <SelectTrigger><SelectValue placeholder="Select flow..." /></SelectTrigger>
+                <SelectContent>{flows.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button size="sm" onClick={startSession} disabled={!selectedClient || !selectedFlow}>Start</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Session Detail */}
+      <Dialog open={!!viewingSession} onOpenChange={open => { if (!open) setViewingSession(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Onboarding Session</DialogTitle></DialogHeader>
+          {viewingSession && (
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Client:</span>
+                <span className="text-foreground font-medium">{(viewingSession as any).clients?.name || '—'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Status:</span>
+                <Badge className={`text-[10px] ${sessionStatusColor[viewingSession.status] || ''}`}>{viewingSession.status}</Badge>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Current Step:</span>
+                <span className="text-foreground">{viewingSession.current_step + 1}</span>
+              </div>
+              {viewingSession.data && Object.keys(viewingSession.data).length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Collected Data:</p>
+                  <div className="bg-muted rounded-lg p-3 space-y-1">
+                    {Object.entries(viewingSession.data).map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{k}:</span>
+                        <span className="text-foreground">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
