@@ -204,6 +204,17 @@ function AppRoutes() {
   // Public routes — always accessible
   const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
 
+  // Public embed routes — no auth, no layout
+  if (currentPath.startsWith("/embed/")) {
+    return (
+      <Routes>
+        <Route path="/embed/form/:id" element={<EmbedFormPage />} />
+        <Route path="/embed/landing/:id" element={<EmbedLandingPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
+
   if (currentPath.startsWith("/scaling-stack")) {
     return (
       <Routes>
