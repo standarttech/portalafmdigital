@@ -195,7 +195,7 @@ export default function AuditPage() {
               mode="range"
               selected={dateRange}
               onSelect={setDateRange}
-              numberOfMonths={2}
+              numberOfMonths={1}
               disabled={date => date > new Date()}
               className="p-3 pointer-events-auto"
               weekStartsOn={1}
@@ -206,12 +206,12 @@ export default function AuditPage() {
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder={t('common.search') + '...'} className="h-8 w-40 pl-8 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder={t('common.search') + '...'} className="h-8 w-32 sm:w-40 pl-8 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
 
         {/* Entity Filter */}
         <Select value={entityFilter} onValueChange={setEntityFilter}>
-          <SelectTrigger className="h-8 w-[140px] text-xs">
+          <SelectTrigger className="h-8 w-[110px] sm:w-[140px] text-xs">
             <SelectValue placeholder={isRu ? 'Объект' : 'Entity'} />
           </SelectTrigger>
           <SelectContent>
@@ -224,7 +224,7 @@ export default function AuditPage() {
 
         {/* Action Filter */}
         <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="h-8 w-[120px] text-xs">
+          <SelectTrigger className="h-8 w-[100px] sm:w-[120px] text-xs">
             <SelectValue placeholder={isRu ? 'Действие' : 'Action'} />
           </SelectTrigger>
           <SelectContent>
@@ -237,7 +237,7 @@ export default function AuditPage() {
 
         {/* User Filter */}
         <Select value={userFilter} onValueChange={setUserFilter}>
-          <SelectTrigger className="h-8 w-[150px] text-xs">
+          <SelectTrigger className="h-8 w-[110px] sm:w-[150px] text-xs">
             <SelectValue placeholder={isRu ? 'Пользователь' : 'User'} />
           </SelectTrigger>
           <SelectContent>

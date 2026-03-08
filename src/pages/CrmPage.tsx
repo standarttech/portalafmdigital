@@ -127,49 +127,54 @@ export default function CrmPage() {
 
   return (
     <div className="flex flex-col h-full space-y-3">
+      {/* Row 1: Title + selects */}
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-bold text-foreground mr-2">{t('crm.title')}</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-foreground mr-1 sm:mr-2">{t('crm.title')}</h1>
         
         <Select value={selectedClientId || ''} onValueChange={setSelectedClientId}>
-          <SelectTrigger className="w-[180px] h-9 text-sm"><SelectValue placeholder={t('crm.selectClient')} /></SelectTrigger>
+          <SelectTrigger className="w-[130px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm"><SelectValue placeholder={t('crm.selectClient')} /></SelectTrigger>
           <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
         </Select>
 
         {pipelines.length > 0 && (
           <Select value={selectedPipelineId || ''} onValueChange={setSelectedPipelineId}>
-            <SelectTrigger className="w-[180px] h-9 text-sm"><SelectValue placeholder={t('crm.selectPipeline')} /></SelectTrigger>
+            <SelectTrigger className="w-[130px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm"><SelectValue placeholder={t('crm.selectPipeline')} /></SelectTrigger>
             <SelectContent>{pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
           </Select>
         )}
+      </div>
 
-        <div className="flex-1" />
-
-        <div className="relative">
+      {/* Row 2: Search + action buttons */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="relative flex-1 min-w-[120px] max-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder={t('crm.searchLeads')} value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 w-[200px] text-sm" />
+          <Input placeholder={t('crm.searchLeads')} value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 sm:h-9 w-full text-xs sm:text-sm" />
         </div>
 
-        <Button size="sm" variant={showFilters ? 'secondary' : 'ghost'} className="h-9" onClick={() => setShowFilters(!showFilters)}>
-          <Filter className="h-3.5 w-3.5 mr-1" />{t('crm.filters')}
+        <Button size="sm" variant={showFilters ? 'secondary' : 'ghost'} className="h-8 sm:h-9 px-2 sm:px-3" onClick={() => setShowFilters(!showFilters)}>
+          <Filter className="h-3.5 w-3.5 sm:mr-1" />
+          <span className="hidden sm:inline">{t('crm.filters')}</span>
           {hasActiveFilters && <span className="ml-1 h-2 w-2 rounded-full bg-primary" />}
         </Button>
 
+        <div className="flex-1 hidden sm:block" />
+
         {selectedPipelineId && (
           <>
-            <Button size="sm" className="h-9" onClick={() => setShowCreateLead(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" />{t('crm.addLead')}
+            <Button size="sm" className="h-8 sm:h-9 px-2 sm:px-3" onClick={() => setShowCreateLead(true)}>
+              <Plus className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">{t('crm.addLead')}</span>
             </Button>
-            <Button size="sm" variant="outline" className="h-9" onClick={() => setShowPipelineSettings(true)}>
-              <Settings className="h-3.5 w-3.5 mr-1" />{t('crm.stages')}
+            <Button size="sm" variant="outline" className="h-8 sm:h-9 px-2 sm:px-3" onClick={() => setShowPipelineSettings(true)}>
+              <Settings className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">{t('crm.stages')}</span>
             </Button>
-            <Button size="sm" variant="outline" className="h-9" onClick={() => setShowWebhookSettings(true)}>
-              <Webhook className="h-3.5 w-3.5 mr-1" />{t('crm.webhooks')}
+            <Button size="sm" variant="outline" className="h-8 sm:h-9 px-2 sm:px-3" onClick={() => setShowWebhookSettings(true)}>
+              <Webhook className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">{t('crm.webhooks')}</span>
             </Button>
           </>
         )}
         
-        <Button size="sm" variant="outline" className="h-9" onClick={() => setShowCreatePipeline(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" />{t('crm.pipeline')}
+        <Button size="sm" variant="outline" className="h-8 sm:h-9 px-2 sm:px-3" onClick={() => setShowCreatePipeline(true)}>
+          <Plus className="h-3.5 w-3.5 sm:mr-1" /><span className="hidden sm:inline">{t('crm.pipeline')}</span>
         </Button>
       </div>
 

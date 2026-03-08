@@ -117,7 +117,7 @@ function StageColumn({ stage, leads, onLeadClick, agencyUsers }: {
   });
 
   return (
-    <div className="flex-shrink-0 w-[280px] flex flex-col max-h-full">
+    <div className="flex-shrink-0 w-[240px] sm:w-[280px] flex flex-col max-h-full">
       <div className="flex items-center gap-2 mb-2 px-1">
         <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: stage.color }} />
         <span className="text-sm font-semibold text-foreground truncate">{stage.name}</span>
@@ -205,7 +205,7 @@ export default function CrmKanbanBoard({ stages, leads, onMoveLead, onLeadClick,
       onDragEnd={handleDragEnd}
     >
       <ScrollArea className="w-full">
-        <div className="flex gap-3 pb-4 min-h-[400px]" style={{ minWidth: stages.length * 296 }}>
+        <div className="flex gap-2 sm:gap-3 pb-4 min-h-[400px]" style={{ minWidth: stages.length * 256 }}>
           {stages.map(stage => (
             <StageColumn
               key={stage.id}
@@ -221,7 +221,7 @@ export default function CrmKanbanBoard({ stages, leads, onMoveLead, onLeadClick,
 
       <DragOverlay>
         {activeLead && (
-          <div className="bg-card border border-primary/40 rounded-lg p-3 shadow-xl ring-2 ring-primary/20 w-[264px] rotate-2">
+          <div className="bg-card border border-primary/40 rounded-lg p-3 shadow-xl ring-2 ring-primary/20 w-[224px] sm:w-[264px] rotate-2">
             <span className="text-sm font-medium text-foreground">
               {activeLead.full_name || `${activeLead.first_name} ${activeLead.last_name}`.trim() || activeLead.email || 'Unnamed'}
             </span>
