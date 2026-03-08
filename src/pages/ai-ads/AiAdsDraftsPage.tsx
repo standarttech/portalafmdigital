@@ -927,6 +927,7 @@ function AdEditor({ item, parentName, adsets, onUpdate, onDelete }: {
               </Select>
             </div>
             <div className="sm:col-span-2"><Label className="text-xs">Destination URL</Label><Input value={cfg.destination_url || ''} onChange={e => setCfg((c: any) => ({ ...c, destination_url: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="https://..." /></div>
+            <div><Label className="text-xs">Facebook Page ID</Label><Input value={cfg.page_id || ''} onChange={e => setCfg((c: any) => ({ ...c, page_id: e.target.value }))} onBlur={save} className="text-sm" maxLength={100} placeholder="Required for Meta ad creation" /></div>
             <div className="sm:col-span-2"><Label className="text-xs">Creative Reference (optional)</Label><Input value={cfg.creative_ref || ''} onChange={e => setCfg((c: any) => ({ ...c, creative_ref: e.target.value }))} onBlur={save} className="text-sm" maxLength={500} placeholder="Link or reference to creative asset" /></div>
           </div>
         </CardContent>
