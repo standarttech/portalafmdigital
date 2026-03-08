@@ -416,6 +416,9 @@ export default function AdminPortalManagement() {
         </CardContent>
       </Card>
 
+      {/* Portal Files Management */}
+      <AdminPortalFiles />
+
       {/* Branding Dialog */}
       <Dialog open={brandingOpen} onOpenChange={setBrandingOpen}>
         <DialogContent>
