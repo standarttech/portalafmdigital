@@ -99,6 +99,94 @@ export type Database = {
           },
         ]
       }
+      ad_level_metrics: {
+        Row: {
+          ad_account_id: string | null
+          add_to_cart: number
+          campaign_id: string | null
+          checkouts: number
+          client_id: string
+          created_at: string
+          date: string
+          id: string
+          impressions: number
+          leads: number
+          level: string
+          link_clicks: number
+          name: string
+          parent_platform_id: string | null
+          platform_id: string
+          purchases: number
+          revenue: number
+          spend: number
+          status: string
+        }
+        Insert: {
+          ad_account_id?: string | null
+          add_to_cart?: number
+          campaign_id?: string | null
+          checkouts?: number
+          client_id: string
+          created_at?: string
+          date: string
+          id?: string
+          impressions?: number
+          leads?: number
+          level?: string
+          link_clicks?: number
+          name?: string
+          parent_platform_id?: string | null
+          platform_id: string
+          purchases?: number
+          revenue?: number
+          spend?: number
+          status?: string
+        }
+        Update: {
+          ad_account_id?: string | null
+          add_to_cart?: number
+          campaign_id?: string | null
+          checkouts?: number
+          client_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          impressions?: number
+          leads?: number
+          level?: string
+          link_clicks?: number
+          name?: string
+          parent_platform_id?: string | null
+          platform_id?: string
+          purchases?: number
+          revenue?: number
+          spend?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_level_metrics_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_level_metrics_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_level_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_approvals: {
         Row: {
           action_type: string
