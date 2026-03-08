@@ -45,6 +45,8 @@ export default function GosOnboardingPage() {
   const [tokensLoading, setTokensLoading] = useState(false);
   // Revoke confirmation state
   const [revokeConfirm, setRevokeConfirm] = useState<{ open: boolean; tokenId: string; tokenSnippet: string }>({ open: false, tokenId: '', tokenSnippet: '' });
+  // TTL selection state
+  const [linkTtlDays, setLinkTtlDays] = useState('7');
   // Branding toggle state
   const [showBranding, setShowBranding] = useState(true);
 
