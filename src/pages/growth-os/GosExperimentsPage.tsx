@@ -118,7 +118,7 @@ export default function GosExperimentsPage() {
       created_by: user.id,
     });
     if (error) toast.error('Failed');
-    else { toast.success('Experiment created'); setCreating(false); setNewExp({ name: '', entity_type: 'landing' }); loadData(); }
+    else { toast.success('Experiment created'); logGosAction('create', 'experiment', undefined, newExp.name); setCreating(false); setNewExp({ name: '', entity_type: 'landing' }); loadData(); }
   };
 
   const openEditor = async (exp: any) => {
