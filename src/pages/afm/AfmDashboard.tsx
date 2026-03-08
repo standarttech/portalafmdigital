@@ -529,11 +529,11 @@ export default function AfmDashboard() {
                       <div className="flex bg-secondary/50 rounded-md p-0.5 ml-1">
                         <Button variant="ghost" size="sm" onClick={() => setChartNormalized(false)}
                           className={`h-5 px-2 text-[10px] rounded-sm ${!chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
-                          Absolute
+                          {t('afm.dash.absolute' as any)}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setChartNormalized(true)}
                           className={`h-5 px-2 text-[10px] rounded-sm ${chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
-                          Normalized
+                          {t('afm.dash.normalized' as any)}
                         </Button>
                       </div>
                     </div>
