@@ -182,7 +182,7 @@ export default function AdminPortalManagement() {
 
   const toggleUserStatus = async (pu: PortalUser) => {
     const newStatus = pu.status === 'active' ? 'deactivated' : 'active';
-    await supabase.from('client_portal_users' as any).update({ status: newStatus } as any).eq('id', pu.id);
+    await supabase.from('client_portal_users').update({ status: newStatus }).eq('id', pu.id);
     await supabase.from('audit_log').insert({
       action: newStatus === 'active' ? 'portal_access_reactivated' : 'portal_user_deactivated',
       entity_type: 'client_portal_users', entity_id: pu.id, user_id: user?.id,
