@@ -78,7 +78,7 @@ export default function AiAdsRecommendationsPage() {
       improve_creative: 'engagement', improve_landing: 'traffic', launch_new_test: 'leads',
     };
     const campaignName = `${rec.title.slice(0, 80)}`;
-    const { data, error } = await supabase.from('campaign_drafts' as any).insert({
+    const { data, error } = await supabase.from('campaign_drafts').insert({
       client_id: rec.client_id, created_by: user.id,
       name: campaignName, campaign_name: campaignName,
       draft_type: rec.recommendation_type,
