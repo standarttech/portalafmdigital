@@ -72,7 +72,7 @@ export default function PortalDashboardPage() {
       .eq('client_id', clientId).eq('entity_level', 'campaign');
     let launchQ = supabase.from('launch_requests' as any).select('id, client_id, status, execution_status, external_campaign_id, metadata, executed_at, platform')
       .eq('client_id', clientId).not('external_campaign_id', 'is', null);
-    let recQ = supabase.from('ai_recommendations' as any).select('id, client_id, priority, status, recommendation_type, title, description, created_at')
+    let recQ = supabase.from('ai_recommendations').select('id, client_id, priority, status, recommendation_type, title, description, created_at')
       .eq('client_id', clientId);
     let actQ = supabase.from('optimization_actions' as any).select('id, client_id, status, action_type, created_at')
       .eq('client_id', clientId);
