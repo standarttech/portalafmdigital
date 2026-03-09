@@ -4,7 +4,7 @@ import type { SimulatedUser } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ColorScheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { Languages, LogOut, User, ChevronDown, Sparkles, Palette, UserCircle, Eye, X, Users } from 'lucide-react';
+import { Languages, LogOut, User, ChevronDown, Sparkles, Palette, UserCircle, Eye, X, Users, Repeat2, UserPlus } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const languageOptions: { code: Language; flag: string; label: string }[] = [
   { code: 'en', flag: '🇺🇸', label: 'English' },
@@ -47,7 +48,7 @@ const ALL_PREVIEW_ROLES = [
 
 export default function AppHeader() {
   const { language, setLanguage, t } = useLanguage();
-  const { user, agencyRole, effectiveRole, viewAsRole, setViewAsRole, simulatedUser, setSimulatedUser, signOut } = useAuth();
+  const { user, agencyRole, effectiveRole, viewAsRole, setViewAsRole, simulatedUser, setSimulatedUser, signOut, linkedAccounts, switchAccount } = useAuth();
   const { theme, setTheme, fxEnabled, toggleFx, colorScheme, setColorScheme } = useTheme();
   const navigate = useNavigate();
   const isFuturistic = fxEnabled;
@@ -93,6 +94,16 @@ export default function AppHeader() {
     : viewAsRole === 'MediaBuyer' ? t('role.mediaBuyer')
     : viewAsRole === 'Client' ? (t('role.client' as any) || 'Client')
     : viewAsRole || '';
+
+  const handleQuickSwitch = async (targetUserId: string) => {
+    if (!targetUserId || targetUserId === user?.id) return;
+    const { error } = await switchAccount(targetUserId);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success(t('profile.accountSwitched'));
+  };
 
   return (
     <div className="flex flex-col relative z-10">
@@ -199,6 +210,35 @@ export default function AppHeader() {
               <DropdownMenuItem onClick={() => navigate('/profile')} className="gap-2">
                 <UserCircle className="h-4 w-4" /> {t('nav.profile')}
               </DropdownMenuItem>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="gap-2 text-sm">
+                  <Repeat2 className="h-3.5 w-3.5" /> {t('profile.multiAccount')}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-72 max-h-[320px] overflow-y-auto">
+                  {linkedAccounts.length === 0 ? (
+                    <div className="px-2 py-3 text-xs text-muted-foreground text-center">{t('profile.noLinkedAccounts')}</div>
+                  ) : (
+                    linkedAccounts.map((account) => (
+                      <DropdownMenuItem
+                        key={account.userId}
+                        disabled={account.userId === user?.id}
+                        onClick={() => handleQuickSwitch(account.userId)}
+                        className="flex flex-col items-start gap-0"
+                      >
+                        <span className="text-sm font-medium truncate max-w-full">{account.displayName || account.email}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-full">
+                          {account.email} {account.agencyRole ? `• ${account.agencyRole}` : ''}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')} className="gap-2">
+                    <UserPlus className="h-3.5 w-3.5" /> {t('profile.addAccount')}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
 
               {/* Role Preview — only for real admins */}
               {isRealAdmin && (

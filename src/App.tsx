@@ -167,35 +167,44 @@ function AppRoutes() {
       setCheckingFpc(false);
       return;
     }
+
     setCheckingFpc(true);
-    const { data } = await supabase
-      .from('user_settings')
-      .select('force_password_change, temp_password_expires_at, needs_password_setup')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('force_password_change, temp_password_expires_at, needs_password_setup')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    if ((data as any)?.needs_password_setup === true) {
-      setNeedsPasswordSetup(true);
-      setForcePasswordChange(false);
-      setCheckingFpc(false);
-      return;
-    }
+      if (error) throw error;
 
-    setNeedsPasswordSetup(false);
-    sessionStorage.setItem('afm_fpc_checked', '1');
-
-    if (data?.force_password_change) {
-      if (data.temp_password_expires_at && new Date(data.temp_password_expires_at) < new Date()) {
-        await supabase.auth.signOut();
+      if ((data as any)?.needs_password_setup === true) {
+        setNeedsPasswordSetup(true);
         setForcePasswordChange(false);
-      } else {
-        setForcePasswordChange(true);
+        return;
       }
-    } else {
+
+      setNeedsPasswordSetup(false);
+      sessionStorage.setItem('afm_fpc_checked', '1');
+
+      if (data?.force_password_change) {
+        if (data.temp_password_expires_at && new Date(data.temp_password_expires_at) < new Date()) {
+          await supabase.auth.signOut();
+          setForcePasswordChange(false);
+        } else {
+          setForcePasswordChange(true);
+        }
+      } else {
+        setForcePasswordChange(false);
+      }
+    } catch {
+      // Fail open for UX stability; protected routes still require valid auth session.
+      setNeedsPasswordSetup(false);
       setForcePasswordChange(false);
       sessionStorage.setItem('afm_fpc_checked', '1');
+    } finally {
+      setCheckingFpc(false);
     }
-    setCheckingFpc(false);
   }, [user]);
 
   const checkMfa = useCallback(async () => {
@@ -209,16 +218,36 @@ function AppRoutes() {
       setCheckingMfa(false);
       return;
     }
+
     setCheckingMfa(true);
     try {
-      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (!error && data) {
-        if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
-          setMfaPending(true);
-        } else {
+      const [{ data: aalData, error: aalError }, { data: factorsData, error: factorsError }] = await Promise.all([
+        supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+        supabase.auth.mfa.listFactors(),
+      ]);
+
+      if (factorsError) throw factorsError;
+
+      const allTotpFactors = (factorsData?.totp || []) as Array<{ id: string; status: string }>;
+      const verifiedFactors = allTotpFactors.filter((f) => f.status === 'verified');
+      const unverifiedFactors = allTotpFactors.filter((f) => f.status !== 'verified');
+
+      // If user has no verified MFA factor, don't force challenge and clean stale factors.
+      if (verifiedFactors.length === 0) {
+        if (unverifiedFactors.length > 0) {
+          await Promise.all(
+            unverifiedFactors.map((f) =>
+              supabase.auth.mfa.unenroll({ factorId: f.id }).catch(() => null),
+            ),
+          );
+        }
         setMfaPending(false);
         sessionStorage.setItem('afm_mfa_checked', '1');
-        }
+        return;
+      }
+
+      if (!aalError && aalData && aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2') {
+        setMfaPending(true);
       } else {
         setMfaPending(false);
         sessionStorage.setItem('afm_mfa_checked', '1');
@@ -226,8 +255,9 @@ function AppRoutes() {
     } catch {
       setMfaPending(false);
       sessionStorage.setItem('afm_mfa_checked', '1');
+    } finally {
+      setCheckingMfa(false);
     }
-    setCheckingMfa(false);
   }, [user]);
 
   useEffect(() => {
