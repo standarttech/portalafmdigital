@@ -162,13 +162,13 @@ export default function AiAdsExecutionsPage() {
     if (toReject.length === 0) { toast.error('No pending requests selected'); return; }
     setBatchProcessing(true);
     let success = 0;
-    for (const id of toReject) {
+      for (const id of toReject) {
       const { error } = await supabase.from('launch_requests' as any).update({
         status: 'rejected', rejected_by: user.id, rejected_at: new Date().toISOString(), rejection_reason: batchRejectionReason.trim(),
       }).eq('id', id);
       if (!error) {
         const lr = requests.find(r => r.id === id);
-        if (lr) await supabase.from('campaign_drafts' as any).update({ status: 'rejected' }).eq('id', lr.draft_id);
+        if (lr) await supabase.from('campaign_drafts').update({ status: 'rejected' }).eq('id', lr.draft_id);
         success++;
       }
     }

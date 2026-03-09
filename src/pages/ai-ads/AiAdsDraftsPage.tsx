@@ -442,7 +442,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
 
   const deleteItem = async (itemId: string) => {
     const item = items.find(i => i.id === itemId);
-    const { error } = await supabase.from('campaign_draft_items' as any).delete().eq('id', itemId);
+    const { error } = await supabase.from('campaign_draft_items').delete().eq('id', itemId);
     if (error) { toast.error('Delete failed'); return; }
     logGosAction('delete', 'campaign_draft_item', itemId, item?.name, { metadata: { draftId: draft.id } });
     setItems(prev => prev.filter(i => i.id !== itemId && i.parent_item_id !== itemId));

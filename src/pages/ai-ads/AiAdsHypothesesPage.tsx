@@ -87,7 +87,7 @@ export default function AiAdsHypothesesPage() {
   const convertToDraft = async (thread: Thread) => {
     if (!user) return;
     const campaignName = `${thread.title.slice(0, 80)}`;
-    const { data, error } = await supabase.from('campaign_drafts' as any).insert({
+    const { data, error } = await supabase.from('campaign_drafts').insert({
       client_id: thread.client_id, created_by: user.id,
       name: campaignName, campaign_name: campaignName,
       draft_type: 'campaign',
@@ -100,12 +100,12 @@ export default function AiAdsHypothesesPage() {
     if (error) { toast.error('Failed to create draft'); return; }
     const draftId = (data as any).id;
     // Create starter ad set + ad
-    await supabase.from('campaign_draft_items' as any).insert([
+    await supabase.from('campaign_draft_items').insert([
       { draft_id: draftId, item_type: 'adset', name: 'Ad Set 1', sort_order: 0, config: { geo: '', age_min: 18, age_max: 65, gender: 'all', interests: '', placements: 'automatic', daily_budget: 0, optimization_goal: '' } },
     ]);
-    const { data: adsetData } = await supabase.from('campaign_draft_items' as any).select('id').eq('draft_id', draftId).eq('item_type', 'adset').limit(1).single();
+    const { data: adsetData } = await supabase.from('campaign_draft_items').select('id').eq('draft_id', draftId).eq('item_type', 'adset').limit(1).single();
     if (adsetData) {
-      await supabase.from('campaign_draft_items' as any).insert({
+      await supabase.from('campaign_draft_items').insert({
         draft_id: draftId, item_type: 'ad', name: 'Ad 1', sort_order: 0,
         parent_item_id: (adsetData as any).id,
         config: { primary_text: '', headline: '', cta: 'LEARN_MORE', destination_url: '', creative_ref: '' },
