@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useShouldReduceEffects } from '@/hooks/useReducedMotion';
 
 interface Particle {
   x: number;
@@ -13,48 +14,20 @@ interface Particle {
   lightness: number;
 }
 
-// FIX #23-#26: Theme-specific particle colors with better visibility per theme
-function getParticleColors(colorScheme: string, baseTheme: string): { hues: number[]; sat: number; light: number; connHue: number; connSat: number; connLight: number; globalOpacity: number } {
+function getParticleColors(colorScheme: string, baseTheme: string) {
   if (colorScheme === 'midnight-red') {
-    return {
-      hues: [0, 15, 340],
-      sat: 70, light: 50,
-      connHue: 0, connSat: 65, connLight: 45,
-      globalOpacity: 0.45,
-    };
+    return { hues: [0, 15, 340], sat: 70, light: 50, connHue: 0, connSat: 65, connLight: 45, globalOpacity: 0.45 };
   }
   if (colorScheme === 'midnight-blue') {
-    return {
-      hues: [207, 220, 190],
-      sat: 65, light: 55,
-      connHue: 207, connSat: 60, connLight: 50,
-      globalOpacity: 0.45,
-    };
+    return { hues: [207, 220, 190], sat: 65, light: 55, connHue: 207, connSat: 60, connLight: 50, globalOpacity: 0.45 };
   }
   if (colorScheme === 'clean-light') {
-    // FIX #27: Clean Light particles need to be much darker and more subtle
-    return {
-      hues: [207, 230, 250],
-      sat: 40, light: 35,       // darker particles on white bg
-      connHue: 220, connSat: 35, connLight: 40,
-      globalOpacity: 0.2,        // very subtle on light bg
-    };
+    return { hues: [207, 230, 250], sat: 40, light: 35, connHue: 220, connSat: 35, connLight: 40, globalOpacity: 0.2 };
   }
   if (baseTheme === 'light') {
-    return {
-      hues: [42, 30, 260],
-      sat: 55, light: 40,        // darker for light bg
-      connHue: 42, connSat: 55, connLight: 45,
-      globalOpacity: 0.25,
-    };
+    return { hues: [42, 30, 260], sat: 55, light: 40, connHue: 42, connSat: 55, connLight: 45, globalOpacity: 0.25 };
   }
-  // Default dark
-  return {
-    hues: [42, 260],
-    sat: 80, light: 65,
-    connHue: 42, connSat: 80, connLight: 55,
-    globalOpacity: 0.6,
-  };
+  return { hues: [42, 260], sat: 80, light: 65, connHue: 42, connSat: 80, connLight: 55, globalOpacity: 0.6 };
 }
 
 export default function ParticleField() {
@@ -63,8 +36,12 @@ export default function ParticleField() {
   const mouse = useRef({ x: -1000, y: -1000 });
   const animRef = useRef<number>(0);
   const { colorScheme, theme } = useTheme();
+  const reduceEffects = useShouldReduceEffects();
 
   useEffect(() => {
+    // Skip entirely for reduced-motion / low-perf devices
+    if (reduceEffects) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -79,8 +56,7 @@ export default function ParticleField() {
     resize();
     window.addEventListener('resize', resize);
 
-    // FIX #28: Reduce particle count for better performance
-    const count = Math.min(60, Math.floor((window.innerWidth * window.innerHeight) / 20000));
+    const count = Math.min(50, Math.floor((window.innerWidth * window.innerHeight) / 25000));
     particles.current = Array.from({ length: count }, () => {
       const hue = colors.hues[Math.floor(Math.random() * colors.hues.length)];
       return {
@@ -99,11 +75,20 @@ export default function ParticleField() {
     const handleMouse = (e: MouseEvent) => {
       mouse.current = { x: e.clientX, y: e.clientY };
     };
-    window.addEventListener('mousemove', handleMouse);
+    window.addEventListener('mousemove', handleMouse, { passive: true });
 
     let time = 0;
+    let lastFrame = 0;
+    const TARGET_FPS = 30; // Cap at 30fps to reduce CPU usage
+    const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
-    const animate = () => {
+    const animate = (now: number) => {
+      animRef.current = requestAnimationFrame(animate);
+
+      // Throttle to target FPS
+      if (now - lastFrame < FRAME_INTERVAL) return;
+      lastFrame = now;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       time += 0.01;
 
@@ -120,12 +105,6 @@ export default function ParticleField() {
         const driftAngle = time * 0.5 + i * 0.7;
         p.vx += Math.sin(driftAngle) * 0.003;
         p.vy += Math.cos(driftAngle * 0.8 + i) * 0.003;
-
-        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-        if (speed < 0.15) {
-          p.vx += (Math.random() - 0.5) * 0.05;
-          p.vy += (Math.random() - 0.5) * 0.05;
-        }
 
         p.x += p.vx;
         p.y += p.vy;
@@ -145,40 +124,33 @@ export default function ParticleField() {
         ctx.fillStyle = `hsla(${p.hue}, ${p.saturation}%, ${p.lightness}%, ${currentOpacity})`;
         ctx.fill();
 
-        if (currentOpacity > 0.4) {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${p.hue}, ${p.saturation}%, ${p.lightness}%, ${currentOpacity * 0.08})`;
-          ctx.fill();
-        }
-
-        // FIX #29: Reduce connection distance for lighter themes
-        const connDist = colorScheme === 'clean-light' || theme === 'light' ? 80 : 120;
+        // Connections — reduced distance for performance
+        const connDist = colorScheme === 'clean-light' || theme === 'light' ? 70 : 100;
         for (let j = i + 1; j < particles.current.length; j++) {
           const p2 = particles.current[j];
           const d = Math.sqrt((p.x - p2.x) ** 2 + (p.y - p2.y) ** 2);
           if (d < connDist) {
-            const connPulse = 0.5 + 0.5 * Math.sin(time * 0.8 + i * 0.3 + j * 0.2);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(${colors.connHue}, ${colors.connSat}%, ${colors.connLight}%, ${0.06 * connPulse * (1 - d / connDist)})`;
+            ctx.strokeStyle = `hsla(${colors.connHue}, ${colors.connSat}%, ${colors.connLight}%, ${0.06 * (1 - d / connDist)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
         }
       });
-
-      animRef.current = requestAnimationFrame(animate);
     };
-    animate();
+    animRef.current = requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', handleMouse);
       cancelAnimationFrame(animRef.current);
     };
-  }, [colorScheme, theme]);
+  }, [colorScheme, theme, reduceEffects]);
+
+  // Don't render canvas at all if effects are reduced
+  if (reduceEffects) return null;
 
   return (
     <canvas
