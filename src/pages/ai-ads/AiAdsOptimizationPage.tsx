@@ -94,23 +94,23 @@ export default function AiAdsOptimizationPage() {
 
   const load = useCallback(async () => {
     const [aRes, cRes, rRes] = await Promise.all([
-      supabase.from('optimization_actions' as any).select('*').order('created_at', { ascending: false }).limit(300),
+      supabase.from('optimization_actions').select('*').order('created_at', { ascending: false }).limit(300),
       supabase.from('clients').select('id, name').order('name'),
-      supabase.from('ai_recommendations' as any).select('*')
+      supabase.from('ai_recommendations').select('*')
         .in('status', ['new', 'reviewed']).order('created_at', { ascending: false }).limit(100),
     ]);
-    setActions((aRes.data as any[]) || []);
+    setActions((aRes.data as OptAction[]) || []);
     setClients(cRes.data || []);
-    setRecs((rRes.data as any[]) || []);
+    setRecs((rRes.data as Recommendation[]) || []);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const loadLogs = async (actionId: string) => {
-    const { data } = await supabase.from('optimization_action_logs' as any)
+    const { data } = await supabase.from('optimization_action_logs')
       .select('*').eq('action_id', actionId).order('created_at', { ascending: true });
-    setLogs((data as any[]) || []);
+    setLogs((data as ActionLog[]) || []);
   };
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || 'Unknown';
@@ -134,7 +134,7 @@ export default function AiAdsOptimizationPage() {
   // ── Approve / Reject / Execute ──
   const approveAction = async (action: OptAction) => {
     if (!user) return;
-    const { error } = await supabase.from('optimization_actions' as any)
+    const { error } = await supabase.from('optimization_actions')
       .update({ status: 'approved', approved_by: user.id }).eq('id', action.id);
     if (error) { toast.error('Failed to approve'); return; }
     logGosAction('approve', 'optimization_action', action.id, `Approved: ${action.action_type}`, { clientId: action.client_id });
@@ -144,7 +144,7 @@ export default function AiAdsOptimizationPage() {
 
   const rejectAction = async (action: OptAction, reason: string) => {
     if (!user) return;
-    const { error } = await supabase.from('optimization_actions' as any)
+    const { error } = await supabase.from('optimization_actions')
       .update({ status: 'rejected', rejected_by: user.id, rejection_reason: reason }).eq('id', action.id);
     if (error) { toast.error('Failed to reject'); return; }
     logGosAction('reject', 'optimization_action', action.id, `Rejected: ${action.action_type}`, { clientId: action.client_id });
@@ -153,7 +153,7 @@ export default function AiAdsOptimizationPage() {
   };
 
   const cancelAction = async (action: OptAction) => {
-    const { error } = await supabase.from('optimization_actions' as any)
+    const { error } = await supabase.from('optimization_actions')
       .update({ status: 'cancelled' }).eq('id', action.id);
     if (error) { toast.error('Failed to cancel'); return; }
     logGosAction('cancel', 'optimization_action', action.id, `Cancelled: ${action.action_type}`, { clientId: action.client_id });
