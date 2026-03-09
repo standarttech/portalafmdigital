@@ -36,7 +36,7 @@ export default function PortalActivityPanel() {
         .select('client_id, is_read')
         .eq('is_read', false),
       supabase
-        .from('client_portal_users' as any)
+        .from('client_portal_users')
         .select('email, client_id, last_login_at, status')
         .eq('status', 'active'),
       supabase.from('clients').select('id, name'),
