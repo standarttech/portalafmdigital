@@ -1155,10 +1155,28 @@ export const translations = {
 
 
   // AI Ads Copilot
-  'nav.aiAds': t('AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot'),
+  'nav.aiAds': t('AI Ads Copilot', 'AI Реклама Копайлот', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot'),
+  'aiAds.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
+  'aiAds.adAccounts': t('Ad Accounts', 'Рекламные аккаунты', 'Account pubblicitari', 'Cuentas publicitarias', 'حسابات إعلانية', 'Comptes publicitaires'),
+  'aiAds.analysis': t('AI Analysis', 'ИИ Анализ', 'Analisi AI', 'Análisis IA', 'تحليل الذكاء الاصطناعي', 'Analyse IA'),
+  'aiAds.recommendations': t('Recommendations', 'Рекомендации', 'Raccomandazioni', 'Recomendaciones', 'التوصيات', 'Recommandations'),
+  'aiAds.hypotheses': t('Hypotheses', 'Гипотезы', 'Ipotesi', 'Hipótesis', 'الفرضيات', 'Hypothèses'),
+  'aiAds.campaignDrafts': t('Campaign Drafts', 'Черновики кампаний', 'Bozze campagna', 'Borradores de campaña', 'مسودات الحملات', 'Brouillons de campagne'),
+  'aiAds.creatives': t('Creatives', 'Креативы', 'Creativi', 'Creativos', 'الإبداعات', 'Créatifs'),
+  'aiAds.executions': t('Executions', 'Запуски', 'Esecuzioni', 'Ejecuciones', 'التنفيذات', 'Exécutions'),
+  'aiAds.intelligence': t('Intelligence', 'Аналитика', 'Intelligence', 'Inteligencia', 'الذكاء', 'Intelligence'),
+  'aiAds.optimization': t('Optimization', 'Оптимизация', 'Ottimizzazione', 'Optimización', 'التحسين', 'Optimisation'),
+  'aiAds.presets': t('Presets', 'Пресеты', 'Preset', 'Presets', 'الإعدادات المسبقة', 'Préréglages'),
+  'aiAds.clientReport': t('Client Report', 'Отчёт клиенту', 'Report cliente', 'Informe al cliente', 'تقرير العميل', 'Rapport client'),
 
   // AI Infrastructure
-  'nav.aiInfra': t('AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure'),
+  'nav.aiInfra': t('AI Infrastructure', 'ИИ Инфраструктура', 'AI Infrastruttura', 'AI Infraestructura', 'البنية التحتية للذكاء الاصطناعي', 'Infrastructure IA'),
+  'aiInfra.providers': t('Providers', 'Провайдеры', 'Fornitori', 'Proveedores', 'مزودو الخدمة', 'Fournisseurs'),
+  'aiInfra.routes': t('Routes', 'Маршруты', 'Percorsi', 'Rutas', 'المسارات', 'Routes'),
+  'aiInfra.tasks': t('Tasks', 'Задачи', 'Attività', 'Tareas', 'المهام', 'Tâches'),
+  'aiInfra.logs': t('Logs', 'Логи', 'Log', 'Registros', 'السجلات', 'Journaux'),
+  'aiInfra.health': t('Health', 'Здоровье', 'Salute', 'Salud', 'الصحة', 'Santé'),
+  'aiInfra.backToPlatform': t('Back to Platform', 'Назад к платформе', 'Torna alla piattaforma', 'Volver a la plataforma', 'العودة إلى المنصة', 'Retour à la plateforme'),
 
   // AFM Dashboard extra tabs
   'afm.dash.campaigns': t('Campaigns', 'Кампании', 'Campagne', 'Campañas', 'الحملات', 'Campagnes'),
