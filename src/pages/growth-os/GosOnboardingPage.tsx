@@ -308,8 +308,7 @@ export default function GosOnboardingPage() {
 
       {loading ? (
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}</div>
-      ) : (
-
+      ) : (<>
       {/* Branding toggle */}
       <div className="flex items-center justify-between rounded-lg border border-border p-3">
         <div>

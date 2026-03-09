@@ -208,9 +208,7 @@ export default function GosExperimentsPage() {
 
       {loading ? (
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}</div>
-      ) : (
-
-      {experiments.length === 0 ? (
+      ) : experiments.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <FlaskConical className="h-12 w-12 text-muted-foreground/50 mb-3" />
