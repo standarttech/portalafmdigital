@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import AppHeader from '@/components/layout/AppHeader';
+import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
 
 const navItems = [
   { label: 'Providers', icon: Server, path: '/ai-infra/providers' },
