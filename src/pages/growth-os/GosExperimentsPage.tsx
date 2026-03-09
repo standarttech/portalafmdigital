@@ -11,6 +11,7 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, FlaskConical, Loader2, Trash2, Settings2, Trophy, BarChart3, Eye, Inbox, TrendingUp } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
@@ -196,8 +197,6 @@ export default function GosExperimentsPage() {
     return Object.values(variantStats).reduce((s, v) => s + v.views, 0);
   }, [variantStats]);
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -208,7 +207,9 @@ export default function GosExperimentsPage() {
         <Button size="sm" onClick={() => setCreating(true)} className="gap-1.5"><Plus className="h-4 w-4" /> New Experiment</Button>
       </div>
 
-      {experiments.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}</div>
+      ) : experiments.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <FlaskConical className="h-12 w-12 text-muted-foreground/50 mb-3" />

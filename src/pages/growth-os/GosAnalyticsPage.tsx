@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, TrendingUp, Eye, Inbox, CheckCircle2, XCircle, GitBranch, Users, AlertTriangle, ArrowRight, Filter } from 'lucide-react';
@@ -199,8 +200,6 @@ export default function GosAnalyticsPage() {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-
   const hasActiveFilters = filters.clientId || filters.formId || filters.landingId || filters.experimentId || filters.variantId;
 
   return (
@@ -289,6 +288,12 @@ export default function GosAnalyticsPage() {
         </CollapsibleContent>
       </Collapsible>
 
+      {isLoading ? (
+        <div className="space-y-3">
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">{Array.from({ length: 7 }).map((_, i) => <Card key={i}><CardContent className="p-4 h-16"><Skeleton className="h-full w-full" /></CardContent></Card>)}</div>
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      ) : (<>
       {/* KPI Cards */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
         <KpiMini label="Landing Views" value={totals.landingViews} icon={Eye} color="text-blue-400 bg-blue-500/10" />
@@ -470,6 +475,7 @@ export default function GosAnalyticsPage() {
           </CardContent>
         </Card>
       )}
+      </>)}
     </div>
   );
 }

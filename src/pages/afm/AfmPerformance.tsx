@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PageSkeleton from '@/components/shared/PageSkeleton';
 import { motion } from 'framer-motion';
 import { Users, TrendingUp, DollarSign, Target, BarChart3, Star, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,7 +86,7 @@ export default function AfmPerformance() {
     return { label: t('afm.perf.needsAttention' as any), icon: AlertTriangle, cls: 'text-red-400 bg-red-400/10 border-red-400/30' };
   };
 
-  if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <PageSkeleton variant="dashboard" kpiCards={4} tableRows={5} />;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Plus, GitBranch, Loader2, Activity, ArrowRight, Settings2, Trash2, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import type { TranslationKey } from '@/i18n/translations';
@@ -122,8 +123,6 @@ export default function GosLeadRoutingPage() {
     return <Activity className="h-3.5 w-3.5 text-muted-foreground" />;
   };
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -134,6 +133,9 @@ export default function GosLeadRoutingPage() {
         <Button size="sm" onClick={createRule} className="gap-1.5"><Plus className="h-4 w-4" /> New Rule</Button>
       </div>
 
+      {loading ? (
+        <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
+      ) : (<>
       <Tabs defaultValue="rules">
         <TabsList>
           <TabsTrigger value="rules">Rules ({rules.length})</TabsTrigger>
@@ -329,6 +331,7 @@ export default function GosLeadRoutingPage() {
           </DialogContent>
         </Dialog>
       )}
+      </>)}
     </div>
   );
 }

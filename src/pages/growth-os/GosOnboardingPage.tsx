@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, ExternalLink, Copy, Link2, Ban, Clock, CheckCircle2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
@@ -289,8 +290,6 @@ export default function GosOnboardingPage() {
     abandoned: 'bg-muted text-muted-foreground',
   };
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -308,6 +307,9 @@ export default function GosOnboardingPage() {
         </div>
       </div>
 
+      {loading ? (
+        <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}</div>
+      ) : (<>
       {/* Branding toggle */}
       <div className="flex items-center justify-between rounded-lg border border-border p-3">
         <div>
@@ -637,6 +639,7 @@ export default function GosOnboardingPage() {
           )}
         </DialogContent>
       </Dialog>
+      </>)}
     </div>
   );
 }
