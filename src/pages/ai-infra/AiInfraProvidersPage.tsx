@@ -163,7 +163,7 @@ export default function AiInfraProvidersPage() {
     if (!detailProvider) return;
     setSecretSaving(true);
     try {
-      const { error } = await supabase.rpc('delete_ai_provider_secret' as any, {
+      const { error } = await supabase.rpc('delete_ai_provider_secret', {
         _provider_id: detailProvider.id,
         _secret_label: 'api_key',
       });
