@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -34,40 +35,48 @@ const typeColors: Record<string, string> = {
 export default function NotificationCenter() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'unread' | 'read'>('unread');
 
-  const fetchNotifications = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (data) setNotifications(data as Notification[]);
-  }, [user]);
-
-  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
-  useEffect(() => { if (open) fetchNotifications(); }, [open, fetchNotifications]);
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      return (data || []) as Notification[];
+    },
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    // Refetch when popover opens
+    refetchInterval: open ? 30_000 : false,
+  });
 
   const unread = notifications.filter(n => !n.is_read);
   const read = notifications.filter(n => n.is_read);
   const unreadCount = unread.length;
-
   const displayed = tab === 'unread' ? unread : read;
 
   const markAllRead = async () => {
     if (!user) return;
     await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    queryClient.setQueryData(['notifications', user.id], (old: Notification[] | undefined) =>
+      (old || []).map(n => ({ ...n, is_read: true }))
+    );
   };
 
   const handleNotificationClick = async (n: Notification) => {
     if (!n.is_read) {
       await supabase.from('notifications').update({ is_read: true }).eq('id', n.id);
-      setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+      queryClient.setQueryData(['notifications', user?.id], (old: Notification[] | undefined) =>
+        (old || []).map(x => x.id === n.id ? { ...x, is_read: true } : x)
+      );
     }
     if (n.link) {
       setOpen(false);
@@ -96,7 +105,6 @@ export default function NotificationCenter() {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
-        {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
           <h4 className="text-sm font-semibold">Notifications</h4>
           {unreadCount > 0 && tab === 'unread' && (
@@ -105,8 +113,6 @@ export default function NotificationCenter() {
             </button>
           )}
         </div>
-
-        {/* Tabs */}
         <div className="flex border-b border-border">
           <button
             onClick={() => setTab('unread')}
@@ -127,8 +133,6 @@ export default function NotificationCenter() {
             Read
           </button>
         </div>
-
-        {/* List */}
         <div className="max-h-[320px] overflow-y-auto">
           {displayed.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-muted-foreground">
