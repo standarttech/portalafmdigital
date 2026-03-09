@@ -68,7 +68,7 @@ export default function PortalDashboardPage() {
     const { data: c } = await supabase.from('clients').select('name').eq('id', clientId).maybeSingle();
     setClientName(c?.name || '');
 
-    let snapQ = supabase.from('campaign_performance_snapshots' as any).select('*')
+    let snapQ = supabase.from('campaign_performance_snapshots').select('*')
       .eq('client_id', clientId).eq('entity_level', 'campaign');
     let launchQ = supabase.from('launch_requests' as any).select('id, client_id, status, execution_status, external_campaign_id, metadata, executed_at, platform')
       .eq('client_id', clientId).not('external_campaign_id', 'is', null);
