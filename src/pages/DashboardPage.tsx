@@ -159,31 +159,6 @@ export default function DashboardPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Load target user's client assignments for fully accurate scope
-  useEffect(() => {
-    if (!user) {
-      setSimulatedClientIds(null);
-      return;
-    }
-
-    const role = effectiveRole;
-    if (role === 'AgencyAdmin') {
-      setSimulatedClientIds(null);
-      return;
-    }
-
-    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
-
-    supabase
-      .from('client_users')
-      .select('client_id')
-      .eq('user_id', targetUserId)
-      .then(({ data }) => {
-        setSimulatedClientIds((data || []).map(d => d.client_id));
-      });
-  }, [user, effectiveRole, simulatedUser]);
-
-  useEffect(() => { fetchDisplayName(); }, [fetchDisplayName]);
 
   const renderSection = (sectionId: string) => {
     switch (sectionId) {
