@@ -192,7 +192,7 @@ export default function AiInfraProvidersPage() {
   };
 
   const toggleActive = async (p: Provider) => {
-    await supabase.from('ai_providers' as any).update({ is_active: !p.is_active }).eq('id', p.id);
+    await supabase.from('ai_providers').update({ is_active: !p.is_active }).eq('id', p.id);
     logGosAction('update', 'ai_provider', p.id, p.name, { metadata: { toggled: !p.is_active ? 'active' : 'inactive' } });
     load();
   };
