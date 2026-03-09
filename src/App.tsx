@@ -235,8 +235,9 @@ function AppRoutes() {
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
 
-  // Public routes — always accessible
-  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  // Use React Router location for proper re-render on navigation
+  const routerLocation = useLocation();
+  const currentPath = routerLocation.pathname;
 
   // Public embed routes — no auth, no layout
   if (currentPath.startsWith("/embed/")) {
