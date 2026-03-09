@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSidebarState } from '@/contexts/SidebarContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
+import { useQuery } from '@tanstack/react-query';
 import logoAfm from '@/assets/logo-afm-new.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
@@ -15,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { TranslationKey } from '@/i18n/translations';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 /* ── Module entries (rendered as premium cards) ── */
@@ -144,30 +145,32 @@ const sectionLabels: Record<string, TranslationKey> = {
 };
 
 function useSidebarBadges(isAdmin: boolean) {
-  const [badges, setBadges] = useState<Record<string, number>>({});
-  const fetchBadges = useCallback(async () => {
-    if (!isAdmin) return;
-    const [{ count: reqCount }, { count: unreadCount }] = await Promise.all([
-      supabase.from('access_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-      supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false).like('link', '/chat%'),
-    ]);
-    setBadges({ accessRequests: reqCount || 0, unreadChats: unreadCount || 0 });
-  }, [isAdmin]);
-  useEffect(() => { fetchBadges(); const i = setInterval(fetchBadges, 30000); return () => clearInterval(i); }, [fetchBadges]);
-  return badges;
+  const { data: badges = {} } = useQuery({
+    queryKey: ['sidebar-badges', isAdmin],
+    queryFn: async () => {
+      if (!isAdmin) return {};
+      const [{ count: reqCount }, { count: unreadCount }] = await Promise.all([
+        supabase.from('access_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('is_read', false).like('link', '/chat%'),
+      ]);
+      return { accessRequests: reqCount || 0, unreadChats: unreadCount || 0 };
+    },
+    enabled: isAdmin,
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+  });
+  return badges as Record<string, number>;
 }
 
 function useSidebarLogo() {
-  const [url, setUrl] = useState('');
-  useEffect(() => {
-    const load = () => supabase.from('platform_settings').select('value').eq('key', 'sidebar_logo_url').maybeSingle()
-      .then(({ data }) => setUrl(data?.value ? String(data.value) : ''));
-    load();
-    const ch = supabase.channel('sidebar-logo-refresh')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_settings' }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, []);
+  const { data: url = '' } = useQuery({
+    queryKey: ['sidebar-logo'],
+    queryFn: async () => {
+      const { data } = await supabase.from('platform_settings').select('value').eq('key', 'sidebar_logo_url').maybeSingle();
+      return data?.value ? String(data.value) : '';
+    },
+    staleTime: 10 * 60 * 1000,
+  });
   return url;
 }
 
@@ -183,10 +186,8 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
 
   const clientAllowedPaths = ['/dashboard', '/chat', '/glossary', '/profile'];
 
-  // Filter modules by permission (admins see all, others by flags)
   const visibleModules = moduleEntries.filter(m => moduleAccess[m.permissionKey]);
 
-  // Filter regular sections
   const filteredSections = navSections
     .filter(s => !s.adminOnly || isAdmin)
     .map(s => ({

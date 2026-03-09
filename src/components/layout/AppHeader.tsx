@@ -15,7 +15,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Language } from '@/i18n/translations';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -62,13 +63,17 @@ export default function AppHeader() {
     else setColorScheme(id as ColorScheme);
   };
 
-  // Load all users for "View as specific user" option
-  const [allUsers, setAllUsers] = useState<{ user_id: string; display_name: string | null; agency_role: string }[]>([]);
-  useEffect(() => {
-    if (!isRealAdmin) return;
-    supabase.from('agency_users').select('user_id, display_name, agency_role').order('display_name')
-      .then(({ data }) => setAllUsers(data || []));
-  }, [isRealAdmin]);
+  // Lazy-load all users only when simulation submenu is opened
+  const [simMenuOpened, setSimMenuOpened] = useState(false);
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['header-all-users-for-sim'],
+    queryFn: async () => {
+      const { data } = await supabase.from('agency_users').select('user_id, display_name, agency_role').order('display_name');
+      return data || [];
+    },
+    enabled: isRealAdmin && simMenuOpened,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleSelectRole = (role: any) => {
     setSimulatedUser(null);
@@ -261,7 +266,7 @@ export default function AppHeader() {
                   })}
 
                   <DropdownMenuSeparator />
-                  <DropdownMenuSub>
+                  <DropdownMenuSub onOpenChange={(open) => { if (open) setSimMenuOpened(true); }}>
                     <DropdownMenuSubTrigger className="gap-2 text-sm">
                       <Users className="h-3.5 w-3.5" /> Просмотр как пользователь
                     </DropdownMenuSubTrigger>
