@@ -171,7 +171,7 @@ export default function AdminPortalManagement() {
     await supabase.from('audit_log').insert({
       action: 'portal_invite_resent',
       entity_type: 'client_portal_invites',
-      entity_id: (newInv as any)?.id,
+      entity_id: (newInv as any)?.id,  // invite id from insert response
       user_id: user?.id,
       details: { email: invite.email, old_invite_id: invite.id },
     });
