@@ -126,6 +126,7 @@ export default function ClientDetailPage() {
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [hasMetaApiAccounts, setHasMetaApiAccounts] = useState(false);
   const [lastSyncDate, setLastSyncDate] = useState<string | null>(null);
+  const [showAllCampaigns, setShowAllCampaigns] = useState(true); // show ALL campaigns by default for historical data
 
   // Unified DateRangePicker state
   const [dateRange, setDateRange] = useState<DateRange>('30d');
@@ -321,24 +322,34 @@ export default function ClientDetailPage() {
 
   const fetchDailyMetrics = useCallback(async () => {
     if (!id) return;
-    // AFM FILTER: first get AFM campaign IDs, then filter daily_metrics
-    const afmIds = await getAfmCampaignIds(id);
-    if (afmIds.length === 0) { setDailyMetrics([]); return; }
-    const { data } = await supabase.from('daily_metrics')
-      .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-      .eq('client_id', id).in('campaign_id', afmIds).order('date', { ascending: true });
-    if (data) setDailyMetrics(data as DailyRow[]);
-  }, [id]);
+    if (showAllCampaigns) {
+      // Show ALL campaigns data — full historical view
+      const { data } = await supabase.from('daily_metrics')
+        .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
+        .eq('client_id', id).order('date', { ascending: true });
+      if (data) setDailyMetrics(data as DailyRow[]);
+    } else {
+      // AFM-only filter
+      const afmIds = await getAfmCampaignIds(id);
+      if (afmIds.length === 0) { setDailyMetrics([]); return; }
+      const { data } = await supabase.from('daily_metrics')
+        .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
+        .eq('client_id', id).in('campaign_id', afmIds).order('date', { ascending: true });
+      if (data) setDailyMetrics(data as DailyRow[]);
+    }
+  }, [id, showAllCampaigns]);
 
   const fetchCampaigns = useCallback(async () => {
     if (!id) return;
-    // AFM FILTER: only show campaigns with "AFM" in name
-    const { data } = await supabase
+    let query = supabase
       .from('campaigns')
       .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
       .eq('client_id', id)
-      .ilike('campaign_name', '%AFM%')
       .order('campaign_name');
+    if (!showAllCampaigns) {
+      query = query.ilike('campaign_name', '%AFM%');
+    }
+    const { data } = await query;
     if (data) {
       setCampaigns(data as any);
       const map: Record<string, string> = {};
@@ -348,7 +359,7 @@ export default function ClientDetailPage() {
       });
       setCampaignPlatformMap(map);
     }
-  }, [id]);
+  }, [id, showAllCampaigns]);
 
   const fetchTasks = useCallback(async () => {
     if (!id) return;
