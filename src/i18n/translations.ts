@@ -1143,9 +1143,6 @@ export const translations = {
   'nav.aiInfra': t('AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure'),
 
   // AFM Dashboard extra tabs
-  'afm.dash.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
-  'afm.dash.daily': t('Daily', 'Ежедневно', 'Giornaliero', 'Diario', 'يومي', 'Quotidien'),
-  'afm.dash.dailyStats': t('Daily Statistics', 'Статистика по дням', 'Statistiche giornaliere', 'Estadísticas diarias', 'إحصائيات يومية', 'Statistiques journalières'),
   'afm.dash.campaigns': t('Campaigns', 'Кампании', 'Campagne', 'Campañas', 'الحملات', 'Campagnes'),
   'afm.dash.tasks': t('Tasks', 'Задачи', 'Attività', 'Tareas', 'المهام', 'Tâches'),
   'afm.dash.reports': t('Reports', 'Отчёты', 'Report', 'Informes', 'التقارير', 'Rapports'),
@@ -1157,13 +1154,6 @@ export const translations = {
   'afm.dash.noTasks': t('No tasks yet', 'Задач пока нет', 'Nessuna attività', 'Sin tareas aún', 'لا توجد مهام بعد', 'Pas encore de tâches'),
   'afm.dash.noHistory': t('No history yet', 'Истории пока нет', 'Nessuna cronologia', 'Sin historial', 'لا يوجد سجل بعد', "Pas d'historique"),
   'afm.dash.addTask': t('Add Task', 'Добавить задачу', 'Aggiungi attività', 'Añadir tarea', 'إضافة مهمة', 'Ajouter une tâche'),
-  'afm.dash.autoSync': t('Auto-sync', 'Авто-синхронизация', 'Sincronizzazione automatica', 'Sincronización automática', 'مزامنة تلقائية', 'Synchronisation auto'),
-  'afm.dash.autoSyncDesc': t('Sync data automatically every hour', 'Синхронизация данных автоматически каждый час', 'Sincronizza i dati automaticamente ogni ora', 'Sincronizar datos automáticamente cada hora', 'مزامنة البيانات تلقائيًا كل ساعة', 'Synchroniser les données automatiquement chaque heure'),
-  'afm.dash.autoSyncOn': t('Auto-sync enabled', 'Авто-синхронизация включена', 'Sincronizzazione automatica attivata', 'Sincronización automática activada', 'تم تفعيل المزامنة التلقائية', 'Synchronisation auto activée'),
-  'afm.dash.autoSyncOff': t('Auto-sync disabled', 'Авто-синхронизация отключена', 'Sincronizzazione automatica disattivata', 'Sincronización automática desactivada', 'تم تعطيل المزامنة التلقائية', 'Synchronisation auto désactivée'),
-  'afm.dash.autoSyncHint': t('Data syncs automatically', 'Данные синхронизируются автоматически', 'I dati si sincronizzano automaticamente', 'Los datos se sincronizan automáticamente', 'تتم مزامنة البيانات تلقائيًا', 'Les données se synchronisent automatiquement'),
-  'afm.dash.setupRequired': t('No agency account found. Create a client with category "Agency" to activate AFM Internal.', 'Аккаунт агентства не найден. Создайте клиента с категорией "Агентство" для активации AFM Internal.', 'Nessun account agenzia trovato.', 'No se encontró cuenta de agencia.', 'لم يتم العثور على حساب الوكالة.', 'Aucun compte agence trouvé.'),
-  'afm.dash.setupHidden': t('This section is only visible to administrators.', 'Этот раздел виден только администраторам.', 'Questa sezione è visibile solo agli amministratori.', 'Esta sección solo es visible para administradores.', 'هذا القسم مرئي فقط للمسؤولين.', 'Cette section est visible uniquement par les administrateurs.'),
 
   // Admin presence
   'admin.userPresence': t('User Presence & Activity', 'Присутствие и активность', 'Presenza e attività utenti', 'Presencia y actividad', 'حضور ونشاط المستخدمين', 'Présence et activité'),
