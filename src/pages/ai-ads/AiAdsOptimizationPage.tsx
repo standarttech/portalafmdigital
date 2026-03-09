@@ -94,23 +94,23 @@ export default function AiAdsOptimizationPage() {
 
   const load = useCallback(async () => {
     const [aRes, cRes, rRes] = await Promise.all([
-      supabase.from('optimization_actions' as any).select('*').order('created_at', { ascending: false }).limit(300),
+      supabase.from('optimization_actions').select('*').order('created_at', { ascending: false }).limit(300),
       supabase.from('clients').select('id, name').order('name'),
-      supabase.from('ai_recommendations' as any).select('*')
+      supabase.from('ai_recommendations').select('*')
         .in('status', ['new', 'reviewed']).order('created_at', { ascending: false }).limit(100),
     ]);
-    setActions((aRes.data as any[]) || []);
+    setActions((aRes.data as OptAction[]) || []);
     setClients(cRes.data || []);
-    setRecs((rRes.data as any[]) || []);
+    setRecs((rRes.data as Recommendation[]) || []);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const loadLogs = async (actionId: string) => {
-    const { data } = await supabase.from('optimization_action_logs' as any)
+    const { data } = await supabase.from('optimization_action_logs')
       .select('*').eq('action_id', actionId).order('created_at', { ascending: true });
-    setLogs((data as any[]) || []);
+    setLogs((data as ActionLog[]) || []);
   };
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || 'Unknown';
