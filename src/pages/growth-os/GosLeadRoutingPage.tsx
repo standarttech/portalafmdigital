@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Plus, GitBranch, Loader2, Activity, ArrowRight, Settings2, Trash2, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import type { TranslationKey } from '@/i18n/translations';

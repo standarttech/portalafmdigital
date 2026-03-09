@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Plus, ClipboardCheck, Loader2, PlayCircle, X, ChevronUp, ChevronDown, Settings2, Trash2, ExternalLink, Copy, Link2, Ban, Clock, CheckCircle2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
