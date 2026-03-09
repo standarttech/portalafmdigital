@@ -120,7 +120,7 @@ export default function AiInfraRoutesPage() {
   };
 
   const toggleRoute = async (r: Route) => {
-    await supabase.from('ai_provider_routes' as any).update({ is_active: !r.is_active }).eq('id', r.id);
+    await supabase.from('ai_provider_routes').update({ is_active: !r.is_active }).eq('id', r.id);
     logGosAction('update', 'ai_provider_route', r.id, r.task_type, { metadata: { toggled: !r.is_active ? 'active' : 'inactive' } });
     load();
   };
