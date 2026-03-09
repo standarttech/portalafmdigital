@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import PageSkeleton from '@/components/shared/PageSkeleton';
 import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
