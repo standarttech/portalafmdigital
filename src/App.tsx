@@ -93,6 +93,7 @@ const GosAnalyticsPage = React.lazy(() => import("@/pages/growth-os/GosAnalytics
 const GosExperimentsPage = React.lazy(() => import("@/pages/growth-os/GosExperimentsPage"));
 const GosSystemHealthPage = React.lazy(() => import("@/pages/growth-os/GosSystemHealthPage"));
 const GosIntegrityChecksPage = React.lazy(() => import("@/pages/growth-os/GosIntegrityChecksPage"));
+const GosGuidePage = React.lazy(() => import("@/pages/growth-os/GosGuidePage"));
 const EmbedOnboardingPage = React.lazy(() => import("@/pages/embed/EmbedOnboardingPage"));
 const AiAdsOverviewPage = React.lazy(() => import("@/pages/ai-ads/AiAdsOverviewPage"));
 const AiAdsAccountsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsAccountsPage"));
