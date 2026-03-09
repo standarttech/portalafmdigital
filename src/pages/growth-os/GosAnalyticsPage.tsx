@@ -473,6 +473,7 @@ export default function GosAnalyticsPage() {
           </CardContent>
         </Card>
       )}
+      </>)}
     </div>
   );
 }
