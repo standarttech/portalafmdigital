@@ -50,7 +50,7 @@ export default function AiAdsRecommendationsPage() {
 
   const load = useCallback(async () => {
     const [rRes, cRes] = await Promise.all([
-      supabase.from('ai_recommendations' as any).select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('ai_recommendations').select('*').order('created_at', { ascending: false }).limit(200),
       supabase.from('clients').select('id, name').order('name'),
     ]);
     setRecs((rRes.data as any[]) || []);
