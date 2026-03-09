@@ -344,7 +344,25 @@ export default function AfmMediaBuying() {
     hasApiAccounts && 'Meta API',
   ].filter(Boolean) as string[] : [];
 
-  if (loading) return <PageSkeleton variant="dashboard" kpiCards={4} tableRows={6} />;
+  if (loading) return (
+    <div className="space-y-6 animate-in fade-in duration-150">
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 text-primary" />
+            {t('afm.mb.title' as any)}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t('afm.mb.subtitle' as any)}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="glass-card"><CardContent className="p-4"><Skeleton className="h-3 w-16 mb-2" /><Skeleton className="h-7 w-24" /></CardContent></Card>
+        ))}
+      </div>
+      <Card className="glass-card"><CardContent className="p-4"><Skeleton className="h-[200px] w-full rounded-lg" /></CardContent></Card>
+    </div>
+  );
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">

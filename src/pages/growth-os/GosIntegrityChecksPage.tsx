@@ -264,11 +264,9 @@ export default function GosIntegrityChecksPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useIntegrityChecks();
 
-  if (isLoading || !data) return <PageSkeleton variant="list" tableRows={5} />;
-
-  const errors = data.issues.filter(i => i.severity === 'error');
-  const warnings = data.issues.filter(i => i.severity === 'warning');
-  const infos = data.issues.filter(i => i.severity === 'info');
+  const errors = data?.issues.filter(i => i.severity === 'error') ?? [];
+  const warnings = data?.issues.filter(i => i.severity === 'warning') ?? [];
+  const infos = data?.issues.filter(i => i.severity === 'info') ?? [];
 
   const severityIcon = (s: string) => {
     if (s === 'error') return <XCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />;
