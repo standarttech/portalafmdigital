@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PortalUser, PortalBranding } from '@/types/portal';
+import { upsertRememberedAccount } from '@/lib/rememberedAccounts';
 
 export function usePortalAuth() {
   const { user } = useAuth();
@@ -34,6 +35,29 @@ export function usePortalAuth() {
         .eq('client_id', (pu as any).client_id)
         .maybeSingle();
       if (br) setBranding(br as any as PortalBranding);
+
+      // Load client name for remembered account label
+      let clientLabel: string | null = null;
+      try {
+        const { data: cl } = await supabase
+          .from('clients')
+          .select('name')
+          .eq('id', (pu as any).client_id)
+          .maybeSingle();
+        clientLabel = cl?.name || null;
+      } catch {}
+
+      // Save to remembered accounts (portal type, no tokens)
+      upsertRememberedAccount({
+        userId: user.id,
+        email: user.email || '',
+        displayName: (pu as any).full_name || null,
+        avatarUrl: null,
+        accountType: 'portal',
+        roleLabel: 'Portal',
+        portalClientLabel: clientLabel || (br as any)?.portal_title || null,
+        entryRoute: '/portal',
+      });
     }
     setLoading(false);
   }, [user]);
