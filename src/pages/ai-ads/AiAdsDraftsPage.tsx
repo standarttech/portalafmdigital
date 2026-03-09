@@ -189,7 +189,7 @@ export default function AiAdsDraftsPage() {
 
   const load = useCallback(async () => {
     const [dRes, cRes] = await Promise.all([
-      supabase.from('campaign_drafts' as any).select('*').order('updated_at', { ascending: false }).limit(200),
+      supabase.from('campaign_drafts').select('*').order('updated_at', { ascending: false }).limit(200),
       supabase.from('clients').select('id, name').order('name'),
     ]);
     setDrafts((dRes.data as any[]) || []);
@@ -203,7 +203,7 @@ export default function AiAdsDraftsPage() {
     if (!user || !newDraft.client_id || !newDraft.campaign_name.trim()) return;
     setCreating(true);
     try {
-      const { data, error } = await supabase.from('campaign_drafts' as any).insert({
+      const { data, error } = await supabase.from('campaign_drafts').insert({
         client_id: newDraft.client_id,
         created_by: user.id,
         name: newDraft.campaign_name.trim(),
@@ -378,9 +378,9 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
-  const loadItems = useCallback(async () => {
+    const loadItems = useCallback(async () => {
     const [iRes, aRes, cRes] = await Promise.all([
-      supabase.from('campaign_draft_items' as any).select('*').eq('draft_id', draft.id).order('sort_order'),
+      supabase.from('campaign_draft_items').select('*').eq('draft_id', draft.id).order('sort_order'),
       supabase.from('ad_accounts').select('id, account_name, platform_account_id, client_id, connection_id').eq('client_id', draft.client_id).eq('is_active', true),
       supabase.from('creative_assets' as any).select('id, name, asset_type, url, status, tags').eq('client_id', draft.client_id).eq('status', 'active').order('name'),
     ]);
@@ -422,7 +422,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const addItem = async (itemType: string, parentId?: string) => {
     const maxSort = items.filter(i => i.item_type === itemType).reduce((m, i) => Math.max(m, i.sort_order), -1);
     const name = itemType === 'adset' ? `Ad Set ${items.filter(i => i.item_type === 'adset').length + 1}` : `Ad ${items.filter(i => i.item_type === 'ad').length + 1}`;
-    const { data, error } = await supabase.from('campaign_draft_items' as any).insert({
+    const { data, error } = await supabase.from('campaign_draft_items').insert({
       draft_id: draft.id, item_type: itemType, name,
       parent_item_id: parentId || null, sort_order: maxSort + 1,
       config: itemType === 'adset' ? { geo: '', age_min: 18, age_max: 65, gender: 'all', interests: '', placements: 'automatic', daily_budget: 0, optimization_goal: '' } :
@@ -442,7 +442,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
 
   const deleteItem = async (itemId: string) => {
     const item = items.find(i => i.id === itemId);
-    const { error } = await supabase.from('campaign_draft_items' as any).delete().eq('id', itemId);
+    const { error } = await supabase.from('campaign_draft_items').delete().eq('id', itemId);
     if (error) { toast.error('Delete failed'); return; }
     logGosAction('delete', 'campaign_draft_item', itemId, item?.name, { metadata: { draftId: draft.id } });
     setItems(prev => prev.filter(i => i.id !== itemId && i.parent_item_id !== itemId));

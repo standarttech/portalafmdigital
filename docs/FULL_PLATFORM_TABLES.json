@@ -1,0 +1,1027 @@
+{
+  "generated": "2026-03-09",
+  "total_tables": 100,
+  "note": "Based on information_schema.tables + types.ts + RLS policy audit. 'in_types_ts' = confirmed present in auto-generated src/integrations/supabase/types.ts.",
+  "tables": [
+    {
+      "name": "access_requests",
+      "module": "Auth",
+      "purpose": "Public registration requests pending admin review",
+      "key_columns": ["id", "email", "full_name", "status", "message"],
+      "fks": [],
+      "rls": "anon+authenticated INSERT; is_agency_admin SELECT/UPDATE/DELETE",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ad_accounts",
+      "module": "Campaigns",
+      "purpose": "Advertising platform accounts linked to clients",
+      "key_columns": ["id", "client_id", "connection_id", "platform_account_id", "account_name", "is_active"],
+      "fks": ["client_id → clients", "connection_id → platform_connections"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ad_level_metrics",
+      "module": "Campaigns",
+      "purpose": "Daily ad-level performance metrics (campaign/adset/ad level)",
+      "key_columns": ["id", "client_id", "date", "level", "platform_id", "spend", "leads", "impressions", "clicks"],
+      "fks": ["client_id → clients", "campaign_id → campaigns", "ad_account_id → ad_accounts"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "admin_approvals",
+      "module": "Auth/Admin",
+      "purpose": "Dual-admin approval queue for sensitive operations (role changes, client deletes)",
+      "key_columns": ["id", "entity_type", "entity_id", "action_type", "status", "requested_by", "approved_by"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; requester SELECT own",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "admin_scales",
+      "module": "AdminScale",
+      "purpose": "Saved AdminScale configuration documents per user",
+      "key_columns": ["id", "user_id", "name", "data", "is_current"],
+      "fks": [],
+      "rls": "is_agency_admin SELECT all; user ALL own",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "afm_finance_data",
+      "module": "AFM Internal",
+      "purpose": "Editable finance spreadsheet cells (tab/section/row/field model)",
+      "key_columns": ["id", "tab_key", "section", "row_id", "field_name", "value", "updated_by"],
+      "fks": [],
+      "rls": "is_agency_member SELECT/INSERT/UPDATE; is_agency_admin DELETE",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "afm_sales_leads",
+      "module": "AFM Internal",
+      "purpose": "Internal sales pipeline leads for the agency",
+      "key_columns": ["id", "name", "company", "email", "phone", "status", "value", "source"],
+      "fks": [],
+      "rls": "is_agency_member INSERT/UPDATE; sales team + creator SELECT; admin DELETE",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "afm_stats_data",
+      "module": "AFM Internal",
+      "purpose": "Editable agency stats cells (stat_type/period/year model)",
+      "key_columns": ["id", "stat_type", "period_key", "year_range", "field_name", "value"],
+      "fks": [],
+      "rls": "is_agency_member SELECT/INSERT/UPDATE",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "afm_stats_history",
+      "module": "AFM Internal",
+      "purpose": "Audit trail of stat value changes",
+      "key_columns": ["id", "stat_type", "period_key", "field_name", "old_value", "new_value", "changed_by"],
+      "fks": [],
+      "rls": "is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "agency_users",
+      "module": "Auth",
+      "purpose": "Internal platform users with roles (AgencyAdmin, MediaBuyer, Manager, etc.)",
+      "key_columns": ["id", "user_id", "agency_role", "display_name", "avatar_url"],
+      "fks": [],
+      "rls": "admin ALL; self SELECT/UPDATE own",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_analysis_runs",
+      "module": "AI Ads",
+      "purpose": "AI analysis session runs (prompts, results, model used)",
+      "key_columns": ["id", "session_id", "client_id", "analysis_type", "status", "prompt", "result_summary"],
+      "fks": ["client_id → clients", "session_id → ai_campaign_sessions", "ad_account_id → ad_accounts"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT/INSERT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_campaign_sessions",
+      "module": "AI Ads",
+      "purpose": "AI analysis session containers grouping runs and recommendations",
+      "key_columns": ["id", "client_id", "title", "session_type", "status", "created_by"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT/INSERT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_provider_health_checks",
+      "module": "AI Infra",
+      "purpose": "Periodic health check results per AI provider",
+      "key_columns": ["id", "provider_id", "status", "latency_ms", "error_message", "checked_at"],
+      "fks": ["provider_id → ai_providers"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_provider_routes",
+      "module": "AI Infra",
+      "purpose": "Routing rules: task_type → primary/fallback provider",
+      "key_columns": ["id", "task_type", "primary_provider_id", "fallback_provider_id", "is_active", "priority"],
+      "fks": ["primary_provider_id → ai_providers", "fallback_provider_id → ai_providers"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_provider_secrets",
+      "module": "AI Infra",
+      "purpose": "Secret references (vault UUIDs) for AI provider API keys",
+      "key_columns": ["id", "provider_id", "secret_label", "secret_ref"],
+      "fks": ["provider_id → ai_providers"],
+      "rls": "is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_providers",
+      "module": "AI Infra",
+      "purpose": "AI provider registry (OpenAI, Anthropic, Gemini, etc.)",
+      "key_columns": ["id", "name", "slug", "provider_type", "base_url", "is_active", "is_default", "supports_*"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_recommendations",
+      "module": "AI Ads",
+      "purpose": "AI-generated actionable recommendations from analysis runs",
+      "key_columns": ["id", "client_id", "title", "description", "recommendation_type", "priority", "status"],
+      "fks": ["client_id → clients", "session_id → ai_campaign_sessions", "analysis_run_id → ai_analysis_runs"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT/INSERT/UPDATE",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_task_logs",
+      "module": "AI Infra",
+      "purpose": "Step-by-step execution logs for AI tasks",
+      "key_columns": ["id", "task_id", "step_type", "level", "message", "metadata"],
+      "fks": ["task_id → ai_tasks", "provider_id → ai_providers"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_task_templates",
+      "module": "AI Infra",
+      "purpose": "Reusable AI task templates with input schemas",
+      "key_columns": ["id", "name", "task_type", "input_template", "is_active", "created_by"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "ai_tasks",
+      "module": "AI Infra",
+      "purpose": "Individual AI task execution records with status tracking",
+      "key_columns": ["id", "task_type", "status", "requested_by", "input_payload", "output_payload", "source_module"],
+      "fks": ["client_id → clients", "provider_route_id → ai_provider_routes", "selected_provider_id → ai_providers"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT/INSERT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "annotations",
+      "module": "Campaigns",
+      "purpose": "User-added notes on specific dates for client performance charts",
+      "key_columns": ["id", "client_id", "date", "text", "created_by"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT/INSERT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "audit_log",
+      "module": "Admin/Audit",
+      "purpose": "Immutable audit trail of all platform actions via triggers",
+      "key_columns": ["id", "action", "entity_type", "entity_id", "user_id", "details", "created_at"],
+      "fks": [],
+      "rls": "authenticated INSERT; is_agency_admin SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "budget_plans",
+      "module": "Campaigns",
+      "purpose": "Monthly planned spend/leads/CPL budgets per client",
+      "key_columns": ["id", "client_id", "month", "planned_spend", "planned_leads", "planned_cpl"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "campaign_draft_items",
+      "module": "AI Ads",
+      "purpose": "Ad sets and ads within a campaign draft (tree structure)",
+      "key_columns": ["id", "draft_id", "item_type", "name", "parent_item_id", "config", "sort_order", "validation_errors"],
+      "fks": ["draft_id → campaign_drafts", "parent_item_id → campaign_draft_items", "creative_asset_id → creative_assets"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT/INSERT/UPDATE/DELETE",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "campaign_drafts",
+      "module": "AI Ads",
+      "purpose": "Campaign configuration drafts pending validation and launch approval",
+      "key_columns": ["id", "client_id", "name", "campaign_name", "platform", "objective", "status", "validation_status", "source_type"],
+      "fks": ["client_id → clients", "session_id → ai_campaign_sessions", "hypothesis_id → hypothesis_threads"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT/INSERT/UPDATE",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "campaign_performance_snapshots",
+      "module": "AI Ads",
+      "purpose": "Point-in-time performance snapshots for launched campaigns",
+      "key_columns": ["id", "client_id", "platform", "entity_level", "external_campaign_id", "spend", "leads", "synced_at"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT/INSERT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "campaigns",
+      "module": "Campaigns",
+      "purpose": "Tracked ad platform campaigns linked to ad accounts",
+      "key_columns": ["id", "client_id", "ad_account_id", "campaign_name", "platform_campaign_id", "status"],
+      "fks": ["client_id → clients", "ad_account_id → ad_accounts"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "chat_members",
+      "module": "Chat",
+      "purpose": "Users who are members of a chat room with write permissions",
+      "key_columns": ["id", "room_id", "user_id", "can_write"],
+      "fks": ["room_id → chat_rooms"],
+      "rls": "is_agency_member SELECT/INSERT; member read own",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "chat_messages",
+      "module": "Chat",
+      "purpose": "Messages sent in chat rooms",
+      "key_columns": ["id", "room_id", "user_id", "content", "created_at"],
+      "fks": ["room_id → chat_rooms"],
+      "rls": "member SELECT/INSERT; admin manage",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "chat_read_status",
+      "module": "Chat",
+      "purpose": "Last-read timestamps per user per room for unread counts",
+      "key_columns": ["room_id", "user_id", "last_read_at"],
+      "fks": ["room_id → chat_rooms"],
+      "rls": "user manage own",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "chat_rooms",
+      "module": "Chat",
+      "purpose": "Chat rooms (general, support per client)",
+      "key_columns": ["id", "name", "type", "client_id", "created_by"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_member SELECT/INSERT; admin manage",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_comments",
+      "module": "Clients",
+      "purpose": "Internal team comments on client records",
+      "key_columns": ["id", "client_id", "user_id", "content"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_member SELECT/INSERT; admin DELETE",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_info",
+      "module": "Clients",
+      "purpose": "Extended client metadata (contacts, URLs, niche, contract dates)",
+      "key_columns": ["id", "client_id", "contact_person", "contact_email", "website_url", "monthly_budget", "contract_start"],
+      "fks": ["client_id → clients (1:1)"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_portal_branding",
+      "module": "Portal",
+      "purpose": "Per-client portal branding (logo, colors, title)",
+      "key_columns": ["id", "client_id", "logo_url", "accent_color", "portal_title", "agency_label"],
+      "fks": ["client_id → clients (1:1)"],
+      "rls": "is_agency_admin ALL; portal user SELECT own client",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_portal_files",
+      "module": "Portal",
+      "purpose": "Files shared with portal users (storage or external URL)",
+      "key_columns": ["id", "client_id", "title", "file_type", "storage_path", "external_url", "is_visible_in_portal"],
+      "fks": ["client_id → clients"],
+      "rls": "has_client_access ALL; portal user SELECT visible files for own client",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_portal_invites",
+      "module": "Portal",
+      "purpose": "One-time email invites for portal access with expiry tokens",
+      "key_columns": ["id", "client_id", "email", "token", "status", "expires_at"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; validate_portal_invite/accept_portal_invite RPCs",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_portal_users",
+      "module": "Portal",
+      "purpose": "Portal user records linking auth users to client access",
+      "key_columns": ["id", "client_id", "user_id", "email", "full_name", "status", "last_login_at"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_member SELECT; portal user SELECT own; admin ALL",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_status_history",
+      "module": "Clients",
+      "purpose": "Audit trail of client status changes",
+      "key_columns": ["id", "client_id", "old_status", "new_status", "changed_by", "notes"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_table_presets",
+      "module": "Clients",
+      "purpose": "Saved column visibility presets for campaign breakdown table per client",
+      "key_columns": ["id", "client_id", "preset_name", "columns", "is_default"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_member ALL",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_targets",
+      "module": "Clients",
+      "purpose": "KPI targets per client (CPL, ROAS, CTR, leads)",
+      "key_columns": ["id", "client_id", "target_cpl", "target_roas", "target_ctr", "target_leads"],
+      "fks": ["client_id → clients (1:1)"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_users",
+      "module": "Clients",
+      "purpose": "Many-to-many: internal users assigned to clients",
+      "key_columns": ["id", "client_id", "user_id", "role"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "client_webhooks",
+      "module": "Clients",
+      "purpose": "Outbound webhooks triggered on client events",
+      "key_columns": ["id", "client_id", "name", "url", "events", "is_active", "secret"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT (safe view hides secret)",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "clients",
+      "module": "Clients",
+      "purpose": "Core client/advertiser records",
+      "key_columns": ["id", "name", "status", "industry", "created_at"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": true
+    },
+    {
+      "name": "contact_requests",
+      "module": "Public Website",
+      "purpose": "Contact form submissions from the public website",
+      "key_columns": ["id", "name", "email", "message", "status", "created_at"],
+      "fks": [],
+      "rls": "anon INSERT; is_agency_admin SELECT/UPDATE",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "creative_assets",
+      "module": "AI Ads",
+      "purpose": "Media assets (images, videos, URLs) usable in campaign drafts",
+      "key_columns": ["id", "client_id", "name", "asset_type", "url", "file_path", "status", "tags"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT/INSERT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_bot_profiles",
+      "module": "CRM",
+      "purpose": "Telegram/bot profiles linked to CRM for inbound lead capture",
+      "key_columns": ["id", "bot_token_ref", "name", "is_active", "pipeline_id"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_custom_fields",
+      "module": "CRM",
+      "purpose": "Custom field definitions per CRM pipeline",
+      "key_columns": ["id", "pipeline_id", "name", "field_key", "field_type", "is_required"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_lead_activities",
+      "module": "CRM",
+      "purpose": "Activity timeline entries per CRM lead",
+      "key_columns": ["id", "lead_id", "activity_type", "description", "created_by"],
+      "fks": ["lead_id → crm_leads"],
+      "rls": "is_agency_member SELECT/INSERT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_lead_custom_field_values",
+      "module": "CRM",
+      "purpose": "Values for custom fields on CRM leads",
+      "key_columns": ["id", "lead_id", "field_id", "value"],
+      "fks": ["lead_id → crm_leads", "field_id → crm_custom_fields"],
+      "rls": "is_agency_member SELECT/INSERT/UPDATE; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_lead_notes",
+      "module": "CRM",
+      "purpose": "Free-text notes on CRM leads",
+      "key_columns": ["id", "lead_id", "content", "created_by"],
+      "fks": ["lead_id → crm_leads"],
+      "rls": "is_agency_member SELECT/INSERT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_leads",
+      "module": "CRM",
+      "purpose": "CRM lead records with full contact and pipeline stage tracking",
+      "key_columns": ["id", "pipeline_id", "stage_id", "name", "email", "phone", "status", "source", "assigned_to"],
+      "fks": ["pipeline_id → crm_pipelines", "stage_id → crm_pipeline_stages"],
+      "rls": "is_agency_member SELECT/INSERT/UPDATE; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_pipeline_stages",
+      "module": "CRM",
+      "purpose": "Kanban stages within a CRM pipeline",
+      "key_columns": ["id", "pipeline_id", "name", "position", "color", "is_won", "is_lost"],
+      "fks": ["pipeline_id → crm_pipelines"],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_pipelines",
+      "module": "CRM",
+      "purpose": "CRM pipeline definitions",
+      "key_columns": ["id", "name", "is_default", "created_by"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_webhook_endpoints",
+      "module": "CRM",
+      "purpose": "Inbound webhook endpoints that create CRM leads",
+      "key_columns": ["id", "pipeline_id", "name", "token", "is_active", "field_mapping"],
+      "fks": ["pipeline_id → crm_pipelines"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "crm_webhook_logs",
+      "module": "CRM",
+      "purpose": "Logs of inbound webhook requests to CRM endpoints",
+      "key_columns": ["id", "endpoint_id", "status", "payload", "error_message"],
+      "fks": ["endpoint_id → crm_webhook_endpoints"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "daily_metrics",
+      "module": "Campaigns",
+      "purpose": "Aggregated daily metrics per client (legacy/alternative to ad_level_metrics)",
+      "key_columns": ["id", "client_id", "date", "spend", "leads", "impressions", "clicks"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "partial — may be superseded by ad_level_metrics",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_analytics_events",
+      "module": "Growth OS",
+      "purpose": "Analytics events from Growth OS landing pages and forms",
+      "key_columns": ["id", "session_id", "event_type", "page_url", "metadata", "created_at"],
+      "fks": ["session_id → gos_onboarding_sessions"],
+      "rls": "service_role INSERT; is_agency_admin SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_audit_log",
+      "module": "Growth OS",
+      "purpose": "Audit trail of all Growth OS actions (forms, integrations, experiments)",
+      "key_columns": ["id", "user_id", "action", "entity_type", "entity_id", "message", "metadata"],
+      "fks": [],
+      "rls": "is_agency_member INSERT; is_agency_admin SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_experiments",
+      "module": "Growth OS",
+      "purpose": "A/B test experiments on Growth OS landing pages",
+      "key_columns": ["id", "name", "status", "variants", "winner_variant", "created_by"],
+      "fks": [],
+      "rls": "is_agency_member SELECT/INSERT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_form_submissions",
+      "module": "Growth OS",
+      "purpose": "Submitted form data from Growth OS embeds",
+      "key_columns": ["id", "form_id", "session_id", "data", "submitted_at"],
+      "fks": ["form_id → gos_forms"],
+      "rls": "anon/public INSERT; is_agency_admin SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_forms",
+      "module": "Growth OS",
+      "purpose": "Form definitions for Growth OS embeds",
+      "key_columns": ["id", "name", "fields", "settings", "is_active", "created_by"],
+      "fks": [],
+      "rls": "is_agency_member SELECT/INSERT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_health_check_log",
+      "module": "Growth OS",
+      "purpose": "Scheduled health check results for Growth OS integrations",
+      "key_columns": ["id", "integration_id", "status", "latency_ms", "error_message"],
+      "fks": ["integration_id → gos_integration_instances"],
+      "rls": "is_agency_admin SELECT; service_role INSERT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_integration_instances",
+      "module": "Growth OS",
+      "purpose": "Configured instances of Growth OS integrations with secrets",
+      "key_columns": ["id", "integration_id", "name", "config", "secret_ref", "status"],
+      "fks": ["integration_id → gos_integrations"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_integrations",
+      "module": "Growth OS",
+      "purpose": "Available integration types (CRM, email, analytics, etc.) catalog",
+      "key_columns": ["id", "name", "type", "config_schema", "is_active"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_landing_templates",
+      "module": "Growth OS",
+      "purpose": "Landing page templates for Growth OS embeds",
+      "key_columns": ["id", "name", "html_content", "css_content", "is_active", "created_by"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_onboarding_flows",
+      "module": "Growth OS",
+      "purpose": "Onboarding flow definitions with steps and config",
+      "key_columns": ["id", "name", "steps", "settings", "is_active", "created_by"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_onboarding_sessions",
+      "module": "Growth OS",
+      "purpose": "Active onboarding sessions per token/client",
+      "key_columns": ["id", "flow_id", "token_id", "data", "current_step", "status"],
+      "fks": ["flow_id → gos_onboarding_flows"],
+      "rls": "service_role ALL; public SELECT own session via token",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_onboarding_tokens",
+      "module": "Growth OS",
+      "purpose": "Time-limited access tokens for unauthenticated onboarding embeds",
+      "key_columns": ["id", "token", "session_id", "expires_at", "revoked_at", "client_label"],
+      "fks": ["session_id → gos_onboarding_sessions"],
+      "rls": "is_agency_admin ALL; public validate via RPC",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_rate_limits",
+      "module": "Growth OS",
+      "purpose": "Rate limiting records for form submissions (IP-based)",
+      "key_columns": ["id", "key", "count", "window_start"],
+      "fks": [],
+      "rls": "service_role only — no RLS policies; intentionally restricted",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_routing_log",
+      "module": "Growth OS",
+      "purpose": "Log of lead routing decisions",
+      "key_columns": ["id", "rule_id", "lead_id", "destination", "status"],
+      "fks": ["rule_id → gos_routing_rules"],
+      "rls": "is_agency_admin SELECT; service_role INSERT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "gos_routing_rules",
+      "module": "Growth OS",
+      "purpose": "Lead routing rules (conditions → destinations)",
+      "key_columns": ["id", "name", "conditions", "destination_type", "destination_config", "is_active"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "hypothesis_messages",
+      "module": "AI Ads",
+      "purpose": "Chat messages within hypothesis threads (user + AI assistant)",
+      "key_columns": ["id", "thread_id", "role", "content", "created_by"],
+      "fks": ["thread_id → hypothesis_threads"],
+      "rls": "is_agency_member SELECT/INSERT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "hypothesis_threads",
+      "module": "AI Ads",
+      "purpose": "Hypothesis discussion threads for campaign strategy brainstorming",
+      "key_columns": ["id", "client_id", "title", "status", "tags", "recommendation_id", "created_by"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_member SELECT/INSERT/UPDATE; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "invitations",
+      "module": "Auth",
+      "purpose": "Admin-issued invitations for new internal platform users",
+      "key_columns": ["id", "email", "role", "token", "status", "expires_at"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; get_invitation_by_token RPC for accept flow",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "launch_execution_logs",
+      "module": "AI Ads",
+      "purpose": "Step-by-step logs from campaign execution (campaign/adset/ad creation)",
+      "key_columns": ["id", "launch_request_id", "step", "status", "entity_level", "message", "external_entity_id"],
+      "fks": ["launch_request_id → launch_requests"],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "launch_requests",
+      "module": "AI Ads",
+      "purpose": "Campaign launch requests requiring admin approval before execution",
+      "key_columns": ["id", "draft_id", "client_id", "status", "execution_status", "approved_by", "executed_at", "external_campaign_id"],
+      "fks": ["draft_id → campaign_drafts", "client_id → clients"],
+      "rls": "is_agency_member SELECT/INSERT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "metric_overrides",
+      "module": "Campaigns",
+      "purpose": "Manual metric corrections overriding imported data",
+      "key_columns": ["id", "client_id", "date", "metric_key", "value", "override_by"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "partial — usage unclear",
+      "in_types_ts": false
+    },
+    {
+      "name": "notification_broadcasts",
+      "module": "Notifications",
+      "purpose": "Bulk notifications broadcast to multiple users",
+      "key_columns": ["id", "title", "message", "type", "target_roles", "sent_by", "sent_at"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT own",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "notification_preferences",
+      "module": "Notifications",
+      "purpose": "Internal user notification preferences per type",
+      "key_columns": ["id", "user_id", "type", "enabled"],
+      "fks": [],
+      "rls": "user ALL own",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "notifications",
+      "module": "Notifications",
+      "purpose": "In-app notifications for internal users",
+      "key_columns": ["id", "user_id", "title", "message", "type", "is_read", "link"],
+      "fks": [],
+      "rls": "user SELECT/UPDATE own; is_agency_admin ALL; service_role INSERT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "optimization_action_logs",
+      "module": "AI Ads",
+      "purpose": "Step logs for optimization action execution",
+      "key_columns": ["id", "action_id", "step", "status", "message", "payload"],
+      "fks": ["action_id → optimization_actions"],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "optimization_actions",
+      "module": "AI Ads",
+      "purpose": "Optimization actions (budget changes, pauses, etc.) with approval workflow",
+      "key_columns": ["id", "client_id", "action_type", "platform", "status", "rationale", "approved_by", "executed_at"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_member SELECT/INSERT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "optimization_presets",
+      "module": "AI Ads",
+      "purpose": "Reusable optimization rule presets with auto-trigger conditions",
+      "key_columns": ["id", "name", "rule_condition", "proposed_action_type", "is_active", "trigger_count"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "platform_connections",
+      "module": "Campaigns",
+      "purpose": "OAuth/API connections to ad platforms (Meta, Google, TikTok)",
+      "key_columns": ["id", "platform", "account_name", "token_reference", "is_active", "created_by"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; platform_connections_safe view hides token_reference",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "platform_settings",
+      "module": "Platform",
+      "purpose": "Global platform configuration key-value store",
+      "key_columns": ["id", "key", "value", "updated_by"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; is_agency_member SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "portal_notification_preferences",
+      "module": "Portal",
+      "purpose": "Per-portal-user notification type preferences",
+      "key_columns": ["id", "portal_user_id", "campaign_launched", "optimization_update", "recommendation_added", "report_available", "file_shared"],
+      "fks": ["portal_user_id → client_portal_users"],
+      "rls": "portal user ALL own; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "portal_notifications",
+      "module": "Portal",
+      "purpose": "In-portal notifications for portal users (per client)",
+      "key_columns": ["id", "client_id", "type", "title", "message", "is_read", "link"],
+      "fks": ["client_id → clients"],
+      "rls": "portal user SELECT/UPDATE own client; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "project_events",
+      "module": "Admin/Audit",
+      "purpose": "Platform-level events log (deployments, config changes)",
+      "key_columns": ["id", "event_type", "payload", "created_by", "created_at"],
+      "fks": [],
+      "rls": "is_agency_admin ALL",
+      "usage": "partial — usage unclear",
+      "in_types_ts": false
+    },
+    {
+      "name": "raw_api_logs",
+      "module": "Campaigns",
+      "purpose": "Raw API response logs from ad platform syncs",
+      "key_columns": ["id", "client_id", "platform", "endpoint", "response_body", "status_code"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL",
+      "usage": "partial — debugging use",
+      "in_types_ts": false
+    },
+    {
+      "name": "report_templates",
+      "module": "Reports",
+      "purpose": "Saved report template configurations",
+      "key_columns": ["id", "name", "config", "created_by", "is_shared"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; creator ALL own",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "reports",
+      "module": "Reports",
+      "purpose": "Generated report records with metadata",
+      "key_columns": ["id", "client_id", "name", "period_start", "period_end", "generated_by"],
+      "fks": ["client_id → clients"],
+      "rls": "has_client_access SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "scheduled_reports",
+      "module": "Reports",
+      "purpose": "Scheduled report delivery configurations",
+      "key_columns": ["id", "client_id", "frequency", "recipients", "is_active", "last_sent_at"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "social_media_connections",
+      "module": "AFM Internal",
+      "purpose": "OAuth tokens for social media platforms (Instagram, TikTok, etc.) — Coming Soon",
+      "key_columns": ["id", "platform", "account_name", "token_reference", "is_active"],
+      "fks": [],
+      "rls": "is_agency_admin ALL",
+      "usage": "partial — OAuth UI labeled Coming Soon",
+      "in_types_ts": false
+    },
+    {
+      "name": "task_assignees",
+      "module": "Tasks",
+      "purpose": "Many-to-many: users assigned to tasks",
+      "key_columns": ["id", "task_id", "user_id"],
+      "fks": ["task_id → tasks"],
+      "rls": "is_agency_member SELECT; task owner INSERT/DELETE",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "task_templates",
+      "module": "Tasks",
+      "purpose": "Reusable task template definitions",
+      "key_columns": ["id", "name", "description", "default_assignee_role", "created_by"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; is_agency_admin ALL",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "tasks",
+      "module": "Tasks",
+      "purpose": "Task board items with status, priority, due dates",
+      "key_columns": ["id", "title", "description", "status", "priority", "due_date", "client_id", "created_by"],
+      "fks": ["client_id → clients"],
+      "rls": "is_agency_member SELECT/INSERT/UPDATE; admin DELETE",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "user_activity_log",
+      "module": "Admin/Audit",
+      "purpose": "User page visit and action activity log",
+      "key_columns": ["id", "user_id", "action", "path", "metadata", "created_at"],
+      "fks": [],
+      "rls": "user INSERT own; is_agency_admin SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "user_campaign_column_presets",
+      "module": "Campaigns",
+      "purpose": "Per-user saved column visibility presets for campaign tables",
+      "key_columns": ["id", "user_id", "client_id", "preset_name", "columns"],
+      "fks": ["client_id → clients"],
+      "rls": "user ALL own",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "user_permissions",
+      "module": "Auth",
+      "purpose": "Module access flags per user (can_access_crm, can_access_adminscale, etc.)",
+      "key_columns": ["id", "user_id", "can_access_crm", "can_access_adminscale", "can_access_gos", "can_access_ai_ads", "can_access_ai_infra", "can_access_afm_internal"],
+      "fks": [],
+      "rls": "is_agency_admin ALL; user SELECT own",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "user_presence",
+      "module": "Auth",
+      "purpose": "Real-time user online/offline presence tracking",
+      "key_columns": ["id", "user_id", "status", "last_seen_at", "current_path"],
+      "fks": [],
+      "rls": "is_agency_member SELECT; user UPDATE own",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "user_settings",
+      "module": "Auth",
+      "purpose": "Per-user settings (timezone, MFA, force_password_change, bypass_dual_approval)",
+      "key_columns": ["id", "user_id", "timezone", "force_password_change", "needs_password_setup", "bypass_dual_approval", "mfa_enabled"],
+      "fks": [],
+      "rls": "user ALL own; is_agency_admin ALL; protect_user_settings_fields trigger prevents privilege escalation",
+      "usage": "active",
+      "in_types_ts": false
+    },
+    {
+      "name": "webhook_logs",
+      "module": "Clients",
+      "purpose": "Delivery logs for outbound client webhook calls",
+      "key_columns": ["id", "webhook_id", "status_code", "response_body", "triggered_at"],
+      "fks": ["webhook_id → client_webhooks"],
+      "rls": "is_agency_admin ALL; has_client_access SELECT",
+      "usage": "active",
+      "in_types_ts": false
+    }
+  ]
+}

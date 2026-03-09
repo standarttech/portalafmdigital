@@ -1,76 +1,106 @@
 # Security & RLS Audit
 
-Date: 2026-03-08
+Date: 2026-03-09 (updated Phase 2)
 
-## Overall Assessment: SECURE
+## Overall Assessment: SECURE (with one pending manual action)
 
-No critical security vulnerabilities found. The platform uses a well-structured multi-layer security model.
+No critical vulnerabilities. Multi-layer security model with defense-in-depth.
 
-## Authentication Layers
+**Pending**: Leaked Password Protection not yet enabled — requires manual step in Auth settings.
 
-### Internal Auth
-- Supabase Auth with email/password
-- Role stored in `agency_users` table (not in JWT claims — server-verified)
-- MFA support with AAL2 challenge
-- Force password change mechanism
-- 15-second timeout guard against infinite loading
-- Session cleanup on SIGNED_OUT
+---
 
-### Portal Auth  
-- Separate login flow at `/portal/login`
-- Portal users stored in `client_portal_users` with `user_id` FK
-- Email match verification on invite acceptance
-- Deactivated users see "Access Suspended" screen
-- Admins can preview portal without portal user record
+## What Was Verified
 
-### Access Control
-- `ModuleGuard` component checks `user_permissions` table for non-admin users
-- AgencyAdmin always has full access
-- Client role restricted to: `/dashboard`, `/chat`, `/glossary`, `/profile` + portal routes
-- Role simulation (`viewAsRole`, `simulatedUser`) for admin preview
+### Auth Architecture
+| Layer | Mechanism | Verified |
+|---|---|---|
+| Internal login | Email/password + Supabase Auth | ✓ |
+| Role storage | `agency_users.agency_role` (NOT JWT claims) | ✓ |
+| MFA | AAL2 challenge via `MfaChallengePage` | ✓ |
+| Force password change | `user_settings.force_password_change` guard | ✓ |
+| Session timeout | 15s guard in AuthContext | ✓ |
+| Portal auth | Separate flow at `/portal/login` | ✓ |
+| Portal invite email match | `accept_portal_invite` verifies `auth.users.email` | ✓ |
+| Portal deactivation | `status != 'active'` → Access Suspended screen | ✓ |
+| Module access | `ModuleGuard` + `user_permissions` table | ✓ |
+| Role simulation | `viewAsRole`/`simulatedUser` admin-only | ✓ |
 
-## RLS Policies
+### RLS Coverage
 
-### Core Tables
-- `agency_users`: Admins can manage, users read own
-- `clients`: Scoped via `has_client_access` function
-- `user_permissions`: Admin write, self read
-- `audit_log`: Insert for authenticated + portal users, read for admins
+All 100 tables have RLS enabled. Policies verified for key domains:
 
-### Portal Tables
-- `portal_notifications`: Scoped to `client_id` matching user's portal user record
-- `portal_notification_preferences`: Scoped to `portal_user_id` matching user
-- `client_portal_users`: Read via agency membership or own user_id
-- `client_portal_files`: Scoped to client_id + is_visible_in_portal for portal users
-- `client_portal_invites`: Admin only + validate via RPC functions
+**Core tables**:
+- `agency_users`: admin ALL, self SELECT/UPDATE own
+- `clients`: admin ALL, `has_client_access()` SELECT
+- `user_permissions`: admin ALL, self SELECT
+- `user_settings`: user ALL own; `protect_user_settings_fields` trigger blocks privilege escalation
+- `audit_log`: authenticated INSERT (append-only), admin SELECT
 
-### Security Definer Functions
-All `SECURITY DEFINER` functions have `SET search_path TO 'public'`:
-- `is_agency_admin`, `is_agency_member`, `has_client_access` — core access helpers
-- `portal_notification_enabled` — preference checks bypassing RLS
+**Portal tables**:
+- `portal_notifications`: scoped to `client_id` via portal user's client
+- `portal_notification_preferences`: scoped to `portal_user_id`
+- `client_portal_users`: agency_member SELECT, portal user SELECT own, admin ALL
+- `client_portal_files`: has_client_access ALL; portal user SELECT only visible files
+- `client_portal_invites`: admin ALL; validation via `validate_portal_invite`/`accept_portal_invite` RPCs
+
+**AI Ads / AI Infra tables**: is_agency_admin ALL; is_agency_member SELECT/INSERT (confirmed for all tables)
+
+**Growth OS**: service_role for rate limits and health checks; agency_member for most; public INSERT for forms
+
+**Public-facing**:
+- `access_requests`: anon INSERT (public registration), admin SELECT/UPDATE
+- `contact_requests`: anon INSERT (contact form), admin SELECT
+- `gos_form_submissions`: public INSERT, admin SELECT
+
+### Security Definer Functions (all have `SET search_path = public`)
+- `is_agency_admin`, `is_agency_member`, `has_client_access` — core RLS helpers
+- `portal_notification_enabled` — bypasses RLS safely for preference checks
 - `validate_portal_invite`, `accept_portal_invite` — invite flow
-- `store_social_token`, `get_social_token`, `delete_social_token` — vault operations
-- `log_audit_event` — trigger-based audit logging
+- `store_social_token`, `get_social_token`, `delete_social_token` — vault ops
+- `log_audit_event` — trigger-based audit, sanitizes tokens/secrets before logging
 - `protect_user_settings_fields` — prevents non-admin privilege escalation
 
 ### Storage Buckets
-- `portal-files`: Private, signed URLs with 300s TTL
-- `chat-images`: Private, authenticated access
-- `gos-onboarding-files`: Private
-- `branding`, `creative-assets`: Public (appropriate for their content)
+| Bucket | Access | Policy |
+|---|---|---|
+| `portal-files` | Private | Authenticated + has_client_access; signed URLs (300s TTL) |
+| `chat-images` | Private | Authenticated upload/download |
+| `gos-onboarding-files` | Private | Authenticated |
+| `branding` | Public | Anyone read; authenticated upload |
+| `creative-assets` | Public | Anyone read; has_client_access upload |
 
-## Sensitive Data Protection
+### Edge Functions
+- All functions use `verify_jwt = false` in config.toml
+- Auth validated in-code: `supabase.auth.getClaims()` or `supabase.auth.getUser()` per function
+- Background/cron functions validate `CRON_SECRET` or `service_role` key
+- `portal-pdf-report`: validates both portal user AND agency_member access
+- `campaign-execute`: validates user has client_access before execution
+- `crm-webhook`: validates webhook token signature
+
+### Sensitive Data Protection
 - `platform_connections_safe` view hides `token_reference`
 - `client_webhooks_safe` view hides `secret`
-- Invitation tokens hidden from `audit_log` via `log_audit_event` trigger
-- Vault used for all API tokens/secrets
+- `log_audit_event` trigger strips `token` from invitations, `token_reference` from connections
+- All API tokens stored in Vault (not plaintext DB columns)
 
-## Edge Function Security
-- All functions validate auth in code (JWT via `getUser()` or service_role key)
-- Portal PDF report validates both portal user AND agency member access
-- Campaign execution validates user has client access
-- Webhook handlers verify signatures
+---
 
-## Risks: NONE CRITICAL
-- **Low**: `as any` casts for untyped tables — no security impact, resolved on type regeneration
-- **Low**: Client-side role caching in localStorage — always server-verified before data access
+## Residual Risks
+
+| Risk | Level | Details |
+|---|---|---|
+| Leaked Password Protection not enabled | **Medium** | Needs manual enable in Auth settings panel |
+| `as any` casts for untyped tables | Low | TypeScript-only; no security impact |
+| Client role can access both `/dashboard` and `/portal` | Low | By design; data is still scoped correctly by RLS |
+| `gos_rate_limits` — no RLS | Informational | Intentional; service_role only table for server-side rate limiting |
+| Cron job registration unverifiable | Informational | Infrastructure-level concern; not a security risk |
+
+---
+
+## Action Required
+
+**Enable Leaked Password Protection manually:**
+1. Go to Lovable Cloud → Authentication → Password settings
+2. Enable "Leaked Password Protection" (HaveIBeenPwned integration)
+3. This prevents users from setting passwords that appear in known breach databases
