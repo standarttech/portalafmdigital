@@ -47,10 +47,10 @@ export default function AdminPortalFiles() {
   const load = useCallback(async () => {
     const [cRes, fRes] = await Promise.all([
       supabase.from('clients').select('id, name').order('name'),
-      supabase.from('client_portal_files' as any).select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('client_portal_files').select('*').order('created_at', { ascending: false }).limit(200),
     ]);
     setClients(cRes.data || []);
-    setFiles((fRes.data as any as PortalFile[]) || []);
+    setFiles((fRes.data as unknown as PortalFile[]) || []);
     setLoading(false);
   }, []);
 
