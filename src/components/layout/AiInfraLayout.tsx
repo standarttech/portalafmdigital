@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,18 +12,20 @@ import {
 import { useState } from 'react';
 import AppHeader from '@/components/layout/AppHeader';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
+import type { TranslationKey } from '@/i18n/translations';
 
-const navItems = [
-  { label: 'Providers', icon: Server, path: '/ai-infra/providers' },
-  { label: 'Routes', icon: GitBranch, path: '/ai-infra/routes' },
-  { label: 'Tasks', icon: ListTodo, path: '/ai-infra/tasks' },
-  { label: 'Logs', icon: ScrollText, path: '/ai-infra/logs' },
-  { label: 'Health', icon: HeartPulse, path: '/ai-infra/health' },
-  { label: 'Guide', icon: BookOpen, path: '/ai-infra/guide' },
+const navItems: { labelKey: TranslationKey; icon: any; path: string }[] = [
+  { labelKey: 'aiInfra.providers', icon: Server, path: '/ai-infra/providers' },
+  { labelKey: 'aiInfra.routes', icon: GitBranch, path: '/ai-infra/routes' },
+  { labelKey: 'aiInfra.tasks', icon: ListTodo, path: '/ai-infra/tasks' },
+  { labelKey: 'aiInfra.logs', icon: ScrollText, path: '/ai-infra/logs' },
+  { labelKey: 'aiInfra.health', icon: HeartPulse, path: '/ai-infra/health' },
+  { labelKey: 'ai.guide', icon: BookOpen, path: '/ai-infra/guide' },
 ];
 
 function AiInfraSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { signOut } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,7 +37,7 @@ function AiInfraSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
         <div className="flex flex-col">
           <span className="font-bold text-sidebar-foreground text-xs tracking-widest">AI INFRA</span>
-          <span className="text-[9px] tracking-[0.2em] text-[hsl(200,70%,60%)] font-medium -mt-0.5">PROVIDERS</span>
+          <span className="text-[9px] tracking-[0.2em] text-[hsl(200,70%,60%)] font-medium -mt-0.5">{t('aiInfra.providers').toUpperCase()}</span>
         </div>
       </div>
 
@@ -43,7 +46,7 @@ function AiInfraSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           onClick={() => { navigate('/dashboard'); onNavigate?.(); }}
           className="w-full justify-start gap-2.5 px-3 text-sidebar-muted hover:text-primary hover:bg-primary/10 text-xs">
           <ArrowLeftCircle className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">Back to Platform</span>
+          <span className="truncate">{t('aiInfra.backToPlatform')}</span>
         </Button>
       </div>
 
@@ -62,7 +65,7 @@ function AiInfraSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
               )}>
               <Icon className={cn('h-4 w-4 flex-shrink-0', isActive && 'text-[hsl(200,70%,60%)]')} />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t(item.labelKey)}</span>
             </Link>
           );
         })}
@@ -72,7 +75,7 @@ function AiInfraSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Button variant="ghost" size="sm"
           onClick={() => { signOut(); onNavigate?.(); }}
           className="w-full justify-start gap-3 px-3 text-sidebar-muted hover:text-destructive hover:bg-destructive/10">
-          <LogOut className="h-4 w-4" /><span className="text-sm">Sign Out</span>
+          <LogOut className="h-4 w-4" /><span className="text-sm">{t('auth.logout')}</span>
         </Button>
       </div>
     </div>

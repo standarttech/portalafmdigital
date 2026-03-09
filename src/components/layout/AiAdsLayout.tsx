@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,25 +12,27 @@ import {
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
 import AppHeader from '@/components/layout/AppHeader';
+import type { TranslationKey } from '@/i18n/translations';
 
-const navItems = [
-  { label: 'Overview', icon: Bot, path: '/ai-ads' },
-  { label: 'Ad Accounts', icon: MonitorSmartphone, path: '/ai-ads/accounts' },
-  { label: 'AI Analysis', icon: BrainCircuit, path: '/ai-ads/analysis' },
-  { label: 'Recommendations', icon: TrendingUp, path: '/ai-ads/recommendations' },
-  { label: 'Hypotheses', icon: Lightbulb, path: '/ai-ads/hypotheses' },
-  { label: 'Campaign Drafts', icon: FileStack, path: '/ai-ads/drafts' },
-  { label: 'Creatives', icon: ImageIcon, path: '/ai-ads/creatives' },
-  { label: 'Executions', icon: Rocket, path: '/ai-ads/executions' },
-  { label: 'Intelligence', icon: Brain, path: '/ai-ads/intelligence' },
-  { label: 'Optimization', icon: Zap, path: '/ai-ads/optimization' },
-  { label: 'Presets', icon: Settings, path: '/ai-ads/presets' },
-  { label: 'Client Report', icon: Users, path: '/ai-ads/client-report' },
-  { label: 'Guide', icon: BookOpen, path: '/ai-ads/guide' },
+const navItems: { labelKey: TranslationKey; icon: any; path: string }[] = [
+  { labelKey: 'aiAds.overview', icon: Bot, path: '/ai-ads' },
+  { labelKey: 'aiAds.adAccounts', icon: MonitorSmartphone, path: '/ai-ads/accounts' },
+  { labelKey: 'aiAds.analysis', icon: BrainCircuit, path: '/ai-ads/analysis' },
+  { labelKey: 'aiAds.recommendations', icon: TrendingUp, path: '/ai-ads/recommendations' },
+  { labelKey: 'aiAds.hypotheses', icon: Lightbulb, path: '/ai-ads/hypotheses' },
+  { labelKey: 'aiAds.campaignDrafts', icon: FileStack, path: '/ai-ads/drafts' },
+  { labelKey: 'aiAds.creatives', icon: ImageIcon, path: '/ai-ads/creatives' },
+  { labelKey: 'aiAds.executions', icon: Rocket, path: '/ai-ads/executions' },
+  { labelKey: 'aiAds.intelligence', icon: Brain, path: '/ai-ads/intelligence' },
+  { labelKey: 'aiAds.optimization', icon: Zap, path: '/ai-ads/optimization' },
+  { labelKey: 'aiAds.presets', icon: Settings, path: '/ai-ads/presets' },
+  { labelKey: 'aiAds.clientReport', icon: Users, path: '/ai-ads/client-report' },
+  { labelKey: 'ai.guide', icon: BookOpen, path: '/ai-ads/guide' },
 ];
 
 function AiAdsSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { signOut } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -52,7 +55,7 @@ function AiAdsSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           className="w-full justify-start gap-2.5 px-3 text-sidebar-muted hover:text-primary hover:bg-primary/10 text-xs"
         >
           <ArrowLeftCircle className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">Back to Platform</span>
+          <span className="truncate">{t('aiInfra.backToPlatform')}</span>
         </Button>
       </div>
 
@@ -77,7 +80,7 @@ function AiAdsSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <Icon className={cn('h-4 w-4 flex-shrink-0', isActive && 'text-[hsl(270,70%,60%)]')} />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t(item.labelKey)}</span>
             </Link>
           );
         })}
@@ -90,7 +93,7 @@ function AiAdsSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           className="w-full justify-start gap-3 px-3 text-sidebar-muted hover:text-destructive hover:bg-destructive/10"
         >
           <LogOut className="h-4 w-4" />
-          <span className="text-sm">Sign Out</span>
+          <span className="text-sm">{t('auth.logout')}</span>
         </Button>
       </div>
     </div>

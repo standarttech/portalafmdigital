@@ -341,7 +341,7 @@ export default function SetPasswordPage() {
                   <Button className="w-full" onClick={handleEnrollMfa} disabled={mfaEnrolling}>
                     {mfaEnrolling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting up...</> : <><QrCode className="mr-2 h-4 w-4" />Set up authenticator</>}
                   </Button>
-                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { sessionStorage.removeItem('set_password_step'); sessionStorage.removeItem('password_setup_done'); navigate('/dashboard'); }}>
+                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { sessionStorage.removeItem('set_password_step'); sessionStorage.removeItem('password_setup_done'); sessionStorage.setItem('afm_mfa_checked', '1'); navigate('/dashboard'); }}>
                     Skip for now
                   </Button>
                 </CardContent>
@@ -393,7 +393,16 @@ export default function SetPasswordPage() {
                   <Button className="w-full" onClick={handleVerifyMfa} disabled={mfaLoading || otpCode.length !== 6}>
                     {mfaLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Confirm & Enter Platform →'}
                   </Button>
-                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { sessionStorage.removeItem('set_password_step'); sessionStorage.removeItem('password_setup_done'); navigate('/dashboard'); }}>
+                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={async () => {
+                    // Unenroll the unverified factor so MFA check doesn't block
+                    if (factorId) {
+                      await supabase.auth.mfa.unenroll({ factorId }).catch(() => {});
+                    }
+                    sessionStorage.removeItem('set_password_step');
+                    sessionStorage.removeItem('password_setup_done');
+                    sessionStorage.setItem('afm_mfa_checked', '1');
+                    navigate('/dashboard');
+                  }}>
                     Skip for now
                   </Button>
                 </CardContent>

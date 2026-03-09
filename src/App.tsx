@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SidebarStateProvider } from "@/contexts/SidebarContext";
@@ -31,7 +31,7 @@ import ScalingStackApply from "@/scaling-stack/ScalingStackApply";
 import ScalingStackThanks from "@/scaling-stack/ScalingStackThanks";
 import ScalingStackPrivacy from "@/scaling-stack/ScalingStackPrivacy";
 import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import NotFound from "./pages/NotFound";
 import CrmLayout from "@/components/layout/CrmLayout";
 import AdminScaleLayout from "@/components/layout/AdminScaleLayout";
@@ -235,8 +235,9 @@ function AppRoutes() {
     checkMfa();
   }, [checkForcePasswordChange, checkMfa]);
 
-  // Public routes — always accessible
-  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  // Use React Router location for proper re-render on navigation
+  const routerLocation = useLocation();
+  const currentPath = routerLocation.pathname;
 
   // Public embed routes — no auth, no layout
   if (currentPath.startsWith("/embed/")) {
