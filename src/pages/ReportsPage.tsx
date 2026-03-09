@@ -231,8 +231,15 @@ export default function ReportsPage() {
     const content = report.content as any;
     if (!content?.daily?.length) { toast.error(t('common.noData')); return; }
 
-    const headers = ['Date', 'Spend', 'Impressions', 'Clicks', 'Leads'];
-    const rows = content.daily.map((r: any) => [r.date, r.spend, r.impressions, r.link_clicks, r.leads].join(','));
+    const isEcom = ['ecom', 'e-commerce', 'ecommerce'].includes((content.category || '').toLowerCase());
+    const headers = isEcom
+      ? ['Date', 'Spend', 'Impressions', 'Clicks', 'Leads', 'Add to Cart', 'Checkouts', 'Purchases', 'Revenue']
+      : ['Date', 'Spend', 'Impressions', 'Clicks', 'Leads'];
+    const rows = content.daily.map((r: any) => {
+      const base = [r.date, r.spend, r.impressions, r.link_clicks, r.leads];
+      if (isEcom) base.push(r.add_to_cart || 0, r.checkouts || 0, r.purchases || 0, r.revenue || 0);
+      return base.join(',');
+    });
     const csv = [headers.join(','), ...rows].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -242,6 +249,81 @@ export default function ReportsPage() {
     a.download = `${report.title.replace(/[^a-z0-9]/gi, '_')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPdf = (report: Report) => {
+    const content = report.content as any;
+    const isEcom = ['ecom', 'e-commerce', 'ecommerce'].includes((content?.category || '').toLowerCase());
+    const totals = content?.totals;
+    const daily = content?.daily || [];
+    const campaigns = content?.campaigns || [];
+    const clientName = content?.clientName || '';
+    const categoryLabel = isEcom ? 'E-Commerce' : (content?.category || 'Online Business');
+
+    const cpl = totals && totals.leads > 0 ? (totals.spend / totals.leads).toFixed(2) : '—';
+    const ctr = totals && totals.impressions > 0 ? ((totals.clicks / totals.impressions) * 100).toFixed(2) : '0';
+    const roas = isEcom && totals && totals.spend > 0 ? (totals.revenue / totals.spend).toFixed(2) : null;
+
+    const ecomKpis = isEcom ? `
+      <div class="kpi"><div class="value">${totals?.purchases || 0}</div><div class="label">Purchases</div></div>
+      <div class="kpi"><div class="value">$${(totals?.revenue || 0).toFixed(0)}</div><div class="label">Revenue</div></div>
+      <div class="kpi"><div class="value">${roas}x</div><div class="label">ROAS</div></div>
+    ` : '';
+
+    const dailyRows = daily.slice(0, 30).map((r: any) => {
+      const rowCpl = r.leads > 0 ? (r.spend / r.leads).toFixed(2) : '—';
+      const ecomCols = isEcom ? `<td>${r.purchases || 0}</td><td>$${Number(r.revenue || 0).toFixed(0)}</td>` : '';
+      return `<tr><td>${r.date}</td><td>$${Number(r.spend).toFixed(0)}</td><td>${r.impressions}</td><td>${r.link_clicks}</td><td>${r.leads}</td><td>$${rowCpl}</td>${ecomCols}</tr>`;
+    }).join('');
+
+    const ecomHeaders = isEcom ? '<th>Purchases</th><th>Revenue</th>' : '';
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Report — ${clientName}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a2e;background:#fff;padding:40px;max-width:850px;margin:0 auto}
+.header{border-bottom:3px solid #D4A843;padding-bottom:20px;margin-bottom:30px}.header h1{font-size:24px;font-weight:700}.header .meta{font-size:12px;color:#666;margin-top:6px}
+.section{margin-bottom:28px}.section h2{font-size:16px;font-weight:600;margin-bottom:12px;border-left:4px solid #D4A843;padding-left:10px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:16px}.kpi{text-align:center;background:#f8f8fa;border-radius:8px;padding:16px 8px}
+.kpi .value{font-size:22px;font-weight:700}.kpi .label{font-size:11px;color:#666;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:12px}th{text-align:left;padding:8px 6px;border-bottom:2px solid #e0e0e0;color:#666;font-weight:600}
+td{padding:7px 6px;border-bottom:1px solid #f0f0f0}.category-badge{display:inline-block;background:#D4A843;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;margin-left:8px}
+.footer{margin-top:40px;padding-top:16px;border-top:1px solid #e0e0e0;font-size:10px;color:#999;text-align:center}
+@media print{body{padding:20px}}
+</style></head><body>
+<div class="header">
+<h1>${report.title}</h1>
+<div class="meta">${clientName} · ${report.date_from} → ${report.date_to} · <span class="category-badge">${categoryLabel}</span></div>
+</div>
+<div class="section"><h2>Key Performance Indicators</h2>
+<div class="kpi-grid">
+<div class="kpi"><div class="value">$${(totals?.spend || 0).toFixed(0)}</div><div class="label">Total Spend</div></div>
+<div class="kpi"><div class="value">${(totals?.impressions || 0).toLocaleString()}</div><div class="label">Impressions</div></div>
+<div class="kpi"><div class="value">${(totals?.clicks || 0).toLocaleString()}</div><div class="label">Clicks</div></div>
+<div class="kpi"><div class="value">${totals?.leads || 0}</div><div class="label">Leads</div></div>
+<div class="kpi"><div class="value">$${cpl}</div><div class="label">CPL</div></div>
+<div class="kpi"><div class="value">${ctr}%</div><div class="label">CTR</div></div>
+${ecomKpis}
+</div></div>
+${daily.length > 0 ? `<div class="section"><h2>Daily Breakdown</h2>
+<table><tr><th>Date</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Leads</th><th>CPL</th>${ecomHeaders}</tr>${dailyRows}</table></div>` : ''}
+${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length})</h2>
+<table><tr><th>Campaign</th><th>Status</th></tr>${campaigns.map((c: any) => `<tr><td>${c.campaign_name}</td><td>${c.status}</td></tr>`).join('')}</table></div>` : ''}
+<div class="footer">Generated automatically · AFM Digital Platform</div>
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (w) {
+      w.addEventListener('load', () => { setTimeout(() => w.print(), 500); });
+    } else {
+      // Fallback: download as HTML
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${report.title.replace(/[^a-z0-9]/gi, '_')}.html`;
+      a.click();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
   const getClientName = (clientId: string) => clients.find(c => c.id === clientId)?.name || clientId.slice(0, 8);
