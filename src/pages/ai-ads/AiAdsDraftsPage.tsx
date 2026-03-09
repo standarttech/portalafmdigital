@@ -378,9 +378,9 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
-  const loadItems = useCallback(async () => {
+    const loadItems = useCallback(async () => {
     const [iRes, aRes, cRes] = await Promise.all([
-      supabase.from('campaign_draft_items' as any).select('*').eq('draft_id', draft.id).order('sort_order'),
+      supabase.from('campaign_draft_items').select('*').eq('draft_id', draft.id).order('sort_order'),
       supabase.from('ad_accounts').select('id, account_name, platform_account_id, client_id, connection_id').eq('client_id', draft.client_id).eq('is_active', true),
       supabase.from('creative_assets' as any).select('id, name, asset_type, url, status, tags').eq('client_id', draft.client_id).eq('status', 'active').order('name'),
     ]);
