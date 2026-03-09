@@ -74,7 +74,7 @@ export default function AdminPortalFiles() {
       externalUrl = null;
     }
 
-    const { error } = await supabase.from('client_portal_files' as any).insert({
+    const { error } = await supabase.from('client_portal_files').insert({
       client_id: fClientId,
       title: fTitle,
       file_type: fType,
@@ -83,7 +83,7 @@ export default function AdminPortalFiles() {
       description: fDesc,
       uploaded_by: user?.id,
       is_visible_in_portal: true,
-    } as any);
+    });
 
     if (error) { toast.error(error.message); setSaving(false); return; }
 
