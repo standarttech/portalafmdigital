@@ -166,7 +166,7 @@ export default function AdminPortalManagement() {
     if (invErr) { toast.error(invErr.message); return; }
 
     // Revoke old one
-    await supabase.from('client_portal_invites' as any).update({ status: 'revoked' } as any).eq('id', invite.id);
+    await supabase.from('client_portal_invites').update({ status: 'revoked' }).eq('id', invite.id);
 
     await supabase.from('audit_log').insert({
       action: 'portal_invite_resent',
