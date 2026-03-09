@@ -138,13 +138,13 @@ export default function AiAdsExecutionsPage() {
     if (toApprove.length === 0) { toast.error('No pending requests selected'); return; }
     setBatchProcessing(true);
     let success = 0;
-    for (const id of toApprove) {
+      for (const id of toApprove) {
       const { error } = await supabase.from('launch_requests' as any).update({
         status: 'approved', approved_by: user.id, approved_at: new Date().toISOString(),
       }).eq('id', id);
       if (!error) {
         const lr = requests.find(r => r.id === id);
-        if (lr) await supabase.from('campaign_drafts' as any).update({ status: 'approved' }).eq('id', lr.draft_id);
+        if (lr) await supabase.from('campaign_drafts').update({ status: 'approved' }).eq('id', lr.draft_id);
         success++;
       }
     }
