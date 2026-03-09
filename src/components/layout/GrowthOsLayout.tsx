@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Rocket, FileCode2, FormInput,
   ClipboardCheck, Plug, GitBranch, BarChart3, TrendingUp, FlaskConical,
-  HeartPulse, ShieldCheck
+  HeartPulse, ShieldCheck, BookOpen
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
@@ -32,6 +32,7 @@ const gosNavItems: GosNavItem[] = [
   { labelKey: 'gos.experiments' as TranslationKey, icon: FlaskConical, path: '/growth-os/experiments' },
   { labelKey: 'gos.systemHealth' as TranslationKey, icon: HeartPulse, path: '/growth-os/health' },
   { labelKey: 'gos.integrityChecks' as TranslationKey, icon: ShieldCheck, path: '/growth-os/integrity' },
+  { labelKey: 'ai.guide' as TranslationKey, icon: BookOpen, path: '/growth-os/guide' },
 ];
 
 function GosSidebarContent({ onNavigate }: { onNavigate?: () => void }) {

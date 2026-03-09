@@ -54,9 +54,33 @@
 
 ## Adding New Pages Checklist
 1. [ ] Page component is lazy-loaded in App.tsx
-2. [ ] Data fetching uses react-query with appropriate staleTime
-3. [ ] Multiple queries are parallelized
-4. [ ] Loading state uses skeleton, not full-screen spinner
-5. [ ] Heavy sub-components are extracted (< 300 lines per file)
-6. [ ] DB columns used in WHERE/ORDER have indexes
-7. [ ] No unnecessary re-renders (check with React DevTools)
+2. [ ] Data fetching uses `usePageQuery` from `@/hooks/usePageQuery`
+3. [ ] Multiple queries are parallelized with `Promise.all()`
+4. [ ] Loading state uses `<PageSkeleton>` from `@/components/shared/PageSkeleton`
+5. [ ] Heavy sub-components use `<LazySection>` from `@/components/shared/LazySection`
+6. [ ] Page components are < 300 lines per file
+7. [ ] DB columns used in WHERE/ORDER have indexes
+8. [ ] No unnecessary re-renders (check with React DevTools)
+
+## Shared Performance Hooks & Components
+
+### `usePageQuery(key, queryFn, options?)` — `src/hooks/usePageQuery.ts`
+Unified data fetching with built-in caching. Use instead of raw `useQuery`.
+```tsx
+const { data, isLoading } = usePageQuery('dashboard-metrics', fetchMetrics, { staleTime: 2 * 60_000 });
+```
+
+### `<PageSkeleton variant="dashboard|list|detail|minimal">` — `src/components/shared/PageSkeleton.tsx`
+Drop-in skeleton for any page. Renders instantly, no white flash.
+```tsx
+if (isLoading) return <PageSkeleton variant="list" tableRows={8} />;
+```
+
+### `<LazySection factory={...}>` — `src/components/shared/LazySection.tsx`
+Deferred loading for heavy charts/editors/tables. Loads only when visible via IntersectionObserver.
+```tsx
+<LazySection factory={() => import('./HeavyChart')} componentProps={{ data }} height="300px" />
+```
+
+### `prefetchPageData(queryClient, key, fn)` — `src/hooks/usePageQuery.ts`
+Warm cache on hover/focus for instant page transitions.
