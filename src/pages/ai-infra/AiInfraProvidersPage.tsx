@@ -143,7 +143,7 @@ export default function AiInfraProvidersPage() {
     if (!detailProvider || !secretValue.trim()) return;
     setSecretSaving(true);
     try {
-      const { data, error } = await supabase.rpc('store_ai_provider_secret' as any, {
+      const { data, error } = await supabase.rpc('store_ai_provider_secret', {
         _provider_id: detailProvider.id,
         _secret_value: secretValue.trim(),
         _secret_label: 'api_key',
