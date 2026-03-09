@@ -4,7 +4,7 @@ import type { SimulatedUser } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ColorScheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { Languages, LogOut, User, ChevronDown, Sparkles, Palette, UserCircle, Eye, X, Users } from 'lucide-react';
+import { Languages, LogOut, User, ChevronDown, Sparkles, Palette, UserCircle, Eye, X, Users, Repeat2, Loader2 } from 'lucide-react';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
