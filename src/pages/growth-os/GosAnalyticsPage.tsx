@@ -287,9 +287,14 @@ export default function GosAnalyticsPage() {
         </CollapsibleContent>
       </Collapsible>
 
+      {isLoading ? (
+        <div className="space-y-3">
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">{Array.from({ length: 7 }).map((_, i) => <Card key={i}><CardContent className="p-4 h-16"><Skeleton className="h-full w-full" /></CardContent></Card>)}</div>
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      ) : (<>
       {/* KPI Cards */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
-        <KpiMini label="Landing Views" value={totals.landingViews} icon={Eye} color="text-blue-400 bg-blue-500/10" />
         <KpiMini label="Form Views" value={totals.formViews} icon={Eye} color="text-violet-400 bg-violet-500/10" />
         <KpiMini label="Submissions" value={totals.submitSuccess} icon={Inbox} color="text-emerald-400 bg-emerald-500/10" />
         <KpiMini label="Failures" value={totals.submitFailure} icon={XCircle} color="text-destructive bg-destructive/10" />
