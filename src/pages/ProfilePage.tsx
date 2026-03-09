@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { User, Lock, Mail, Shield, Loader2, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { User, Lock, Mail, Shield, Loader2, Eye, EyeOff, CheckCircle2, AlertTriangle, UserPlus, Repeat2, Trash2 } from 'lucide-react';
 import NotificationSettings from '@/components/profile/NotificationSettings';
 
 const container = {
@@ -23,7 +24,7 @@ const item = {
 
 export default function ProfilePage() {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, linkedAccounts, addAccount, switchAccount, removeLinkedAccount } = useAuth();
 
   // Display name
   const [displayName, setDisplayName] = useState('');
@@ -41,7 +42,12 @@ export default function ProfilePage() {
   const [newEmail, setNewEmail] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
 
-  // MFA
+  // Multi-account
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountPassword, setAccountPassword] = useState('');
+  const [addingAccount, setAddingAccount] = useState(false);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
+  const [removingAccountId, setRemovingAccountId] = useState<string | null>(null);
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
   const [mfaEnrolling, setMfaEnrolling] = useState(false);
   const [mfaQr, setMfaQr] = useState<string | null>(null);
@@ -214,6 +220,48 @@ export default function ProfilePage() {
     } else {
       toast.success(t('profile.otherSessionsLoggedOut'));
     }
+  };
+
+  const handleAddLinkedAccount = async () => {
+    if (!accountEmail || !accountPassword) return;
+    setAddingAccount(true);
+    const { error } = await addAccount(accountEmail.trim(), accountPassword);
+    setAddingAccount(false);
+
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    setAccountEmail('');
+    setAccountPassword('');
+    toast.success(t('profile.accountAdded'));
+  };
+
+  const handleSwitchLinkedAccount = async (targetUserId: string) => {
+    setSwitchingAccountId(targetUserId);
+    const { error } = await switchAccount(targetUserId);
+    setSwitchingAccountId(null);
+
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    toast.success(t('profile.accountSwitched'));
+  };
+
+  const handleRemoveLinkedAccount = async (targetUserId: string) => {
+    setRemovingAccountId(targetUserId);
+    const { error } = await removeLinkedAccount(targetUserId);
+    setRemovingAccountId(null);
+
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    toast.success(t('profile.accountRemoved'));
   };
 
   const verifiedFactors = mfaFactors.filter((f) => f.status === 'verified');
@@ -413,6 +461,84 @@ export default function ProfilePage() {
                 {mfaEnrolling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
                 {t('profile.mfaEnable')}
               </Button>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Multi-account */}
+      <motion.div variants={item}>
+        <Card className="glass-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">{t('profile.multiAccount')}</CardTitle>
+            </div>
+            <CardDescription>{t('profile.multiAccountDesc')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3">
+              <Input
+                type="email"
+                value={accountEmail}
+                onChange={(e) => setAccountEmail(e.target.value)}
+                placeholder={t('auth.emailPlaceholder')}
+              />
+              <Input
+                type="password"
+                value={accountPassword}
+                onChange={(e) => setAccountPassword(e.target.value)}
+                placeholder={t('profile.accountPassword')}
+              />
+              <Button onClick={handleAddLinkedAccount} disabled={addingAccount || !accountEmail || !accountPassword}>
+                {addingAccount ? <Loader2 className="h-4 w-4 animate-spin" /> : t('profile.addAccount')}
+              </Button>
+            </div>
+
+            {linkedAccounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('profile.noLinkedAccounts')}</p>
+            ) : (
+              <div className="space-y-2">
+                {linkedAccounts.map((account) => (
+                  <div key={account.userId} className="rounded-lg border border-border/50 p-3 bg-secondary/10">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{account.displayName || account.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">{account.email}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {account.agencyRole && <Badge variant="outline" className="text-[10px]">{account.agencyRole}</Badge>}
+                          {account.isCurrent && <Badge className="text-[10px]">{t('profile.currentAccount')}</Badge>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {!account.isCurrent && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() => handleSwitchLinkedAccount(account.userId)}
+                            disabled={switchingAccountId === account.userId}
+                          >
+                            {switchingAccountId === account.userId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Repeat2 className="h-3.5 w-3.5" />}
+                            {t('profile.switchTo')}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-1.5 text-destructive"
+                          onClick={() => handleRemoveLinkedAccount(account.userId)}
+                          disabled={removingAccountId === account.userId}
+                        >
+                          {removingAccountId === account.userId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          {t('common.delete')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>

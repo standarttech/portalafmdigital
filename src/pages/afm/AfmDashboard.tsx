@@ -728,9 +728,6 @@ export default function AfmDashboard() {
             <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Link2 className="h-3.5 w-3.5" /> {t('dashboard.dataSources')}
             </TabsTrigger>
-            <TabsTrigger value="api" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <Zap className="h-3.5 w-3.5" /> {t('afm.dash.apiConnection' as any)}
-            </TabsTrigger>
             <TabsTrigger value="webhooks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Zap className="h-3.5 w-3.5" /> {t('afm.dash.webhooks' as any)}
             </TabsTrigger>
@@ -973,6 +970,8 @@ export default function AfmDashboard() {
                 <PlatformSheetRow clientId={agencyClient.id} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" />
               </CardContent>
             </Card>
+
+            <AfmMetaApiSection clientId={agencyClient.id} />
           </TabsContent>
 
           {/* CAMPAIGNS TAB */}
