@@ -157,11 +157,11 @@ export default function AdminPortalManagement() {
 
   const resendInvite = async (invite: PortalInvite) => {
     // Create a fresh invite for the same email/client
-    const { data: newInv, error: invErr } = await supabase.from('client_portal_invites' as any).insert({
+    const { data: newInv, error: invErr } = await supabase.from('client_portal_invites').insert({
       client_id: invite.client_id,
       email: invite.email,
       invited_by: user?.id,
-    } as any).select('*').single();
+    }).select('*').single();
 
     if (invErr) { toast.error(invErr.message); return; }
 
