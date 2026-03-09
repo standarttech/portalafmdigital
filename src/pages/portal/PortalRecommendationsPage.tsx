@@ -38,8 +38,8 @@ export default function PortalRecommendationsPage() {
     if (!clientId && !isAdmin) { setLoading(false); return; }
 
     const q = clientId
-      ? supabase.from('ai_recommendations' as any).select('*').eq('client_id', clientId)
-      : supabase.from('ai_recommendations' as any).select('*');
+      ? supabase.from('ai_recommendations').select('*').eq('client_id', clientId)
+      : supabase.from('ai_recommendations').select('*');
 
     const { data } = await q.order('created_at', { ascending: false }).limit(100);
     setRecs((data as any[]) || []);

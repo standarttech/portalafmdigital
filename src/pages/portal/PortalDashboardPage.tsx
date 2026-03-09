@@ -89,7 +89,7 @@ export default function PortalDashboardPage() {
     let prevData: any[] = [];
     if (dateRange) {
       const prev = getPreviousPeriod(dateRange);
-      const { data: pd } = await supabase.from('campaign_performance_snapshots' as any).select('*')
+      const { data: pd } = await supabase.from('campaign_performance_snapshots').select('*')
         .eq('client_id', clientId).eq('entity_level', 'campaign')
         .gte('synced_at', prev.from.toISOString()).lte('synced_at', prev.to.toISOString())
         .order('synced_at', { ascending: false }).limit(200);

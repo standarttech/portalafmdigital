@@ -31,8 +31,8 @@ export default function PortalCampaignsPage() {
     const campaignIds = ((lr as any[]) || []).map((l: any) => l.external_campaign_id).filter(Boolean);
     if (campaignIds.length > 0) {
       const snapFilter = clientId
-        ? supabase.from('campaign_performance_snapshots' as any).select('*').eq('client_id', clientId).in('external_campaign_id', campaignIds)
-        : supabase.from('campaign_performance_snapshots' as any).select('*').in('external_campaign_id', campaignIds);
+        ? supabase.from('campaign_performance_snapshots').select('*').eq('client_id', clientId).in('external_campaign_id', campaignIds)
+        : supabase.from('campaign_performance_snapshots').select('*').in('external_campaign_id', campaignIds);
       const { data: snaps } = await snapFilter.order('synced_at', { ascending: false }).limit(500);
       const m = new Map<string, any>();
       for (const s of ((snaps as any[]) || [])) {

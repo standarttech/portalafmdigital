@@ -79,7 +79,7 @@ export default function PortalReportsPage() {
       buildQ('optimization_actions', 'created_at').order('created_at', { ascending: false }).limit(100),
       buildQ('ai_recommendations', 'created_at').order('created_at', { ascending: false }).limit(100),
       clientId
-        ? supabase.from('client_portal_files' as any).select('*').eq('client_id', clientId).eq('is_visible_in_portal', true).in('file_type', ['report', 'pdf']).order('created_at', { ascending: false }).limit(10)
+        ? supabase.from('client_portal_files').select('*').eq('client_id', clientId).eq('is_visible_in_portal', true).in('file_type', ['report', 'pdf']).order('created_at', { ascending: false }).limit(10)
         : Promise.resolve({ data: [] }),
     ]);
 
