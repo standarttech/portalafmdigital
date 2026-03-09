@@ -1155,16 +1155,6 @@ export const translations = {
   'afm.dash.noHistory': t('No history yet', 'Истории пока нет', 'Nessuna cronologia', 'Sin historial', 'لا يوجد سجل بعد', "Pas d'historique"),
   'afm.dash.addTask': t('Add Task', 'Добавить задачу', 'Aggiungi attività', 'Añadir tarea', 'إضافة مهمة', 'Ajouter une tâche'),
 
-  // Admin presence
-  'admin.userPresence': t('User Presence & Activity', 'Присутствие и активность', 'Presenza e attività utenti', 'Presencia y actividad', 'حضور ونشاط المستخدمين', 'Présence et activité'),
-  'admin.onlineNow': t('online now', 'онлайн сейчас', 'online ora', 'en línea ahora', 'متصل الآن', 'en ligne maintenant'),
-  'admin.totalTracked': t('total users', 'всего пользователей', 'utenti totali', 'usuarios totales', 'إجمالي المستخدمين', 'utilisateurs au total'),
-  'admin.whoIsOnline': t('Who is Online', 'Кто онлайн', 'Chi è online', 'Quién está en línea', 'من متصل', 'Qui est en ligne'),
-  'admin.recentActivity': t('Recent Activity', 'Последняя активность', 'Attività recente', 'Actividad reciente', 'النشاط الأخير', 'Activité récente'),
-  'admin.activityFor': t('Activity for', 'Активность для', 'Attività per', 'Actividad de', 'نشاط', 'Activité pour'),
-  'admin.lastSeen': t('Last seen', 'Был(а) в сети', 'Ultimo accesso', 'Visto por última vez', 'آخر ظهور', 'Dernière connexion'),
-  'admin.refresh': t('Refresh', 'Обновить', 'Aggiorna', 'Actualizar', 'تحديث', 'Rafraîchir'),
-
   // AI guides
   'ai.guide': t('Guide', 'Руководство', 'Guida', 'Guía', 'دليل', 'Guide'),
   'ai.howItWorks': t('How it works', 'Как это работает', 'Come funziona', 'Cómo funciona', 'كيف يعمل', 'Comment ça marche'),
