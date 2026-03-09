@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import PageSkeleton from '@/components/shared/PageSkeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
 import { Users, TrendingUp, DollarSign, Target, BarChart3, Star, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
