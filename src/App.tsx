@@ -268,6 +268,7 @@ function AppRoutes() {
         <Route path="/scaling-stack/apply/thanks" element={<ScalingStackThanks />} />
         <Route path="/scaling-stack/privacy" element={<ScalingStackPrivacy />} />
         <Route path="/scaling-stack/terms" element={<ScalingStackTerms />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     );
   }
