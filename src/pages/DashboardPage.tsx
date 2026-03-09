@@ -99,7 +99,7 @@ export default function DashboardPage() {
     [dateRange, comparison, platform]
   );
 
-  const { kpis, chartData, platformData, clientsData, loading: metricsLoading } = useDashboardMetrics({
+  const { kpis, chartData, platformData, clientsData, loading: metricsLoading, hasRealData } = useDashboardMetrics({
     ...filters,
     customDateRange,
     clientIds: simulatedClientIds,
