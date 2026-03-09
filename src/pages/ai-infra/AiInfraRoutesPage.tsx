@@ -39,9 +39,9 @@ export default function AiInfraRoutesPage() {
 
   const load = useCallback(async () => {
     const [rRes, pRes, sRes] = await Promise.all([
-      supabase.from('ai_provider_routes' as any).select('*').order('task_type'),
-      supabase.from('ai_providers' as any).select('id, name, slug, auth_type, default_model, is_active, metadata').order('name'),
-      supabase.from('ai_provider_secrets' as any).select('provider_id, secret_ref'),
+      supabase.from('ai_provider_routes').select('*').order('task_type'),
+      supabase.from('ai_providers').select('id, name, slug, auth_type, default_model, is_active, metadata').order('name'),
+      supabase.from('ai_provider_secrets').select('provider_id, secret_ref'),
     ]);
     setRoutes((rRes.data as any[]) || []);
     setProviders((pRes.data as any[]) || []);
