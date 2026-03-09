@@ -266,8 +266,8 @@ export default function AppHeader() {
                   })}
 
                   <DropdownMenuSeparator />
-                  <DropdownMenuSub onOpenChange={(open) => { if (open) setSimMenuOpened(true); }}>
-                    <DropdownMenuSubTrigger className="gap-2 text-sm">
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="gap-2 text-sm" onClick={() => setSimMenuOpened(true)}>
                       <Users className="h-3.5 w-3.5" /> Просмотр как пользователь
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto w-56">
