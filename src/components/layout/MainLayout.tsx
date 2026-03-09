@@ -7,13 +7,10 @@ import { useSidebarState } from '@/contexts/SidebarContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePresence } from '@/hooks/usePresence';
 import { cn } from '@/lib/utils';
+import PageSkeleton from '@/components/shared/PageSkeleton';
 
-function PageLoader() {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+function RouteLoader() {
+  return <PageSkeleton variant="dashboard" kpiCards={4} tableRows={4} />;
 }
 
 export default function MainLayout() {
@@ -31,7 +28,7 @@ export default function MainLayout() {
       )}>
         <AppHeader />
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto">
-          <Suspense fallback={<PageLoader />}>
+          <Suspense fallback={<RouteLoader />}>
             <Outlet />
           </Suspense>
         </main>
