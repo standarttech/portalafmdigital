@@ -78,10 +78,8 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [comparison, setComparison] = useState<Comparison>('none');
   const [platform, setPlatform] = useState<PlatformFilter>('all');
-  const [displayName, setDisplayName] = useState<string>('');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [compareEnabled, setCompareEnabled] = useState(false);
-  const [simulatedClientIds, setSimulatedClientIds] = useState<string[] | null>(null);
 
   const filters: DashboardFilters = useMemo(
     () => ({ dateRange, comparison, platform }),
