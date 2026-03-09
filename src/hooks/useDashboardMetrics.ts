@@ -66,7 +66,7 @@ async function fetchDashboardData(
   // Platform filter
   let filteredCampaignIds = afmCampaignIds;
   if (platform !== 'all') {
-    const { data: connections } = await supabase.from('platform_connections').select('id').eq('platform', platform);
+    const { data: connections } = await supabase.from('platform_connections').select('id').eq('platform', platform as any);
     if (connections?.length) {
       const { data: adAccounts } = await supabase.from('ad_accounts').select('id').in('connection_id', connections.map(c => c.id));
       if (adAccounts?.length) {
