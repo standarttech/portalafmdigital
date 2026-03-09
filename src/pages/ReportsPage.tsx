@@ -457,10 +457,15 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium text-foreground text-sm truncate">{report.title}</p>
-                          <p className="text-xs text-muted-foreground">{report.date_from} → {report.date_to} · {getClientName(report.client_id)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {report.date_from} → {report.date_to} · {getClientName(report.client_id)}
+                            {content?.category && <span className="ml-1.5 text-primary">({content.category})</span>}
+                          </p>
                           {totals && (
                             <p className="text-xs text-muted-foreground mt-0.5">
                               Spend: {formatCurrency(totals.spend)} · Leads: {formatNumber(totals.leads)} · Clicks: {formatNumber(totals.clicks)}
+                              {totals.purchases > 0 && ` · Purchases: ${formatNumber(totals.purchases)}`}
+                              {totals.revenue > 0 && ` · Revenue: ${formatCurrency(totals.revenue)}`}
                             </p>
                           )}
                         </div>
