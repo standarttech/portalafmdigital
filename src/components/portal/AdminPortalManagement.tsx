@@ -205,9 +205,9 @@ export default function AdminPortalManagement() {
 
     const existing = branding.find(b => b.client_id === brClientId);
     if (existing) {
-      await supabase.from('client_portal_branding' as any).update(payload as any).eq('id', existing.id);
+      await supabase.from('client_portal_branding').update(payload).eq('id', existing.id);
     } else {
-      await supabase.from('client_portal_branding' as any).insert(payload as any);
+      await supabase.from('client_portal_branding').insert(payload);
     }
 
     await supabase.from('audit_log').insert({

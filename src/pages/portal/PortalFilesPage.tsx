@@ -56,8 +56,8 @@ export default function PortalFilesPage() {
     if (!clientId && !isAdmin) { setLoading(false); return; }
 
     const q = clientId
-      ? supabase.from('client_portal_files' as any).select('*').eq('client_id', clientId).eq('is_visible_in_portal', true)
-      : supabase.from('client_portal_files' as any).select('*').eq('is_visible_in_portal', true);
+      ? supabase.from('client_portal_files').select('*').eq('client_id', clientId).eq('is_visible_in_portal', true)
+      : supabase.from('client_portal_files').select('*').eq('is_visible_in_portal', true);
 
     const { data } = await q.order('created_at', { ascending: false }).limit(200);
     setFiles((data as any as PortalFile[]) || []);
