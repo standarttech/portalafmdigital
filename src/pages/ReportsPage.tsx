@@ -63,7 +63,7 @@ export default function ReportsPage() {
 
   const fetchClients = useCallback(async () => {
     if (isAdmin) {
-      const { data } = await supabase.from('clients').select('id, name').order('name');
+      const { data } = await supabase.from('clients').select('id, name, category').order('name');
       setClients(data || []);
       return;
     }
