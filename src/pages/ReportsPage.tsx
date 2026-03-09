@@ -149,12 +149,22 @@ export default function ReportsPage() {
     if (!selectedClientId || !dateFrom || !dateTo) { toast.error(t('auth.allFieldsRequired')); return; }
     setCreating(true);
 
+    const client = clients.find(c => c.id === selectedClientId);
+    const clientCategory = client?.category || 'other';
+
     // AFM FILTER: only AFM campaigns
     const afmIds = await getAfmCampaignIds(selectedClientId);
+
+    // Fetch metrics with category-aware fields
+    const isEcom = ['ecom', 'e-commerce', 'ecommerce'].includes(clientCategory.toLowerCase());
+    const selectFields = isEcom
+      ? 'date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id'
+      : 'date, spend, impressions, link_clicks, leads, campaign_id';
+
     const { data: metrics } = afmIds.length > 0
       ? await supabase
           .from('daily_metrics')
-          .select('date, spend, impressions, link_clicks, leads, campaign_id')
+          .select(selectFields)
           .eq('client_id', selectedClientId)
           .in('campaign_id', afmIds)
           .gte('date', dateFrom)
@@ -168,18 +178,23 @@ export default function ReportsPage() {
       .eq('client_id', selectedClientId)
       .ilike('campaign_name', '%AFM%');
 
-    const client = clients.find(c => c.id === selectedClientId);
-    const totals = (metrics || []).reduce((acc, m) => ({
+    const rawMetrics = metrics || [];
+    const totals = rawMetrics.reduce((acc, m: any) => ({
       spend: acc.spend + Number(m.spend), impressions: acc.impressions + m.impressions,
       clicks: acc.clicks + m.link_clicks, leads: acc.leads + m.leads,
-    }), { spend: 0, impressions: 0, clicks: 0, leads: 0 });
+      purchases: acc.purchases + Number(m.purchases || 0),
+      revenue: acc.revenue + Number(m.revenue || 0),
+      addToCart: acc.addToCart + Number(m.add_to_cart || 0),
+      checkouts: acc.checkouts + Number(m.checkouts || 0),
+    }), { spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0 });
 
     const content = {
       sections: selectedSections,
       totals,
-      daily: metrics || [],
+      daily: rawMetrics,
       campaigns: campaigns || [],
       clientName: client?.name || '',
+      category: clientCategory,
     };
 
     const title = reportTitle || `${client?.name} — ${dateFrom} to ${dateTo}`;
