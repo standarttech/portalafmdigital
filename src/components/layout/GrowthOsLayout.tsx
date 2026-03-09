@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Rocket, FileCode2, FormInput,
   ClipboardCheck, Plug, GitBranch, BarChart3, TrendingUp, FlaskConical,
-  HeartPulse, ShieldCheck
+  HeartPulse, ShieldCheck, BookOpen
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';

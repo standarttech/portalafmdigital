@@ -547,6 +547,7 @@ function AppRoutes() {
         <Route path="/growth-os/experiments" element={<GosExperimentsPage />} />
         <Route path="/growth-os/health" element={<GosSystemHealthPage />} />
         <Route path="/growth-os/integrity" element={<GosIntegrityChecksPage />} />
+        <Route path="/growth-os/guide" element={<GosGuidePage />} />
       </Route>
       {/* AI Ads Copilot — guarded */}
       <Route element={<ModuleGuard module="ai_ads"><AiAdsLayout /></ModuleGuard>}>
