@@ -77,11 +77,11 @@ export default function AdminPortalManagement() {
     }
 
     // Create invite
-    const { data: inv, error: invErr } = await supabase.from('client_portal_invites' as any).insert({
+    const { data: inv, error: invErr } = await supabase.from('client_portal_invites').insert({
       client_id: inviteClientId,
       email: inviteEmail,
       invited_by: user?.id,
-    } as any).select('*').single();
+    }).select('*').single();
 
     if (invErr) { toast.error(invErr.message); setInviting(false); return; }
 
