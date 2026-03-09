@@ -301,6 +301,14 @@ export default function AfmDashboard() {
   const [newEventNote, setNewEventNote] = useState('');
   const [addingNote, setAddingNote] = useState(false);
 
+  // Date range
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const [comparison, setComparison] = useState<Comparison>('none');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>(() => ({
+    from: subDays(new Date(), 29), to: new Date(),
+  }));
+  const [compareEnabled, setCompareEnabled] = useState(false);
+
   // Report date picker
   const [reportRange, setReportRange] = useState<{ from: Date; to: Date }>({ from: subDays(new Date(), 29), to: new Date() });
   const [reportPick, setReportPick] = useState<{ from?: Date; to?: Date } | undefined>({ from: subDays(new Date(), 29), to: new Date() });
