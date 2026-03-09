@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { User, Lock, Mail, Shield, Loader2, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { User, Lock, Mail, Shield, Loader2, Eye, EyeOff, CheckCircle2, AlertTriangle, UserPlus, Repeat2, Trash2 } from 'lucide-react';
 import NotificationSettings from '@/components/profile/NotificationSettings';
 
 const container = {
@@ -23,7 +24,7 @@ const item = {
 
 export default function ProfilePage() {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, linkedAccounts, addAccount, switchAccount, removeLinkedAccount } = useAuth();
 
   // Display name
   const [displayName, setDisplayName] = useState('');
