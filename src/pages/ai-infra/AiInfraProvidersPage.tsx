@@ -130,7 +130,7 @@ export default function AiInfraProvidersPage() {
       if (!detailProvider.metadata?.builtin) {
         updates.slug = editForm.slug;
       }
-      const { error } = await supabase.from('ai_providers' as any).update(updates).eq('id', detailProvider.id);
+      const { error } = await supabase.from('ai_providers').update(updates).eq('id', detailProvider.id);
       if (error) throw error;
       logGosAction('update', 'ai_provider', detailProvider.id, editForm.name as string);
       toast.success('Provider updated');
