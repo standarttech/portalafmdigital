@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -45,26 +45,37 @@ export default function UserPresencePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
 
-    // Fetch presence joined with agency_users for display names
-    const { data: presence } = await supabase
-      .from('user_presence' as any)
-      .select('*')
-      .order('last_seen_at', { ascending: false });
-
-    // Fetch user info
+    // Fetch ALL agency users first
     const { data: users } = await supabase
       .from('agency_users')
-      .select('user_id, display_name, agency_role');
+      .select('user_id, display_name, agency_role')
+      .order('display_name');
 
-    const userMap = new Map((users || []).map((u: any) => [u.user_id, u]));
+    // Fetch presence records
+    const { data: presence } = await supabase
+      .from('user_presence' as any)
+      .select('*');
 
-    const enriched = (presence || []).map((p: any) => {
-      const info = userMap.get(p.user_id);
+    const presenceMap = new Map((presence || []).map((p: any) => [p.user_id, p]));
+
+    // Merge: show ALL users, with presence data where available
+    const enriched: PresenceRow[] = (users || []).map((u: any) => {
+      const p = presenceMap.get(u.user_id) as any;
       return {
-        ...p,
-        display_name: info?.display_name || 'Unknown',
-        agency_role: info?.agency_role || 'Unknown',
+        user_id: u.user_id,
+        is_online: p?.is_online || false,
+        last_seen_at: p?.last_seen_at || new Date(0).toISOString(),
+        current_page: p?.current_page || null,
+        display_name: u.display_name || 'Unknown',
+        agency_role: u.agency_role || 'Unknown',
       };
+    });
+
+    // Sort: online first, then by last_seen_at desc
+    enriched.sort((a, b) => {
+      if (a.is_online && !b.is_online) return -1;
+      if (!a.is_online && b.is_online) return 1;
+      return new Date(b.last_seen_at).getTime() - new Date(a.last_seen_at).getTime();
     });
 
     setPresenceList(enriched);
@@ -81,6 +92,24 @@ export default function UserPresencePage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Realtime presence updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('presence-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_presence' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchData]);
+
+  // Auto-refresh every 30s
+  useEffect(() => {
+    const interval = setInterval(fetchData, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   const filteredPresence = presenceList.filter(p =>
     !search || p.display_name?.toLowerCase().includes(search.toLowerCase())
@@ -106,14 +135,14 @@ export default function UserPresencePage() {
         <div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
-            {t('admin.userPresence' as any) || 'User Presence & Activity'}
+            {t('admin.userPresence' as any)}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {onlineCount} {t('admin.onlineNow' as any) || 'online now'} · {presenceList.length} {t('admin.totalTracked' as any) || 'total tracked'}
+            {onlineCount} {t('admin.onlineNow' as any)} · {presenceList.length} {t('admin.totalTracked' as any)}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5">
-          <RefreshCw className="h-3.5 w-3.5" /> {t('common.save' as any) || 'Refresh'}
+          <RefreshCw className="h-3.5 w-3.5" /> {t('admin.refresh' as any) || 'Refresh'}
         </Button>
       </div>
 
@@ -121,7 +150,7 @@ export default function UserPresencePage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">{t('admin.whoIsOnline' as any) || 'Who is Online'}</CardTitle>
+            <CardTitle className="text-base">{t('admin.whoIsOnline' as any)}</CardTitle>
             <div className="relative w-48">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input placeholder={t('common.search') || 'Search...'} value={search} onChange={e => setSearch(e.target.value)}
@@ -154,10 +183,15 @@ export default function UserPresencePage() {
                       </span>
                     )}
                   </div>
-                  {!p.is_online && (
+                  {!p.is_online && p.last_seen_at !== new Date(0).toISOString() && (
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                       <Clock className="h-2.5 w-2.5" />
                       {formatDistanceToNow(new Date(p.last_seen_at), { addSuffix: true, locale })}
+                    </p>
+                  )}
+                  {!p.is_online && p.last_seen_at === new Date(0).toISOString() && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {t('admin.lastSeen' as any)}: —
                     </p>
                   )}
                 </div>
@@ -173,8 +207,8 @@ export default function UserPresencePage() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base">
               {selectedUserId
-                ? `${t('admin.activityFor' as any) || 'Activity for'}: ${presenceList.find(p => p.user_id === selectedUserId)?.display_name || 'User'}`
-                : t('admin.recentActivity' as any) || 'Recent Activity'}
+                ? `${t('admin.activityFor' as any)}: ${presenceList.find(p => p.user_id === selectedUserId)?.display_name || 'User'}`
+                : t('admin.recentActivity' as any)}
             </CardTitle>
             <div className="flex gap-2">
               {selectedUserId && (

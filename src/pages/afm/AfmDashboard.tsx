@@ -975,9 +975,199 @@ export default function AfmDashboard() {
             </Card>
           </TabsContent>
 
-          {/* API CONNECTION TAB */}
-          <TabsContent value="api" className="space-y-4">
-            <AfmMetaApiSection clientId={agencyClient.id} />
+          {/* CAMPAIGNS TAB */}
+          <TabsContent value="campaigns" className="space-y-4">
+            <CampaignsBreakdownTab
+              clientId={agencyClient.id}
+              dateFrom={customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
+              dateTo={customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
+            />
+          </TabsContent>
+
+          {/* TASKS TAB */}
+          <TabsContent value="tasks" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{t('afm.dash.tasks' as any)}</h3>
+              <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+                <DialogTrigger asChild><Button size="sm" className="gap-2"><Plus className="h-4 w-4" />{t('afm.dash.addTask' as any)}</Button></DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>{t('afm.dash.addTask' as any)}</DialogTitle></DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2"><Label>{t('common.title')} *</Label><Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder={t('common.title')} /></div>
+                    <div className="space-y-2"><Label>{t('common.description')}</Label><Input value={newTaskDesc} onChange={(e) => setNewTaskDesc(e.target.value)} placeholder={t('common.description')} /></div>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
+                    <Button onClick={handleCreateTask} disabled={creatingTask}>{creatingTask ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{t('common.create')}</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+            {tasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <ListTodo className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="font-medium text-foreground">{t('afm.dash.noTasks' as any)}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">{tasks.map(task => (
+                <Card key={task.id} className="glass-card"><CardContent className="py-3 px-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button onClick={() => handleToggleTaskStatus(task)} className="flex-shrink-0">
+                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.status === 'completed' ? 'bg-success border-success' : task.status === 'in_progress' ? 'border-info' : 'border-muted-foreground/30'}`}>
+                        {task.status === 'completed' && <span className="text-white text-xs">✓</span>}
+                      </div>
+                    </button>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>{task.title}</p>
+                      {task.description && <p className="text-xs text-muted-foreground truncate">{task.description}</p>}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] flex-shrink-0">{t(`common.${task.status}` as any)}</Badge>
+                </CardContent></Card>
+              ))}</div>
+            )}
+          </TabsContent>
+
+          {/* REPORTS TAB */}
+          <TabsContent value="reports" className="space-y-4 print-report">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold">{t('afm.dash.reports' as any)}</h3>
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {format(reportRange.from, 'dd.MM.yyyy')} — {format(reportRange.to, 'dd.MM.yyyy')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="range"
+                      selected={reportPick}
+                      onSelect={(range) => {
+                        setReportPick(range);
+                        if (range?.from && range?.to) {
+                          setReportRange({ from: range.from, to: range.to });
+                        }
+                      }}
+                      numberOfMonths={2}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleDownloadPdf}>
+                  <Download className="h-3.5 w-3.5" /> {t('afm.dash.downloadPdf' as any)}
+                </Button>
+              </div>
+            </div>
+            <Card className="glass-card">
+              <CardContent className="p-4 sm:p-6 space-y-4">
+                <div className="text-center pb-4 border-b border-border/50">
+                  <h2 className="text-xl font-bold">AFM Digital — {t('afm.dash.reports' as any)}</h2>
+                  <p className="text-sm text-muted-foreground">{format(reportRange.from, 'dd.MM.yyyy')} — {format(reportRange.to, 'dd.MM.yyyy')}</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {kpiCards.map(kpi => (
+                    <div key={kpi.key} className="border border-border/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                      <p className="text-lg font-bold">{kpi.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="spreadsheet-table">
+                    <thead><tr>{orderedVisibleColumns.slice(0, 8).map(col => (
+                      <th key={col.key} className={col.right ? 'text-right' : ''}>{t(col.labelKey as TranslationKey)}</th>
+                    ))}</tr></thead>
+                    <tbody>
+                      {dailyTableData.slice(-14).map(row => (
+                        <tr key={row.date}>{orderedVisibleColumns.slice(0, 8).map(col => (
+                          <td key={col.key} className={col.right ? 'text-right' : col.key === 'date' ? 'font-medium' : 'text-muted-foreground'}>
+                            {col.key === 'date' ? row.date : formatMetricValue(col.key, (row as any)[col.key] || 0, formatCurrency, formatNumber)}
+                          </td>
+                        ))}</tr>
+                      ))}
+                      <tr className="totals-row">{orderedVisibleColumns.slice(0, 8).map(col => (
+                        <td key={col.key} className={`${col.right ? 'text-right' : ''} font-bold`}>
+                          {col.key === 'date' ? 'TOTAL' : formatMetricValue(col.key, (totals as any)[col.key] || 0, formatCurrency, formatNumber)}
+                        </td>
+                      ))}</tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* WEBHOOKS TAB */}
+          <TabsContent value="webhooks" className="space-y-4">
+            <ClientWebhooks clientId={agencyClient.id} />
+          </TabsContent>
+
+          {/* HISTORY TAB */}
+          <TabsContent value="history" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{t('afm.dash.history' as any)}</h3>
+            </div>
+            {statusHistory.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t('history.statusChanges' as any)}</h4>
+                {statusHistory.map(sh => (
+                  <Card key={sh.id} className="glass-card">
+                    <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <CalendarClock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-sm"><span className="text-muted-foreground">{sh.old_status || '—'}</span> → <Badge variant="outline" className="text-[10px]">{sh.new_status}</Badge></p>
+                          {sh.notes && <p className="text-xs text-muted-foreground mt-0.5">{sh.notes}</p>}
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(sh.changed_at), 'dd.MM.yyyy HH:mm')}</span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {projectEvents.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t('history.eventsNotes' as any)}</h4>
+                {projectEvents.map(ev => (
+                  <Card key={ev.id} className="glass-card">
+                    <CardContent className="py-3 px-4 flex items-start gap-3">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{ev.title}</p>
+                        {ev.description && <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>}
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(ev.created_at), 'dd.MM.yyyy')}</span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {statusHistory.length === 0 && projectEvents.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <History className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="font-medium text-foreground">{t('afm.dash.noHistory' as any)}</p>
+              </div>
+            )}
+            <Card className="glass-card">
+              <CardContent className="p-4 space-y-3">
+                <h4 className="text-sm font-medium">{t('history.addNote' as any)}</h4>
+                <Textarea value={newEventNote} onChange={e => setNewEventNote(e.target.value)} placeholder={t('history.notePlaceholder' as any)} className="text-sm" rows={3} />
+                <Button size="sm" disabled={addingNote || !newEventNote.trim()} onClick={async () => {
+                  if (!agencyClient || !newEventNote.trim()) return;
+                  setAddingNote(true);
+                  await supabase.from('project_events').insert({ client_id: agencyClient.id, title: newEventNote.trim(), event_type: 'note', created_by: user?.id });
+                  setNewEventNote(''); setAddingNote(false);
+                  fetchHistory();
+                  toast.success(t('history.noteAdded' as any));
+                }}>
+                  {addingNote ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  {t('common.add')}
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </motion.div>
