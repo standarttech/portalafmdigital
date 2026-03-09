@@ -222,6 +222,48 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAddLinkedAccount = async () => {
+    if (!accountEmail || !accountPassword) return;
+    setAddingAccount(true);
+    const { error } = await addAccount(accountEmail.trim(), accountPassword);
+    setAddingAccount(false);
+
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    setAccountEmail('');
+    setAccountPassword('');
+    toast.success(t('profile.accountAdded'));
+  };
+
+  const handleSwitchLinkedAccount = async (targetUserId: string) => {
+    setSwitchingAccountId(targetUserId);
+    const { error } = await switchAccount(targetUserId);
+    setSwitchingAccountId(null);
+
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    toast.success(t('profile.accountSwitched'));
+  };
+
+  const handleRemoveLinkedAccount = async (targetUserId: string) => {
+    setRemovingAccountId(targetUserId);
+    const { error } = await removeLinkedAccount(targetUserId);
+    setRemovingAccountId(null);
+
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    toast.success(t('profile.accountRemoved'));
+  };
+
   const verifiedFactors = mfaFactors.filter((f) => f.status === 'verified');
 
   return (
