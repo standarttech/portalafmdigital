@@ -116,7 +116,7 @@ export default function AdminPortalFiles() {
 
   const toggleVisibility = async (file: PortalFile) => {
     const newVal = !file.is_visible_in_portal;
-    await supabase.from('client_portal_files' as any).update({ is_visible_in_portal: newVal } as any).eq('id', file.id);
+    await supabase.from('client_portal_files').update({ is_visible_in_portal: newVal }).eq('id', file.id);
     await supabase.from('audit_log').insert({
       action: newVal ? 'portal_file_shared' : 'portal_file_unshared',
       entity_type: 'client_portal_files', entity_id: file.id, user_id: user?.id,
