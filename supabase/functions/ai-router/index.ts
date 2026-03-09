@@ -14,14 +14,20 @@ interface AdapterInput {
   input: any;
   secrets: any[];
   timeout: number;
+  modelOverride: string;
 }
 
-async function callLocalLLM(opts: AdapterInput): Promise<{ success: boolean; output?: any; error?: string }> {
+function resolveModel(opts: AdapterInput): string {
+  // Priority: input.model > route model_override > provider default_model > fallback
+  return opts.input.model || opts.modelOverride || opts.provider.default_model || "google/gemini-3-flash-preview";
+}
+
+async function callLocalLLM(opts: AdapterInput): Promise<{ success: boolean; output?: any; error?: string; model_used?: string }> {
   const { provider, input, secrets, timeout } = opts;
   const baseUrl = provider.base_url;
   if (!baseUrl) return { success: false, error: "No base_url configured for local LLM provider" };
 
-  const model = provider.metadata?.model || "default";
+  const model = resolveModel(opts);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout * 1000);
 
@@ -46,16 +52,16 @@ async function callLocalLLM(opts: AdapterInput): Promise<{ success: boolean; out
 
     if (!res.ok) {
       const errText = await res.text();
-      return { success: false, error: `Local LLM ${res.status}: ${errText.slice(0, 300)}` };
+      return { success: false, error: `Local LLM ${res.status}: ${errText.slice(0, 300)}`, model_used: model };
     }
-    return { success: true, output: await res.json() };
+    return { success: true, output: await res.json(), model_used: model };
   } catch (e: any) {
     clearTimeout(timer);
-    return { success: false, error: e.name === "AbortError" ? "Timeout" : e.message };
+    return { success: false, error: e.name === "AbortError" ? "Timeout" : e.message, model_used: model };
   }
 }
 
-async function callWorkflowWebhook(opts: AdapterInput): Promise<{ success: boolean; output?: any; error?: string }> {
+async function callWorkflowWebhook(opts: AdapterInput): Promise<{ success: boolean; output?: any; error?: string; model_used?: string }> {
   const { provider, input, secrets, timeout } = opts;
   const url = provider.base_url;
   if (!url) return { success: false, error: "No webhook URL configured" };
@@ -94,7 +100,7 @@ async function callWorkflowWebhook(opts: AdapterInput): Promise<{ success: boole
   }
 }
 
-async function callExternalApi(opts: AdapterInput): Promise<{ success: boolean; output?: any; error?: string }> {
+async function callExternalApi(opts: AdapterInput): Promise<{ success: boolean; output?: any; error?: string; model_used?: string }> {
   const { provider, input, secrets, timeout } = opts;
   const baseUrl = provider.base_url;
   if (!baseUrl) return { success: false, error: "No base_url configured" };
@@ -113,9 +119,16 @@ async function callExternalApi(opts: AdapterInput): Promise<{ success: boolean; 
     } else if (provider.auth_type === "bearer" && secrets.length > 0) {
       const token = await getSecretValue(secrets[0].secret_ref);
       if (token) headers["Authorization"] = `Bearer ${token}`;
+      else return { success: false, error: "Secret reference exists but vault returned null — secret may have been deleted" };
+    } else if (provider.auth_type === "api_key" && secrets.length > 0) {
+      const key = await getSecretValue(secrets[0].secret_ref);
+      if (key) headers["X-API-Key"] = key;
+      else return { success: false, error: "Secret reference exists but vault returned null" };
+    } else if (provider.auth_type !== "none" && !isBuiltinLovable) {
+      return { success: false, error: "No secret configured for authenticated provider" };
     }
 
-    const model = input.model || provider.metadata?.model || "google/gemini-3-flash-preview";
+    const model = resolveModel(opts);
     const body: any = {
       model,
       messages: input.messages || [{ role: "user", content: input.prompt || "" }],
@@ -131,21 +144,20 @@ async function callExternalApi(opts: AdapterInput): Promise<{ success: boolean; 
 
     if (!res.ok) {
       const errText = await res.text();
-      return { success: false, error: `API ${res.status}: ${errText.slice(0, 300)}` };
+      return { success: false, error: `API ${res.status}: ${errText.slice(0, 300)}`, model_used: model };
     }
-    return { success: true, output: await res.json() };
+    return { success: true, output: await res.json(), model_used: model };
   } catch (e: any) {
     clearTimeout(timer);
     return { success: false, error: e.name === "AbortError" ? "Timeout" : e.message };
   }
 }
 
-async function callCreativeProvider(opts: AdapterInput): Promise<{ success: boolean; output?: any; error?: string }> {
-  // Same as webhook for now — creative providers are typically webhook-based
+async function callCreativeProvider(opts: AdapterInput): Promise<{ success: boolean; output?: any; error?: string; model_used?: string }> {
   return callWorkflowWebhook(opts);
 }
 
-const adapters: Record<string, (opts: AdapterInput) => Promise<{ success: boolean; output?: any; error?: string }>> = {
+const adapters: Record<string, (opts: AdapterInput) => Promise<{ success: boolean; output?: any; error?: string; model_used?: string }>> = {
   local_llm: callLocalLLM,
   workflow_webhook: callWorkflowWebhook,
   external_api: callExternalApi,
@@ -205,6 +217,8 @@ serve(async (req) => {
 
     if (!route) throw new Error(`No active route for task_type: ${task_type}`);
 
+    const modelOverride = route.model_override || "";
+
     // Create task
     const { data: task, error: taskErr } = await sc.from("ai_tasks").insert({
       task_type,
@@ -218,6 +232,7 @@ serve(async (req) => {
       selected_provider_id: route.primary_provider.id,
       provider_route_id: route.id,
       status: "routing",
+      metadata: { model_override: modelOverride },
     }).select().single();
     if (taskErr) throw new Error("Failed to create task: " + taskErr.message);
 
@@ -227,7 +242,7 @@ serve(async (req) => {
       });
     };
 
-    await logStep("route_selected", `Route: ${route.task_type} → ${route.primary_provider.name}`, "info", route.primary_provider.id);
+    await logStep("route_selected", `Route: ${route.task_type} → ${route.primary_provider.name}`, "info", route.primary_provider.id, { model_override: modelOverride });
 
     // Get secrets for primary provider
     const { data: secrets } = await sc.from("ai_provider_secrets")
@@ -243,7 +258,12 @@ serve(async (req) => {
       input: input_payload || {},
       secrets: secrets || [],
       timeout: route.timeout_seconds,
+      modelOverride,
     });
+
+    if (result.model_used) {
+      await logStep("model_resolved", `Model: ${result.model_used}`, "info", route.primary_provider.id);
+    }
 
     // Fallback if primary failed
     if (!result.success && route.fallback_provider) {
@@ -261,16 +281,18 @@ serve(async (req) => {
         input: input_payload || {},
         secrets: fbSecrets || [],
         timeout: route.timeout_seconds,
+        modelOverride: "", // Fallback uses its own default model
       });
     }
 
     if (result.success) {
       await sc.from("ai_tasks").update({
         status: "completed", completed_at: new Date().toISOString(), output_payload: result.output,
+        metadata: { model_used: result.model_used || null },
       }).eq("id", task.id);
-      await logStep("completed", "Task completed successfully", "info");
+      await logStep("completed", `Task completed successfully${result.model_used ? ` (model: ${result.model_used})` : ''}`, "info");
 
-      return new Response(JSON.stringify({ success: true, task_id: task.id, output: result.output }), {
+      return new Response(JSON.stringify({ success: true, task_id: task.id, output: result.output, model_used: result.model_used }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } else {
