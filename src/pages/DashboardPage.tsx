@@ -99,22 +99,17 @@ export default function DashboardPage() {
   const isClient = effectiveRole === 'Client';
   const isAgencyMember = isAdmin || isBuyer;
 
-  // Draggable section order — persisted in platform_settings for all users
+  // Draggable section order — cached with react-query
+  const { data: savedOrder } = useQuery({
+    queryKey: ['dashboard-section-order'],
+    queryFn: async () => {
+      const { data } = await supabase.from('platform_settings').select('value').eq('key', 'dashboard_section_order').maybeSingle();
+      return data?.value && Array.isArray(data.value) ? data.value as string[] : DEFAULT_SECTIONS;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
   const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_SECTIONS);
-
-  // Load section order from DB on mount
-  useEffect(() => {
-    supabase
-      .from('platform_settings')
-      .select('value')
-      .eq('key', 'dashboard_section_order')
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value && Array.isArray(data.value)) {
-          setSectionOrder(data.value as string[]);
-        }
-      });
-  }, []);
+  useEffect(() => { if (savedOrder) setSectionOrder(savedOrder); }, [savedOrder]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
