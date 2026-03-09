@@ -32,13 +32,20 @@ function getTimeAgo(isoDate: string | null): string {
   return `${Math.floor(diffHours / 24)}d ago`;
 }
 
-function mapSyncStatus(row: { sync_status: string | null; last_sync_at: string | null }): SyncItem['status'] {
+function mapSyncStatus(
+  row: { sync_status: string | null; last_sync_at: string | null },
+  platformKey: string,
+): SyncItem['status'] {
   if (row.sync_status === 'error') return 'error';
-  if (row.sync_status === 'success' || row.sync_status === 'synced') {
+
+  const okStatuses = new Set(['success', 'synced']);
+  if (row.sync_status && okStatuses.has(row.sync_status)) {
     if (!row.last_sync_at) return 'ok';
     const hoursAgo = (Date.now() - new Date(row.last_sync_at).getTime()) / (1000 * 60 * 60);
-    return hoursAgo > 12 ? 'delayed' : 'ok';
+    const maxAgeHours = platformKey === 'meta' ? 2 : 12;
+    return hoursAgo > maxAgeHours ? 'delayed' : 'ok';
   }
+
   return 'idle';
 }
 
