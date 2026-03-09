@@ -81,6 +81,19 @@ export default function DashboardPage() {
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [compareEnabled, setCompareEnabled] = useState(false);
 
+  // Client IDs for scoped users — cached with react-query
+  const { data: simulatedClientIds } = useQuery({
+    queryKey: ['dashboard-client-ids', effectiveRole, simulatedUser?.userId, user?.id],
+    queryFn: async () => {
+      if (effectiveRole === 'AgencyAdmin') return null;
+      const tid = simulatedUser ? simulatedUser.userId : user!.id;
+      const { data } = await supabase.from('client_users').select('client_id').eq('user_id', tid);
+      return (data || []).map(d => d.client_id);
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const filters: DashboardFilters = useMemo(
     () => ({ dateRange, comparison, platform }),
     [dateRange, comparison, platform]
