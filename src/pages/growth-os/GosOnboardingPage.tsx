@@ -638,6 +638,7 @@ export default function GosOnboardingPage() {
           )}
         </DialogContent>
       </Dialog>
+      </>)}
     </div>
   );
 }

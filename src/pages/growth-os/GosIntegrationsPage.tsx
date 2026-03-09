@@ -311,6 +311,7 @@ export default function GosIntegrationsPage() {
           <DialogFooter><Button size="sm" onClick={connectIntegration}>Connect</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      </>)}
     </div>
   );
 }
