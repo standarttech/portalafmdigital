@@ -52,11 +52,11 @@ export default function AiAdsOverviewPage() {
     const load = async () => {
       const [accounts, sessions, drafts, launches, threads, recs] = await Promise.all([
         supabase.from('ad_accounts').select('id', { count: 'exact', head: true }).eq('is_active', true),
-        supabase.from('ai_campaign_sessions' as any).select('id', { count: 'exact', head: true }),
-        supabase.from('campaign_drafts' as any).select('id', { count: 'exact', head: true }),
+        supabase.from('ai_campaign_sessions').select('id', { count: 'exact', head: true }),
+        supabase.from('campaign_drafts').select('id', { count: 'exact', head: true }),
         supabase.from('launch_requests' as any).select('id', { count: 'exact', head: true }).eq('status', 'pending_approval'),
         supabase.from('hypothesis_threads' as any).select('id', { count: 'exact', head: true }),
-        supabase.from('ai_recommendations' as any).select('id', { count: 'exact', head: true }).eq('status', 'new'),
+        supabase.from('ai_recommendations').select('id', { count: 'exact', head: true }).eq('status', 'new'),
       ]);
       setMetrics({
         accounts: accounts.count || 0,

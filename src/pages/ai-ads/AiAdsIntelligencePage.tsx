@@ -199,10 +199,10 @@ export default function AiAdsIntelligencePage() {
         .not('external_campaign_id', 'is', null)
         .order('executed_at', { ascending: false }).limit(200),
       supabase.from('clients').select('id, name').order('name'),
-      supabase.from('campaign_performance_snapshots' as any).select('*')
+      supabase.from('campaign_performance_snapshots').select('*')
         .eq('entity_level', 'campaign')
         .order('synced_at', { ascending: false }).limit(500),
-      supabase.from('ai_recommendations' as any).select('*')
+      supabase.from('ai_recommendations').select('*')
         .in('status', ['new', 'reviewed'])
         .order('created_at', { ascending: false }).limit(200),
     ]);
