@@ -422,7 +422,7 @@ function DraftBuilder({ draft: initialDraft, clientName, clients, onBack }: {
   const addItem = async (itemType: string, parentId?: string) => {
     const maxSort = items.filter(i => i.item_type === itemType).reduce((m, i) => Math.max(m, i.sort_order), -1);
     const name = itemType === 'adset' ? `Ad Set ${items.filter(i => i.item_type === 'adset').length + 1}` : `Ad ${items.filter(i => i.item_type === 'ad').length + 1}`;
-    const { data, error } = await supabase.from('campaign_draft_items' as any).insert({
+    const { data, error } = await supabase.from('campaign_draft_items').insert({
       draft_id: draft.id, item_type: itemType, name,
       parent_item_id: parentId || null, sort_order: maxSort + 1,
       config: itemType === 'adset' ? { geo: '', age_min: 18, age_max: 65, gender: 'all', interests: '', placements: 'automatic', daily_budget: 0, optimization_goal: '' } :
