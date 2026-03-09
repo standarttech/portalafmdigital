@@ -19,7 +19,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import ConversionFunnel from '@/components/client/ConversionFunnel';
+import CampaignsBreakdownTab from '@/components/client/CampaignsBreakdownTab';
+import ClientWebhooks from '@/components/client/ClientWebhooks';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import { Calendar } from '@/components/ui/calendar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import {
   ALL_METRIC_COLUMNS, CATEGORY_DEFAULTS, CATEGORY_KPIS, CATEGORY_CHART_METRICS,
   toClientCategory, computeDailyRow, formatMetricValue, type ClientCategory,
