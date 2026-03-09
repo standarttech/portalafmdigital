@@ -132,10 +132,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const GlossaryPageWrapper = React.forwardRef<HTMLDivElement>((_, ref) => (
-  <div ref={ref}><GlossaryPage /></div>
-));
-GlossaryPageWrapper.displayName = 'GlossaryPageWrapper';
 
 function AppRoutes() {
   const { user, loading, adminExists, signOut, agencyRole, effectiveRole } = useAuth();
