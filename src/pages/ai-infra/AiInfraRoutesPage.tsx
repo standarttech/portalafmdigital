@@ -70,7 +70,7 @@ export default function AiInfraRoutesPage() {
     if (!form.task_type || !form.primary_provider_id) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('ai_provider_routes' as any).insert({
+      const { error } = await supabase.from('ai_provider_routes').insert({
         task_type: form.task_type,
         primary_provider_id: form.primary_provider_id,
         fallback_provider_id: form.fallback_provider_id || null,
