@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import PageSkeleton from '@/components/shared/PageSkeleton';
 import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -525,26 +525,7 @@ export default function ClientDetailPage() {
     visibleColumns.map(key => ALL_METRIC_COLUMNS.find(c => c.key === key)).filter(Boolean) as typeof ALL_METRIC_COLUMNS,
     [visibleColumns]);
 
-  if (loading) return (
-    <div className="space-y-4 animate-in fade-in duration-150">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/clients')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <Skeleton className="h-7 w-48" />
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}><CardContent className="p-4"><Skeleton className="h-3 w-16 mb-2" /><Skeleton className="h-7 w-24" /></CardContent></Card>
-        ))}
-      </div>
-      <Card><CardContent className="p-4 space-y-2">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-3/4" />
-      </CardContent></Card>
-    </div>
-  );
+  if (loading) return <PageSkeleton variant="detail" tableRows={6} />;
   if (!client) return null;
 
   return (

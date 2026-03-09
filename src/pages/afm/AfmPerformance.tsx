@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import PageSkeleton from '@/components/shared/PageSkeleton';
 import { motion } from 'framer-motion';
 import { Users, TrendingUp, DollarSign, Target, BarChart3, Star, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,29 +86,7 @@ export default function AfmPerformance() {
     return { label: t('afm.perf.needsAttention' as any), icon: AlertTriangle, cls: 'text-red-400 bg-red-400/10 border-red-400/30' };
   };
 
-  if (loading) return (
-    <div className="space-y-6 animate-in fade-in duration-150">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Star className="h-6 w-6 text-primary" />
-            {t('afm.perf.title' as any)}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{t('afm.perf.subtitle' as any)}</p>
-        </div>
-        <div className="flex gap-1.5">
-          {(['7d', '30d', 'month'] as const).map(p => (
-            <span key={p} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-border/40 text-muted-foreground">{p}</span>
-          ))}
-        </div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="glass-card"><CardContent className="p-4 space-y-3"><Skeleton className="h-5 w-32" /><Skeleton className="h-20 w-full" /></CardContent></Card>
-        ))}
-      </div>
-    </div>
-  );
+  if (loading) return <PageSkeleton variant="dashboard" kpiCards={4} tableRows={5} />;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">

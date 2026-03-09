@@ -7,21 +7,10 @@ import { useSidebarState } from '@/contexts/SidebarContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePresence } from '@/hooks/usePresence';
 import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
+import PageSkeleton from '@/components/shared/PageSkeleton';
 
-/** Minimal route transition placeholder — just subtle shimmer, no fake layout */
 function RouteLoader() {
-  return (
-    <div className="space-y-4 animate-in fade-in duration-150">
-      <Skeleton className="h-7 w-48" />
-      <Skeleton className="h-4 w-72" />
-      <div className="mt-6 space-y-3">
-        <Skeleton className="h-16 w-full rounded-lg" />
-        <Skeleton className="h-16 w-full rounded-lg" />
-        <Skeleton className="h-16 w-3/4 rounded-lg" />
-      </div>
-    </div>
-  );
+  return <PageSkeleton variant="dashboard" kpiCards={4} tableRows={4} />;
 }
 
 export default function MainLayout() {
