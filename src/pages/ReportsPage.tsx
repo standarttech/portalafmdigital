@@ -86,7 +86,7 @@ export default function ReportsPage() {
 
     const { data } = await supabase
       .from('clients')
-      .select('id, name')
+      .select('id, name, category')
       .in('id', scopedClientIds)
       .order('name');
 
