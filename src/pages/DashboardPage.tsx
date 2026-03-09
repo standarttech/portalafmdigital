@@ -30,6 +30,7 @@ import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import PlatformBreakdown from '@/components/dashboard/PlatformBreakdown';
 import ClientsPerformanceTable from '@/components/dashboard/ClientsPerformanceTable';
 import DataStatusPanel from '@/components/dashboard/DataStatusPanel';
+import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import type { DateRange, Comparison, PlatformFilter, DashboardFilters } from '@/components/dashboard/dashboardData';
 
