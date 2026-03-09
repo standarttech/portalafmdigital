@@ -103,7 +103,7 @@ export default function AiInfraRoutesPage() {
     if (!editRoute) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('ai_provider_routes' as any).update({
+      const { error } = await supabase.from('ai_provider_routes').update({
         task_type: form.task_type,
         primary_provider_id: form.primary_provider_id,
         fallback_provider_id: form.fallback_provider_id || null,
