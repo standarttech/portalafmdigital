@@ -42,7 +42,12 @@ export default function ProfilePage() {
   const [newEmail, setNewEmail] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
 
-  // MFA
+  // Multi-account
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountPassword, setAccountPassword] = useState('');
+  const [addingAccount, setAddingAccount] = useState(false);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
+  const [removingAccountId, setRemovingAccountId] = useState<string | null>(null);
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
   const [mfaEnrolling, setMfaEnrolling] = useState(false);
   const [mfaQr, setMfaQr] = useState<string | null>(null);
