@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   DollarSign, Users, TrendingUp, Eye, MousePointerClick, BarChart3,
   Table2, Settings2, GripVertical, Wallet, Zap, RefreshCw, Loader2,
-  ShoppingBag, ShoppingCart, CreditCard, Sheet, Link2,
+  ShoppingBag, ShoppingCart, CreditCard, Sheet, Link2, Play, ListTodo,
+  FileText, History, Plus, Download, CalendarIcon, MessageSquare, CalendarClock,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
