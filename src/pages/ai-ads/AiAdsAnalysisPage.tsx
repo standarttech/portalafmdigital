@@ -63,12 +63,12 @@ export default function AiAdsAnalysisPage() {
   const load = useCallback(async () => {
     const [cRes, sRes, rRes] = await Promise.all([
       supabase.from('clients').select('id, name').order('name'),
-      supabase.from('ai_campaign_sessions' as any).select('*').order('created_at', { ascending: false }).limit(50),
-      supabase.from('ai_analysis_runs' as any).select('*').order('created_at', { ascending: false }).limit(100),
+      supabase.from('ai_campaign_sessions').select('*').order('created_at', { ascending: false }).limit(50),
+      supabase.from('ai_analysis_runs').select('*').order('created_at', { ascending: false }).limit(100),
     ]);
     setClients(cRes.data || []);
-    setSessions((sRes.data as any[]) || []);
-    setRuns((rRes.data as any[]) || []);
+    setSessions((sRes.data as Session[]) || []);
+    setRuns((rRes.data as AnalysisRun[]) || []);
     setLoading(false);
   }, []);
 
@@ -84,20 +84,20 @@ export default function AiAdsAnalysisPage() {
       if (existingSession) {
         sessionId = existingSession.id;
       } else {
-        const { data: sess, error: sessErr } = await supabase.from('ai_campaign_sessions' as any).insert({
+        const { data: sess, error: sessErr } = await supabase.from('ai_campaign_sessions').insert({
           client_id: selectedClient,
           title: `Analysis ${new Date().toLocaleDateString()}`,
           created_by: user.id,
           session_type: 'analysis',
         }).select().single();
         if (sessErr) throw sessErr;
-        sessionId = (sess as any).id;
-        logGosAction('create', 'ai_campaign_session', sessionId, (sess as any).title, { clientId: selectedClient });
-        setSessions(prev => [sess as any, ...prev]);
+        sessionId = sess!.id;
+        logGosAction('create', 'ai_campaign_session', sessionId, sess!.title, { clientId: selectedClient });
+        setSessions(prev => [sess as Session, ...prev]);
       }
 
       // Create analysis run
-      const { data: run, error: runErr } = await supabase.from('ai_analysis_runs' as any).insert({
+      const { data: run, error: runErr } = await supabase.from('ai_analysis_runs').insert({
         session_id: sessionId,
         client_id: selectedClient,
         created_by: user.id,
@@ -106,7 +106,7 @@ export default function AiAdsAnalysisPage() {
         status: 'queued',
       }).select().single();
       if (runErr) throw runErr;
-      const newRun = run as any;
+      const newRun = run as AnalysisRun;
       logGosAction('create', 'ai_analysis_run', newRun.id, `${selectedType}: ${prompt.trim().slice(0, 60)}`, { clientId: selectedClient });
       setRuns(prev => [newRun, ...prev]);
 
@@ -121,12 +121,12 @@ export default function AiAdsAnalysisPage() {
         toast.success('Analysis started — results will appear shortly');
         // Poll for completion
         setTimeout(async () => {
-          const { data: updated } = await supabase.from('ai_analysis_runs' as any).select('*').eq('id', newRun.id).single();
-          if (updated) setRuns(prev => prev.map(r => r.id === newRun.id ? updated as any : r));
+          const { data: updated } = await supabase.from('ai_analysis_runs').select('*').eq('id', newRun.id).single();
+          if (updated) setRuns(prev => prev.map(r => r.id === newRun.id ? updated as AnalysisRun : r));
         }, 5000);
         setTimeout(async () => {
-          const { data: updated } = await supabase.from('ai_analysis_runs' as any).select('*').eq('id', newRun.id).single();
-          if (updated) setRuns(prev => prev.map(r => r.id === newRun.id ? updated as any : r));
+          const { data: updated } = await supabase.from('ai_analysis_runs').select('*').eq('id', newRun.id).single();
+          if (updated) setRuns(prev => prev.map(r => r.id === newRun.id ? updated as AnalysisRun : r));
         }, 15000);
       }
 
@@ -140,8 +140,8 @@ export default function AiAdsAnalysisPage() {
   };
 
   const refreshRun = async (runId: string) => {
-    const { data } = await supabase.from('ai_analysis_runs' as any).select('*').eq('id', runId).single();
-    if (data) setRuns(prev => prev.map(r => r.id === runId ? data as any : r));
+    const { data } = await supabase.from('ai_analysis_runs').select('*').eq('id', runId).single();
+    if (data) setRuns(prev => prev.map(r => r.id === runId ? data as AnalysisRun : r));
   };
 
   const filteredRuns = runs.filter(r => {
