@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Info, GripVertical } from 'lucide-react';
@@ -29,6 +30,7 @@ import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import PlatformBreakdown from '@/components/dashboard/PlatformBreakdown';
 import ClientsPerformanceTable from '@/components/dashboard/ClientsPerformanceTable';
 import DataStatusPanel from '@/components/dashboard/DataStatusPanel';
+import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import type { DateRange, Comparison, PlatformFilter, DashboardFilters } from '@/components/dashboard/dashboardData';
 
@@ -76,10 +78,21 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [comparison, setComparison] = useState<Comparison>('none');
   const [platform, setPlatform] = useState<PlatformFilter>('all');
-  const [displayName, setDisplayName] = useState<string>('');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   const [compareEnabled, setCompareEnabled] = useState(false);
-  const [simulatedClientIds, setSimulatedClientIds] = useState<string[] | null>(null);
+
+  // Client IDs for scoped users — cached with react-query
+  const { data: simulatedClientIds } = useQuery({
+    queryKey: ['dashboard-client-ids', effectiveRole, simulatedUser?.userId, user?.id],
+    queryFn: async () => {
+      if (effectiveRole === 'AgencyAdmin') return null;
+      const tid = simulatedUser ? simulatedUser.userId : user!.id;
+      const { data } = await supabase.from('client_users').select('client_id').eq('user_id', tid);
+      return (data || []).map(d => d.client_id);
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const filters: DashboardFilters = useMemo(
     () => ({ dateRange, comparison, platform }),
@@ -97,22 +110,17 @@ export default function DashboardPage() {
   const isClient = effectiveRole === 'Client';
   const isAgencyMember = isAdmin || isBuyer;
 
-  // Draggable section order — persisted in platform_settings for all users
+  // Draggable section order — cached with react-query
+  const { data: savedOrder } = useQuery({
+    queryKey: ['dashboard-section-order'],
+    queryFn: async () => {
+      const { data } = await supabase.from('platform_settings').select('value').eq('key', 'dashboard_section_order').maybeSingle();
+      return data?.value && Array.isArray(data.value) ? data.value as string[] : DEFAULT_SECTIONS;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
   const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_SECTIONS);
-
-  // Load section order from DB on mount
-  useEffect(() => {
-    supabase
-      .from('platform_settings')
-      .select('value')
-      .eq('key', 'dashboard_section_order')
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value && Array.isArray(data.value)) {
-          setSectionOrder(data.value as string[]);
-        }
-      });
-  }, []);
+  useEffect(() => { if (savedOrder) setSectionOrder(savedOrder); }, [savedOrder]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -136,49 +144,21 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchDisplayName = useCallback(async () => {
-    if (!user) return;
-    // If simulating a specific user, show their name
-    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
-    const { data } = await supabase
-      .from('agency_users')
-      .select('display_name')
-      .eq('user_id', targetUserId)
-      .maybeSingle();
-    if (data?.display_name) {
-      setDisplayName(data.display_name);
-    } else if (simulatedUser) {
-      setDisplayName(simulatedUser.displayName);
-    } else {
-      setDisplayName(user.user_metadata?.display_name || user.email?.split('@')[0] || 'Admin');
-    }
-  }, [user, simulatedUser]);
+  // Display name — cached with react-query
+  const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
+  const { data: displayName = '' } = useQuery({
+    queryKey: ['dashboard-display-name', targetUserId],
+    queryFn: async () => {
+      if (!targetUserId) return '';
+      const { data } = await supabase.from('agency_users').select('display_name').eq('user_id', targetUserId).maybeSingle();
+      if (data?.display_name) return data.display_name;
+      if (simulatedUser) return simulatedUser.displayName;
+      return user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Admin';
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Load target user's client assignments for fully accurate scope
-  useEffect(() => {
-    if (!user) {
-      setSimulatedClientIds(null);
-      return;
-    }
-
-    const role = effectiveRole;
-    if (role === 'AgencyAdmin') {
-      setSimulatedClientIds(null);
-      return;
-    }
-
-    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
-
-    supabase
-      .from('client_users')
-      .select('client_id')
-      .eq('user_id', targetUserId)
-      .then(({ data }) => {
-        setSimulatedClientIds((data || []).map(d => d.client_id));
-      });
-  }, [user, effectiveRole, simulatedUser]);
-
-  useEffect(() => { fetchDisplayName(); }, [fetchDisplayName]);
 
   const renderSection = (sectionId: string) => {
     switch (sectionId) {

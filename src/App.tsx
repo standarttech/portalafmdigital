@@ -14,14 +14,6 @@ import AdminSetupPage from "@/pages/AdminSetup";
 import RequestAccessPage from "@/pages/RequestAccessPage";
 import InvitePage from "@/pages/InvitePage";
 import SetPasswordPage from "@/pages/SetPasswordPage";
-import DashboardPage from "@/pages/DashboardPage";
-import ClientDashboardPage from "@/pages/ClientDashboardPage";
-import ClientsPage from "@/pages/ClientsPage";
-import UsersPage from "@/pages/UsersPage";
-import ClientDetailPage from "@/pages/ClientDetailPage";
-import ProfilePage from "@/pages/ProfilePage";
-import GlossaryPage from "@/pages/GlossaryPage";
-import ChatPage from "@/pages/ChatPage";
 import ForcePasswordChangePage from "@/pages/ForcePasswordChangePage";
 import MfaChallengePage from "@/pages/MfaChallengePage";
 import AfmInternalLayout from "@/components/layout/AfmInternalLayout";
@@ -40,6 +32,16 @@ import WebsiteLayout from "@/pages/website/WebsiteLayout";
 import HomePage from "@/pages/website/HomePage";
 const EmbedFormPage = React.lazy(() => import("@/pages/embed/EmbedFormPage"));
 const EmbedLandingPage = React.lazy(() => import("@/pages/embed/EmbedLandingPage"));
+
+// Core pages — lazy loaded to reduce initial bundle
+const DashboardPage = React.lazy(() => import("@/pages/DashboardPage"));
+const ClientDashboardPage = React.lazy(() => import("@/pages/ClientDashboardPage"));
+const ClientsPage = React.lazy(() => import("@/pages/ClientsPage"));
+const UsersPage = React.lazy(() => import("@/pages/UsersPage"));
+const ClientDetailPage = React.lazy(() => import("@/pages/ClientDetailPage"));
+const ProfilePage = React.lazy(() => import("@/pages/ProfilePage"));
+const GlossaryPage = React.lazy(() => import("@/pages/GlossaryPage"));
+const ChatPage = React.lazy(() => import("@/pages/ChatPage"));
 import { supabase } from "@/integrations/supabase/client";
 
 // Lazy-loaded heavy pages
