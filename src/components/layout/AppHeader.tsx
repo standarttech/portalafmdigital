@@ -211,6 +211,35 @@ export default function AppHeader() {
                 <UserCircle className="h-4 w-4" /> {t('nav.profile')}
               </DropdownMenuItem>
 
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="gap-2 text-sm">
+                  <Repeat2 className="h-3.5 w-3.5" /> {t('profile.multiAccount')}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-72 max-h-[320px] overflow-y-auto">
+                  {linkedAccounts.length === 0 ? (
+                    <div className="px-2 py-3 text-xs text-muted-foreground text-center">{t('profile.noLinkedAccounts')}</div>
+                  ) : (
+                    linkedAccounts.map((account) => (
+                      <DropdownMenuItem
+                        key={account.userId}
+                        disabled={account.userId === user?.id}
+                        onClick={() => handleQuickSwitch(account.userId)}
+                        className="flex flex-col items-start gap-0"
+                      >
+                        <span className="text-sm font-medium truncate max-w-full">{account.displayName || account.email}</span>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-full">
+                          {account.email} {account.agencyRole ? `• ${account.agencyRole}` : ''}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')} className="gap-2">
+                    <UserPlus className="h-3.5 w-3.5" /> {t('profile.addAccount')}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
               {/* Role Preview — only for real admins */}
               {isRealAdmin && (
                 <>
