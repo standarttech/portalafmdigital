@@ -63,12 +63,12 @@ export default function AdminPortalManagement() {
     setInviting(true);
 
     // Create portal user record
-    const { error: puErr } = await supabase.from('client_portal_users' as any).insert({
+    const { error: puErr } = await supabase.from('client_portal_users').insert({
       client_id: inviteClientId,
       email: inviteEmail,
       full_name: inviteFullName || inviteEmail.split('@')[0],
       status: 'invited',
-    } as any);
+    });
 
     if (puErr && !puErr.message.includes('duplicate')) {
       toast.error(puErr.message);
