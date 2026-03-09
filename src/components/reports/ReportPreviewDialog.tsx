@@ -2,17 +2,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { DollarSign, MousePointerClick, Users, Eye, TrendingUp } from 'lucide-react';
+import { DollarSign, MousePointerClick, Users, Eye, TrendingUp, ShoppingBag, ShoppingCart } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
 interface ReportContent {
   sections?: string[];
-  totals?: { spend: number; impressions: number; clicks: number; leads: number };
-  daily?: Array<{ date: string; spend: number; impressions: number; link_clicks: number; leads: number }>;
+  totals?: { spend: number; impressions: number; clicks: number; leads: number; purchases?: number; revenue?: number; addToCart?: number; checkouts?: number };
+  daily?: Array<{ date: string; spend: number; impressions: number; link_clicks: number; leads: number; purchases?: number; revenue?: number; add_to_cart?: number; checkouts?: number }>;
   campaigns?: Array<{ id: string; campaign_name: string; status: string }>;
   clientName?: string;
+  category?: string;
 }
 
 interface ReportPreviewDialogProps {
@@ -37,10 +38,12 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
   const daily = content?.daily || [];
   const campaigns = content?.campaigns || [];
   const sections = content?.sections || [];
+  const isEcom = ['ecom', 'e-commerce', 'ecommerce'].includes((content?.category || '').toLowerCase());
 
   const cpl = totals && totals.leads > 0 ? totals.spend / totals.leads : 0;
   const ctr = totals && totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
   const cpc = totals && totals.clicks > 0 ? totals.spend / totals.clicks : 0;
+  const roas = isEcom && totals && totals.spend > 0 ? (totals.revenue || 0) / totals.spend : 0;
 
   const kpis = [
     { label: 'Spend', value: formatCurrency(totals?.spend || 0), icon: DollarSign, color: 'text-primary' },
@@ -49,7 +52,14 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
     { label: 'Leads', value: formatNumber(totals?.leads || 0), icon: Users, color: 'text-emerald-400' },
     { label: 'CPL', value: formatCurrency(cpl), icon: TrendingUp, color: 'text-purple-400' },
     { label: 'CTR', value: `${ctr.toFixed(2)}%`, icon: TrendingUp, color: 'text-rose-400' },
+    ...(isEcom ? [
+      { label: 'Purchases', value: formatNumber(totals?.purchases || 0), icon: ShoppingBag, color: 'text-orange-400' },
+      { label: 'Revenue', value: formatCurrency(totals?.revenue || 0), icon: DollarSign, color: 'text-emerald-500' },
+      { label: 'ROAS', value: `${roas.toFixed(2)}x`, icon: TrendingUp, color: 'text-yellow-500' },
+    ] : []),
   ];
+
+  const categoryLabel = isEcom ? 'E-Commerce' : (content?.category || 'Online Business');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -59,6 +69,9 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
             {report.title}
             <Badge variant="outline" className={report.status === 'published' ? 'border-emerald-500/30 text-emerald-500' : 'border-amber-500/30 text-amber-500'}>
               {report.status}
+            </Badge>
+            <Badge variant="outline" className="border-primary/30 text-primary text-[10px]">
+              {categoryLabel}
             </Badge>
           </DialogTitle>
           <p className="text-sm text-muted-foreground">{report.date_from} → {report.date_to} · {content?.clientName}</p>
@@ -97,6 +110,7 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
                       />
                       <Area type="monotone" dataKey="spend" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" name="Spend" />
                       <Area type="monotone" dataKey="leads" stroke="hsl(142 76% 36%)" fill="hsl(142 76% 36% / 0.15)" name="Leads" />
+                      {isEcom && <Area type="monotone" dataKey="revenue" stroke="hsl(120 60% 45%)" fill="hsl(120 60% 45% / 0.15)" name="Revenue" />}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -119,6 +133,10 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
                         <th className="text-right py-2 px-2 text-muted-foreground font-medium">Clicks</th>
                         <th className="text-right py-2 px-2 text-muted-foreground font-medium">Leads</th>
                         <th className="text-right py-2 px-2 text-muted-foreground font-medium">CPL</th>
+                        {isEcom && <>
+                          <th className="text-right py-2 px-2 text-muted-foreground font-medium">Purchases</th>
+                          <th className="text-right py-2 px-2 text-muted-foreground font-medium">Revenue</th>
+                        </>}
                       </tr>
                     </thead>
                     <tbody>
@@ -132,6 +150,10 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
                             <td className="py-1.5 px-2 text-right text-muted-foreground">{formatNumber(row.link_clicks)}</td>
                             <td className="py-1.5 px-2 text-right font-medium text-foreground">{row.leads}</td>
                             <td className="py-1.5 px-2 text-right text-muted-foreground">{rowCpl > 0 ? formatCurrency(rowCpl) : '—'}</td>
+                            {isEcom && <>
+                              <td className="py-1.5 px-2 text-right text-foreground">{row.purchases || 0}</td>
+                              <td className="py-1.5 px-2 text-right text-foreground">{formatCurrency(Number(row.revenue || 0))}</td>
+                            </>}
                           </tr>
                         );
                       })}
@@ -144,6 +166,10 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
                         <td className="py-2 px-2 text-right text-muted-foreground">{formatNumber(totals?.clicks || 0)}</td>
                         <td className="py-2 px-2 text-right font-bold text-foreground">{totals?.leads || 0}</td>
                         <td className="py-2 px-2 text-right text-muted-foreground">{cpl > 0 ? formatCurrency(cpl) : '—'}</td>
+                        {isEcom && <>
+                          <td className="py-2 px-2 text-right font-bold text-foreground">{totals?.purchases || 0}</td>
+                          <td className="py-2 px-2 text-right font-bold text-foreground">{formatCurrency(totals?.revenue || 0)}</td>
+                        </>}
                       </tr>
                     </tfoot>
                   </table>
