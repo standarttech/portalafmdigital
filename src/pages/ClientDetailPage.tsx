@@ -663,7 +663,6 @@ export default function ClientDetailPage() {
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{t('dashboard.daily')}</TabsTrigger>
             <TabsTrigger value="campaigns" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Play className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('campaigns.campaigns')}</span></TabsTrigger>
             <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('tasks.title')}</span></TabsTrigger>
-            {isAdmin && <TabsTrigger value="targets" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('targets.title')}</span></TabsTrigger>}
             <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('nav.reports')}</span></TabsTrigger>
             {isAdmin && <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clients.connections')}</span></TabsTrigger>}
             {isAdmin && <TabsTrigger value="webhooks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0"><Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Webhooks</span></TabsTrigger>}
@@ -992,56 +991,6 @@ export default function ClientDetailPage() {
             )}
           </TabsContent>
 
-          {/* TARGETS TAB — redesigned with progress bars */}
-          {isAdmin && (
-            <TabsContent value="targets" className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                {[
-                  { key: 'cpl', label: t('targets.cpl'), unit: '$', value: targetCpl, setter: setTargetCpl, actual: totals.cpl, type: 'number', step: '0.01', lowerIsBetter: true },
-                  { key: 'ctr', label: t('targets.ctr'), unit: '%', value: targetCtr, setter: setTargetCtr, actual: totals.ctr, type: 'number', step: '0.01', lowerIsBetter: false },
-                  { key: 'leads', label: t('targets.leads'), unit: '', value: targetLeads, setter: setTargetLeads, actual: totals.leads, type: 'number', step: '1', lowerIsBetter: false },
-                  { key: 'roas', label: t('targets.roas'), unit: 'x', value: targetRoas, setter: setTargetRoas, actual: totals.roas, type: 'number', step: '0.01', lowerIsBetter: false },
-                ].map(f => {
-                  const targetNum = parseFloat(f.value) || 0;
-                  const actualNum = f.actual || 0;
-                  let pct = targetNum > 0 ? Math.min(100, Math.round((actualNum / targetNum) * 100)) : 0;
-                  if (f.lowerIsBetter && targetNum > 0) pct = actualNum <= targetNum ? 100 : Math.max(0, Math.round((targetNum / actualNum) * 100));
-                  const isGood = f.lowerIsBetter ? actualNum <= targetNum && targetNum > 0 : pct >= 80;
-                  const barColor = !targetNum ? 'bg-muted' : isGood ? 'bg-success' : pct >= 60 ? 'bg-warning' : 'bg-destructive';
-                  return (
-                    <Card key={f.key} className="glass-card">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm font-medium">{f.label}</Label>
-                          {targetNum > 0 && (
-                            <Badge variant="outline" className={`text-[10px] ${isGood ? 'border-success/30 text-success' : 'border-warning/30 text-warning'}`}>
-                              {pct}%
-                            </Badge>
-                          )}
-                        </div>
-                        <Input type={f.type} step={f.step} value={f.value} onChange={e => f.setter(e.target.value)} placeholder={`Target ${f.label}`} className="h-8 text-sm" />
-                        {targetNum > 0 && (
-                          <div className="space-y-1">
-                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
-                            </div>
-                            <div className="flex justify-between text-[10px] text-muted-foreground">
-                              <span>Actual: {typeof actualNum === 'number' ? actualNum.toFixed(2) : actualNum}{f.unit}</span>
-                              <span>Target: {targetNum}{f.unit}</span>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-              <Button onClick={handleSaveTargets} disabled={savingTargets} className="gap-2">
-                {savingTargets ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {t('common.save')}
-              </Button>
-            </TabsContent>
-          )}
 
           {/* REPORTS TAB */}
           <TabsContent value="reports" className="space-y-4">

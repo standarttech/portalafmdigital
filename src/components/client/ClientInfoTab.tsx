@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Save, Loader2, ExternalLink, Globe, Instagram, Facebook, Linkedin, Youtube, MessageSquare, FileText, Users, MapPin, Target, Briefcase, Phone, Mail, Calendar, Lock } from 'lucide-react';
+import { Save, Loader2, ExternalLink, Globe, Instagram, Facebook, Linkedin, Youtube, MessageSquare, FileText, Users, MapPin, Target, Briefcase, Phone, Mail, Calendar, Lock, TrendingUp } from 'lucide-react';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface ClientInfo {
@@ -38,6 +39,13 @@ interface ClientInfo {
   additional_notes: string;
 }
 
+interface ClientTarget {
+  target_cpl: number | null;
+  target_ctr: number | null;
+  target_leads: number | null;
+  target_roas: number | null;
+}
+
 const defaultInfo: ClientInfo = {
   brief_url: '', monthly_budget: 0, website_url: '', instagram_url: '', facebook_url: '',
   tiktok_url: '', linkedin_url: '', youtube_url: '', twitter_url: '', telegram_url: '',
@@ -56,15 +64,23 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Targets state
+  const [targetCpl, setTargetCpl] = useState('');
+  const [targetCtr, setTargetCtr] = useState('');
+  const [targetLeads, setTargetLeads] = useState('');
+  const [targetRoas, setTargetRoas] = useState('');
+  const [savingTargets, setSavingTargets] = useState(false);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('client_info')
-        .select('*')
-        .eq('client_id', clientId)
-        .maybeSingle();
-      if (data) {
+      const [infoRes, targetsRes] = await Promise.all([
+        supabase.from('client_info').select('*').eq('client_id', clientId).maybeSingle(),
+        supabase.from('client_targets').select('*').eq('client_id', clientId).maybeSingle(),
+      ]);
+
+      if (infoRes.data) {
+        const data = infoRes.data;
         setInfo({
           brief_url: data.brief_url || '',
           monthly_budget: data.monthly_budget || 0,
@@ -92,6 +108,15 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
           additional_notes: data.additional_notes || '',
         });
       }
+
+      if (targetsRes.data) {
+        const t = targetsRes.data as ClientTarget;
+        setTargetCpl(t.target_cpl?.toString() || '');
+        setTargetCtr(t.target_ctr?.toString() || '');
+        setTargetLeads(t.target_leads?.toString() || '');
+        setTargetRoas(t.target_roas?.toString() || '');
+      }
+
       setLoading(false);
     })();
   }, [clientId]);
@@ -110,6 +135,31 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
       if (error) { toast.error(error.message); } else { toast.success(t('common.save')); }
     }
     setSaving(false);
+  };
+
+  const handleSaveTargets = async () => {
+    setSavingTargets(true);
+    const targetsPayload = {
+      client_id: clientId,
+      target_cpl: targetCpl ? parseFloat(targetCpl) : null,
+      target_ctr: targetCtr ? parseFloat(targetCtr) : null,
+      target_leads: targetLeads ? parseInt(targetLeads) : null,
+      target_roas: targetRoas ? parseFloat(targetRoas) : null,
+    };
+
+    const { data: existing } = await supabase
+      .from('client_targets').select('id').eq('client_id', clientId).maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase.from('client_targets').update(targetsPayload).eq('client_id', clientId);
+      if (error) toast.error(error.message);
+      else toast.success(t('common.save'));
+    } else {
+      const { error } = await supabase.from('client_targets').insert(targetsPayload);
+      if (error) toast.error(error.message);
+      else toast.success(t('common.save'));
+    }
+    setSavingTargets(false);
   };
 
   const u = (key: keyof ClientInfo, value: string | number) => setInfo(prev => ({ ...prev, [key]: value }));
@@ -159,6 +209,39 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
 
   return (
     <div className="space-y-4 max-w-3xl">
+
+      {/* Targets */}
+      {isAdmin && (
+        <Card className="glass-card border-primary/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> {t('targets.title')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('targets.cpl')}</Label>
+                <Input type="number" step="0.01" value={targetCpl} onChange={e => setTargetCpl(e.target.value)} placeholder="$0.00" className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('targets.ctr')}</Label>
+                <Input type="number" step="0.01" value={targetCtr} onChange={e => setTargetCtr(e.target.value)} placeholder="0.00%" className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('targets.leads')}</Label>
+                <Input type="number" step="1" value={targetLeads} onChange={e => setTargetLeads(e.target.value)} placeholder="0" className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('targets.roas')}</Label>
+                <Input type="number" step="0.01" value={targetRoas} onChange={e => setTargetRoas(e.target.value)} placeholder="0.00x" className="h-8 text-sm" />
+              </div>
+            </div>
+            <Button size="sm" onClick={handleSaveTargets} disabled={savingTargets} className="gap-1.5">
+              {savingTargets ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {t('common.save')}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Brief & Budget */}
       <Card className="glass-card">

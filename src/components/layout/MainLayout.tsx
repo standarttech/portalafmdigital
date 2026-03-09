@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
@@ -6,6 +7,14 @@ import { useSidebarState } from '@/contexts/SidebarContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePresence } from '@/hooks/usePresence';
 import { cn } from '@/lib/utils';
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 export default function MainLayout() {
   const { collapsed } = useSidebarState();
@@ -22,7 +31,9 @@ export default function MainLayout() {
       )}>
         <AppHeader />
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto">
-          <Outlet />
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

@@ -929,6 +929,8 @@ export default function AfmDashboard() {
 
           {/* CONNECTIONS TAB */}
           <TabsContent value="connections" className="space-y-4">
+            <AfmMetaApiSection clientId={agencyClient.id} />
+
             <Card className="glass-card max-w-2xl">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -970,8 +972,6 @@ export default function AfmDashboard() {
                 <PlatformSheetRow clientId={agencyClient.id} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" />
               </CardContent>
             </Card>
-
-            <AfmMetaApiSection clientId={agencyClient.id} />
           </TabsContent>
 
           {/* CAMPAIGNS TAB */}
