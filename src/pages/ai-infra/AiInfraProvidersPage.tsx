@@ -90,7 +90,7 @@ export default function AiInfraProvidersPage() {
     if (!user || !form.name || !form.slug) return;
     setSaving(true);
     try {
-      const { data, error } = await supabase.from('ai_providers' as any).insert({
+      const { data, error } = await supabase.from('ai_providers').insert({
         name: form.name, slug: form.slug, provider_type: form.provider_type,
         category: form.category, base_url: form.base_url || null, auth_type: form.auth_type,
         default_model: form.default_model, created_by: user.id,
