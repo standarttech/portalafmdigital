@@ -1,46 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 const MODULE_KEYS = ['can_access_afm_internal', 'can_access_adminscale', 'can_access_crm', 'can_access_growth_os', 'can_access_ai_ads', 'can_manage_ai_infra'] as const;
 
+const ALL_TRUE = Object.fromEntries(MODULE_KEYS.map(k => [k, true])) as Record<string, boolean>;
+const ALL_FALSE = Object.fromEntries(MODULE_KEYS.map(k => [k, false])) as Record<string, boolean>;
+
 export function useModuleAccess() {
   const { user, effectiveRole, simulatedUser } = useAuth();
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
+  const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
+  const isAdmin = effectiveRole === 'AgencyAdmin';
 
-  useEffect(() => {
-    if (!user) return;
+  const { data: permissions } = useQuery({
+    queryKey: ['module-access', targetUserId, isAdmin],
+    queryFn: async () => {
+      if (isAdmin) return ALL_TRUE;
+      if (!targetUserId) return ALL_FALSE;
+      const { data } = await supabase.from('user_permissions')
+        .select(MODULE_KEYS.join(','))
+        .eq('user_id', targetUserId)
+        .maybeSingle();
+      if (!data) return ALL_FALSE;
+      const p: Record<string, boolean> = {};
+      MODULE_KEYS.forEach(k => { p[k] = !!(data as any)[k]; });
+      return p;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
 
-    // Admin always has full access
-    if (effectiveRole === 'AgencyAdmin') {
-      setPermissions({ can_access_afm_internal: true, can_access_adminscale: true, can_access_crm: true, can_access_growth_os: true, can_access_ai_ads: true, can_manage_ai_infra: true });
-      return;
-    }
-
-    // If simulating a specific user, load THEIR permissions
-    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
-
-    supabase.from('user_permissions')
-      .select(MODULE_KEYS.join(','))
-      .eq('user_id', targetUserId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          const p: Record<string, boolean> = {};
-          MODULE_KEYS.forEach(k => { p[k] = !!(data as any)[k]; });
-          setPermissions(p);
-        } else {
-          setPermissions({ can_access_afm_internal: false, can_access_adminscale: false, can_access_crm: false, can_access_growth_os: false, can_access_ai_ads: false, can_manage_ai_infra: false });
-        }
-      });
-  }, [user, effectiveRole, simulatedUser]);
+  const p = permissions ?? (isAdmin ? ALL_TRUE : ALL_FALSE);
 
   return {
-    canAccessAfmInternal: permissions.can_access_afm_internal ?? false,
-    canAccessAdminScale: permissions.can_access_adminscale ?? false,
-    canAccessCrm: permissions.can_access_crm ?? false,
-    canAccessGrowthOs: permissions.can_access_growth_os ?? false,
-    canAccessAiAds: permissions.can_access_ai_ads ?? false,
-    canManageAiInfra: permissions.can_manage_ai_infra ?? false,
+    canAccessAfmInternal: p.can_access_afm_internal ?? false,
+    canAccessAdminScale: p.can_access_adminscale ?? false,
+    canAccessCrm: p.can_access_crm ?? false,
+    canAccessGrowthOs: p.can_access_growth_os ?? false,
+    canAccessAiAds: p.can_access_ai_ads ?? false,
+    canManageAiInfra: p.can_manage_ai_infra ?? false,
   };
 }
