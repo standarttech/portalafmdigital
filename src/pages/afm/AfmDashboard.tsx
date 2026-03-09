@@ -400,6 +400,46 @@ export default function AfmDashboard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Fetch tasks
+  const fetchTasks = useCallback(async () => {
+    if (!agencyClient) return;
+    const { data } = await supabase.from('tasks').select('id, title, description, status, due_date, created_at').eq('client_id', agencyClient.id).order('created_at', { ascending: false });
+    if (data) setTasks(data as any[]);
+  }, [agencyClient]);
+
+  // Fetch history
+  const fetchHistory = useCallback(async () => {
+    if (!agencyClient) return;
+    const [eventsRes, statusRes] = await Promise.all([
+      supabase.from('project_events').select('*').eq('client_id', agencyClient.id).order('created_at', { ascending: false }),
+      supabase.from('client_status_history').select('*').eq('client_id', agencyClient.id).order('changed_at', { ascending: false }),
+    ]);
+    setProjectEvents(eventsRes.data || []);
+    setStatusHistory(statusRes.data || []);
+  }, [agencyClient]);
+
+  useEffect(() => { fetchTasks(); fetchHistory(); }, [fetchTasks, fetchHistory]);
+
+  const handleCreateTask = async () => {
+    if (!agencyClient || !newTaskTitle.trim()) return;
+    setCreatingTask(true);
+    await supabase.from('tasks').insert({ client_id: agencyClient.id, title: newTaskTitle.trim(), description: newTaskDesc.trim() || null, created_by: user?.id });
+    setCreatingTask(false);
+    toast.success(t('tasks.taskCreated'));
+    setTaskDialogOpen(false); setNewTaskTitle(''); setNewTaskDesc('');
+    fetchTasks();
+  };
+
+  const handleToggleTaskStatus = async (task: typeof tasks[0]) => {
+    const nextStatus = task.status === 'completed' ? 'pending' : task.status === 'pending' ? 'in_progress' : 'completed';
+    await supabase.from('tasks').update({ status: nextStatus }).eq('id', task.id);
+    fetchTasks();
+  };
+
+  const handleDownloadPdf = () => {
+    window.print();
+  };
+
   // Platform data check
   const platformHasData = useMemo(() => ({
     meta: !!agencyClient?.meta_sheet_url,
