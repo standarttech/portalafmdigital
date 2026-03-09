@@ -120,6 +120,8 @@ const AiInfraRoutesPage = React.lazy(() => import("@/pages/ai-infra/AiInfraRoute
 const AiInfraTasksPage = React.lazy(() => import("@/pages/ai-infra/AiInfraTasksPage"));
 const AiInfraLogsPage = React.lazy(() => import("@/pages/ai-infra/AiInfraLogsPage"));
 const AiInfraHealthPage = React.lazy(() => import("@/pages/ai-infra/AiInfraHealthPage"));
+const AiInfraGuidePage = React.lazy(() => import("@/pages/ai-infra/AiInfraGuidePage"));
+const AiAdsGuidePage = React.lazy(() => import("@/pages/ai-ads/AiAdsGuidePage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -526,6 +528,7 @@ function AppRoutes() {
         <Route path="/ai-ads/creatives" element={<AiAdsCreativesPage />} />
         <Route path="/ai-ads/presets" element={<AiAdsPresetsPage />} />
         <Route path="/ai-ads/client-report" element={<AiAdsClientReportPage />} />
+        <Route path="/ai-ads/guide" element={<AiAdsGuidePage />} />
       </Route>
       {/* AI Infrastructure — admin only */}
       <Route element={<ModuleGuard module="ai_infra"><AiInfraLayout /></ModuleGuard>}>
@@ -535,6 +538,7 @@ function AppRoutes() {
         <Route path="/ai-infra/tasks" element={<AiInfraTasksPage />} />
         <Route path="/ai-infra/logs" element={<AiInfraLogsPage />} />
         <Route path="/ai-infra/health" element={<AiInfraHealthPage />} />
+        <Route path="/ai-infra/guide" element={<AiInfraGuidePage />} />
       </Route>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Cpu, Server, GitBranch,
-  ListTodo, ScrollText, HeartPulse
+  ListTodo, ScrollText, HeartPulse, BookOpen
 } from 'lucide-react';
 import { useState } from 'react';
 import AppHeader from '@/components/layout/AppHeader';
@@ -18,6 +18,7 @@ const navItems = [
   { label: 'Tasks', icon: ListTodo, path: '/ai-infra/tasks' },
   { label: 'Logs', icon: ScrollText, path: '/ai-infra/logs' },
   { label: 'Health', icon: HeartPulse, path: '/ai-infra/health' },
+  { label: 'Guide', icon: BookOpen, path: '/ai-infra/guide' },
 ];
 
 function AiInfraSidebarContent({ onNavigate }: { onNavigate?: () => void }) {

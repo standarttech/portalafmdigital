@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Bot, MonitorSmartphone, BrainCircuit,
-  Lightbulb, FileStack, Rocket, TrendingUp, Brain, Zap, ImageIcon, Settings, Users
+  Lightbulb, FileStack, Rocket, TrendingUp, Brain, Zap, ImageIcon, Settings, Users, BookOpen
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
@@ -25,6 +25,7 @@ const navItems = [
   { label: 'Optimization', icon: Zap, path: '/ai-ads/optimization' },
   { label: 'Presets', icon: Settings, path: '/ai-ads/presets' },
   { label: 'Client Report', icon: Users, path: '/ai-ads/client-report' },
+  { label: 'Guide', icon: BookOpen, path: '/ai-ads/guide' },
 ];
 
 function AiAdsSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
