@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  upsertRememberedAccount,
+  removeRememberedAccount as removeRemembered,
+  clearAllRememberedAccounts,
+  pruneStaleAccounts,
+  type AccountType,
+} from '@/lib/rememberedAccounts';
 
 type AgencyRole = 'AgencyAdmin' | 'MediaBuyer' | 'Manager' | 'SalesManager' | 'AccountManager' | 'Designer' | 'Copywriter' | 'Client' | null;
 
