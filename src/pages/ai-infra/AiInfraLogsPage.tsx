@@ -25,7 +25,7 @@ export default function AiInfraLogsPage() {
   const [levelFilter, setLevelFilter] = useState('all');
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from('ai_task_logs' as any).select('*').order('created_at', { ascending: false }).limit(500);
+    const { data } = await supabase.from('ai_task_logs').select('*').order('created_at', { ascending: false }).limit(500);
     setLogs((data as any[]) || []);
     setLoading(false);
   }, []);

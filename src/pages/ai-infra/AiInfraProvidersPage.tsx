@@ -64,8 +64,8 @@ export default function AiInfraProvidersPage() {
 
   const load = useCallback(async () => {
     const [pRes, sRes] = await Promise.all([
-      supabase.from('ai_providers' as any).select('*').order('is_default', { ascending: false }).order('name'),
-      supabase.from('ai_provider_secrets' as any).select('*'),
+      supabase.from('ai_providers').select('*').order('is_default', { ascending: false }).order('name'),
+      supabase.from('ai_provider_secrets').select('*'),
     ]);
     const provList = (pRes.data as any[]) || [];
     setProviders(provList);
@@ -90,7 +90,7 @@ export default function AiInfraProvidersPage() {
     if (!user || !form.name || !form.slug) return;
     setSaving(true);
     try {
-      const { data, error } = await supabase.from('ai_providers' as any).insert({
+      const { data, error } = await supabase.from('ai_providers').insert({
         name: form.name, slug: form.slug, provider_type: form.provider_type,
         category: form.category, base_url: form.base_url || null, auth_type: form.auth_type,
         default_model: form.default_model, created_by: user.id,
@@ -130,7 +130,7 @@ export default function AiInfraProvidersPage() {
       if (!detailProvider.metadata?.builtin) {
         updates.slug = editForm.slug;
       }
-      const { error } = await supabase.from('ai_providers' as any).update(updates).eq('id', detailProvider.id);
+      const { error } = await supabase.from('ai_providers').update(updates).eq('id', detailProvider.id);
       if (error) throw error;
       logGosAction('update', 'ai_provider', detailProvider.id, editForm.name as string);
       toast.success('Provider updated');
@@ -143,7 +143,7 @@ export default function AiInfraProvidersPage() {
     if (!detailProvider || !secretValue.trim()) return;
     setSecretSaving(true);
     try {
-      const { data, error } = await supabase.rpc('store_ai_provider_secret' as any, {
+      const { data, error } = await supabase.rpc('store_ai_provider_secret', {
         _provider_id: detailProvider.id,
         _secret_value: secretValue.trim(),
         _secret_label: 'api_key',
@@ -163,7 +163,7 @@ export default function AiInfraProvidersPage() {
     if (!detailProvider) return;
     setSecretSaving(true);
     try {
-      const { error } = await supabase.rpc('delete_ai_provider_secret' as any, {
+      const { error } = await supabase.rpc('delete_ai_provider_secret', {
         _provider_id: detailProvider.id,
         _secret_label: 'api_key',
       });
@@ -192,7 +192,7 @@ export default function AiInfraProvidersPage() {
   };
 
   const toggleActive = async (p: Provider) => {
-    await supabase.from('ai_providers' as any).update({ is_active: !p.is_active }).eq('id', p.id);
+    await supabase.from('ai_providers').update({ is_active: !p.is_active }).eq('id', p.id);
     logGosAction('update', 'ai_provider', p.id, p.name, { metadata: { toggled: !p.is_active ? 'active' : 'inactive' } });
     load();
   };
