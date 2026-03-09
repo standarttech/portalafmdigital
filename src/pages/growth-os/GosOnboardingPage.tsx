@@ -289,8 +289,6 @@ export default function GosOnboardingPage() {
     abandoned: 'bg-muted text-muted-foreground',
   };
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -307,6 +305,10 @@ export default function GosOnboardingPage() {
           </Button>
         </div>
       </div>
+
+      {loading ? (
+        <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}</div>
+      ) : (
 
       {/* Branding toggle */}
       <div className="flex items-center justify-between rounded-lg border border-border p-3">

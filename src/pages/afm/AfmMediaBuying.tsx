@@ -343,7 +343,7 @@ export default function AfmMediaBuying() {
     hasApiAccounts && 'Meta API',
   ].filter(Boolean) as string[] : [];
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <PageSkeleton variant="dashboard" kpiCards={4} tableRows={6} />;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">

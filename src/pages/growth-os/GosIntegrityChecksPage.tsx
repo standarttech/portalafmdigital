@@ -263,8 +263,7 @@ export default function GosIntegrityChecksPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useIntegrityChecks();
 
-  if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-  if (!data) return null;
+  if (isLoading || !data) return <PageSkeleton variant="list" tableRows={5} />;
 
   const errors = data.issues.filter(i => i.severity === 'error');
   const warnings = data.issues.filter(i => i.severity === 'warning');

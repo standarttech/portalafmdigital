@@ -150,8 +150,6 @@ export default function GosIntegrationsPage() {
     toast.success('Connection removed'); loadData();
   };
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-
   const hasPlatformConnection = (provider: string) => {
     const map: Record<string, string> = { 'Meta': 'facebook', 'Google': 'google', 'Telegram': 'telegram' };
     return platformConnections.some((pc: any) => pc.platform === map[provider]);
@@ -166,6 +164,10 @@ export default function GosIntegrationsPage() {
         </div>
         {isAdmin && <Button size="sm" onClick={() => setAddingIntegration(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add Integration</Button>}
       </div>
+
+      {loading ? (
+        <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}</div>
+      ) : (
 
       <Tabs defaultValue="gos">
         <TabsList>

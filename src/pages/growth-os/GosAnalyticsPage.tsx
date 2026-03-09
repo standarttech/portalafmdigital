@@ -199,8 +199,6 @@ export default function GosAnalyticsPage() {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-
   const hasActiveFilters = filters.clientId || filters.formId || filters.landingId || filters.experimentId || filters.variantId;
 
   return (

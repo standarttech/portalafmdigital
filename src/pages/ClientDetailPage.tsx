@@ -524,7 +524,7 @@ export default function ClientDetailPage() {
     visibleColumns.map(key => ALL_METRIC_COLUMNS.find(c => c.key === key)).filter(Boolean) as typeof ALL_METRIC_COLUMNS,
     [visibleColumns]);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <PageSkeleton variant="detail" tableRows={6} />;
   if (!client) return null;
 
   return (
