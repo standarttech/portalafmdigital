@@ -43,14 +43,14 @@ export default function AdminPortalManagement() {
   const load = useCallback(async () => {
     const [cRes, puRes, iRes, bRes] = await Promise.all([
       supabase.from('clients').select('id, name').order('name'),
-      supabase.from('client_portal_users' as any).select('*').order('created_at', { ascending: false }),
-      supabase.from('client_portal_invites' as any).select('*').order('created_at', { ascending: false }),
-      supabase.from('client_portal_branding' as any).select('*'),
+      supabase.from('client_portal_users').select('*').order('created_at', { ascending: false }),
+      supabase.from('client_portal_invites').select('*').order('created_at', { ascending: false }),
+      supabase.from('client_portal_branding').select('*'),
     ]);
     setClients(cRes.data || []);
-    setPortalUsers((puRes.data as any as PortalUser[]) || []);
-    setInvites((iRes.data as any as PortalInvite[]) || []);
-    setBranding((bRes.data as any as PortalBranding[]) || []);
+    setPortalUsers((puRes.data as unknown as PortalUser[]) || []);
+    setInvites((iRes.data as unknown as PortalInvite[]) || []);
+    setBranding((bRes.data as unknown as PortalBranding[]) || []);
     setLoading(false);
   }, []);
 
