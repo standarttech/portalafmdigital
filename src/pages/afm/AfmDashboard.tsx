@@ -972,8 +972,6 @@ export default function AfmDashboard() {
             </Card>
 
             <AfmMetaApiSection clientId={agencyClient.id} />
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* CAMPAIGNS TAB */}
