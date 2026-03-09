@@ -482,6 +482,9 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                             <Send className="h-3.5 w-3.5" />{t('reports.published')}
                           </Button>
                         )}
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadPdf(report)}>
+                          <Download className="h-3.5 w-3.5" />PDF
+                        </Button>
                         <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadCsv(report)}>
                           <Download className="h-3.5 w-3.5" />CSV
                         </Button>
