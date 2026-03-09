@@ -61,7 +61,7 @@ export default function AiAdsRecommendationsPage() {
   useEffect(() => { load(); }, [load]);
 
   const updateStatus = async (rec: Recommendation, newStatus: string) => {
-    const { error } = await supabase.from('ai_recommendations' as any)
+    const { error } = await supabase.from('ai_recommendations')
       .update({ status: newStatus, acted_on_at: new Date().toISOString() }).eq('id', rec.id);
     if (error) { toast.error('Failed to update'); return; }
     logGosAction(newStatus === 'dismissed' ? 'dismiss' : 'update', 'ai_recommendation', rec.id, rec.title, { clientId: rec.client_id, metadata: { status: newStatus } });
