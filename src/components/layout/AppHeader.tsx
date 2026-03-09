@@ -95,6 +95,16 @@ export default function AppHeader() {
     : viewAsRole === 'Client' ? (t('role.client' as any) || 'Client')
     : viewAsRole || '';
 
+  const handleQuickSwitch = async (targetUserId: string) => {
+    if (!targetUserId || targetUserId === user?.id) return;
+    const { error } = await switchAccount(targetUserId);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success(t('profile.accountSwitched'));
+  };
+
   return (
     <div className="flex flex-col relative z-10">
       {/* Preview Banner */}
