@@ -610,6 +610,7 @@ export type Database = {
           id: string
           is_active: boolean
           metadata: Json | null
+          model_override: string | null
           primary_provider_id: string
           priority: number
           retry_limit: number
@@ -623,6 +624,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           metadata?: Json | null
+          model_override?: string | null
           primary_provider_id: string
           priority?: number
           retry_limit?: number
@@ -636,6 +638,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           metadata?: Json | null
+          model_override?: string | null
           primary_provider_id?: string
           priority?: number
           retry_limit?: number
@@ -699,9 +702,13 @@ export type Database = {
           category: string
           created_at: string
           created_by: string
+          default_model: string | null
           id: string
           is_active: boolean
           is_default: boolean
+          last_test_error: string | null
+          last_test_status: string | null
+          last_tested_at: string | null
           metadata: Json | null
           name: string
           provider_type: string
@@ -719,9 +726,13 @@ export type Database = {
           category?: string
           created_at?: string
           created_by: string
+          default_model?: string | null
           id?: string
           is_active?: boolean
           is_default?: boolean
+          last_test_error?: string | null
+          last_test_status?: string | null
+          last_tested_at?: string | null
           metadata?: Json | null
           name: string
           provider_type?: string
@@ -739,9 +750,13 @@ export type Database = {
           category?: string
           created_at?: string
           created_by?: string
+          default_model?: string | null
           id?: string
           is_active?: boolean
           is_default?: boolean
+          last_test_error?: string | null
+          last_test_status?: string | null
+          last_tested_at?: string | null
           metadata?: Json | null
           name?: string
           provider_type?: string
@@ -5200,6 +5215,14 @@ export type Database = {
         Args: { _invite_id: string; _user_id: string }
         Returns: Json
       }
+      ai_provider_has_secret: {
+        Args: { _provider_id: string }
+        Returns: boolean
+      }
+      delete_ai_provider_secret: {
+        Args: { _provider_id: string; _secret_label?: string }
+        Returns: undefined
+      }
       delete_gos_secret: { Args: { _secret_ref: string }; Returns: undefined }
       delete_social_token: {
         Args: { _token_reference: string }
@@ -5241,6 +5264,14 @@ export type Database = {
       portal_notification_enabled: {
         Args: { _client_id: string; _type: string }
         Returns: boolean
+      }
+      store_ai_provider_secret: {
+        Args: {
+          _provider_id: string
+          _secret_label?: string
+          _secret_value: string
+        }
+        Returns: string
       }
       store_gos_secret: {
         Args: { _secret_name: string; _secret_value: string }
