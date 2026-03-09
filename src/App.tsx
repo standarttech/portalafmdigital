@@ -537,6 +537,7 @@ function AppRoutes() {
         <Route path="/ai-infra/tasks" element={<AiInfraTasksPage />} />
         <Route path="/ai-infra/logs" element={<AiInfraLogsPage />} />
         <Route path="/ai-infra/health" element={<AiInfraHealthPage />} />
+        <Route path="/ai-infra/guide" element={<AiInfraGuidePage />} />
       </Route>
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/setup" element={<Navigate to="/dashboard" replace />} />
