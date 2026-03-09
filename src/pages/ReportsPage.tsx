@@ -22,7 +22,7 @@ import ReportPreviewDialog from '@/components/reports/ReportPreviewDialog';
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 
-interface Client { id: string; name: string; }
+interface Client { id: string; name: string; category: string; }
 interface Report {
   id: string; title: string; client_id: string; status: string;
   date_from: string; date_to: string; created_at: string; content: any;
