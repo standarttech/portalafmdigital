@@ -48,7 +48,7 @@ const ALL_PREVIEW_ROLES = [
 
 export default function AppHeader() {
   const { language, setLanguage, t } = useLanguage();
-  const { user, agencyRole, effectiveRole, viewAsRole, setViewAsRole, simulatedUser, setSimulatedUser, signOut } = useAuth();
+  const { user, agencyRole, effectiveRole, viewAsRole, setViewAsRole, simulatedUser, setSimulatedUser, signOut, linkedAccounts, switchAccount } = useAuth();
   const { theme, setTheme, fxEnabled, toggleFx, colorScheme, setColorScheme } = useTheme();
   const navigate = useNavigate();
   const isFuturistic = fxEnabled;
