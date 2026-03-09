@@ -203,7 +203,7 @@ export default function AiAdsDraftsPage() {
     if (!user || !newDraft.client_id || !newDraft.campaign_name.trim()) return;
     setCreating(true);
     try {
-      const { data, error } = await supabase.from('campaign_drafts' as any).insert({
+      const { data, error } = await supabase.from('campaign_drafts').insert({
         client_id: newDraft.client_id,
         created_by: user.id,
         name: newDraft.campaign_name.trim(),
