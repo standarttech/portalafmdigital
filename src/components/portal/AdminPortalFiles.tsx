@@ -47,10 +47,10 @@ export default function AdminPortalFiles() {
   const load = useCallback(async () => {
     const [cRes, fRes] = await Promise.all([
       supabase.from('clients').select('id, name').order('name'),
-      supabase.from('client_portal_files' as any).select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('client_portal_files').select('*').order('created_at', { ascending: false }).limit(200),
     ]);
     setClients(cRes.data || []);
-    setFiles((fRes.data as any as PortalFile[]) || []);
+    setFiles((fRes.data as unknown as PortalFile[]) || []);
     setLoading(false);
   }, []);
 
@@ -74,7 +74,7 @@ export default function AdminPortalFiles() {
       externalUrl = null;
     }
 
-    const { error } = await supabase.from('client_portal_files' as any).insert({
+    const { error } = await supabase.from('client_portal_files').insert({
       client_id: fClientId,
       title: fTitle,
       file_type: fType,
@@ -83,7 +83,7 @@ export default function AdminPortalFiles() {
       description: fDesc,
       uploaded_by: user?.id,
       is_visible_in_portal: true,
-    } as any);
+    });
 
     if (error) { toast.error(error.message); setSaving(false); return; }
 
@@ -116,7 +116,7 @@ export default function AdminPortalFiles() {
 
   const toggleVisibility = async (file: PortalFile) => {
     const newVal = !file.is_visible_in_portal;
-    await supabase.from('client_portal_files' as any).update({ is_visible_in_portal: newVal } as any).eq('id', file.id);
+    await supabase.from('client_portal_files').update({ is_visible_in_portal: newVal }).eq('id', file.id);
     await supabase.from('audit_log').insert({
       action: newVal ? 'portal_file_shared' : 'portal_file_unshared',
       entity_type: 'client_portal_files', entity_id: file.id, user_id: user?.id,
@@ -129,7 +129,7 @@ export default function AdminPortalFiles() {
     if (file.storage_path) {
       await supabase.storage.from('portal-files').remove([file.storage_path]);
     }
-    await supabase.from('client_portal_files' as any).delete().eq('id', file.id);
+    await supabase.from('client_portal_files').delete().eq('id', file.id);
     await supabase.from('audit_log').insert({
       action: 'portal_file_deleted', entity_type: 'client_portal_files',
       entity_id: file.id, user_id: user?.id,

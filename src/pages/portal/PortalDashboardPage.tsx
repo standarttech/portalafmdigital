@@ -68,11 +68,11 @@ export default function PortalDashboardPage() {
     const { data: c } = await supabase.from('clients').select('name').eq('id', clientId).maybeSingle();
     setClientName(c?.name || '');
 
-    let snapQ = supabase.from('campaign_performance_snapshots' as any).select('*')
+    let snapQ = supabase.from('campaign_performance_snapshots').select('*')
       .eq('client_id', clientId).eq('entity_level', 'campaign');
     let launchQ = supabase.from('launch_requests' as any).select('id, client_id, status, execution_status, external_campaign_id, metadata, executed_at, platform')
       .eq('client_id', clientId).not('external_campaign_id', 'is', null);
-    let recQ = supabase.from('ai_recommendations' as any).select('id, client_id, priority, status, recommendation_type, title, description, created_at')
+    let recQ = supabase.from('ai_recommendations').select('id, client_id, priority, status, recommendation_type, title, description, created_at')
       .eq('client_id', clientId);
     let actQ = supabase.from('optimization_actions' as any).select('id, client_id, status, action_type, created_at')
       .eq('client_id', clientId);
@@ -89,7 +89,7 @@ export default function PortalDashboardPage() {
     let prevData: any[] = [];
     if (dateRange) {
       const prev = getPreviousPeriod(dateRange);
-      const { data: pd } = await supabase.from('campaign_performance_snapshots' as any).select('*')
+      const { data: pd } = await supabase.from('campaign_performance_snapshots').select('*')
         .eq('client_id', clientId).eq('entity_level', 'campaign')
         .gte('synced_at', prev.from.toISOString()).lte('synced_at', prev.to.toISOString())
         .order('synced_at', { ascending: false }).limit(200);

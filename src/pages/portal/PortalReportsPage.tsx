@@ -66,7 +66,7 @@ export default function PortalReportsPage() {
     let prevData: any[] = [];
     if (dateRange && clientId) {
       const prev = getPreviousPeriod(dateRange);
-      const { data: pd } = await supabase.from('campaign_performance_snapshots' as any).select('*')
+      const { data: pd } = await supabase.from('campaign_performance_snapshots').select('*')
         .eq('client_id', clientId).eq('entity_level', 'campaign')
         .gte('synced_at', prev.from.toISOString()).lte('synced_at', prev.to.toISOString())
         .order('synced_at', { ascending: false }).limit(300);
@@ -79,7 +79,7 @@ export default function PortalReportsPage() {
       buildQ('optimization_actions', 'created_at').order('created_at', { ascending: false }).limit(100),
       buildQ('ai_recommendations', 'created_at').order('created_at', { ascending: false }).limit(100),
       clientId
-        ? supabase.from('client_portal_files' as any).select('*').eq('client_id', clientId).eq('is_visible_in_portal', true).in('file_type', ['report', 'pdf']).order('created_at', { ascending: false }).limit(10)
+        ? supabase.from('client_portal_files').select('*').eq('client_id', clientId).eq('is_visible_in_portal', true).in('file_type', ['report', 'pdf']).order('created_at', { ascending: false }).limit(10)
         : Promise.resolve({ data: [] }),
     ]);
 

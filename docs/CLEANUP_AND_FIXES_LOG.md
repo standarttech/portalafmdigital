@@ -56,21 +56,60 @@
 
 ---
 
-## Remaining `as any` Casts After Phase 2
+## Phase 3 — 2026-03-09 (Type Sync + Safe Cleanup)
+
+### 9. Supplementary Types Layer Created
+- **Problem**: 10 tables exist in DB but are missing from auto-generated `types.ts`
+- **Fix**: Created `src/types/supabase-supplementary.ts` with typed interfaces derived from actual DB schema
+- **Tables added**: `launch_requests`, `launch_execution_logs`, `hypothesis_threads`, `hypothesis_messages`, `creative_assets`, `optimization_actions`, `optimization_action_logs`, `optimization_presets`, `portal_notifications`, `portal_notification_preferences`
+- **Note**: NOT a fake regen — honest supplementary layer until real types.ts regen is available
+
+### 10. `as any` Table Name Casts Removed (Safe Batch)
+- **Tables cleaned** (already in types.ts, casts were unnecessary):
+  - `client_portal_files` — 6 casts removed
+  - `client_portal_users` — 3 casts removed
+  - `client_portal_invites` — 5 casts removed
+  - `client_portal_branding` — 3 casts removed
+  - `campaign_performance_snapshots` — 5 casts removed
+  - `ai_recommendations` — 4 casts removed
+- **Files changed**:
+  - `src/components/portal/AdminPortalManagement.tsx` — 11 casts removed
+  - `src/components/portal/AdminPortalFiles.tsx` — 6 casts removed
+  - `src/components/portal/PortalActivityPanel.tsx` — 1 cast removed
+  - `src/pages/portal/PortalFilesPage.tsx` — 2 casts removed
+  - `src/pages/portal/PortalDashboardPage.tsx` — 3 casts removed
+  - `src/pages/portal/PortalReportsPage.tsx` — 2 casts removed
+  - `src/pages/portal/PortalRecommendationsPage.tsx` — 2 casts removed
+  - `src/pages/portal/PortalCampaignsPage.tsx` — 2 casts removed
+  - `src/pages/ai-ads/AiAdsIntelligencePage.tsx` — 1 cast removed
+  - `src/pages/ai-ads/AiAdsClientReportPage.tsx` — 2 casts removed
+- **Total removed**: ~32 unnecessary `as any` casts
+
+### Intentionally Left (Still Required)
+- `launch_requests` — NOT in types.ts (~15 occurrences)
+- `hypothesis_threads` / `hypothesis_messages` — NOT in types.ts (~8 occurrences)
+- `creative_assets` — NOT in types.ts (~12 occurrences)
+- `optimization_actions` / `optimization_action_logs` / `optimization_presets` — NOT in types.ts (~20 occurrences)
+- `portal_notifications` / `portal_notification_preferences` — NOT in types.ts (~10 occurrences)
+- `buildQ()` helper in PortalReportsPage uses dynamic table name — cast required
+- `campaign_drafts` INSERT with dynamic payloads in Intelligence page — cast required
+- `campaign_draft_items` INSERT with parent_item_id pattern — cast required
+- RPC calls (`portal_notification_enabled`) — cast required (not in RPC types)
+
+---
+
+## Remaining `as any` Casts After Phase 3
 
 ### Tables NOT in types.ts — casts are REQUIRED:
-- `launch_requests` — ~15 occurrences in AI Ads pages
+- `launch_requests` / `launch_execution_logs` — ~15 occurrences
 - `hypothesis_threads` / `hypothesis_messages` — ~8 occurrences
-- `creative_assets` — ~12 occurrences in AiAdsCreativesPage
+- `creative_assets` — ~12 occurrences
 - `optimization_actions` / `optimization_action_logs` / `optimization_presets` — ~20 occurrences
-- Portal, GOS, CRM tables not in types.ts — ~80+ occurrences
-
-### Tables in types.ts with complex payload mismatches — deferred:
-- `campaign_drafts UPDATE` with `Record<string, any>` payload in DraftBuilder
-- `campaign_draft_items UPDATE` with `Partial<DraftItem>` (has `id` field not in Update type)
+- `portal_notifications` / `portal_notification_preferences` — ~10 occurrences
+- GOS / CRM tables not in types.ts — ~60+ occurrences
 
 ### Resolution path:
-Schema type regeneration (`types.ts` sync) would eliminate the majority of remaining `as any` casts automatically.
+Full types.ts regeneration would eliminate ALL remaining table-name casts. The supplementary types file (`src/types/supabase-supplementary.ts`) provides typed interfaces for use in components.
 
 ---
 

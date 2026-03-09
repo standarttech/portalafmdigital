@@ -495,7 +495,7 @@ function OptimizationQueue({ recs, clients, clientName, onRefresh }: {
   });
 
   const updateStatus = async (rec: Recommendation, newStatus: string) => {
-    const { error } = await supabase.from('ai_recommendations' as any)
+    const { error } = await supabase.from('ai_recommendations')
       .update({ status: newStatus, acted_on_at: new Date().toISOString() }).eq('id', rec.id);
     if (error) { toast.error('Update failed'); return; }
     logGosAction(newStatus, 'ai_recommendation', rec.id, rec.title, { clientId: rec.client_id });

@@ -43,14 +43,14 @@ export default function AdminPortalManagement() {
   const load = useCallback(async () => {
     const [cRes, puRes, iRes, bRes] = await Promise.all([
       supabase.from('clients').select('id, name').order('name'),
-      supabase.from('client_portal_users' as any).select('*').order('created_at', { ascending: false }),
-      supabase.from('client_portal_invites' as any).select('*').order('created_at', { ascending: false }),
-      supabase.from('client_portal_branding' as any).select('*'),
+      supabase.from('client_portal_users').select('*').order('created_at', { ascending: false }),
+      supabase.from('client_portal_invites').select('*').order('created_at', { ascending: false }),
+      supabase.from('client_portal_branding').select('*'),
     ]);
     setClients(cRes.data || []);
-    setPortalUsers((puRes.data as any as PortalUser[]) || []);
-    setInvites((iRes.data as any as PortalInvite[]) || []);
-    setBranding((bRes.data as any as PortalBranding[]) || []);
+    setPortalUsers((puRes.data as unknown as PortalUser[]) || []);
+    setInvites((iRes.data as unknown as PortalInvite[]) || []);
+    setBranding((bRes.data as unknown as PortalBranding[]) || []);
     setLoading(false);
   }, []);
 
@@ -63,12 +63,12 @@ export default function AdminPortalManagement() {
     setInviting(true);
 
     // Create portal user record
-    const { error: puErr } = await supabase.from('client_portal_users' as any).insert({
+    const { error: puErr } = await supabase.from('client_portal_users').insert({
       client_id: inviteClientId,
       email: inviteEmail,
       full_name: inviteFullName || inviteEmail.split('@')[0],
       status: 'invited',
-    } as any);
+    });
 
     if (puErr && !puErr.message.includes('duplicate')) {
       toast.error(puErr.message);
@@ -77,11 +77,11 @@ export default function AdminPortalManagement() {
     }
 
     // Create invite
-    const { data: inv, error: invErr } = await supabase.from('client_portal_invites' as any).insert({
+    const { data: inv, error: invErr } = await supabase.from('client_portal_invites').insert({
       client_id: inviteClientId,
       email: inviteEmail,
       invited_by: user?.id,
-    } as any).select('*').single();
+    }).select('*').single();
 
     if (invErr) { toast.error(invErr.message); setInviting(false); return; }
 
@@ -147,7 +147,7 @@ export default function AdminPortalManagement() {
   };
 
   const revokeInvite = async (id: string) => {
-    await supabase.from('client_portal_invites' as any).update({ status: 'revoked' } as any).eq('id', id);
+    await supabase.from('client_portal_invites').update({ status: 'revoked' }).eq('id', id);
     await supabase.from('audit_log').insert({
       action: 'portal_invite_revoked', entity_type: 'client_portal_invites', entity_id: id, user_id: user?.id,
     });
@@ -157,21 +157,21 @@ export default function AdminPortalManagement() {
 
   const resendInvite = async (invite: PortalInvite) => {
     // Create a fresh invite for the same email/client
-    const { data: newInv, error: invErr } = await supabase.from('client_portal_invites' as any).insert({
+    const { data: newInv, error: invErr } = await supabase.from('client_portal_invites').insert({
       client_id: invite.client_id,
       email: invite.email,
       invited_by: user?.id,
-    } as any).select('*').single();
+    }).select('*').single();
 
     if (invErr) { toast.error(invErr.message); return; }
 
     // Revoke old one
-    await supabase.from('client_portal_invites' as any).update({ status: 'revoked' } as any).eq('id', invite.id);
+    await supabase.from('client_portal_invites').update({ status: 'revoked' }).eq('id', invite.id);
 
     await supabase.from('audit_log').insert({
       action: 'portal_invite_resent',
       entity_type: 'client_portal_invites',
-      entity_id: (newInv as any)?.id,
+      entity_id: (newInv as any)?.id,  // invite id from insert response
       user_id: user?.id,
       details: { email: invite.email, old_invite_id: invite.id },
     });
@@ -182,7 +182,7 @@ export default function AdminPortalManagement() {
 
   const toggleUserStatus = async (pu: PortalUser) => {
     const newStatus = pu.status === 'active' ? 'deactivated' : 'active';
-    await supabase.from('client_portal_users' as any).update({ status: newStatus } as any).eq('id', pu.id);
+    await supabase.from('client_portal_users').update({ status: newStatus }).eq('id', pu.id);
     await supabase.from('audit_log').insert({
       action: newStatus === 'active' ? 'portal_access_reactivated' : 'portal_user_deactivated',
       entity_type: 'client_portal_users', entity_id: pu.id, user_id: user?.id,
@@ -205,9 +205,9 @@ export default function AdminPortalManagement() {
 
     const existing = branding.find(b => b.client_id === brClientId);
     if (existing) {
-      await supabase.from('client_portal_branding' as any).update(payload as any).eq('id', existing.id);
+      await supabase.from('client_portal_branding').update(payload).eq('id', existing.id);
     } else {
-      await supabase.from('client_portal_branding' as any).insert(payload as any);
+      await supabase.from('client_portal_branding').insert(payload);
     }
 
     await supabase.from('audit_log').insert({

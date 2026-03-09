@@ -36,8 +36,8 @@ export default function AiAdsClientReportPage() {
       supabase.from('clients').select('id, name').order('name'),
       supabase.from('launch_requests' as any).select('id, client_id, status, execution_status, external_campaign_id, metadata, executed_at, platform')
         .in('status', ['completed', 'failed']).not('external_campaign_id', 'is', null).order('executed_at', { ascending: false }).limit(200),
-      supabase.from('campaign_performance_snapshots' as any).select('*').eq('entity_level', 'campaign').order('synced_at', { ascending: false }).limit(500),
-      supabase.from('ai_recommendations' as any).select('id, client_id, priority, status, recommendation_type, title, created_at')
+      supabase.from('campaign_performance_snapshots').select('*').eq('entity_level', 'campaign').order('synced_at', { ascending: false }).limit(500),
+      supabase.from('ai_recommendations').select('id, client_id, priority, status, recommendation_type, title, created_at')
         .order('created_at', { ascending: false }).limit(200),
       supabase.from('optimization_actions' as any).select('id, client_id, status, action_type, created_at')
         .order('created_at', { ascending: false }).limit(200),
