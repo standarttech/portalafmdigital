@@ -133,23 +133,20 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchDisplayName = useCallback(async () => {
-    if (!user) return;
-    // If simulating a specific user, show their name
-    const targetUserId = simulatedUser ? simulatedUser.userId : user.id;
-    const { data } = await supabase
-      .from('agency_users')
-      .select('display_name')
-      .eq('user_id', targetUserId)
-      .maybeSingle();
-    if (data?.display_name) {
-      setDisplayName(data.display_name);
-    } else if (simulatedUser) {
-      setDisplayName(simulatedUser.displayName);
-    } else {
-      setDisplayName(user.user_metadata?.display_name || user.email?.split('@')[0] || 'Admin');
-    }
-  }, [user, simulatedUser]);
+  // Display name — cached with react-query
+  const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
+  const { data: displayName = '' } = useQuery({
+    queryKey: ['dashboard-display-name', targetUserId],
+    queryFn: async () => {
+      if (!targetUserId) return '';
+      const { data } = await supabase.from('agency_users').select('display_name').eq('user_id', targetUserId).maybeSingle();
+      if (data?.display_name) return data.display_name;
+      if (simulatedUser) return simulatedUser.displayName;
+      return user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Admin';
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Load target user's client assignments for fully accurate scope
   useEffect(() => {
