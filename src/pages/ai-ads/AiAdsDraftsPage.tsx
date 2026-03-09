@@ -189,7 +189,7 @@ export default function AiAdsDraftsPage() {
 
   const load = useCallback(async () => {
     const [dRes, cRes] = await Promise.all([
-      supabase.from('campaign_drafts' as any).select('*').order('updated_at', { ascending: false }).limit(200),
+      supabase.from('campaign_drafts').select('*').order('updated_at', { ascending: false }).limit(200),
       supabase.from('clients').select('id, name').order('name'),
     ]);
     setDrafts((dRes.data as any[]) || []);
