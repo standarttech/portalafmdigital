@@ -178,7 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data } = await supabase
         .from('agency_users')
-        .select('agency_role, display_name')
+        .select('agency_role, display_name, avatar_url')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -197,6 +197,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           agencyRole: role,
           displayName: data?.display_name || null,
         }, activeSession.user.id);
+
+        // Save to remembered accounts (safe, no tokens)
+        if (role) {
+          upsertRememberedAccount({
+            userId: activeSession.user.id,
+            email: activeSession.user.email || '',
+            displayName: data?.display_name || null,
+            avatarUrl: data?.avatar_url || null,
+            accountType: 'internal',
+            roleLabel: role,
+            portalClientLabel: null,
+            entryRoute: '/dashboard',
+          });
+        }
       }
     } catch {
       setAgencyRole(null);
