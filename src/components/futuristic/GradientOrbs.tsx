@@ -1,8 +1,29 @@
-import { motion } from 'framer-motion';
+import { memo } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 
-// FIX #30-#33: Use CSS var-aligned colors per theme for consistent glow
-export default function GradientOrbs() {
+/**
+ * PERF: Replaced framer-motion infinite JS animations with pure CSS keyframes.
+ * framer-motion was updating style.transform every frame (~60fps), causing
+ * constant React reconciliation visible in session replay as rapid attribute mutations.
+ * CSS animations run on compositor thread, zero JS overhead.
+ */
+
+const orbKeyframes = `
+@keyframes orb1 {
+  0%, 100% { transform: translate(-10%, -5%); }
+  50% { transform: translate(5%, 10%); }
+}
+@keyframes orb2 {
+  0%, 100% { transform: translate(5%, 10%); }
+  50% { transform: translate(-10%, -5%); }
+}
+@keyframes orb3 {
+  0%, 100% { transform: translate(-5%, 5%); }
+  50% { transform: translate(8%, -8%); }
+}
+`;
+
+function GradientOrbsInner() {
   const { theme, colorScheme } = useTheme();
 
   const getOrbs = () => {
@@ -14,7 +35,6 @@ export default function GradientOrbs() {
       };
     }
     if (colorScheme === 'clean-light') {
-      // FIX #34: Much more subtle orbs on white/light bg
       return {
         primary: 'radial-gradient(circle, hsla(207, 60%, 55%, 0.05) 0%, transparent 70%)',
         secondary: 'radial-gradient(circle, hsla(260, 40%, 50%, 0.04) 0%, transparent 70%)',
@@ -28,7 +48,6 @@ export default function GradientOrbs() {
         accent: 'radial-gradient(circle, hsla(200, 80%, 50%, 0.06) 0%, transparent 70%)',
       };
     }
-    // Default dark
     return {
       primary: 'radial-gradient(circle, hsla(42, 87%, 55%, 0.10) 0%, transparent 70%)',
       secondary: 'radial-gradient(circle, hsla(260, 70%, 50%, 0.07) 0%, transparent 70%)',
@@ -40,27 +59,40 @@ export default function GradientOrbs() {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      <motion.div
-        className="absolute w-[600px] h-[600px] rounded-full"
-        style={{ background: orbs.primary, filter: 'blur(80px)' }}
-        animate={{ x: ['-10%', '5%', '-10%'], y: ['-5%', '10%', '-5%'] }}
-        transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-        initial={{ top: '10%', left: '60%' }}
+      <style>{orbKeyframes}</style>
+      <div
+        className="absolute w-[600px] h-[600px] rounded-full will-change-transform"
+        style={{
+          background: orbs.primary,
+          filter: 'blur(80px)',
+          top: '10%',
+          left: '60%',
+          animation: 'orb1 20s ease-in-out infinite',
+        }}
       />
-      <motion.div
-        className="absolute w-[500px] h-[500px] rounded-full"
-        style={{ background: orbs.secondary, filter: 'blur(80px)' }}
-        animate={{ x: ['5%', '-10%', '5%'], y: ['10%', '-5%', '10%'] }}
-        transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
-        initial={{ bottom: '10%', left: '20%' }}
+      <div
+        className="absolute w-[500px] h-[500px] rounded-full will-change-transform"
+        style={{
+          background: orbs.secondary,
+          filter: 'blur(80px)',
+          bottom: '10%',
+          left: '20%',
+          animation: 'orb2 25s ease-in-out infinite',
+        }}
       />
-      <motion.div
-        className="absolute w-[400px] h-[400px] rounded-full"
-        style={{ background: orbs.accent, filter: 'blur(60px)' }}
-        animate={{ x: ['-5%', '8%', '-5%'], y: ['5%', '-8%', '5%'] }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-        initial={{ top: '50%', right: '10%' }}
+      <div
+        className="absolute w-[400px] h-[400px] rounded-full will-change-transform"
+        style={{
+          background: orbs.accent,
+          filter: 'blur(60px)',
+          top: '50%',
+          right: '10%',
+          animation: 'orb3 18s ease-in-out infinite',
+        }}
       />
     </div>
   );
 }
+
+const GradientOrbs = memo(GradientOrbsInner);
+export default GradientOrbs;

@@ -99,7 +99,7 @@ export default function DashboardPage() {
     [dateRange, comparison, platform]
   );
 
-  const { kpis, chartData, platformData, clientsData, loading: metricsLoading } = useDashboardMetrics({
+  const { kpis, chartData, platformData, clientsData, loading: metricsLoading, hasRealData } = useDashboardMetrics({
     ...filters,
     customDateRange,
     clientIds: simulatedClientIds,
@@ -207,6 +207,26 @@ export default function DashboardPage() {
         return null;
     }
   };
+
+  if (metricsLoading && !kpis) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <DashboardControls
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          comparison={comparison}
+          onComparisonChange={setComparison}
+          platform={platform}
+          onPlatformChange={setPlatform}
+          customDateRange={customDateRange}
+          onCustomDateRangeChange={setCustomDateRange}
+          compareEnabled={compareEnabled}
+          onCompareEnabledChange={setCompareEnabled}
+        />
+        <DashboardSkeleton />
+      </div>
+    );
+  }
 
   return (
     <motion.div variants={containerAnim} initial="hidden" animate="show" className="space-y-4 sm:space-y-6">
