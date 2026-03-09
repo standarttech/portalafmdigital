@@ -134,7 +134,7 @@ export default function AiAdsOptimizationPage() {
   // ── Approve / Reject / Execute ──
   const approveAction = async (action: OptAction) => {
     if (!user) return;
-    const { error } = await supabase.from('optimization_actions' as any)
+    const { error } = await supabase.from('optimization_actions')
       .update({ status: 'approved', approved_by: user.id }).eq('id', action.id);
     if (error) { toast.error('Failed to approve'); return; }
     logGosAction('approve', 'optimization_action', action.id, `Approved: ${action.action_type}`, { clientId: action.client_id });
@@ -144,7 +144,7 @@ export default function AiAdsOptimizationPage() {
 
   const rejectAction = async (action: OptAction, reason: string) => {
     if (!user) return;
-    const { error } = await supabase.from('optimization_actions' as any)
+    const { error } = await supabase.from('optimization_actions')
       .update({ status: 'rejected', rejected_by: user.id, rejection_reason: reason }).eq('id', action.id);
     if (error) { toast.error('Failed to reject'); return; }
     logGosAction('reject', 'optimization_action', action.id, `Rejected: ${action.action_type}`, { clientId: action.client_id });
@@ -153,7 +153,7 @@ export default function AiAdsOptimizationPage() {
   };
 
   const cancelAction = async (action: OptAction) => {
-    const { error } = await supabase.from('optimization_actions' as any)
+    const { error } = await supabase.from('optimization_actions')
       .update({ status: 'cancelled' }).eq('id', action.id);
     if (error) { toast.error('Failed to cancel'); return; }
     logGosAction('cancel', 'optimization_action', action.id, `Cancelled: ${action.action_type}`, { clientId: action.client_id });
