@@ -1043,7 +1043,7 @@ export default function AfmDashboard() {
                   <PopoverContent className="w-auto p-0" align="end">
                     <Calendar
                       mode="range"
-                      selected={reportPick}
+                      selected={reportPick as any}
                       onSelect={(range) => {
                         setReportPick(range);
                         if (range?.from && range?.to) {
