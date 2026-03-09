@@ -275,8 +275,8 @@ function AfmMetaApiSection({ clientId }: { clientId: string }) {
 }
 
 export default function AfmDashboard() {
-  const { t, formatCurrency, formatNumber } = useLanguage();
-  const { agencyRole } = useAuth();
+  const { t, formatCurrency, formatNumber, language } = useLanguage();
+  const { agencyRole, user } = useAuth();
   const isAdmin = agencyRole === 'AgencyAdmin';
 
   const [agencyClient, setAgencyClient] = useState<AgencyClient | null>(null);
@@ -288,13 +288,22 @@ export default function AfmDashboard() {
   const [chartNormalized, setChartNormalized] = useState(true);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
 
-  // Date range
-  const [dateRange, setDateRange] = useState<DateRange>('30d');
-  const [comparison, setComparison] = useState<Comparison>('none');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>(() => ({
-    from: subDays(new Date(), 29), to: new Date(),
-  }));
-  const [compareEnabled, setCompareEnabled] = useState(false);
+  // Tasks
+  const [tasks, setTasks] = useState<{ id: string; title: string; description: string | null; status: string; due_date: string | null; created_at: string; }[]>([]);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [creatingTask, setCreatingTask] = useState(false);
+
+  // History
+  const [projectEvents, setProjectEvents] = useState<{ id: string; title: string; description: string | null; event_type: string; created_at: string; }[]>([]);
+  const [statusHistory, setStatusHistory] = useState<{ id: string; old_status: string | null; new_status: string; changed_at: string; notes: string | null; }[]>([]);
+  const [newEventNote, setNewEventNote] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+
+  // Report date picker
+  const [reportRange, setReportRange] = useState<{ from: Date; to: Date }>({ from: subDays(new Date(), 29), to: new Date() });
+  const [reportPick, setReportPick] = useState<{ from?: Date; to?: Date } | undefined>({ from: subDays(new Date(), 29), to: new Date() });
 
   const category: ClientCategory = useMemo(() => toClientCategory(agencyClient?.category || 'other'), [agencyClient?.category]);
 
