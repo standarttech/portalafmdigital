@@ -147,7 +147,7 @@ export default function AdminPortalManagement() {
   };
 
   const revokeInvite = async (id: string) => {
-    await supabase.from('client_portal_invites' as any).update({ status: 'revoked' } as any).eq('id', id);
+    await supabase.from('client_portal_invites').update({ status: 'revoked' }).eq('id', id);
     await supabase.from('audit_log').insert({
       action: 'portal_invite_revoked', entity_type: 'client_portal_invites', entity_id: id, user_id: user?.id,
     });
