@@ -1126,6 +1126,15 @@ export const translations = {
   'gos.integrationsDesc': t('Connect external tools, CRMs, and ad platforms in one hub', 'Подключайте внешние инструменты, CRM и рекламные платформы в одном хабе', 'Collega strumenti esterni, CRM e piattaforme pubblicitarie', 'Conecta herramientas externas, CRMs y plataformas de publicidad', 'ربط الأدوات الخارجية والCRM ومنصات الإعلانات', 'Connectez outils externes, CRM et plateformes pub'),
   'gos.leadRouting': t('Lead Routing', 'Маршрутизация лидов', 'Routing dei lead', 'Enrutamiento de leads', 'توجيه العملاء', 'Routage des leads'),
   'gos.leadRoutingDesc': t('Rule-based lead distribution to reps, pipelines, and automations', 'Распределение лидов по правилам между сотрудниками, воронками и автоматизациями', 'Distribuzione lead basata su regole', 'Distribución de leads basada en reglas', 'توزيع العملاء المحتملين بناءً على القواعد', 'Distribution de leads basée sur des règles'),
+  'gos.analytics': t('Analytics', 'Аналитика', 'Analisi', 'Analítica', 'التحليلات', 'Analytique'),
+  'gos.analyticsDesc': t('Track views, conversions, and funnel performance across Growth OS assets', 'Отслеживайте просмотры, конверсии и эффективность воронки по активам Growth OS', 'Traccia visualizzazioni, conversioni e performance del funnel', 'Rastrea vistas, conversiones y rendimiento del embudo', 'تتبّع المشاهدات والتحويلات وأداء القمع', 'Suivez vues, conversions et performance du funnel'),
+  'gos.experiments': t('Experiments', 'Эксперименты', 'Esperimenti', 'Experimentos', 'التجارب', 'Expériences'),
+  'gos.experimentsDesc': t('Manage variants and measure experiment results with analytics events', 'Управляйте вариантами и измеряйте результаты экспериментов через события аналитики', 'Gestisci varianti e misura i risultati degli esperimenti', 'Gestiona variantes y mide resultados de experimentos', 'إدارة المتغيرات وقياس نتائج التجارب', 'Gérez les variantes et mesurez les résultats'),
+  'gos.systemHealth': t('System Health', 'Здоровье системы', 'Salute del sistema', 'Salud del sistema', 'صحة النظام', 'Santé du système'),
+  'gos.systemHealthDesc': t('Monitor errors, failed submissions, and operational signals', 'Мониторинг ошибок, неуспешных отправок и операционных сигналов', 'Monitora errori, invii falliti e segnali operativi', 'Supervisa errores, envíos fallidos y señales operativas', 'راقب الأخطاء وعمليات الإرسال الفاشلة', 'Surveillez erreurs, envois échoués et signaux opérationnels'),
+  'gos.integrityChecks': t('Integrity Checks', 'Проверки целостности', 'Controlli di integrità', 'Comprobaciones de integridad', 'فحوصات السلامة', "Contrôles d'intégrité"),
+  'gos.integrityChecksDesc': t('Validate data consistency and detect anomalies early', 'Проверяйте консистентность данных и заранее выявляйте аномалии', 'Valida coerenza dei dati e rileva anomalie', 'Valida consistencia de datos y detecta anomalías', 'تحقق من اتساق البيانات واكتشف الشذوذ', 'Validez cohérence des données et détectez les anomalies'),
+
 
   // AI Ads Copilot
   'nav.aiAds': t('AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot'),
