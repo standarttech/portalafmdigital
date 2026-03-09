@@ -970,8 +970,6 @@ export default function AfmDashboard() {
                 <PlatformSheetRow clientId={agencyClient.id} platform="tiktok" label="TikTok Ads" fieldName="tiktok_sheet_url" />
               </CardContent>
             </Card>
-
-            <AfmMetaApiSection clientId={agencyClient.id} />
           </TabsContent>
 
           {/* CAMPAIGNS TAB */}
