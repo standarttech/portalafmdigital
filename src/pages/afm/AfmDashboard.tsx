@@ -716,11 +716,26 @@ export default function AfmDashboard() {
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Table2 className="h-3.5 w-3.5" /> {t('afm.dash.daily' as any)}
             </TabsTrigger>
+            <TabsTrigger value="campaigns" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <Play className="h-3.5 w-3.5" /> {t('afm.dash.campaigns' as any)}
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <ListTodo className="h-3.5 w-3.5" /> {t('afm.dash.tasks' as any)}
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <FileText className="h-3.5 w-3.5" /> {t('afm.dash.reports' as any)}
+            </TabsTrigger>
             <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Link2 className="h-3.5 w-3.5" /> {t('dashboard.dataSources')}
             </TabsTrigger>
             <TabsTrigger value="api" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Zap className="h-3.5 w-3.5" /> {t('afm.dash.apiConnection' as any)}
+            </TabsTrigger>
+            <TabsTrigger value="webhooks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <Zap className="h-3.5 w-3.5" /> {t('afm.dash.webhooks' as any)}
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <History className="h-3.5 w-3.5" /> {t('afm.dash.history' as any)}
             </TabsTrigger>
           </TabsList>
 
