@@ -64,8 +64,8 @@ export default function AiInfraProvidersPage() {
 
   const load = useCallback(async () => {
     const [pRes, sRes] = await Promise.all([
-      supabase.from('ai_providers' as any).select('*').order('is_default', { ascending: false }).order('name'),
-      supabase.from('ai_provider_secrets' as any).select('*'),
+      supabase.from('ai_providers').select('*').order('is_default', { ascending: false }).order('name'),
+      supabase.from('ai_provider_secrets').select('*'),
     ]);
     const provList = (pRes.data as any[]) || [];
     setProviders(provList);
