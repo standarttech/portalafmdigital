@@ -10,6 +10,25 @@ export interface SimulatedUser {
   role: AgencyRole;
 }
 
+export interface LinkedAccount {
+  userId: string;
+  email: string;
+  agencyRole: AgencyRole;
+  displayName: string | null;
+  lastUsedAt: string;
+  isCurrent: boolean;
+}
+
+interface StoredLinkedAccount {
+  userId: string;
+  email: string;
+  agencyRole: AgencyRole;
+  displayName: string | null;
+  accessToken: string;
+  refreshToken: string;
+  lastUsedAt: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -19,13 +38,58 @@ interface AuthContextType {
   setViewAsRole: (role: AgencyRole) => void;
   simulatedUser: SimulatedUser | null;
   setSimulatedUser: (u: SimulatedUser | null) => void;
+  linkedAccounts: LinkedAccount[];
   loading: boolean;
   adminExists: boolean | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  addAccount: (email: string, password: string) => Promise<{ error: string | null }>;
+  switchAccount: (userId: string) => Promise<{ error: string | null }>;
+  removeLinkedAccount: (userId: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   setupAdmin: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   refreshRole: () => void;
 }
+
+const LINKED_ACCOUNTS_KEY = 'afm_linked_accounts';
+
+const readStoredLinkedAccounts = (): StoredLinkedAccount[] => {
+  try {
+    const raw = localStorage.getItem(LINKED_ACCOUNTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((a: any) =>
+      typeof a?.userId === 'string' &&
+      typeof a?.email === 'string' &&
+      typeof a?.accessToken === 'string' &&
+      typeof a?.refreshToken === 'string'
+    );
+  } catch {
+    return [];
+  }
+};
+
+const writeStoredLinkedAccounts = (accounts: StoredLinkedAccount[]) => {
+  localStorage.setItem(LINKED_ACCOUNTS_KEY, JSON.stringify(accounts));
+};
+
+const toLinkedAccountView = (accounts: StoredLinkedAccount[], currentUserId: string | null): LinkedAccount[] => {
+  return [...accounts]
+    .sort((a, b) => {
+      const aCurrent = a.userId === currentUserId;
+      const bCurrent = b.userId === currentUserId;
+      if (aCurrent !== bCurrent) return aCurrent ? -1 : 1;
+      return new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime();
+    })
+    .map((a) => ({
+      userId: a.userId,
+      email: a.email,
+      agencyRole: a.agencyRole,
+      displayName: a.displayName,
+      lastUsedAt: a.lastUsedAt,
+      isCurrent: a.userId === currentUserId,
+    }));
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -42,12 +106,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return cached !== null ? cached === 'true' : null;
   });
 
+  const storedAccountsRef = useRef<StoredLinkedAccount[]>(readStoredLinkedAccounts());
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>(() =>
+    toLinkedAccountView(storedAccountsRef.current, null)
+  );
+
   const [viewAsRole, setViewAsRole] = useState<AgencyRole>(null);
   const [simulatedUser, setSimulatedUser] = useState<SimulatedUser | null>(null);
   const lastAuthUserIdRef = useRef<string | null>(null);
 
   // If simulating a specific user, use their role; otherwise use viewAsRole or real role
   const effectiveRole = simulatedUser ? simulatedUser.role : (viewAsRole || agencyRole);
+
+  const syncLinkedAccounts = useCallback((currentUserId: string | null) => {
+    setLinkedAccounts(toLinkedAccountView(storedAccountsRef.current, currentUserId));
+  }, []);
+
+  const upsertLinkedAccount = useCallback((
+    payload: {
+      session: Session;
+      user: User;
+      agencyRole?: AgencyRole;
+      displayName?: string | null;
+    },
+    currentUserId?: string | null,
+  ) => {
+    if (!payload.session.refresh_token) return;
+
+    const existing = storedAccountsRef.current.find(a => a.userId === payload.user.id);
+    const updated: StoredLinkedAccount = {
+      userId: payload.user.id,
+      email: payload.user.email || existing?.email || '',
+      agencyRole: payload.agencyRole ?? existing?.agencyRole ?? null,
+      displayName: payload.displayName ?? existing?.displayName ?? (payload.user.user_metadata?.display_name || null),
+      accessToken: payload.session.access_token,
+      refreshToken: payload.session.refresh_token,
+      lastUsedAt: new Date().toISOString(),
+    };
+
+    const next = [updated, ...storedAccountsRef.current.filter(a => a.userId !== payload.user.id)].slice(0, 5);
+    storedAccountsRef.current = next;
+    writeStoredLinkedAccounts(next);
+    syncLinkedAccounts(currentUserId ?? user?.id ?? null);
+  }, [syncLinkedAccounts, user?.id]);
 
   const checkAdminExists = useCallback(async () => {
     try {
@@ -66,11 +167,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const fetchRole = useCallback(async (userId: string) => {
+  const fetchRole = useCallback(async (userId: string, activeSession?: Session | null) => {
     try {
       const { data } = await supabase
         .from('agency_users')
-        .select('agency_role')
+        .select('agency_role, display_name')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -81,11 +182,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         localStorage.removeItem('afm_cached_role');
       }
+
+      if (activeSession?.user) {
+        upsertLinkedAccount({
+          session: activeSession,
+          user: activeSession.user,
+          agencyRole: role,
+          displayName: data?.display_name || null,
+        }, activeSession.user.id);
+      }
     } catch {
       setAgencyRole(null);
       localStorage.removeItem('afm_cached_role');
     }
-  }, []);
+  }, [upsertLinkedAccount]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -99,6 +209,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (prev?.access_token === newSession?.access_token) return prev;
             return newSession;
           });
+          if (newSession?.user) {
+            upsertLinkedAccount({ session: newSession, user: newSession.user }, newSession.user.id);
+          }
           return;
         }
 
@@ -108,7 +221,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (newSession?.user) {
           // Re-fetch role only when auth identity actually changes
           if (prevUserId !== nextUserId) {
-            setTimeout(() => fetchRole(newSession.user.id), 0);
+            setTimeout(() => fetchRole(newSession.user.id, newSession), 0);
+          } else {
+            upsertLinkedAccount({ session: newSession, user: newSession.user }, newSession.user.id);
           }
         } else {
           setAgencyRole(null);
@@ -127,10 +242,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSimulatedUser(null);
           localStorage.removeItem('afm_cached_role');
           lastAuthUserIdRef.current = null;
+          syncLinkedAccounts(null);
           return;
         }
 
         lastAuthUserIdRef.current = nextUserId;
+        syncLinkedAccounts(nextUserId);
       }
     );
 
@@ -139,22 +256,100 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       lastAuthUserIdRef.current = session?.user?.id ?? null;
       if (session?.user) {
-        fetchRole(session.user.id);
+        fetchRole(session.user.id, session);
       } else {
         localStorage.removeItem('afm_cached_role');
         setAgencyRole(null);
       }
+      syncLinkedAccounts(session?.user?.id ?? null);
       setLoading(false);
     });
 
     checkAdminExists();
 
     return () => subscription.unsubscribe();
-  }, [fetchRole, checkAdminExists]);
+  }, [fetchRole, checkAdminExists, syncLinkedAccounts, upsertLinkedAccount]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
+    return { error: null };
+  };
+
+  const addAccount = async (email: string, password: string) => {
+    const currentSession = session ?? (await supabase.auth.getSession()).data.session;
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    if (!data.session || !data.user) return { error: 'Failed to sign in account' };
+
+    const { data: roleData } = await supabase
+      .from('agency_users')
+      .select('agency_role, display_name')
+      .eq('user_id', data.user.id)
+      .maybeSingle();
+
+    upsertLinkedAccount({
+      session: data.session,
+      user: data.user,
+      agencyRole: (roleData?.agency_role as AgencyRole) ?? null,
+      displayName: roleData?.display_name || null,
+    }, currentSession?.user?.id ?? data.user.id);
+
+    if (currentSession && currentSession.user.id !== data.user.id) {
+      const { error: restoreError } = await supabase.auth.setSession({
+        access_token: currentSession.access_token,
+        refresh_token: currentSession.refresh_token,
+      });
+      if (restoreError) return { error: restoreError.message };
+    } else {
+      fetchRole(data.user.id, data.session);
+    }
+
+    return { error: null };
+  };
+
+  const switchAccount = async (userId: string) => {
+    const target = storedAccountsRef.current.find(a => a.userId === userId);
+    if (!target) return { error: 'Account not found' };
+
+    const { error } = await supabase.auth.setSession({
+      access_token: target.accessToken,
+      refresh_token: target.refreshToken,
+    });
+
+    if (error) {
+      const filtered = storedAccountsRef.current.filter(a => a.userId !== userId);
+      storedAccountsRef.current = filtered;
+      writeStoredLinkedAccounts(filtered);
+      syncLinkedAccounts(user?.id ?? null);
+      return { error: error.message };
+    }
+
+    return { error: null };
+  };
+
+  const removeLinkedAccount = async (userId: string) => {
+    const before = storedAccountsRef.current;
+    const filtered = before.filter(a => a.userId !== userId);
+    storedAccountsRef.current = filtered;
+    writeStoredLinkedAccounts(filtered);
+
+    const isCurrent = user?.id === userId;
+    if (isCurrent) {
+      const fallback = filtered[0];
+      if (fallback) {
+        const { error } = await supabase.auth.setSession({
+          access_token: fallback.accessToken,
+          refresh_token: fallback.refreshToken,
+        });
+        if (error) return { error: error.message };
+      } else {
+        await supabase.auth.signOut();
+      }
+    }
+
+    syncLinkedAccounts(isCurrent ? (filtered[0]?.userId ?? null) : (user?.id ?? null));
     return { error: null };
   };
 
@@ -205,14 +400,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshRole = useCallback(() => {
-    if (user) fetchRole(user.id);
-  }, [user, fetchRole]);
+    if (user) fetchRole(user.id, session);
+  }, [user, fetchRole, session]);
 
   return (
     <AuthContext.Provider value={{
       user, session, agencyRole, effectiveRole, viewAsRole, setViewAsRole,
       simulatedUser, setSimulatedUser,
-      loading, adminExists, signIn, signOut, setupAdmin, refreshRole,
+      linkedAccounts,
+      loading, adminExists, signIn, addAccount, switchAccount, removeLinkedAccount, signOut, setupAdmin, refreshRole,
     }}>
       {children}
     </AuthContext.Provider>
