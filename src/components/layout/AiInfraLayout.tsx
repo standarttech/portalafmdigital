@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Cpu, Server, GitBranch,
-  ListTodo, ScrollText, HeartPulse
+  ListTodo, ScrollText, HeartPulse, BookOpen
 } from 'lucide-react';
 import { useState } from 'react';
 import AppHeader from '@/components/layout/AppHeader';
