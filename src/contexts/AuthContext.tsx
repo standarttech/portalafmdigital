@@ -272,6 +272,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    // Prune stale remembered accounts on init
+    pruneStaleAccounts(72);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
