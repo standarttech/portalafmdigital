@@ -125,28 +125,37 @@ export default function SetPasswordPage() {
     // CRITICAL: Set session flag FIRST so App.tsx won't re-intercept on USER_UPDATED event
     sessionStorage.setItem('password_setup_done', '1');
 
-    // Clear DB flag before updateUser triggers USER_UPDATED
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('user_settings')
+      const { error: settingsError } = await supabase
+        .from('user_settings')
         .update({ needs_password_setup: false })
         .eq('user_id', user.id);
+
+      if (settingsError) {
+        sessionStorage.removeItem('password_setup_done');
+        toast.error(settingsError.message);
+        setIsLoading(false);
+        return;
+      }
     }
 
     // NOW update password
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      // If same_password error, password was already set — skip ahead
+      // If same_password error, password was already set — continue onboarding without looping
       if (error.message?.toLowerCase().includes('same password') || (error as any).code === 'same_password') {
         toast.success('Password already set!');
         setIsLoading(false);
         setStep('mfa-offer');
         return;
       }
-      // Rollback both flags on error
+
+      // Rollback both flags on hard error
       sessionStorage.removeItem('password_setup_done');
       if (user) {
-        await supabase.from('user_settings')
+        await supabase
+          .from('user_settings')
           .update({ needs_password_setup: true })
           .eq('user_id', user.id);
       }
@@ -162,8 +171,30 @@ export default function SetPasswordPage() {
 
   const handleEnrollMfa = async () => {
     setMfaEnrolling(true);
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', issuer: 'AFM DIGITAL' });
-    if (error || !data) { toast.error(error?.message || 'Failed to start MFA setup'); setMfaEnrolling(false); return; }
+
+    // Clean stale unverified factors to avoid duplicate-factor lockouts.
+    const { data: factorsData } = await supabase.auth.mfa.listFactors();
+    const unverifiedFactors = (factorsData?.totp || []).filter((f) => f.status !== 'verified');
+    if (unverifiedFactors.length > 0) {
+      await Promise.all(
+        unverifiedFactors.map((f) =>
+          supabase.auth.mfa.unenroll({ factorId: f.id }).catch(() => null),
+        ),
+      );
+    }
+
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      issuer: 'AFM DIGITAL',
+      friendlyName: 'AFM Digital Authenticator',
+    });
+
+    if (error || !data) {
+      toast.error(error?.message || 'Failed to start MFA setup');
+      setMfaEnrolling(false);
+      return;
+    }
+
     setFactorId(data.id);
     setQrCode(data.totp.qr_code);
     setTotpSecret(data.totp.secret);
