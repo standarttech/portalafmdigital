@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import AppHeader from '@/components/layout/AppHeader';
+import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
 
 const navItems = [
   { label: 'Providers', icon: Server, path: '/ai-infra/providers' },
@@ -83,6 +84,7 @@ export default function AiInfraLayout() {
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
+      <FuturisticOverlay />
       {isMobile ? (
         <div className="fixed top-0 left-0 z-40 h-14 flex items-center px-3">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

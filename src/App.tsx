@@ -132,10 +132,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const GlossaryPageWrapper = React.forwardRef<HTMLDivElement>((_, ref) => (
-  <div ref={ref}><GlossaryPage /></div>
-));
-GlossaryPageWrapper.displayName = 'GlossaryPageWrapper';
 
 function AppRoutes() {
   const { user, loading, adminExists, signOut, agencyRole, effectiveRole } = useAuth();
@@ -272,6 +268,7 @@ function AppRoutes() {
         <Route path="/scaling-stack/apply/thanks" element={<ScalingStackThanks />} />
         <Route path="/scaling-stack/privacy" element={<ScalingStackPrivacy />} />
         <Route path="/scaling-stack/terms" element={<ScalingStackTerms />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     );
   }
