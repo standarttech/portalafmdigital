@@ -54,32 +54,64 @@ export default function DataStatusPanel({ isAdmin }: Props) {
   const [syncData, setSyncData] = useState<SyncItem[]>([]);
 
   const fetchSync = useCallback(async () => {
-    const { data } = await supabase
+    const { data: pcData } = await supabase
       .from('platform_connections')
       .select('platform, sync_status, last_sync_at')
       .eq('is_active', true);
 
-    if (!data || data.length === 0) {
+    // For API-based Meta sync, `platform_connections.last_sync_at` can lag behind actual hourly imports.
+    let metaApiLastSyncAt: string | null = null;
+    if (isAdmin) {
+      const { data: metaAccounts } = await supabase
+        .from('ad_accounts')
+        .select('id, platform_connections!inner(platform)')
+        .eq('is_active', true)
+        .eq('platform_connections.platform', 'meta');
+
+      const metaAccountIds = (metaAccounts as any[] | null | undefined)?.map((a) => a.id).filter(Boolean) || [];
+
+      if (metaAccountIds.length > 0) {
+        const { data: metricRows } = await supabase
+          .from('ad_level_metrics')
+          .select('created_at')
+          .in('ad_account_id', metaAccountIds)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        metaApiLastSyncAt = (metricRows as any[] | null | undefined)?.[0]?.created_at ?? null;
+      }
+    }
+
+    const data = pcData || [];
+    if ((data.length === 0) && !metaApiLastSyncAt) {
       setSyncData([]);
       return;
     }
 
     // Group by platform, take latest sync per platform
     const byPlatform = new Map<string, { sync_status: string | null; last_sync_at: string | null }>();
-    data.forEach(row => {
+    data.forEach((row) => {
       const existing = byPlatform.get(row.platform);
       if (!existing || (row.last_sync_at && (!existing.last_sync_at || row.last_sync_at > existing.last_sync_at))) {
         byPlatform.set(row.platform, row);
       }
     });
 
+    // Prefer API-import freshness for Meta when available
+    if (metaApiLastSyncAt) {
+      const existing = byPlatform.get('meta');
+      if (!existing || !existing.last_sync_at || metaApiLastSyncAt > existing.last_sync_at) {
+        byPlatform.set('meta', { sync_status: 'success', last_sync_at: metaApiLastSyncAt });
+      }
+    }
+
     const items: SyncItem[] = [];
     byPlatform.forEach((row, platform) => {
       const label = platform === 'meta' ? 'Meta Ads' : platform === 'google' ? 'Google Ads' : 'TikTok Ads';
-      items.push({ platform: label, lastSync: row.last_sync_at, status: mapSyncStatus(row) });
+      items.push({ platform: label, lastSync: row.last_sync_at, status: mapSyncStatus(row, platform) });
     });
     setSyncData(items);
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => { fetchSync(); }, [fetchSync]);
 
