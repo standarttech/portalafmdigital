@@ -48,7 +48,9 @@ export default function GosOverviewPage() {
 
       {/* KPI Grid */}
       {isLoading ? (
-        <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => <Card key={i}><CardContent className="p-4 h-[72px]"><Skeleton className="h-full w-full" /></CardContent></Card>)}
+        </div>
       ) : metrics ? (
         <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <KpiCard label="Published Forms" value={metrics.publishedForms} icon={FormInput} color="bg-violet-500/10 text-violet-400" />
