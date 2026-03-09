@@ -1142,6 +1142,23 @@ export const translations = {
   // AI Infrastructure
   'nav.aiInfra': t('AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure', 'AI Infrastructure'),
 
+  // AFM Dashboard extra tabs
+  'afm.dash.campaigns': t('Campaigns', 'Кампании', 'Campagne', 'Campañas', 'الحملات', 'Campagnes'),
+  'afm.dash.tasks': t('Tasks', 'Задачи', 'Attività', 'Tareas', 'المهام', 'Tâches'),
+  'afm.dash.reports': t('Reports', 'Отчёты', 'Report', 'Informes', 'التقارير', 'Rapports'),
+  'afm.dash.webhooks': t('Webhooks', 'Вебхуки', 'Webhook', 'Webhooks', 'الويب هوك', 'Webhooks'),
+  'afm.dash.history': t('History', 'История', 'Cronologia', 'Historial', 'السجل', 'Historique'),
+  'afm.dash.downloadPdf': t('Download PDF', 'Скачать PDF', 'Scarica PDF', 'Descargar PDF', 'تحميل PDF', 'Télécharger PDF'),
+  'afm.dash.reportPeriod': t('Report Period', 'Период отчёта', 'Periodo del report', 'Período del informe', 'فترة التقرير', 'Période du rapport'),
+  'afm.dash.generateReport': t('Generate Report', 'Создать отчёт', 'Genera report', 'Generar informe', 'إنشاء تقرير', 'Générer un rapport'),
+  'afm.dash.noTasks': t('No tasks yet', 'Задач пока нет', 'Nessuna attività', 'Sin tareas aún', 'لا توجد مهام بعد', 'Pas encore de tâches'),
+  'afm.dash.noHistory': t('No history yet', 'Истории пока нет', 'Nessuna cronologia', 'Sin historial', 'لا يوجد سجل بعد', "Pas d'historique"),
+  'afm.dash.addTask': t('Add Task', 'Добавить задачу', 'Aggiungi attività', 'Añadir tarea', 'إضافة مهمة', 'Ajouter une tâche'),
+
+  // AI guides
+  'ai.guide': t('Guide', 'Руководство', 'Guida', 'Guía', 'دليل', 'Guide'),
+  'ai.howItWorks': t('How it works', 'Как это работает', 'Come funziona', 'Cómo funciona', 'كيف يعمل', 'Comment ça marche'),
+
 } as const;
 
 export type TranslationKey = keyof typeof translations;

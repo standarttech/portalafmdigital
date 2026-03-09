@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   DollarSign, Users, TrendingUp, Eye, MousePointerClick, BarChart3,
   Table2, Settings2, GripVertical, Wallet, Zap, RefreshCw, Loader2,
-  ShoppingBag, ShoppingCart, CreditCard, Sheet, Link2,
+  ShoppingBag, ShoppingCart, CreditCard, Sheet, Link2, Play, ListTodo,
+  FileText, History, Plus, Download, CalendarIcon, MessageSquare, CalendarClock,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import ConversionFunnel from '@/components/client/ConversionFunnel';
+import CampaignsBreakdownTab from '@/components/client/CampaignsBreakdownTab';
+import ClientWebhooks from '@/components/client/ClientWebhooks';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import { Calendar } from '@/components/ui/calendar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import {
   ALL_METRIC_COLUMNS, CATEGORY_DEFAULTS, CATEGORY_KPIS, CATEGORY_CHART_METRICS,
   toClientCategory, computeDailyRow, formatMetricValue, type ClientCategory,
@@ -267,8 +275,8 @@ function AfmMetaApiSection({ clientId }: { clientId: string }) {
 }
 
 export default function AfmDashboard() {
-  const { t, formatCurrency, formatNumber } = useLanguage();
-  const { agencyRole } = useAuth();
+  const { t, formatCurrency, formatNumber, language } = useLanguage();
+  const { agencyRole, user } = useAuth();
   const isAdmin = agencyRole === 'AgencyAdmin';
 
   const [agencyClient, setAgencyClient] = useState<AgencyClient | null>(null);
@@ -280,6 +288,19 @@ export default function AfmDashboard() {
   const [chartNormalized, setChartNormalized] = useState(true);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
 
+  // Tasks
+  const [tasks, setTasks] = useState<{ id: string; title: string; description: string | null; status: string; due_date: string | null; created_at: string; }[]>([]);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [creatingTask, setCreatingTask] = useState(false);
+
+  // History
+  const [projectEvents, setProjectEvents] = useState<{ id: string; title: string; description: string | null; event_type: string; created_at: string; }[]>([]);
+  const [statusHistory, setStatusHistory] = useState<{ id: string; old_status: string | null; new_status: string; changed_at: string; notes: string | null; }[]>([]);
+  const [newEventNote, setNewEventNote] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+
   // Date range
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [comparison, setComparison] = useState<Comparison>('none');
@@ -287,6 +308,10 @@ export default function AfmDashboard() {
     from: subDays(new Date(), 29), to: new Date(),
   }));
   const [compareEnabled, setCompareEnabled] = useState(false);
+
+  // Report date picker
+  const [reportRange, setReportRange] = useState<{ from: Date; to: Date }>({ from: subDays(new Date(), 29), to: new Date() });
+  const [reportPick, setReportPick] = useState<{ from?: Date; to?: Date } | undefined>({ from: subDays(new Date(), 29), to: new Date() });
 
   const category: ClientCategory = useMemo(() => toClientCategory(agencyClient?.category || 'other'), [agencyClient?.category]);
 
@@ -382,6 +407,46 @@ export default function AfmDashboard() {
   }, [agencyClient]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Fetch tasks
+  const fetchTasks = useCallback(async () => {
+    if (!agencyClient) return;
+    const { data } = await supabase.from('tasks').select('id, title, description, status, due_date, created_at').eq('client_id', agencyClient.id).order('created_at', { ascending: false });
+    if (data) setTasks(data as any[]);
+  }, [agencyClient]);
+
+  // Fetch history
+  const fetchHistory = useCallback(async () => {
+    if (!agencyClient) return;
+    const [eventsRes, statusRes] = await Promise.all([
+      supabase.from('project_events').select('*').eq('client_id', agencyClient.id).order('created_at', { ascending: false }),
+      supabase.from('client_status_history').select('*').eq('client_id', agencyClient.id).order('changed_at', { ascending: false }),
+    ]);
+    setProjectEvents(eventsRes.data || []);
+    setStatusHistory(statusRes.data || []);
+  }, [agencyClient]);
+
+  useEffect(() => { fetchTasks(); fetchHistory(); }, [fetchTasks, fetchHistory]);
+
+  const handleCreateTask = async () => {
+    if (!agencyClient || !newTaskTitle.trim()) return;
+    setCreatingTask(true);
+    await supabase.from('tasks').insert({ client_id: agencyClient.id, title: newTaskTitle.trim(), description: newTaskDesc.trim() || null, created_by: user?.id });
+    setCreatingTask(false);
+    toast.success(t('tasks.taskCreated'));
+    setTaskDialogOpen(false); setNewTaskTitle(''); setNewTaskDesc('');
+    fetchTasks();
+  };
+
+  const handleToggleTaskStatus = async (task: typeof tasks[0]) => {
+    const nextStatus = task.status === 'completed' ? 'pending' : task.status === 'pending' ? 'in_progress' : 'completed';
+    await supabase.from('tasks').update({ status: nextStatus }).eq('id', task.id);
+    fetchTasks();
+  };
+
+  const handleDownloadPdf = () => {
+    window.print();
+  };
 
   // Platform data check
   const platformHasData = useMemo(() => ({
@@ -651,11 +716,26 @@ export default function AfmDashboard() {
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Table2 className="h-3.5 w-3.5" /> {t('afm.dash.daily' as any)}
             </TabsTrigger>
+            <TabsTrigger value="campaigns" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <Play className="h-3.5 w-3.5" /> {t('afm.dash.campaigns' as any)}
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <ListTodo className="h-3.5 w-3.5" /> {t('afm.dash.tasks' as any)}
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <FileText className="h-3.5 w-3.5" /> {t('afm.dash.reports' as any)}
+            </TabsTrigger>
             <TabsTrigger value="connections" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Link2 className="h-3.5 w-3.5" /> {t('dashboard.dataSources')}
             </TabsTrigger>
             <TabsTrigger value="api" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
               <Zap className="h-3.5 w-3.5" /> {t('afm.dash.apiConnection' as any)}
+            </TabsTrigger>
+            <TabsTrigger value="webhooks" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <Zap className="h-3.5 w-3.5" /> {t('afm.dash.webhooks' as any)}
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
+              <History className="h-3.5 w-3.5" /> {t('afm.dash.history' as any)}
             </TabsTrigger>
           </TabsList>
 
@@ -895,9 +975,199 @@ export default function AfmDashboard() {
             </Card>
           </TabsContent>
 
-          {/* API CONNECTION TAB */}
-          <TabsContent value="api" className="space-y-4">
-            <AfmMetaApiSection clientId={agencyClient.id} />
+          {/* CAMPAIGNS TAB */}
+          <TabsContent value="campaigns" className="space-y-4">
+            <CampaignsBreakdownTab
+              clientId={agencyClient.id}
+              dateFrom={customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
+              dateTo={customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
+            />
+          </TabsContent>
+
+          {/* TASKS TAB */}
+          <TabsContent value="tasks" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{t('afm.dash.tasks' as any)}</h3>
+              <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+                <DialogTrigger asChild><Button size="sm" className="gap-2"><Plus className="h-4 w-4" />{t('afm.dash.addTask' as any)}</Button></DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>{t('afm.dash.addTask' as any)}</DialogTitle></DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2"><Label>{t('common.title')} *</Label><Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder={t('common.title')} /></div>
+                    <div className="space-y-2"><Label>{t('common.description')}</Label><Input value={newTaskDesc} onChange={(e) => setNewTaskDesc(e.target.value)} placeholder={t('common.description')} /></div>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">{t('common.cancel')}</Button></DialogClose>
+                    <Button onClick={handleCreateTask} disabled={creatingTask}>{creatingTask ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{t('common.create')}</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+            {tasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <ListTodo className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="font-medium text-foreground">{t('afm.dash.noTasks' as any)}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">{tasks.map(task => (
+                <Card key={task.id} className="glass-card"><CardContent className="py-3 px-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button onClick={() => handleToggleTaskStatus(task)} className="flex-shrink-0">
+                      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.status === 'completed' ? 'bg-success border-success' : task.status === 'in_progress' ? 'border-info' : 'border-muted-foreground/30'}`}>
+                        {task.status === 'completed' && <span className="text-white text-xs">✓</span>}
+                      </div>
+                    </button>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>{task.title}</p>
+                      {task.description && <p className="text-xs text-muted-foreground truncate">{task.description}</p>}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] flex-shrink-0">{t(`common.${task.status}` as any)}</Badge>
+                </CardContent></Card>
+              ))}</div>
+            )}
+          </TabsContent>
+
+          {/* REPORTS TAB */}
+          <TabsContent value="reports" className="space-y-4 print-report">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold">{t('afm.dash.reports' as any)}</h3>
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {format(reportRange.from, 'dd.MM.yyyy')} — {format(reportRange.to, 'dd.MM.yyyy')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="range"
+                      selected={reportPick as any}
+                      onSelect={(range) => {
+                        setReportPick(range);
+                        if (range?.from && range?.to) {
+                          setReportRange({ from: range.from, to: range.to });
+                        }
+                      }}
+                      numberOfMonths={2}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleDownloadPdf}>
+                  <Download className="h-3.5 w-3.5" /> {t('afm.dash.downloadPdf' as any)}
+                </Button>
+              </div>
+            </div>
+            <Card className="glass-card">
+              <CardContent className="p-4 sm:p-6 space-y-4">
+                <div className="text-center pb-4 border-b border-border/50">
+                  <h2 className="text-xl font-bold">AFM Digital — {t('afm.dash.reports' as any)}</h2>
+                  <p className="text-sm text-muted-foreground">{format(reportRange.from, 'dd.MM.yyyy')} — {format(reportRange.to, 'dd.MM.yyyy')}</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {kpiCards.map(kpi => (
+                    <div key={kpi.key} className="border border-border/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                      <p className="text-lg font-bold">{kpi.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="spreadsheet-table">
+                    <thead><tr>{orderedVisibleColumns.slice(0, 8).map(col => (
+                      <th key={col.key} className={col.right ? 'text-right' : ''}>{t(col.labelKey as TranslationKey)}</th>
+                    ))}</tr></thead>
+                    <tbody>
+                      {dailyTableData.slice(-14).map(row => (
+                        <tr key={row.date}>{orderedVisibleColumns.slice(0, 8).map(col => (
+                          <td key={col.key} className={col.right ? 'text-right' : col.key === 'date' ? 'font-medium' : 'text-muted-foreground'}>
+                            {col.key === 'date' ? row.date : formatMetricValue(col.key, (row as any)[col.key] || 0, formatCurrency, formatNumber)}
+                          </td>
+                        ))}</tr>
+                      ))}
+                      <tr className="totals-row">{orderedVisibleColumns.slice(0, 8).map(col => (
+                        <td key={col.key} className={`${col.right ? 'text-right' : ''} font-bold`}>
+                          {col.key === 'date' ? 'TOTAL' : formatMetricValue(col.key, (totals as any)[col.key] || 0, formatCurrency, formatNumber)}
+                        </td>
+                      ))}</tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* WEBHOOKS TAB */}
+          <TabsContent value="webhooks" className="space-y-4">
+            <ClientWebhooks clientId={agencyClient.id} />
+          </TabsContent>
+
+          {/* HISTORY TAB */}
+          <TabsContent value="history" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{t('afm.dash.history' as any)}</h3>
+            </div>
+            {statusHistory.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t('history.statusChanges' as any)}</h4>
+                {statusHistory.map(sh => (
+                  <Card key={sh.id} className="glass-card">
+                    <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <CalendarClock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-sm"><span className="text-muted-foreground">{sh.old_status || '—'}</span> → <Badge variant="outline" className="text-[10px]">{sh.new_status}</Badge></p>
+                          {sh.notes && <p className="text-xs text-muted-foreground mt-0.5">{sh.notes}</p>}
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(sh.changed_at), 'dd.MM.yyyy HH:mm')}</span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {projectEvents.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t('history.eventsNotes' as any)}</h4>
+                {projectEvents.map(ev => (
+                  <Card key={ev.id} className="glass-card">
+                    <CardContent className="py-3 px-4 flex items-start gap-3">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{ev.title}</p>
+                        {ev.description && <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>}
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(ev.created_at), 'dd.MM.yyyy')}</span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {statusHistory.length === 0 && projectEvents.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <History className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="font-medium text-foreground">{t('afm.dash.noHistory' as any)}</p>
+              </div>
+            )}
+            <Card className="glass-card">
+              <CardContent className="p-4 space-y-3">
+                <h4 className="text-sm font-medium">{t('history.addNote' as any)}</h4>
+                <Textarea value={newEventNote} onChange={e => setNewEventNote(e.target.value)} placeholder={t('history.notePlaceholder' as any)} className="text-sm" rows={3} />
+                <Button size="sm" disabled={addingNote || !newEventNote.trim()} onClick={async () => {
+                  if (!agencyClient || !newEventNote.trim()) return;
+                  setAddingNote(true);
+                  await supabase.from('project_events').insert({ client_id: agencyClient.id, title: newEventNote.trim(), event_type: 'note', created_by: user?.id });
+                  setNewEventNote(''); setAddingNote(false);
+                  fetchHistory();
+                  toast.success(t('history.noteAdded' as any));
+                }}>
+                  {addingNote ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  {t('common.add')}
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </motion.div>
