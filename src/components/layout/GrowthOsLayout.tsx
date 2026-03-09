@@ -32,7 +32,7 @@ const gosNavItems: GosNavItem[] = [
   { labelKey: 'gos.experiments' as TranslationKey, icon: FlaskConical, path: '/growth-os/experiments' },
   { labelKey: 'gos.systemHealth' as TranslationKey, icon: HeartPulse, path: '/growth-os/health' },
   { labelKey: 'gos.integrityChecks' as TranslationKey, icon: ShieldCheck, path: '/growth-os/integrity' },
-  { labelKey: 'ai.guide' as TranslationKey, icon: HeartPulse, path: '/growth-os/guide' },
+  { labelKey: 'ai.guide' as TranslationKey, icon: BookOpen, path: '/growth-os/guide' },
 ];
 
 function GosSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
