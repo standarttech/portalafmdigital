@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import PageSkeleton from '@/components/shared/PageSkeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -264,11 +264,9 @@ export default function GosIntegrityChecksPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useIntegrityChecks();
 
-  if (isLoading || !data) return <PageSkeleton variant="list" tableRows={5} />;
-
-  const errors = data.issues.filter(i => i.severity === 'error');
-  const warnings = data.issues.filter(i => i.severity === 'warning');
-  const infos = data.issues.filter(i => i.severity === 'info');
+  const errors = data?.issues.filter(i => i.severity === 'error') ?? [];
+  const warnings = data?.issues.filter(i => i.severity === 'warning') ?? [];
+  const infos = data?.issues.filter(i => i.severity === 'info') ?? [];
 
   const severityIcon = (s: string) => {
     if (s === 'error') return <XCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />;
@@ -290,65 +288,75 @@ export default function GosIntegrityChecksPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid gap-3 grid-cols-3">
-        <Card className={errors.length > 0 ? 'border-destructive/30' : ''}>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold text-destructive">{errors.length}</p>
-            <p className="text-xs text-muted-foreground">Errors</p>
-          </CardContent>
-        </Card>
-        <Card className={warnings.length > 0 ? 'border-amber-500/30' : ''}>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold text-amber-400">{warnings.length}</p>
-            <p className="text-xs text-muted-foreground">Warnings</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-2xl font-bold text-blue-400">{infos.length}</p>
-            <p className="text-xs text-muted-foreground">Info</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {data.issues.length === 0 ? (
-        <Card className="border-emerald-500/20">
-          <CardContent className="py-12 text-center">
-            <ShieldCheck className="h-10 w-10 text-emerald-400 mx-auto mb-3" />
-            <p className="text-sm font-medium text-foreground">All checks passed</p>
-            <p className="text-xs text-muted-foreground mt-1">No integrity issues detected</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-2">Checked at {new Date(data.checkedAt).toLocaleString()}</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {data.issues.map((issue, i) => (
-            <Card key={i} className={`${issue.severity === 'error' ? 'border-destructive/20' : issue.severity === 'warning' ? 'border-amber-500/20' : ''}`}>
-              <CardContent className="p-3">
-                <div className="flex items-start gap-3">
-                  {severityIcon(issue.severity)}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <Badge variant="outline" className={`text-[10px] ${severityBadgeClass(issue.severity)}`}>{issue.severity}</Badge>
-                      <Badge variant="outline" className="text-[10px]">{issue.type}</Badge>
-                      <span className="text-xs font-medium text-foreground truncate">{issue.entity}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{issue.message}</p>
-                    <p className="text-[10px] text-muted-foreground/70 mt-0.5">Fix: {issue.fix}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 flex-shrink-0"
-                    onClick={() => navigate(issue.link)}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+      {isLoading ? (
+        <div className="grid gap-3 grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}><CardContent className="p-3 text-center"><Skeleton className="h-8 w-12 mx-auto mb-1" /><Skeleton className="h-3 w-16 mx-auto" /></CardContent></Card>
           ))}
         </div>
+      ) : (
+        <>
+          <div className="grid gap-3 grid-cols-3">
+            <Card className={errors.length > 0 ? 'border-destructive/30' : ''}>
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold text-destructive">{errors.length}</p>
+                <p className="text-xs text-muted-foreground">Errors</p>
+              </CardContent>
+            </Card>
+            <Card className={warnings.length > 0 ? 'border-amber-500/30' : ''}>
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold text-amber-400">{warnings.length}</p>
+                <p className="text-xs text-muted-foreground">Warnings</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold text-blue-400">{infos.length}</p>
+                <p className="text-xs text-muted-foreground">Info</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {data && data.issues.length === 0 ? (
+            <Card className="border-emerald-500/20">
+              <CardContent className="py-12 text-center">
+                <ShieldCheck className="h-10 w-10 text-emerald-400 mx-auto mb-3" />
+                <p className="text-sm font-medium text-foreground">All checks passed</p>
+                <p className="text-xs text-muted-foreground mt-1">No integrity issues detected</p>
+                <p className="text-[10px] text-muted-foreground/60 mt-2">Checked at {new Date(data.checkedAt).toLocaleString()}</p>
+              </CardContent>
+            </Card>
+          ) : data ? (
+            <div className="space-y-2">
+              {data.issues.map((issue, i) => (
+                <Card key={i} className={`${issue.severity === 'error' ? 'border-destructive/20' : issue.severity === 'warning' ? 'border-amber-500/20' : ''}`}>
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-3">
+                      {severityIcon(issue.severity)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <Badge variant="outline" className={`text-[10px] ${severityBadgeClass(issue.severity)}`}>{issue.severity}</Badge>
+                          <Badge variant="outline" className="text-[10px]">{issue.type}</Badge>
+                          <span className="text-xs font-medium text-foreground truncate">{issue.entity}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{issue.message}</p>
+                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">Fix: {issue.fix}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 flex-shrink-0"
+                        onClick={() => navigate(issue.link)}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : null}
+        </>
       )}
 
       {/* Admin Safety Tools */}
