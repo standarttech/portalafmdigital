@@ -407,7 +407,7 @@ export default function ClientDashboardPage() {
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{formatCurrency(currentMonthSpend)}</span></span>
+                    <span className="text-muted-foreground">{t('clientDash.spent')}: <span className="text-foreground font-medium">{formatCurrency(currentMonthSpend)}</span></span>
                     <span className={`font-semibold ${currentMonthSpend / budgetPlan.planned_spend > 0.9 ? 'text-destructive' : currentMonthSpend / budgetPlan.planned_spend > 0.7 ? 'text-warning' : 'text-success'}`}>
                       {Math.min(100, Math.round((currentMonthSpend / budgetPlan.planned_spend) * 100))}%
                     </span>
