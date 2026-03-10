@@ -241,8 +241,10 @@ export default function ClientDashboardPage() {
     return computeDailyRow({ date: 'TOTAL', spend: t.spend, impressions: t.impressions, clicks: t.clicks, leads: t.leads, add_to_cart: t.addToCart, checkouts: t.checkouts, purchases: t.purchases, revenue: t.revenue });
   }, [dailyTableData]);
 
+  const catChartMetrics = CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other;
+
   const unifiedChartMetrics: ChartMetric[] = useMemo(() => {
-    return chartMetrics.map(m => ({
+    return catChartMetrics.map(m => ({
       key: m.key,
       label: t(`metric.${m.key}` as any) || m.key,
       color: m.color,
@@ -250,15 +252,15 @@ export default function ClientDashboardPage() {
       asBar: m.key === 'spend',
       secondaryAxis: ['cpl', 'cpc', 'roas'].includes(m.key),
     }));
-  }, [chartMetrics, t]);
+  }, [catChartMetrics, t]);
 
   const unifiedChartData = useMemo(() => {
     return dailyTableData.map(r => {
       const point: Record<string, any> = { date: r.date.slice(5) };
-      chartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; });
+      catChartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; });
       return point;
     });
-  }, [dailyTableData, chartMetrics]);
+  }, [dailyTableData, catChartMetrics]);
 
   const kpiKeys = CATEGORY_KPIS[category] || CATEGORY_KPIS.other;
   const kpiCards = useMemo(() => {
