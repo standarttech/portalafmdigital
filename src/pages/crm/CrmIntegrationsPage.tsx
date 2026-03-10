@@ -942,6 +942,142 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
   );
 }
 
+/* ── Facebook CAPI Config ── */
+function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string }) {
+  const isRu = lang === 'ru';
+  const [pixelId, setPixelId] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [testCode, setTestCode] = useState('');
+  const [config, setConfig] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testingCapi, setTestingCapi] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase.from('client_capi_config' as any).select('*').eq('client_id', clientId).maybeSingle();
+      if (data) { setConfig(data); setPixelId((data as any).pixel_id || ''); setTestCode((data as any).test_event_code || ''); }
+      setLoading(false);
+    })();
+  }, [clientId]);
+
+  const handleSave = async () => {
+    if (!pixelId.trim()) return;
+    setSaving(true);
+    let tokenRef = config?.access_token_ref || null;
+    if (accessToken.trim()) {
+      const { data: ref } = await supabase.rpc('store_capi_token' as any, { _secret_value: accessToken.trim(), _secret_name: `capi_${clientId}_${Date.now()}` });
+      if (ref) tokenRef = ref;
+    }
+    const payload = { client_id: clientId, pixel_id: pixelId.trim(), access_token_ref: tokenRef, test_event_code: testCode.trim() || null, is_active: true };
+    if (config) {
+      await supabase.from('client_capi_config' as any).update(payload).eq('id', (config as any).id);
+    } else {
+      const { data } = await supabase.from('client_capi_config' as any).insert(payload).select().single();
+      setConfig(data);
+    }
+    toast({ title: isRu ? 'CAPI сохранён' : 'CAPI saved' });
+    setSaving(false);
+  };
+
+  const handleTestCapi = async () => {
+    setTestingCapi(true); setTestResult(null);
+    const { data, error } = await supabase.functions.invoke('meta-capi-send', {
+      body: { client_id: clientId, event_name: 'Lead', lead_data: { email: 'test@example.com', first_name: 'Test' }, test_event_code: testCode || undefined },
+    });
+    if (error) setTestResult({ ok: false, message: error.message });
+    else if (data?.ok) setTestResult({ ok: true, message: `✅ ${isRu ? 'Событие отправлено' : 'Event sent'} (received: ${data.events_received})` });
+    else setTestResult({ ok: false, message: data?.error || 'Unknown error' });
+    setTestingCapi(false);
+  };
+
+  if (loading) return <Skeleton className="h-48" />;
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-primary" />
+            <p className="text-sm font-semibold">Facebook Conversions API (CAPI)</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {isRu ? 'Отправляйте серверные события конверсий в Meta для улучшения оптимизации рекламы.' : 'Send server-side conversion events to Meta to improve ad optimization.'}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors w-full">
+          <Info className="h-3.5 w-3.5" />
+          <span>{isRu ? 'Инструкция по настройке' : 'Setup guide'}</span>
+          <ChevronDown className="h-3.5 w-3.5 ml-auto" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <div className="p-3 rounded-lg bg-muted/50 border border-border/40 space-y-1.5 text-xs text-muted-foreground">
+            {(isRu ? [
+              '1. Откройте Meta Events Manager → выберите пиксель',
+              '2. Скопируйте Pixel ID (числовой ID)',
+              '3. Settings → Generate Access Token (System User с правами ads_management)',
+              '4. Вставьте Pixel ID и Access Token ниже',
+              '5. Для тестирования: Test Event Code из Events Manager → Test Events',
+            ] : [
+              '1. Open Meta Events Manager → select your pixel',
+              '2. Copy the Pixel ID (numeric ID)',
+              '3. Settings → Generate Access Token (System User with ads_management)',
+              '4. Paste Pixel ID and Access Token below',
+              '5. For testing: Test Event Code from Events Manager → Test Events',
+            ]).map((step, i) => <p key={i}>{step}</p>)}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <Label className="text-xs">Pixel ID</Label>
+          <Input value={pixelId} onChange={e => setPixelId(e.target.value)} placeholder="123456789012345" className="h-9 text-sm font-mono" />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-xs">Access Token {config?.access_token_ref && <span className="text-muted-foreground ml-1">{isRu ? '(оставьте пустым чтобы не менять)' : '(leave empty to keep)'}</span>}</Label>
+          <Input value={accessToken} onChange={e => setAccessToken(e.target.value)} placeholder="EAAxxxxxxx..." className="h-9 text-sm font-mono" type="password" />
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Shield className="h-3 w-3" /> {isRu ? 'Токен в зашифрованном хранилище' : 'Token stored encrypted'}</p>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-xs">Test Event Code ({isRu ? 'опционально' : 'optional'})</Label>
+          <Input value={testCode} onChange={e => setTestCode(e.target.value)} placeholder="TEST12345" className="h-9 text-sm font-mono" />
+        </div>
+      </div>
+
+      {testResult && (
+        <div className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
+          {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
+          <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleTestCapi} disabled={testingCapi || !pixelId.trim() || (!accessToken.trim() && !config?.access_token_ref)}>
+          {testingCapi ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+          {isRu ? 'Тест события' : 'Test Event'}
+        </Button>
+        <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={saving || !pixelId.trim()}>
+          {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+          {isRu ? 'Сохранить' : 'Save'}
+        </Button>
+      </div>
+
+      {config?.is_active && (
+        <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-xs space-y-1">
+          <p className="font-medium text-foreground">✅ {isRu ? 'CAPI активен' : 'CAPI active'}</p>
+          <p className="text-muted-foreground">{isRu ? 'События конверсий отправляются при смене стадии лида.' : 'Conversion events sent when lead stage changes.'}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main Page ── */
 export default function CrmIntegrationsPage() {
   const { language } = useLanguage();
