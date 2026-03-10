@@ -217,25 +217,35 @@ Deno.serve(async (req) => {
 
       const text = await resp.text();
 
+      const diagnostic = {
+        endpoint: config.url,
+        locationId: testProvider === "gohighlevel" ? (testBaseUrl?.trim() || null) : undefined,
+        tokenNormalized: true,
+        method: "GET",
+        headers: Object.keys(config.headers),
+      };
+
       if (resp.ok) {
         return new Response(
           JSON.stringify({
             ok: true,
             status: resp.status,
             message: "Connection successful",
+            diagnostic,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           },
         );
       } else {
-        const diagnostic = diagnoseError(testProvider, resp.status, text);
+        const diagnosticMsg = diagnoseError(testProvider, resp.status, text);
         return new Response(
           JSON.stringify({
             ok: false,
             status: resp.status,
-            message: diagnostic,
+            message: diagnosticMsg,
             raw: text.slice(0, 300),
+            diagnostic,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

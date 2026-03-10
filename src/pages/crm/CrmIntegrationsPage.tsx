@@ -117,6 +117,7 @@ const T = (lang: string) => {
     hAgo: isRu ? 'ч назад' : 'h ago',
     dAgo: isRu ? 'дн назад' : 'd ago',
     enterApiKey: isRu ? 'Введите API-ключ' : 'Enter API key',
+    enterLocationId: isRu ? 'Введите Location ID для GoHighLevel' : 'Enter Location ID for GoHighLevel',
     invalidJson: isRu ? 'Неверный JSON маппинга' : 'Invalid mapping JSON',
     connectionUpdated: isRu ? 'Подключение обновлено' : 'Connection updated',
     crmConnected: isRu ? 'CRM подключена' : 'CRM connected',
@@ -128,6 +129,11 @@ const T = (lang: string) => {
     syncError: isRu ? 'Ошибка синхронизации' : 'Sync error',
     connectionDisabled: isRu ? 'Подключение отключено' : 'Connection disabled',
     connectionEnabled: isRu ? 'Подключение включено' : 'Connection enabled',
+    diagnosticInfo: isRu ? 'Диагностика' : 'Diagnostics',
+    locationIdUsed: isRu ? 'Location ID:' : 'Location ID:',
+    endpointTested: isRu ? 'Тестируемый endpoint:' : 'Endpoint tested:',
+    tokenNormalized: isRu ? 'Токен нормализован:' : 'Token normalized:',
+    notSet: isRu ? 'НЕ ЗАДАН' : 'NOT SET',
     connectionDeleted: isRu ? 'Подключение удалено' : 'Connection deleted',
     setupGuide: isRu ? 'Инструкция по подключению' : 'Setup guide',
     close: isRu ? 'Закрыть' : 'Close',
@@ -594,7 +600,7 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
   const [formSyncInterval, setFormSyncInterval] = useState('60');
   const [formFieldMapping, setFormFieldMapping] = useState('');
   const [saving, setSaving] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; diagnostic?: { endpoint?: string; locationId?: string; tokenNormalized?: boolean } } | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
 
   const fetchConnections = async () => {
@@ -627,6 +633,11 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
     if (!formProvider) return;
     if (!editConnection && !formApiKey.trim()) {
       toast({ title: t.error, description: t.enterApiKey, variant: 'destructive' });
+      return;
+    }
+    // Validate Location ID for GHL
+    if (formProvider === 'gohighlevel' && !formBaseUrl.trim()) {
+      toast({ title: t.error, description: t.enterLocationId, variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -664,13 +675,18 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
   };
 
   const handleTest = async () => {
+    // Validate Location ID for GHL
+    if (formProvider === 'gohighlevel' && !formBaseUrl.trim()) {
+      setTestResult({ ok: false, message: t.enterLocationId, diagnostic: { locationId: t.notSet, endpoint: 'N/A', tokenNormalized: 'N/A' } } as any);
+      return;
+    }
     setTesting('form'); setTestResult(null);
     const payload: Record<string, unknown> = { provider: formProvider, base_url: formBaseUrl || undefined };
     if (editConnection && !formApiKey.trim()) payload.connection_id = editConnection.id;
     else payload.api_key = formApiKey.trim();
     const { data, error } = await supabase.functions.invoke('crm-test-connection', { body: payload });
     if (error) setTestResult({ ok: false, message: error.message });
-    else setTestResult({ ok: data?.ok, message: data?.message || 'Unknown' });
+    else setTestResult({ ok: data?.ok, message: data?.message || 'Unknown', diagnostic: data?.diagnostic });
     setTesting(null);
   };
 
@@ -761,12 +777,20 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
                         <span className="text-sm font-semibold text-foreground">{conn.label}</span>
                         {getStatusBadge(conn)}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground flex-wrap">
                         <span>{prov.name}</span>
                         <span>•</span>
                         <span>{t.syncEvery} {conn.sync_interval_minutes} {t.min}</span>
                         <span>•</span>
                         <span>{t.last}: {timeAgo(conn.last_synced_at)}</span>
+                        {conn.provider === 'gohighlevel' && (
+                          <>
+                            <span>•</span>
+                            <span className={conn.base_url ? 'text-emerald-500' : 'text-destructive font-semibold'}>
+                              Location ID: {conn.base_url || t.notSet}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -917,9 +941,21 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
 
             {/* Test result */}
             {testResult && (
-              <div className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
-                {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
-                <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
+              <div className={`space-y-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
+                <div className="flex items-start gap-2">
+                  {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
+                  <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
+                </div>
+                {(testResult as any).diagnostic && (
+                  <div className="mt-1.5 p-2 rounded bg-background/60 border border-border/30 space-y-1 font-mono text-[10px] text-muted-foreground">
+                    <p className="font-semibold text-foreground text-[11px]">{t.diagnosticInfo}</p>
+                    <p>{t.endpointTested} <span className="text-foreground break-all">{(testResult as any).diagnostic.endpoint}</span></p>
+                    {(testResult as any).diagnostic.locationId !== undefined && (
+                      <p>{t.locationIdUsed} <span className={`font-bold ${(testResult as any).diagnostic.locationId ? 'text-foreground' : 'text-destructive'}`}>{(testResult as any).diagnostic.locationId || t.notSet}</span></p>
+                    )}
+                    <p>{t.tokenNormalized} <span className="text-foreground">{(testResult as any).diagnostic.tokenNormalized ? '✅' : '❌'}</span></p>
+                  </div>
+                )}
               </div>
             )}
           </div>
