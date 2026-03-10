@@ -241,27 +241,24 @@ export default function ClientDashboardPage() {
     return computeDailyRow({ date: 'TOTAL', spend: t.spend, impressions: t.impressions, clicks: t.clicks, leads: t.leads, add_to_cart: t.addToCart, checkouts: t.checkouts, purchases: t.purchases, revenue: t.revenue });
   }, [dailyTableData]);
 
-  const chartMetrics = CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other;
-  const chartData = useMemo(() => {
-    const raw = dailyTableData.map(r => {
+  const unifiedChartMetrics: ChartMetric[] = useMemo(() => {
+    return chartMetrics.map(m => ({
+      key: m.key,
+      label: t(`metric.${m.key}` as any) || m.key,
+      color: m.color,
+      format: (['spend', 'cpl', 'revenue', 'cpc', 'cpm', 'costPerPurchase', 'costPerAtc', 'costPerCheckout'].includes(m.key) ? 'currency' : ['ctr', 'leadCv', 'cartToCheckout', 'checkoutToPurchase'].includes(m.key) ? 'percent' : 'number') as 'currency' | 'number' | 'percent',
+      asBar: m.key === 'spend',
+      secondaryAxis: ['cpl', 'cpc', 'roas'].includes(m.key),
+    }));
+  }, [chartMetrics, t]);
+
+  const unifiedChartData = useMemo(() => {
+    return dailyTableData.map(r => {
       const point: Record<string, any> = { date: r.date.slice(5) };
-      chartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; point[`_raw_${m.key}`] = (r as any)[m.key] || 0; });
+      chartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; });
       return point;
     });
-    if (chartNormalized && raw.length > 0) {
-      const first = raw[0];
-      return raw.map(d => {
-        const norm: Record<string, any> = { date: d.date };
-        chartMetrics.forEach(m => {
-          const base = first[m.key] as number;
-          norm[m.key] = base > 0 ? Math.round((d[m.key] as number) / base * 100) : 0;
-          norm[`_raw_${m.key}`] = d[`_raw_${m.key}`];
-        });
-        return norm;
-      });
-    }
-    return raw;
-  }, [dailyTableData, chartNormalized, chartMetrics]);
+  }, [dailyTableData, chartMetrics]);
 
   const kpiKeys = CATEGORY_KPIS[category] || CATEGORY_KPIS.other;
   const kpiCards = useMemo(() => {
