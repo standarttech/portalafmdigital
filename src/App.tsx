@@ -523,13 +523,6 @@ function AppRoutes() {
         <Route path="/afm-internal/financial-planning" element={<AfmFinancialPlanning />} />
         <Route path="/afm-internal/settings" element={<AfmSettings />} />
       </Route>
-      {/* AdminScale — guarded */}
-      <Route element={<ModuleGuard module="adminscale"><AdminScaleLayout /></ModuleGuard>}>
-        <Route path="/adminscale" element={<AdminScaleHome />} />
-        <Route path="/adminscale/editor" element={<AdminScaleEditor />} />
-        <Route path="/adminscale/overview" element={<AdminScaleOverview />} />
-        <Route path="/adminscale/reference" element={<AdminScaleReference />} />
-      </Route>
       {/* Growth OS — guarded */}
       <Route element={<ModuleGuard module="growth_os"><GrowthOsLayout /></ModuleGuard>}>
         <Route path="/growth-os" element={<GosOverviewPage />} />

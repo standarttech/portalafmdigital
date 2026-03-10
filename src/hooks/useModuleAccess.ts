@@ -34,7 +34,7 @@ export function useModuleAccess() {
 
   return {
     canAccessAfmInternal: p.can_access_afm_internal ?? false,
-    canAccessAdminScale: p.can_access_adminscale ?? false,
+    
     canAccessCrm: p.can_access_crm ?? false,
     canAccessGrowthOs: p.can_access_growth_os ?? false,
     canAccessAiAds: p.can_access_ai_ads ?? false,
