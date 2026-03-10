@@ -863,13 +863,22 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
               </p>
             </div>
 
-            {/* Base URL */}
+            {/* Base URL / Location ID */}
             {selectedProvider.needsBaseUrl && (
               <div className="space-y-2">
-                <Label className="text-xs">{t.baseUrl}</Label>
+                <Label className="text-xs">
+                  {formProvider === 'gohighlevel' ? 'Location ID' : t.baseUrl}
+                </Label>
                 <Input value={formBaseUrl} onChange={e => setFormBaseUrl(e.target.value)}
                   placeholder={selectedProvider.baseUrlPlaceholder || 'https://api.example.com'}
                   className="h-9 text-sm font-mono" />
+                {formProvider === 'gohighlevel' && (
+                  <p className="text-[10px] text-amber-500">
+                    {lang === 'ru'
+                      ? '⚠️ Location ID обязателен. Найти: Settings → Business Info'
+                      : '⚠️ Location ID is required. Find it: Settings → Business Info'}
+                  </p>
+                )}
               </div>
             )}
 
