@@ -777,12 +777,20 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
                         <span className="text-sm font-semibold text-foreground">{conn.label}</span>
                         {getStatusBadge(conn)}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground flex-wrap">
                         <span>{prov.name}</span>
                         <span>•</span>
                         <span>{t.syncEvery} {conn.sync_interval_minutes} {t.min}</span>
                         <span>•</span>
                         <span>{t.last}: {timeAgo(conn.last_synced_at)}</span>
+                        {conn.provider === 'gohighlevel' && (
+                          <>
+                            <span>•</span>
+                            <span className={conn.base_url ? 'text-emerald-500' : 'text-destructive font-semibold'}>
+                              Location ID: {conn.base_url || t.notSet}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
