@@ -5,7 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { ArrowLeftCircle, Menu, LogOut, Kanban, Users2, Webhook, Settings, BarChart3, Link2 } from 'lucide-react';
+import { ArrowLeftCircle, Menu, LogOut, Kanban, Users2, Webhook, Settings, BarChart3, Link2, BookOpen } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
 import AppHeader from '@/components/layout/AppHeader';
