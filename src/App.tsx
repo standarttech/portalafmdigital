@@ -510,6 +510,7 @@ function AppRoutes() {
         <Route path="/crm/integrations" element={<CrmIntegrationsPage />} />
         <Route path="/crm/webhooks" element={<CrmWebhooksPage />} />
         <Route path="/crm/settings" element={<CrmSettingsPage />} />
+        <Route path="/crm/guide" element={<CrmGuidePage />} />
       </Route>
       {/* AFM Internal — guarded */}
       <Route element={<ModuleGuard module="afm_internal"><AfmInternalLayout /></ModuleGuard>}>

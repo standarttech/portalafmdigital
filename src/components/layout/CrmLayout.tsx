@@ -24,6 +24,7 @@ const crmNavItems: CrmNavItem[] = [
   { labelKey: 'crm.integrations', icon: Link2, path: '/crm/integrations' },
   { labelKey: 'crm.webhooks', icon: Webhook, path: '/crm/webhooks' },
   { labelKey: 'crm.settings', icon: Settings, path: '/crm/settings' },
+  { labelKey: 'crm.guide', icon: BookOpen, path: '/crm/guide' },
 ];
 
 function CrmSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
