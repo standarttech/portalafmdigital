@@ -16,6 +16,7 @@ interface NotificationPayload {
   message: string;
   link?: string;
   force_channels?: string[];
+  bot_profile_id?: string;
 }
 
 serve(async (req) => {
@@ -71,7 +72,27 @@ serve(async (req) => {
     });
 
     const payload: NotificationPayload = await req.json();
-    const { type, title, message, link, force_channels } = payload;
+    const { type, title, message, link, force_channels, bot_profile_id } = payload;
+
+    // Resolve bot token: use bot_profile_id if provided, else fallback to env
+    let resolvedTelegramToken = telegramBotToken;
+    if (bot_profile_id) {
+      try {
+        const { data: botProfile } = await supabase
+          .from("crm_bot_profiles")
+          .select("bot_token_ref")
+          .eq("id", bot_profile_id)
+          .single();
+        if (botProfile?.bot_token_ref) {
+          const { data: decryptedToken } = await supabase.rpc("get_social_token", {
+            _token_reference: botProfile.bot_token_ref,
+          });
+          if (decryptedToken) resolvedTelegramToken = decryptedToken;
+        }
+      } catch (e) {
+        console.warn("Failed to resolve bot_profile_id, using default token:", e);
+      }
+    }
 
     const userIds: string[] = payload.user_ids || (payload.user_id ? [payload.user_id] : []);
 
@@ -171,15 +192,16 @@ serve(async (req) => {
 
       // 3. Telegram
       if (channels.includes("telegram")) {
-        if (!telegramBotToken) {
-          console.warn("Telegram channel requested but TELEGRAM_BOT_TOKEN not configured");
+        const tokenToUse = resolvedTelegramToken;
+        if (!tokenToUse) {
+          console.warn("Telegram channel requested but no bot token available");
         } else if (!prefs?.telegram_chat_id) {
           console.warn(`Telegram channel requested but no telegram_chat_id for user ${userId}`);
         } else {
           try {
             const text = `*${title}*\n${message}${link ? `\n\n[Open in Portal](https://portalafmdigital.lovable.app${link})` : ""}`;
             console.log(`Sending Telegram to chat_id: ${prefs.telegram_chat_id}`);
-            const res = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+            const res = await fetch(`https://api.telegram.org/bot${tokenToUse}/sendMessage`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

@@ -1,125 +1,120 @@
 
+# Полная система уведомлений: Email + Telegram + Web Push
 
-## CRM Integrations Overhaul Plan
+## Обзор
+Реализация трёхканальной системы уведомлений с настройками для каждого пользователя. Админы смогут рассылать уведомления команде и клиентам через любой канал.
 
-### Problem Summary
-1. **Bots & Broadcasts**: Multiple bots can be added per client, but broadcasts page has no bot selector — always uses "system" bot
-2. **External CRM**: Currently just static instruction guides with no real connection management — no API keys, no data sync, no disconnect/reconfigure
-3. **No integration lifecycle**: Can't see status, disable, or reconfigure connected integrations
+## Что будет реализовано
 
-### What Will Be Built
+### 1. Настройки уведомлений в профиле пользователя
+Каждый пользователь сможет в своём профиле:
+- Привязать Telegram (через бота)
+- Включить/выключить Web Push
+- Выбрать какие типы уведомлений получать по какому каналу (матрица: тип x канал)
 
-#### 1. Database: `crm_external_connections` table
-New table to store external CRM connections per client:
+### 2. Каналы доставки
 
-```text
-crm_external_connections
-├── id (uuid PK)
-├── client_id (FK → clients)
-├── provider (text: gohighlevel | hubspot | bitrix24 | amocrm | custom)
-├── label (text) — display name
-├── api_key_ref (uuid, nullable) — vault reference for API key
-├── base_url (text, nullable) — API base URL for the provider
-├── sync_enabled (boolean, default true)
-├── sync_interval_minutes (int, default 60)
-├── last_synced_at (timestamptz, nullable)
-├── last_sync_status (text: success | error | pending)
-├── last_sync_error (text, nullable)
-├── field_mapping (jsonb) — maps external fields to CRM lead fields
-├── is_active (boolean, default true)
-├── created_at / updated_at
-```
+**Email (Resend — уже подключён)**
+- Мгновенные алерты: ошибки синхронизации, превышение бюджета
+- Еженедельные дайджесты для команды (cron-задача)
+- Месячные отчёты для клиентов (cron-задача)
+- Событийные: новые задачи, комментарии, одобрения
 
-RLS: agency members with `has_client_access` can read/write.
+**Telegram Bot**
+- Мгновенные push-уведомления в личку
+- Пользователь привязывает аккаунт через бота командой `/start <код>`
+- Типы: алерты, задачи, сообщения в чате, изменения статусов
 
-#### 2. Broadcasts: Bot Selector
-- On `BroadcastsPage`, when "Telegram" channel is selected, show a dropdown of all bots across all clients (or filter by recipient group)
-- Store selected `bot_id` in the broadcast record (add column `bot_profile_id` to `notification_broadcasts`)
-- Pass `bot_profile_id` to `send-notification` edge function so it uses the correct bot token from vault
+**Web Push (браузерные уведомления)**
+- Всплывающие уведомления даже при закрытой вкладке
+- Service Worker для фоновой обработки
+- Пользователь разрешает через кнопку в профиле
 
-#### 3. External CRM Integration Management UI
-Replace the static guide cards in `CrmIntegrationsPage` → "Внешние CRM" tab with a proper management interface:
+### 3. Типы уведомлений
 
-- **Connected integrations list**: Cards showing provider, status badge (connected/error/syncing), last sync time, actions (test/sync now/disconnect/edit)
-- **Add integration flow**: 
-  - Select provider (GoHighLevel, HubSpot, Bitrix24, AmoCRM, Custom)
-  - Enter API key → stored in Vault via edge function
-  - Enter base URL (for self-hosted like Bitrix24)
-  - Configure field mapping (which external fields map to first_name, email, phone, etc.)
-  - Test connection → calls edge function that pings the external API
-  - Save
-- **Each connected integration shows**: status, last sync, error details, sync now button, edit/disconnect
+| Тип | Описание | Каналы |
+|-----|----------|--------|
+| Алерты | Ошибки синхронизации, нет лидов, превышение CPL | In-App + Email + Telegram |
+| Задачи | Назначение, дедлайны, смена статуса | In-App + Telegram + Web Push |
+| Чат | Новые сообщения в поддержке | In-App + Telegram |
+| Отчёты | Еженедельный дайджест метрик | Email |
+| Одобрения | Запросы на доступ, admin approvals | In-App + Email + Telegram |
+| Клиентские | Месячные отчёты для клиентов | Email |
 
-#### 4. Edge Function: `crm-external-sync`
-New edge function that:
-- Reads `crm_external_connections` where `sync_enabled = true`
-- For each connection, fetches leads/deals from the external CRM API using the stored API key
-- Upserts into `crm_leads` with proper deduplication (by external_lead_id + source)
-- Updates `last_synced_at`, `last_sync_status`
-- Scheduled via pg_cron (every hour)
+### 4. Админская панель рассылок
+Страница для массовой рассылки: выбор получателей (команда / клиенты / все), канал, текст сообщения.
 
-Supported providers (initial):
-- **AmoCRM**: `/api/v4/leads` with Bearer token
-- **Bitrix24**: REST API with webhook URL
-- **HubSpot**: `/crm/v3/objects/contacts` with Bearer token
-- **GoHighLevel**: `/v1/contacts` with Bearer token
-- **Custom**: configurable URL + headers
+---
 
-#### 5. Edge Function: `crm-store-connection`
-Securely stores API key in Vault, creates/updates `crm_external_connections` record. Similar pattern to `store-bot-token`.
+## Технический план
 
-#### 6. Edge Function: `crm-test-connection`
-Tests connectivity to external CRM by making a lightweight API call (e.g. fetch 1 contact). Returns success/error.
-
-### Files to Create
-- `supabase/functions/crm-external-sync/index.ts`
-- `supabase/functions/crm-store-connection/index.ts`
-- `supabase/functions/crm-test-connection/index.ts`
-
-### Files to Edit
-- `src/pages/crm/CrmIntegrationsPage.tsx` — replace static guides with real integration management UI + bot selector for notifications
-- `src/pages/BroadcastsPage.tsx` — add bot selector when Telegram channel is active
-- `supabase/config.toml` — register new edge functions (auto)
-- DB migration: create `crm_external_connections` table, add `bot_profile_id` to `notification_broadcasts`
-
-### UI Flow (External CRM tab)
+### Шаг 1: База данных
+Новые таблицы и изменения:
 
 ```text
-┌─────────────────────────────────────────┐
-│ Внешние CRM                             │
-│                                         │
-│ ┌─ Connected ──────────────────────────┐│
-│ │ 🟠 GoHighLevel    ● Connected       ││
-│ │    Last sync: 14:30  ✓ 12 leads     ││
-│ │    [Sync Now] [Edit] [Disconnect]   ││
-│ ├──────────────────────────────────────┤│
-│ │ 🔷 AmoCRM         ⚠ Error          ││
-│ │    Auth expired 2h ago              ││
-│ │    [Reconnect] [Edit] [Disconnect]  ││
-│ └──────────────────────────────────────┘│
-│                                         │
-│ [+ Подключить CRM]                      │
-│                                         │
-│ ┌─ Add Dialog ─────────────────────────┐│
-│ │ Provider: [GoHighLevel ▾]            ││
-│ │ API Key:  [••••••••••••]             ││
-│ │ Base URL: [https://...]              ││
-│ │ Sync every: [60 min ▾]              ││
-│ │ Field mapping:                       ││
-│ │   first_name ← {{contact.name}}     ││
-│ │   email ← {{contact.email}}         ││
-│ │ [Test Connection] [Save]             ││
-│ └──────────────────────────────────────┘│
-└─────────────────────────────────────────┘
+notification_preferences (настройки каналов для каждого пользователя)
+  - user_id (FK)
+  - email_enabled (boolean, default true)
+  - telegram_enabled (boolean, default false)
+  - telegram_chat_id (text, nullable)
+  - telegram_link_code (text, nullable)
+  - webpush_enabled (boolean, default false)
+  - webpush_subscription (jsonb, nullable)
+  - alert_channels (text[], default '{in_app,email}')
+  - task_channels (text[], default '{in_app}')
+  - chat_channels (text[], default '{in_app}')
+  - report_channels (text[], default '{email}')
+
+notification_broadcasts (история массовых рассылок)
+  - id, created_by, channels, recipients_filter, subject, body, sent_at
 ```
 
-### Broadcast Bot Selector
-When Telegram is selected as a channel, a dropdown appears showing all bots grouped by client with their active status. The selected bot will be used for sending.
+RLS: пользователи видят и редактируют только свои настройки. Админы могут создавать broadcasts.
 
-### Sync Architecture
-- `crm-external-sync` runs hourly via pg_cron
-- Each provider has an adapter that handles auth + API format differences
-- Leads are upserted by `external_lead_id` to avoid duplicates
-- Stage mapping: new external leads go to the default pipeline stage
-- All sync results logged for monitoring (reuse `crm_webhook_logs` or dedicated sync_logs)
+### Шаг 2: Telegram Bot Edge Function
+Новая edge function `telegram-bot`:
+- Обработка webhook от Telegram (`/start <code>` для привязки)
+- Отправка сообщений через Telegram Bot API
+- Потребуется секрет `TELEGRAM_BOT_TOKEN` (пользователь создаёт бота через @BotFather)
 
+### Шаг 3: Web Push Edge Function
+Новая edge function `send-webpush`:
+- Отправка push-уведомлений через Web Push API
+- Потребуется сгенерировать VAPID-ключи (секреты `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`)
+
+### Шаг 4: Единый диспетчер уведомлений
+Новая edge function `send-notification`:
+- Принимает: user_id, type, title, message, link
+- Проверяет настройки пользователя в `notification_preferences`
+- Рассылает по нужным каналам: in-app (insert в notifications), email (Resend), telegram, web push
+- Все существующие триггеры БД будут вызывать эту функцию вместо прямого INSERT
+
+### Шаг 5: Cron-задачи для периодических отчётов
+- Еженедельный дайджест (каждый понедельник): агрегация метрик за неделю, отправка email команде
+- Месячный отчёт для клиентов: сводка по расходам и результатам
+
+### Шаг 6: UI компоненты
+- **ProfilePage** — новая секция "Notification Settings": переключатели каналов, привязка Telegram, разрешение Web Push
+- **Service Worker** — `public/sw.js` для фоновых push-уведомлений
+- **Админская рассылка** — новая страница или секция для массовых уведомлений
+- **i18n** — переводы на все 6 языков
+
+### Шаг 7: Обновление триггеров БД
+Переписать существующие триггеры (`notify_admins_new_access_request`, `notify_admins_support_message`, `notify_admins_approval_request`) чтобы они вызывали единый диспетчер через `pg_net.http_post` к edge function `send-notification`.
+
+---
+
+## Что потребуется от вас
+
+1. **Telegram Bot Token** — создать бота через [@BotFather](https://t.me/BotFather) в Telegram и получить токен
+2. **VAPID Keys** — будут сгенерированы автоматически при первом запуске
+
+## Порядок реализации
+1. Таблицы БД + RLS
+2. Edge function `send-notification` (диспетчер)
+3. Telegram bot + привязка в профиле
+4. Web Push + Service Worker
+5. Email-дайджесты (cron)
+6. Админская панель рассылок
+7. Обновление триггеров БД
+8. i18n переводы

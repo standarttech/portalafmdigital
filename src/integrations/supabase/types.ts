@@ -2355,6 +2355,68 @@ export type Database = {
           },
         ]
       }
+      crm_external_connections: {
+        Row: {
+          api_key_ref: string | null
+          base_url: string | null
+          client_id: string
+          created_at: string
+          field_mapping: Json
+          id: string
+          is_active: boolean
+          label: string
+          last_sync_error: string | null
+          last_sync_status: string | null
+          last_synced_at: string | null
+          provider: string
+          sync_enabled: boolean
+          sync_interval_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          api_key_ref?: string | null
+          base_url?: string | null
+          client_id: string
+          created_at?: string
+          field_mapping?: Json
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          provider?: string
+          sync_enabled?: boolean
+          sync_interval_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          api_key_ref?: string | null
+          base_url?: string | null
+          client_id?: string
+          created_at?: string
+          field_mapping?: Json
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          last_synced_at?: string | null
+          provider?: string
+          sync_enabled?: boolean
+          sync_interval_minutes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_external_connections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_activities: {
         Row: {
           created_at: string
@@ -3895,6 +3957,7 @@ export type Database = {
       notification_broadcasts: {
         Row: {
           body: string
+          bot_profile_id: string | null
           channels: string[]
           created_at: string
           created_by: string
@@ -3905,6 +3968,7 @@ export type Database = {
         }
         Insert: {
           body: string
+          bot_profile_id?: string | null
           channels?: string[]
           created_at?: string
           created_by: string
@@ -3915,6 +3979,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          bot_profile_id?: string | null
           channels?: string[]
           created_at?: string
           created_by?: string
@@ -3923,7 +3988,15 @@ export type Database = {
           sent_at?: string | null
           subject?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_broadcasts_bot_profile_id_fkey"
+            columns: ["bot_profile_id"]
+            isOneToOne: false
+            referencedRelation: "crm_bot_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_preferences: {
         Row: {
@@ -5223,10 +5296,18 @@ export type Database = {
         Args: { _provider_id: string; _secret_label?: string }
         Returns: undefined
       }
+      delete_crm_connection_secret: {
+        Args: { _secret_ref: string }
+        Returns: undefined
+      }
       delete_gos_secret: { Args: { _secret_ref: string }; Returns: undefined }
       delete_social_token: {
         Args: { _token_reference: string }
         Returns: undefined
+      }
+      get_crm_connection_secret: {
+        Args: { _secret_ref: string }
+        Returns: string
       }
       get_invitation_by_token: {
         Args: { _token: string }
@@ -5271,6 +5352,10 @@ export type Database = {
           _secret_label?: string
           _secret_value: string
         }
+        Returns: string
+      }
+      store_crm_connection_secret: {
+        Args: { _secret_name: string; _secret_value: string }
         Returns: string
       }
       store_gos_secret: {

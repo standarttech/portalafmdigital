@@ -12,11 +12,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import {
   Send, MessageSquare, Webhook, ChevronDown, ExternalLink, BookOpen,
   CheckCircle, AlertTriangle, Copy, Bot, Plus, Trash2, Settings, Loader2,
-  ArrowRight, Shield, Globe, Zap,
+  ArrowRight, Shield, Globe, Zap, RefreshCw, Power, PowerOff, Pencil,
+  Link2, Unlink, Clock,
 } from 'lucide-react';
 
 /* ── Types ── */
@@ -252,182 +254,436 @@ function BotManagementDialog({
   );
 }
 
-/* ── External CRM Connectors Section ── */
+/* ── External CRM Connections Manager ── */
+const CRM_PROVIDERS = [
+  { id: 'gohighlevel', name: 'GoHighLevel', icon: '🟠', color: 'text-orange-500' },
+  { id: 'hubspot', name: 'HubSpot', icon: '🟧', color: 'text-orange-400' },
+  { id: 'bitrix24', name: 'Bitrix24', icon: '🔵', color: 'text-blue-500' },
+  { id: 'amocrm', name: 'AmoCRM', icon: '🔷', color: 'text-blue-400' },
+  { id: 'custom', name: 'Custom API', icon: '⚡', color: 'text-amber-500' },
+];
+
+const DEFAULT_FIELD_MAPPINGS: Record<string, Record<string, string>> = {
+  gohighlevel: { first_name: 'firstName', last_name: 'lastName', email: 'email', phone: 'phone', company: 'companyName' },
+  hubspot: { first_name: 'firstname', last_name: 'lastname', email: 'email', phone: 'phone', company: 'company' },
+  bitrix24: { first_name: 'NAME', last_name: 'LAST_NAME', email: 'EMAIL', phone: 'PHONE', company: 'COMPANY_TITLE' },
+  amocrm: { full_name: 'name', email: 'email', phone: 'phone', value: 'price' },
+  custom: { first_name: 'first_name', email: 'email', phone: 'phone' },
+};
+
+interface CrmConnection {
+  id: string;
+  client_id: string;
+  provider: string;
+  label: string;
+  api_key_ref: string | null;
+  base_url: string | null;
+  sync_enabled: boolean;
+  sync_interval_minutes: number;
+  last_synced_at: string | null;
+  last_sync_status: string | null;
+  last_sync_error: string | null;
+  field_mapping: Record<string, string>;
+  is_active: boolean;
+  created_at: string;
+}
+
 function ExternalCrmConnectors({ clientId }: { clientId: string }) {
-  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [connections, setConnections] = useState<CrmConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editConnection, setEditConnection] = useState<CrmConnection | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!clientId) return;
-    supabase.from('crm_webhook_endpoints').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
-      .then(({ data }) => { setEndpoints(data || []); setLoading(false); });
-  }, [clientId]);
+  // Add/Edit form state
+  const [formProvider, setFormProvider] = useState('gohighlevel');
+  const [formLabel, setFormLabel] = useState('');
+  const [formApiKey, setFormApiKey] = useState('');
+  const [formBaseUrl, setFormBaseUrl] = useState('');
+  const [formSyncInterval, setFormSyncInterval] = useState('60');
+  const [formFieldMapping, setFormFieldMapping] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
-  const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL || ''}/functions/v1/crm-webhook`;
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: 'Скопировано' });
+  const fetchConnections = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('crm_external_connections')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+    setConnections((data as CrmConnection[]) || []);
+    setLoading(false);
   };
 
-  if (loading) return <Skeleton className="h-32" />;
+  useEffect(() => { if (clientId) fetchConnections(); }, [clientId]);
+
+  const resetForm = () => {
+    setFormProvider('gohighlevel');
+    setFormLabel('');
+    setFormApiKey('');
+    setFormBaseUrl('');
+    setFormSyncInterval('60');
+    setFormFieldMapping('');
+    setTestResult(null);
+    setEditConnection(null);
+  };
+
+  const openAddDialog = () => {
+    resetForm();
+    setAddDialogOpen(true);
+  };
+
+  const openEditDialog = (conn: CrmConnection) => {
+    setEditConnection(conn);
+    setFormProvider(conn.provider);
+    setFormLabel(conn.label);
+    setFormApiKey('');
+    setFormBaseUrl(conn.base_url || '');
+    setFormSyncInterval(String(conn.sync_interval_minutes));
+    setFormFieldMapping(Object.keys(conn.field_mapping || {}).length > 0 ? JSON.stringify(conn.field_mapping, null, 2) : '');
+    setTestResult(null);
+    setAddDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formProvider) return;
+    if (!editConnection && !formApiKey.trim()) {
+      toast({ title: 'Ошибка', description: 'Введите API-ключ', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+
+    let fieldMapping: Record<string, string> = {};
+    if (formFieldMapping.trim()) {
+      try { fieldMapping = JSON.parse(formFieldMapping); }
+      catch { toast({ title: 'Ошибка', description: 'Неверный JSON маппинга', variant: 'destructive' }); setSaving(false); return; }
+    } else {
+      fieldMapping = DEFAULT_FIELD_MAPPINGS[formProvider] || {};
+    }
+
+    const payload: Record<string, unknown> = {
+      client_id: clientId,
+      provider: formProvider,
+      label: formLabel || CRM_PROVIDERS.find(p => p.id === formProvider)?.name || formProvider,
+      base_url: formBaseUrl || undefined,
+      sync_interval_minutes: parseInt(formSyncInterval) || 60,
+      field_mapping: fieldMapping,
+    };
+
+    if (formApiKey.trim()) payload.api_key = formApiKey.trim();
+    if (editConnection) payload.connection_id = editConnection.id;
+
+    const { data, error } = await supabase.functions.invoke('crm-store-connection', { body: payload });
+
+    if (error || data?.error) {
+      toast({ title: 'Ошибка', description: data?.error || error?.message, variant: 'destructive' });
+    } else {
+      toast({ title: editConnection ? 'Подключение обновлено' : 'CRM подключена', description: `${payload.label} сохранена` });
+      setAddDialogOpen(false);
+      resetForm();
+      fetchConnections();
+    }
+    setSaving(false);
+  };
+
+  const handleTest = async () => {
+    setTesting('form');
+    setTestResult(null);
+    const payload: Record<string, unknown> = { provider: formProvider, base_url: formBaseUrl || undefined };
+    if (editConnection && !formApiKey.trim()) {
+      payload.connection_id = editConnection.id;
+    } else {
+      payload.api_key = formApiKey.trim();
+    }
+
+    const { data, error } = await supabase.functions.invoke('crm-test-connection', { body: payload });
+    if (error) { setTestResult({ ok: false, message: error.message }); }
+    else { setTestResult({ ok: data?.ok, message: data?.message || 'Unknown' }); }
+    setTesting(null);
+  };
+
+  const handleTestExisting = async (connId: string) => {
+    setTesting(connId);
+    const { data, error } = await supabase.functions.invoke('crm-test-connection', {
+      body: { connection_id: connId },
+    });
+    if (error) {
+      toast({ title: '❌ Ошибка', description: error.message, variant: 'destructive' });
+    } else if (data?.ok) {
+      toast({ title: '✅ Подключение активно', description: data.message });
+    } else {
+      toast({ title: '⚠️ Проблема', description: data?.message || 'Нет соединения', variant: 'destructive' });
+    }
+    setTesting(null);
+  };
+
+  const handleSyncNow = async (connId: string) => {
+    setSyncing(connId);
+    const { data, error } = await supabase.functions.invoke('crm-external-sync', {
+      body: { connection_id: connId },
+    });
+    if (error) {
+      toast({ title: 'Ошибка синхронизации', description: error.message, variant: 'destructive' });
+    } else {
+      const result = data?.results?.[connId];
+      if (result?.success) {
+        toast({ title: '✅ Синхронизация завершена', description: `Импортировано лидов: ${result.leads_synced}` });
+      } else {
+        toast({ title: '⚠️ Ошибка синхронизации', description: result?.error || 'Неизвестная ошибка', variant: 'destructive' });
+      }
+      fetchConnections();
+    }
+    setSyncing(null);
+  };
+
+  const handleToggleActive = async (conn: CrmConnection) => {
+    await supabase.from('crm_external_connections').update({ is_active: !conn.is_active }).eq('id', conn.id);
+    fetchConnections();
+    toast({ title: conn.is_active ? 'Подключение отключено' : 'Подключение включено' });
+  };
+
+  const handleDelete = async (conn: CrmConnection) => {
+    if (conn.api_key_ref) {
+      await supabase.rpc('delete_crm_connection_secret', { _secret_ref: conn.api_key_ref });
+    }
+    await supabase.from('crm_external_connections').delete().eq('id', conn.id);
+    fetchConnections();
+    toast({ title: 'Подключение удалено' });
+  };
+
+  const getStatusBadge = (conn: CrmConnection) => {
+    if (!conn.is_active) return <Badge variant="secondary" className="text-[9px] gap-1"><PowerOff className="h-2.5 w-2.5" /> Отключено</Badge>;
+    if (conn.last_sync_status === 'success') return <Badge className="text-[9px] bg-emerald-500/15 text-emerald-600 border-emerald-500/30 gap-1"><CheckCircle className="h-2.5 w-2.5" /> Подключено</Badge>;
+    if (conn.last_sync_status === 'error') return <Badge variant="destructive" className="text-[9px] gap-1"><AlertTriangle className="h-2.5 w-2.5" /> Ошибка</Badge>;
+    return <Badge variant="outline" className="text-[9px] gap-1"><Clock className="h-2.5 w-2.5" /> Ожидает</Badge>;
+  };
+
+  const getProviderInfo = (id: string) => CRM_PROVIDERS.find(p => p.id === id) || { id, name: id, icon: '🔗', color: 'text-muted-foreground' };
+
+  const timeAgo = (iso: string | null) => {
+    if (!iso) return 'Никогда';
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return 'Только что';
+    if (mins < 60) return `${mins} мин назад`;
+    if (mins < 1440) return `${Math.floor(mins / 60)} ч назад`;
+    return `${Math.floor(mins / 1440)} дн назад`;
+  };
+
+  if (loading) return <Skeleton className="h-48" />;
 
   return (
     <div className="space-y-4">
-      {/* Active endpoints */}
-      {endpoints.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-foreground">Активные входящие вебхуки</h3>
-          {endpoints.map(ep => (
-            <div key={ep.id} className="p-3 rounded-lg border border-border/50 bg-secondary/20 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{ep.name}</span>
-                <Badge variant={ep.is_active ? 'default' : 'secondary'} className="text-[9px]">
-                  {ep.is_active ? 'Активен' : 'Отключён'}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="text-[10px] bg-secondary p-1.5 rounded flex-1 break-all font-mono">
-                  {webhookBaseUrl}/{ep.endpoint_slug}
-                </code>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(`${webhookBaseUrl}/${ep.endpoint_slug}`)}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                Secret: <code className="bg-secondary px-1 rounded">{ep.secret_key?.slice(0, 8)}...</code>
-                <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1 ml-1" onClick={() => copyToClipboard(ep.secret_key)}>
-                  <Copy className="h-2.5 w-2.5" />
-                </Button>
-              </p>
-            </div>
-          ))}
+      {/* Info banner */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-5 w-5 text-primary" />
+            <p className="text-sm font-semibold">Подключение внешних CRM</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Подключите внешнюю CRM-систему для автоматической синхронизации лидов. Данные будут подтягиваться 
+            каждый час (или по выбранному интервалу) для сквозной аналитики.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Connected integrations */}
+      {connections.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <Globe className="h-12 w-12 mx-auto mb-3 opacity-20" />
+          <p className="text-sm">Нет подключённых CRM</p>
+          <p className="text-xs mt-1">Подключите внешнюю CRM для синхронизации данных</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {connections.map(conn => {
+            const prov = getProviderInfo(conn.provider);
+            return (
+              <Card key={conn.id} className={`border-border/40 transition-colors ${!conn.is_active ? 'opacity-60' : ''}`}>
+                <CardContent className="p-4 space-y-3">
+                  {/* Header row */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{prov.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-foreground">{conn.label}</span>
+                        {getStatusBadge(conn)}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                        <span>{prov.name}</span>
+                        <span>•</span>
+                        <span>Синхр: каждые {conn.sync_interval_minutes} мин</span>
+                        <span>•</span>
+                        <span>Последняя: {timeAgo(conn.last_synced_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Error message */}
+                  {conn.last_sync_status === 'error' && conn.last_sync_error && (
+                    <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-start gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                      <span className="line-clamp-2">{conn.last_sync_error}</span>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+                      onClick={() => handleSyncNow(conn.id)}
+                      disabled={syncing === conn.id || !conn.is_active}>
+                      {syncing === conn.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                      Синхр. сейчас
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+                      onClick={() => handleTestExisting(conn.id)}
+                      disabled={testing === conn.id}>
+                      {testing === conn.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                      Тест
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+                      onClick={() => openEditDialog(conn)}>
+                      <Pencil className="h-3 w-3" /> Изменить
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5"
+                      onClick={() => handleToggleActive(conn)}>
+                      {conn.is_active ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
+                      {conn.is_active ? 'Отключить' : 'Включить'}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive ml-auto"
+                      onClick={() => handleDelete(conn)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Popular CRM Integration Guides */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Globe className="h-4 w-4 text-primary" />
-          Интеграции с внешними CRM
-        </h3>
+      {/* Add button */}
+      <Button variant="outline" className="w-full gap-1.5" onClick={openAddDialog}>
+        <Plus className="h-4 w-4" /> Подключить CRM
+      </Button>
 
-        {[
-          {
-            name: 'GoHighLevel',
-            icon: '🟠',
-            desc: 'Автоматическая передача лидов, статусов и конверсий',
-            steps: [
-              'Перейдите в Settings → Webhooks в GoHighLevel',
-              'Нажмите "Add Webhook"',
-              `Вставьте URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
-              'Добавьте Header: X-Webhook-Secret: <ваш_secret_key>',
-              'Выберите события: Contact Created, Pipeline Stage Changed, Opportunity Won',
-              'Сохраните и отправьте тестовый запрос',
-            ],
-            payload: '{\n  "first_name": "{{contact.first_name}}",\n  "last_name": "{{contact.last_name}}",\n  "email": "{{contact.email}}",\n  "phone": "{{contact.phone}}",\n  "source": "gohighlevel"\n}',
-          },
-          {
-            name: 'HubSpot',
-            icon: '🟧',
-            desc: 'Синхронизация контактов и сделок через вебхуки',
-            steps: [
-              'Перейдите в Settings → Integrations → Webhooks',
-              'Создайте новую подписку на события',
-              `URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
-              'Выберите: contact.creation, deal.creation, deal.propertyChange',
-              'В маппинге полей укажите соответствия (firstname→first_name, email→email)',
-            ],
-            payload: '{\n  "first_name": "{{firstname}}",\n  "email": "{{email}}",\n  "phone": "{{phone}}",\n  "company": "{{company}}",\n  "source": "hubspot"\n}',
-          },
-          {
-            name: 'Bitrix24',
-            icon: '🔵',
-            desc: 'Лиды и сделки из Bitrix24 через исходящие вебхуки',
-            steps: [
-              'Откройте CRM → Настройки → Роботы и триггеры',
-              'Добавьте робот "Вебхук" на нужном этапе воронки',
-              `URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
-              'Метод: POST, Формат: JSON',
-              'В теле передайте: first_name, email, phone, source',
-              'Добавьте заголовок X-Webhook-Secret',
-            ],
-            payload: '{\n  "first_name": "{{NAME}}",\n  "email": "{{EMAIL}}",\n  "phone": "{{PHONE}}",\n  "company": "{{COMPANY_TITLE}}",\n  "source": "bitrix24"\n}',
-          },
-          {
-            name: 'AmoCRM',
-            icon: '🔷',
-            desc: 'Передача лидов через Digital Pipeline или виджеты',
-            steps: [
-              'Перейдите в Настройки → Интеграции',
-              'Создайте виджет с Webhook или используйте Digital Pipeline',
-              `Webhook URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
-              'Настройте маппинг: lead[name]→full_name, lead[main_contact][email]→email',
-              'Добавьте заголовок авторизации',
-            ],
-            payload: '{\n  "full_name": "{{lead.name}}",\n  "email": "{{lead.email}}",\n  "phone": "{{lead.phone}}",\n  "value": "{{lead.price}}",\n  "source": "amocrm"\n}',
-          },
-          {
-            name: 'Универсальный Webhook (Zapier, Make, n8n)',
-            icon: '⚡',
-            desc: 'Подключите любой источник данных через HTTP POST',
-            steps: [
-              'Создайте новый Zap/Scenario/Workflow',
-              'Добавьте действие "HTTP Request" / "Webhook"',
-              `URL: ${webhookBaseUrl}/<ваш_endpoint_slug>`,
-              'Метод: POST, Content-Type: application/json',
-              'Headers: X-Webhook-Secret: <ваш_secret_key>',
-              'Body: JSON с полями first_name, email, phone, source',
-            ],
-            payload: '{\n  "first_name": "John",\n  "last_name": "Doe",\n  "email": "john@example.com",\n  "phone": "+1234567890",\n  "source": "landing_page",\n  "utm_source": "google",\n  "utm_campaign": "brand"\n}',
-          },
-        ].map(crm => (
-          <Collapsible key={crm.name}>
-            <Card className="border-border/40">
-              <CollapsibleTrigger asChild>
-                <CardHeader className="pb-2 cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-lg py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{crm.icon}</span>
-                    <div className="flex-1">
-                      <CardTitle className="text-sm">{crm.name}</CardTitle>
-                      <CardDescription className="text-[10px]">{crm.desc}</CardDescription>
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </CardHeader>
+      {/* Add/Edit Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={(v) => { if (!v) resetForm(); setAddDialogOpen(v); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              {editConnection ? 'Настройки подключения' : 'Подключить внешнюю CRM'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            {/* Provider */}
+            <div className="space-y-2">
+              <Label className="text-xs">CRM-провайдер</Label>
+              <Select value={formProvider} onValueChange={(v) => { setFormProvider(v); setFormFieldMapping(''); }}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CRM_PROVIDERS.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <span className="flex items-center gap-2">{p.icon} {p.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Label */}
+            <div className="space-y-2">
+              <Label className="text-xs">Название подключения</Label>
+              <Input value={formLabel} onChange={e => setFormLabel(e.target.value)}
+                placeholder={CRM_PROVIDERS.find(p => p.id === formProvider)?.name || 'My CRM'}
+                className="h-9 text-sm" />
+            </div>
+
+            {/* API Key */}
+            <div className="space-y-2">
+              <Label className="text-xs">
+                {formProvider === 'bitrix24' ? 'Webhook URL' : 'API-ключ'}
+                {editConnection && <span className="text-muted-foreground ml-1">(оставьте пустым, чтобы не менять)</span>}
+              </Label>
+              <Input value={formApiKey} onChange={e => setFormApiKey(e.target.value)}
+                placeholder={formProvider === 'bitrix24' ? 'https://your-domain.bitrix24.ru/rest/1/abc123' : 'Bearer token...'}
+                className="h-9 text-sm font-mono" type="password" />
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Shield className="h-3 w-3" /> Ключ хранится в зашифрованном хранилище
+              </p>
+            </div>
+
+            {/* Base URL */}
+            {(formProvider === 'amocrm' || formProvider === 'bitrix24' || formProvider === 'custom') && (
+              <div className="space-y-2">
+                <Label className="text-xs">Base URL</Label>
+                <Input value={formBaseUrl} onChange={e => setFormBaseUrl(e.target.value)}
+                  placeholder={formProvider === 'amocrm' ? 'https://your-domain.amocrm.ru' : formProvider === 'bitrix24' ? 'https://your-domain.bitrix24.ru/rest/1/key' : 'https://api.example.com'}
+                  className="h-9 text-sm font-mono" />
+              </div>
+            )}
+
+            {/* Sync interval */}
+            <div className="space-y-2">
+              <Label className="text-xs">Интервал синхронизации</Label>
+              <Select value={formSyncInterval} onValueChange={setFormSyncInterval}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">Каждые 30 мин</SelectItem>
+                  <SelectItem value="60">Каждый час</SelectItem>
+                  <SelectItem value="120">Каждые 2 часа</SelectItem>
+                  <SelectItem value="360">Каждые 6 часов</SelectItem>
+                  <SelectItem value="720">Каждые 12 часов</SelectItem>
+                  <SelectItem value="1440">Раз в сутки</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Field mapping */}
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-2 text-xs font-medium text-foreground hover:text-primary transition-colors">
+                <ChevronDown className="h-3.5 w-3.5" /> Маппинг полей (опционально)
               </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="space-y-3 text-xs">
-                  <div className="space-y-2">
-                    <p className="font-semibold text-foreground">Пошаговая инструкция:</p>
-                    {crm.steps.map((step, i) => (
-                      <div key={i} className="flex gap-2 items-start">
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">{i + 1}</span>
-                        <p className="text-muted-foreground">{step}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-semibold text-foreground">Пример JSON-тела запроса:</p>
-                      <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => copyToClipboard(crm.payload)}>
-                        <Copy className="h-2.5 w-2.5" /> Копировать
-                      </Button>
-                    </div>
-                    <pre className="bg-secondary/50 p-2.5 rounded-lg text-[10px] font-mono overflow-x-auto border border-border/30 whitespace-pre">
-                      {crm.payload}
-                    </pre>
-                  </div>
-                  <div className="p-2 rounded bg-emerald-500/5 border border-emerald-500/20 flex items-start gap-2">
-                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-emerald-600 text-[10px]">После настройки отправьте тестовый запрос и проверьте, что лид появился во вкладке Leads</p>
-                  </div>
-                </CardContent>
+              <CollapsibleContent className="mt-2 space-y-2">
+                <p className="text-[10px] text-muted-foreground">
+                  JSON-объект: ключ = поле лида, значение = поле из CRM. По умолчанию используется стандартный маппинг для выбранного провайдера.
+                </p>
+                <Textarea
+                  value={formFieldMapping}
+                  onChange={e => setFormFieldMapping(e.target.value)}
+                  placeholder={JSON.stringify(DEFAULT_FIELD_MAPPINGS[formProvider] || {}, null, 2)}
+                  className="text-xs font-mono min-h-[80px]"
+                />
               </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        ))}
-      </div>
+            </Collapsible>
+
+            {/* Test result */}
+            {testResult && (
+              <div className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
+                {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
+                <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5"
+              onClick={handleTest} disabled={testing === 'form' || (!formApiKey.trim() && !editConnection)}>
+              {testing === 'form' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+              Тест подключения
+            </Button>
+            <Button size="sm" className="gap-1.5"
+              onClick={handleSave} disabled={saving || (!formApiKey.trim() && !editConnection)}>
+              {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+              {editConnection ? 'Сохранить изменения' : 'Подключить'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

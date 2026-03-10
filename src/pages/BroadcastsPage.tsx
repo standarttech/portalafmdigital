@@ -15,10 +15,18 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   Megaphone, Send, Loader2, Users, Bell, Mail, MessageCircle, History,
-  Clock, CheckCircle2, User,
+  Clock, CheckCircle2, User, Bot,
 } from 'lucide-react';
 
 type RecipientsFilter = 'all' | 'team' | 'clients';
+
+interface BotOption {
+  id: string;
+  bot_name: string;
+  client_id: string;
+  client_name?: string;
+  is_active: boolean;
+}
 
 const CHANNELS = [
   { id: 'in_app', label: 'In-App', icon: Bell },
@@ -45,6 +53,7 @@ interface BroadcastRecord {
   sent_at: string | null;
   created_by: string;
   sender_name?: string;
+  bot_profile_id?: string | null;
 }
 
 export default function BroadcastsPage() {
@@ -57,6 +66,9 @@ export default function BroadcastsPage() {
   const [recipientsFilter, setRecipientsFilter] = useState<RecipientsFilter>('team');
   const [channels, setChannels] = useState<string[]>(['in_app']);
   const [sending, setSending] = useState(false);
+  const [selectedBotId, setSelectedBotId] = useState<string>('');
+  const [bots, setBots] = useState<BotOption[]>([]);
+  const [loadingBots, setLoadingBots] = useState(false);
 
   // History
   const [history, setHistory] = useState<BroadcastRecord[]>([]);
@@ -68,6 +80,39 @@ export default function BroadcastsPage() {
   const toggleChannel = (ch: string) => {
     setChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]);
   };
+
+  // Fetch available bots when telegram channel is selected
+  useEffect(() => {
+    if (!channels.includes('telegram')) return;
+    setLoadingBots(true);
+    (async () => {
+      const { data: botProfiles } = await supabase
+        .from('crm_bot_profiles')
+        .select('id, bot_name, client_id, is_active')
+        .order('is_active', { ascending: false });
+      
+      if (botProfiles && botProfiles.length > 0) {
+        const clientIds = [...new Set(botProfiles.map(b => b.client_id))];
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, name')
+          .in('id', clientIds);
+        const clientMap = new Map(clients?.map(c => [c.id, c.name]) || []);
+
+        const options: BotOption[] = botProfiles.map(b => ({
+          ...b,
+          client_name: clientMap.get(b.client_id) || 'Unknown',
+        }));
+        setBots(options);
+        // Auto-select active bot
+        const activeBot = options.find(b => b.is_active);
+        if (activeBot && !selectedBotId) setSelectedBotId(activeBot.id);
+      } else {
+        setBots([]);
+      }
+      setLoadingBots(false);
+    })();
+  }, [channels]);
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -151,6 +196,7 @@ export default function BroadcastsPage() {
         channels,
         recipients_filter: recipientsFilter,
         sent_at: new Date().toISOString(),
+        ...(selectedBotId && channels.includes('telegram') ? { bot_profile_id: selectedBotId } : {}),
       });
 
       const { data: session } = await supabase.auth.getSession();
@@ -168,6 +214,7 @@ export default function BroadcastsPage() {
             title: subject,
             message: body,
             force_channels: channels,
+            ...(selectedBotId && channels.includes('telegram') ? { bot_profile_id: selectedBotId } : {}),
           }),
         }
       );
@@ -294,6 +341,41 @@ export default function BroadcastsPage() {
                       );
                     })}
                   </div>
+
+                  {/* Bot Selector — only when Telegram is selected */}
+                  {channels.includes('telegram') && (
+                    <div className="mt-3 p-3 rounded-lg border border-primary/20 bg-primary/5 space-y-2">
+                      <Label className="text-xs flex items-center gap-1.5">
+                        <Bot className="h-3.5 w-3.5 text-primary" />
+                        Бот для отправки
+                      </Label>
+                      {loadingBots ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Загрузка ботов...
+                        </div>
+                      ) : bots.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Нет доступных ботов. Добавьте бота в CRM → Интеграции → Управление ботами
+                        </p>
+                      ) : (
+                        <Select value={selectedBotId} onValueChange={setSelectedBotId}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Выберите бота" /></SelectTrigger>
+                          <SelectContent>
+                            {bots.map(bot => (
+                              <SelectItem key={bot.id} value={bot.id}>
+                                <span className="flex items-center gap-2">
+                                  <Bot className="h-3 w-3" />
+                                  {bot.bot_name}
+                                  <span className="text-muted-foreground">({bot.client_name})</span>
+                                  {bot.is_active && <Badge className="text-[8px] h-3.5 bg-primary/20 text-primary border-primary/30 px-1">●</Badge>}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Subject */}

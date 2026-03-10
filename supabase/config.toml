@@ -63,3 +63,12 @@ verify_jwt = false
 [functions.portal-pdf-report]
 verify_jwt = false
 
+[functions.crm-store-connection]
+verify_jwt = false
+
+[functions.crm-test-connection]
+verify_jwt = false
+
+[functions.crm-external-sync]
+verify_jwt = false
+
