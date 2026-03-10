@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, TrendingUp, DollarSign, Users, Target, Percent, Minus } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, Users, Target, Percent, Minus, ArrowDown } from 'lucide-react';
 import { useCrmPipelines, useCrmStages, useCrmLeads } from '@/hooks/useCrmData';
 
 function fmt(v: number | null, prefix = '', suffix = '', decimals = 1): string {
@@ -34,10 +34,13 @@ function MetricCard({ title, value, subtitle, icon: Icon }: { title: string; val
 }
 
 export default function CrmAnalyticsPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isRu = language === 'ru';
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [adSpend, setAdSpend] = useState<number>(0);
+  const [loadingSpend, setLoadingSpend] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -47,6 +50,29 @@ export default function CrmAnalyticsPage() {
       setLoadingClients(false);
     })();
   }, []);
+
+  // Fetch ad spend from ad_level_metrics for this client
+  useEffect(() => {
+    if (!selectedClientId) { setAdSpend(0); return; }
+    (async () => {
+      setLoadingSpend(true);
+      // Get spend from ad_level_metrics for this client (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+      const { data } = await supabase
+        .from('ad_level_metrics')
+        .select('spend')
+        .eq('client_id', selectedClientId)
+        .eq('level', 'campaign')
+        .gte('date', dateStr);
+
+      const totalSpend = (data || []).reduce((sum, row) => sum + (row.spend || 0), 0);
+      setAdSpend(totalSpend);
+      setLoadingSpend(false);
+    })();
+  }, [selectedClientId]);
 
   const { pipelines } = useCrmPipelines(selectedClientId);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
@@ -84,6 +110,11 @@ export default function CrmAnalyticsPage() {
     });
 
     const totalRevenue = wonLeads.reduce((s, l) => s + (l.value || 0), 0);
+    const cpl = safeDivide(adSpend, totalLeads);
+    const cpql = safeDivide(adSpend, qualifiedLeads.length);
+    const cps = safeDivide(adSpend, wonLeads.length);
+    const roas = safeDivide(totalRevenue, adSpend);
+
     return {
       totalLeads, totalQualified: qualifiedLeads.length, totalBooked: bookedLeads.length,
       totalSales: wonLeads.length, totalLost: lostLeads.length, totalRevenue,
@@ -91,8 +122,9 @@ export default function CrmAnalyticsPage() {
       closeRate: safeDivide(wonLeads.length, qualifiedLeads.length || totalLeads),
       qualRate: safeDivide(qualifiedLeads.length, totalLeads),
       bookRate: safeDivide(bookedLeads.length, qualifiedLeads.length || totalLeads),
+      adSpend, cpl, cpql, cps, roas,
     };
-  }, [leads, stages]);
+  }, [leads, stages, adSpend]);
 
   const funnelData = useMemo(() => stages.map(stage => ({
     name: stage.name, color: stage.color,
@@ -133,13 +165,18 @@ export default function CrmAnalyticsPage() {
             <SelectContent>{pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
           </Select>
         )}
-        <Badge variant="outline" className="text-[10px] ml-auto">{t('crm.adSpendComingSoon')}</Badge>
+        {adSpend > 0 && (
+          <Badge variant="outline" className="text-[10px] ml-auto bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+            {isRu ? 'Расходы подключены' : 'Ad spend connected'} ✓
+          </Badge>
+        )}
       </div>
 
       {loadingLeads ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} className="h-24" />)}</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[1, 2, 3, 4, 5, 6, 7, 8].map(i => <Skeleton key={i} className="h-24" />)}</div>
       ) : (
         <>
+          {/* Core metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <MetricCard title={t('crm.totalLeads')} value={fmtInt(metrics.totalLeads)} icon={Users} />
             <MetricCard title={t('crm.qualified')} value={fmtInt(metrics.totalQualified)} subtitle={metrics.qualRate !== null ? `${(metrics.qualRate * 100).toFixed(1)}% ${t('crm.qualRate')}` : undefined} icon={Target} />
@@ -151,6 +188,17 @@ export default function CrmAnalyticsPage() {
             <MetricCard title={t('crm.closeRate')} value={fmt(metrics.closeRate !== null ? metrics.closeRate * 100 : null, '', '%')} icon={Percent} />
           </div>
 
+          {/* Ad spend metrics (only if spend data available) */}
+          {adSpend > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <MetricCard title={isRu ? 'Рекл. расходы (30д)' : 'Ad Spend (30d)'} value={fmt(metrics.adSpend, '$', '', 0)} icon={ArrowDown} />
+              <MetricCard title="CPL" value={fmt(metrics.cpl, '$')} subtitle={isRu ? 'Стоимость лида' : 'Cost per Lead'} icon={DollarSign} />
+              <MetricCard title="CPQL" value={fmt(metrics.cpql, '$')} subtitle={isRu ? 'Стоимость квал. лида' : 'Cost per Qualified Lead'} icon={DollarSign} />
+              <MetricCard title="ROAS" value={fmt(metrics.roas, '', 'x')} subtitle={isRu ? 'Окупаемость рекламы' : 'Return on Ad Spend'} icon={TrendingUp} />
+            </div>
+          )}
+
+          {/* Pipeline funnel */}
           <Card className="bg-card/50 border-border/40">
             <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('crm.pipelineFunnel')}</CardTitle></CardHeader>
             <CardContent>
@@ -184,6 +232,7 @@ export default function CrmAnalyticsPage() {
             </CardContent>
           </Card>
 
+          {/* Source breakdown */}
           {sourceData.length > 0 && (
             <Card className="bg-card/50 border-border/40">
               <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('crm.sourceBreakdown')}</CardTitle></CardHeader>
@@ -198,6 +247,7 @@ export default function CrmAnalyticsPage() {
                         <th className="text-right py-2 text-muted-foreground font-medium">{t('crm.won')}</th>
                         <th className="text-right py-2 text-muted-foreground font-medium">{t('crm.revenue')}</th>
                         <th className="text-right py-2 text-muted-foreground font-medium">{t('crm.closeRate')}</th>
+                        {adSpend > 0 && <th className="text-right py-2 text-muted-foreground font-medium">CPL</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -209,6 +259,7 @@ export default function CrmAnalyticsPage() {
                           <td className="text-right py-2 text-success">{row.won}</td>
                           <td className="text-right py-2">{row.revenue > 0 ? `$${row.revenue.toLocaleString()}` : '—'}</td>
                           <td className="text-right py-2">{row.qualified > 0 ? `${((row.won / row.qualified) * 100).toFixed(1)}%` : '—'}</td>
+                          {adSpend > 0 && <td className="text-right py-2">{row.leads > 0 ? `$${(adSpend / metrics.totalLeads * row.leads / row.leads).toFixed(2)}` : '—'}</td>}
                         </tr>
                       ))}
                     </tbody>
@@ -218,13 +269,22 @@ export default function CrmAnalyticsPage() {
             </Card>
           )}
 
-          <Card className="bg-card/30 border-border/20 border-dashed">
-            <CardContent className="p-6 text-center">
-              <DollarSign className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm font-medium text-muted-foreground">{t('crm.adSpendComingSoon')}</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">{t('crm.adSpendConnectMeta')}</p>
-            </CardContent>
-          </Card>
+          {/* No spend data card */}
+          {adSpend === 0 && (
+            <Card className="bg-card/30 border-border/20 border-dashed">
+              <CardContent className="p-6 text-center">
+                <DollarSign className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-sm font-medium text-muted-foreground">
+                  {isRu ? 'Нет данных о расходах' : 'No ad spend data available'}
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">
+                  {isRu
+                    ? 'Подключите Meta Ads аккаунт к этому клиенту для автоматического расчёта CPL, CPQL и ROAS'
+                    : 'Connect a Meta Ads account to this client for automatic CPL, CPQL and ROAS calculations'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

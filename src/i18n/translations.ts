@@ -863,6 +863,7 @@ export const translations = {
   'crm.urgent': t('Urgent', 'Срочный', 'Urgente', 'Urgente', 'عاجل', 'Urgent'),
   'crm.tagsComma': t('Tags (comma-separated)', 'Теги (через запятую)', 'Tag (separati da virgola)', 'Etiquetas (separadas por coma)', 'العلامات (مفصولة بفاصلة)', 'Tags (séparés par virgule)'),
   'crm.client': t('Client', 'Клиент', 'Cliente', 'Cliente', 'العميل', 'Client'),
+  'crm.allClients': t('All Clients', 'Все клиенты', 'Tutti i clienti', 'Todos los clientes', 'جميع العملاء', 'Tous les clients'),
 
   // CRM Integrations page
   'crm.integrationsSaved': t('Integration settings saved', 'Настройки интеграции сохранены', 'Impostazioni integrazione salvate', 'Configuración de integración guardada', 'تم حفظ إعدادات التكامل', "Paramètres d'intégration enregistrés"),
