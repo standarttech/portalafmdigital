@@ -647,10 +647,10 @@ export default function ClientDashboardPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge variant="outline" className="text-[10px] border-success/30 text-success">Published</Badge>
+                        <Badge variant="outline" className="text-[10px] border-success/30 text-success">{t('clientDash.published')}</Badge>
                         {report.pdf_url && (
                           <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
-                            <a href={report.pdf_url} target="_blank" rel="noopener noreferrer">Download</a>
+                            <a href={report.pdf_url} target="_blank" rel="noopener noreferrer">{t('clientDash.download')}</a>
                           </Button>
                         )}
                       </div>
