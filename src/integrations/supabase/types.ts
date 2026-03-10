@@ -1591,6 +1591,50 @@ export type Database = {
           },
         ]
       }
+      client_capi_config: {
+        Row: {
+          access_token_ref: string | null
+          client_id: string
+          created_at: string | null
+          event_mapping: Json | null
+          id: string
+          is_active: boolean | null
+          pixel_id: string
+          test_event_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token_ref?: string | null
+          client_id: string
+          created_at?: string | null
+          event_mapping?: Json | null
+          id?: string
+          is_active?: boolean | null
+          pixel_id: string
+          test_event_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token_ref?: string | null
+          client_id?: string
+          created_at?: string | null
+          event_mapping?: Json | null
+          id?: string
+          is_active?: boolean | null
+          pixel_id?: string
+          test_event_code?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_capi_config_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_comments: {
         Row: {
           client_id: string
@@ -5296,6 +5340,7 @@ export type Database = {
         Args: { _provider_id: string; _secret_label?: string }
         Returns: undefined
       }
+      delete_capi_token: { Args: { _secret_ref: string }; Returns: undefined }
       delete_crm_connection_secret: {
         Args: { _secret_ref: string }
         Returns: undefined
@@ -5305,6 +5350,7 @@ export type Database = {
         Args: { _token_reference: string }
         Returns: undefined
       }
+      get_capi_token: { Args: { _secret_ref: string }; Returns: string }
       get_crm_connection_secret: {
         Args: { _secret_ref: string }
         Returns: string
@@ -5352,6 +5398,10 @@ export type Database = {
           _secret_label?: string
           _secret_value: string
         }
+        Returns: string
+      }
+      store_capi_token: {
+        Args: { _secret_name: string; _secret_value: string }
         Returns: string
       }
       store_crm_connection_secret: {
