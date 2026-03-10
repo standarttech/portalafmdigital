@@ -24,9 +24,7 @@ import {
 import type { TranslationKey } from '@/i18n/translations';
 import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { subDays, format } from 'date-fns';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
+import UnifiedChart, { type ChartMetric, type ChartDisplayMode } from '@/components/charts/UnifiedChart';
 import { ShoppingBag, ShoppingCart, CreditCard } from 'lucide-react';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
