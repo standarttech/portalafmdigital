@@ -595,7 +595,7 @@ export default function ClientDashboardPage() {
                     </thead>
                     <tbody>
                       {dailyTableData.length === 0 ? (
-                        <tr><td colSpan={orderedVisibleColumns.length} className="text-center py-8 text-muted-foreground">No data for this period</td></tr>
+                        <tr><td colSpan={orderedVisibleColumns.length} className="text-center py-8 text-muted-foreground">{t('clientDash.noDataPeriod')}</td></tr>
                       ) : (
                         <>
                           {dailyTableData.map(row => (
