@@ -635,6 +635,11 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
       toast({ title: t.error, description: t.enterApiKey, variant: 'destructive' });
       return;
     }
+    // Validate Location ID for GHL
+    if (formProvider === 'gohighlevel' && !formBaseUrl.trim()) {
+      toast({ title: t.error, description: t.enterLocationId, variant: 'destructive' });
+      return;
+    }
     setSaving(true);
 
     let fieldMapping: Record<string, string> = {};
@@ -670,13 +675,18 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
   };
 
   const handleTest = async () => {
+    // Validate Location ID for GHL
+    if (formProvider === 'gohighlevel' && !formBaseUrl.trim()) {
+      setTestResult({ ok: false, message: t.enterLocationId, diagnostic: { locationId: t.notSet, endpoint: 'N/A', tokenNormalized: 'N/A' } } as any);
+      return;
+    }
     setTesting('form'); setTestResult(null);
     const payload: Record<string, unknown> = { provider: formProvider, base_url: formBaseUrl || undefined };
     if (editConnection && !formApiKey.trim()) payload.connection_id = editConnection.id;
     else payload.api_key = formApiKey.trim();
     const { data, error } = await supabase.functions.invoke('crm-test-connection', { body: payload });
     if (error) setTestResult({ ok: false, message: error.message });
-    else setTestResult({ ok: data?.ok, message: data?.message || 'Unknown' });
+    else setTestResult({ ok: data?.ok, message: data?.message || 'Unknown', diagnostic: data?.diagnostic });
     setTesting(null);
   };
 
