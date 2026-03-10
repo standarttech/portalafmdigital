@@ -1167,6 +1167,11 @@ export default function CrmIntegrationsPage() {
         <TabsContent value="external" className="space-y-4">
           {selectedClientId && <ExternalCrmConnectors clientId={selectedClientId} lang={language} />}
         </TabsContent>
+
+        {/* Facebook CAPI Tab */}
+        <TabsContent value="capi" className="space-y-4">
+          {selectedClientId && <CapiConfigPanel clientId={selectedClientId} lang={language} />}
+        </TabsContent>
       </Tabs>
 
       {/* Legacy bot dialog (from notification tab button) */}
