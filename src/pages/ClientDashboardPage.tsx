@@ -401,7 +401,7 @@ export default function ClientDashboardPage() {
                     <Wallet className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Monthly Budget</p>
+                    <p className="text-xs text-muted-foreground">{t('clientDash.monthlyBudget')}</p>
                     <p className="text-sm font-semibold text-foreground">{formatCurrency(budgetPlan.planned_spend)}</p>
                   </div>
                 </div>
