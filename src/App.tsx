@@ -61,6 +61,7 @@ const CrmWebhooksPage = React.lazy(() => import("@/pages/crm/CrmWebhooksPage"));
 const CrmSettingsPage = React.lazy(() => import("@/pages/crm/CrmSettingsPage"));
 const CrmAnalyticsPage = React.lazy(() => import("@/pages/crm/CrmAnalyticsPage"));
 const CrmIntegrationsPage = React.lazy(() => import("@/pages/crm/CrmIntegrationsPage"));
+const CrmGuidePage = React.lazy(() => import("@/pages/crm/CrmGuidePage"));
 const UserPresencePage = React.lazy(() => import("@/pages/admin/UserPresencePage"));
 const AboutPage = React.lazy(() => import("@/pages/website/AboutPage"));
 const ServicesPage = React.lazy(() => import("@/pages/website/ServicesPage"));
