@@ -933,9 +933,21 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
 
             {/* Test result */}
             {testResult && (
-              <div className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
-                {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
-                <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
+              <div className={`space-y-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
+                <div className="flex items-start gap-2">
+                  {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
+                  <p className={testResult.ok ? 'text-emerald-600' : 'text-destructive'}>{testResult.message}</p>
+                </div>
+                {(testResult as any).diagnostic && (
+                  <div className="mt-1.5 p-2 rounded bg-background/60 border border-border/30 space-y-1 font-mono text-[10px] text-muted-foreground">
+                    <p className="font-semibold text-foreground text-[11px]">{t.diagnosticInfo}</p>
+                    <p>{t.endpointTested} <span className="text-foreground break-all">{(testResult as any).diagnostic.endpoint}</span></p>
+                    {(testResult as any).diagnostic.locationId !== undefined && (
+                      <p>{t.locationIdUsed} <span className={`font-bold ${(testResult as any).diagnostic.locationId ? 'text-foreground' : 'text-destructive'}`}>{(testResult as any).diagnostic.locationId || t.notSet}</span></p>
+                    )}
+                    <p>{t.tokenNormalized} <span className="text-foreground">{(testResult as any).diagnostic.tokenNormalized ? '✅' : '❌'}</span></p>
+                  </div>
+                )}
               </div>
             )}
           </div>
