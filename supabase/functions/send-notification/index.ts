@@ -16,6 +16,7 @@ interface NotificationPayload {
   message: string;
   link?: string;
   force_channels?: string[];
+  bot_profile_id?: string;
 }
 
 serve(async (req) => {
