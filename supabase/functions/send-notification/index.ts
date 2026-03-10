@@ -201,7 +201,7 @@ serve(async (req) => {
           try {
             const text = `*${title}*\n${message}${link ? `\n\n[Open in Portal](https://portalafmdigital.lovable.app${link})` : ""}`;
             console.log(`Sending Telegram to chat_id: ${prefs.telegram_chat_id}`);
-            const res = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+            const res = await fetch(`https://api.telegram.org/bot${tokenToUse}/sendMessage`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
