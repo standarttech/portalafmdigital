@@ -701,11 +701,16 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
 
   const handleSyncNow = async (connId: string) => {
     setSyncing(connId);
-    const { data, error } = await supabase.functions.invoke('crm-external-sync', { body: { connection_id: connId } });
+    const { data, error } = await supabase.functions.invoke('crm-external-sync', { body: { connection_id: connId, first_sync: true } });
     if (error) toast({ title: t.syncError, description: error.message, variant: 'destructive' });
     else {
       const result = data?.results?.[connId];
-      if (result?.success) toast({ title: `✅ ${t.syncComplete}`, description: `${t.leadsImported}: ${result.leads_synced}` });
+      if (result?.success) {
+        const parts = [`${t.leadsImported}: ${result.leads_synced}`];
+        if (result.pipelines_created > 0) parts.push(`Pipelines: ${result.pipelines_created}`);
+        if (result.stages_created > 0) parts.push(`Stages: ${result.stages_created}`);
+        toast({ title: `✅ ${t.syncComplete}`, description: parts.join(' • ') });
+      }
       else toast({ title: `⚠️ ${t.syncError}`, description: result?.error || t.error, variant: 'destructive' });
       fetchConnections();
     }
