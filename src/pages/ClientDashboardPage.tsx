@@ -547,15 +547,15 @@ export default function ClientDashboardPage() {
           {/* DAILY STATS TAB */}
           <TabsContent value="daily" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold">Daily Statistics</h3>
+              <h3 className="text-base sm:text-lg font-semibold">{t('clientDash.dailyStatistics')}</h3>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
-                    <Settings2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Columns</span>
+                    <Settings2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t('clientDash.columns')}</span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-3" align="end">
-                  <p className="text-sm font-semibold mb-2">Manage Columns</p>
+                  <p className="text-sm font-semibold mb-2">{t('clientDash.manageColumns')}</p>
                   <div className="space-y-0.5 max-h-[350px] overflow-y-auto">
                     {ALL_METRIC_COLUMNS.map(col => (
                       <div key={col.key} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-secondary/50">
@@ -565,7 +565,7 @@ export default function ClientDashboardPage() {
                     ))}
                   </div>
                   <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setVisibleColumns(CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.other)}>
-                    Reset Defaults
+                    {t('clientDash.resetDefaults')}
                   </Button>
                 </PopoverContent>
               </Popover>
