@@ -625,12 +625,12 @@ export default function ClientDashboardPage() {
 
           {/* REPORTS TAB */}
           <TabsContent value="reports" className="space-y-3">
-            <h3 className="text-base sm:text-lg font-semibold">Reports</h3>
+            <h3 className="text-base sm:text-lg font-semibold">{t('clientDash.reports')}</h3>
             {reports.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <FileText className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="font-medium text-foreground">No reports yet</p>
-                <p className="text-sm text-muted-foreground mt-1">Published reports from your agency will appear here.</p>
+                <p className="font-medium text-foreground">{t('clientDash.noReports')}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('clientDash.noReportsDesc')}</p>
               </div>
             ) : (
               <div className="space-y-2">
