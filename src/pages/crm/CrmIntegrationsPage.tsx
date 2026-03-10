@@ -655,6 +655,10 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
     } else {
       toast({ title: editConnection ? t.connectionUpdated : t.crmConnected, description: `${payload.label}` });
       setAddDialogOpen(false); resetForm(); fetchConnections();
+      // Trigger first sync for new connections to auto-import pipelines
+      if (!editConnection && data?.connection_id) {
+        supabase.functions.invoke('crm-external-sync', { body: { connection_id: data.connection_id, first_sync: true } });
+      }
     }
     setSaving(false);
   };
