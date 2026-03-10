@@ -69,7 +69,7 @@ export default function ClientDashboardPage() {
   const [recommendations, setRecommendations] = useState<{ id: string; content: string; created_at: string; user_name: string }[]>([]);
   const [hasMetaApiAccounts, setHasMetaApiAccounts] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<PlatformKey>('all');
-  const [chartNormalized, setChartNormalized] = useState(true);
+  const [chartMode, setChartMode] = useState<ChartDisplayMode>('normalized');
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
 
   // Date range
