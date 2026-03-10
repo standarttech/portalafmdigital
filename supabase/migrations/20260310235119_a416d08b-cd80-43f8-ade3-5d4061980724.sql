@@ -1,0 +1,1 @@
+DELETE FROM crm_pipelines WHERE id = '53a8599b-22d6-4fa4-af41-c983baf48252' AND NOT EXISTS (SELECT 1 FROM crm_pipeline_stages WHERE pipeline_id = '53a8599b-22d6-4fa4-af41-c983baf48252');
