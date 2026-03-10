@@ -314,8 +314,8 @@ export default function ClientDashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-        <p className="text-lg font-semibold">No client assigned</p>
-        <p className="text-sm text-muted-foreground mt-1">Contact your agency to get access.</p>
+        <p className="text-lg font-semibold">{t('clientDash.noClient')}</p>
+        <p className="text-sm text-muted-foreground mt-1">{t('clientDash.contactAgency')}</p>
       </div>
     );
   }
