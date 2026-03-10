@@ -192,8 +192,9 @@ serve(async (req) => {
 
       // 3. Telegram
       if (channels.includes("telegram")) {
-        if (!telegramBotToken) {
-          console.warn("Telegram channel requested but TELEGRAM_BOT_TOKEN not configured");
+        const tokenToUse = resolvedTelegramToken;
+        if (!tokenToUse) {
+          console.warn("Telegram channel requested but no bot token available");
         } else if (!prefs?.telegram_chat_id) {
           console.warn(`Telegram channel requested but no telegram_chat_id for user ${userId}`);
         } else {
