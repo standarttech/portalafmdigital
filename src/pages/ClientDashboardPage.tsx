@@ -610,7 +610,7 @@ export default function ClientDashboardPage() {
                           <tr className="totals-row">
                             {orderedVisibleColumns.map(col => (
                               <td key={col.key} className={`${col.right ? 'text-right' : ''} text-foreground font-bold`}>
-                                {col.key === 'date' ? 'TOTAL' : formatMetricValue(col.key, (totals as any)[col.key] || 0, formatCurrency, formatNumber)}
+                                {col.key === 'date' ? t('clientDash.total') : formatMetricValue(col.key, (totals as any)[col.key] || 0, formatCurrency, formatNumber)}
                               </td>
                             ))}
                           </tr>
