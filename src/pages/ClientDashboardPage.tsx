@@ -462,67 +462,21 @@ export default function ClientDashboardPage() {
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-              {/* Performance Chart */}
-              <Card className="glass-card lg:col-span-2">
-                <CardHeader className="pb-2 px-3 sm:px-6">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <CardTitle className="text-sm sm:text-base">Performance</CardTitle>
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      {chartMetrics.map(m => (
-                        <div key={m.key} className="flex items-center gap-1.5 text-xs">
-                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
-                          <span className="text-muted-foreground capitalize">{m.key}</span>
-                        </div>
-                      ))}
-                      <div className="flex bg-secondary/50 rounded-md p-0.5 ml-2">
-                        <Button variant="ghost" size="sm" onClick={() => setChartNormalized(false)}
-                          className={`h-6 px-2 text-[10px] rounded-sm ${!chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
-                          Absolute
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setChartNormalized(true)}
-                          className={`h-6 px-2 text-[10px] rounded-sm ${chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
-                          Normalized
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-2 sm:px-6">
-                  <div className="h-[220px] sm:h-[280px]">
-                    {chartData.length === 0 ? (
-                      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No data for this period</div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData}>
-                          <defs>
-                            {chartMetrics.map(m => (
-                              <linearGradient key={m.gradientId} id={m.gradientId} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={m.color} stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={m.color} stopOpacity={0} />
-                              </linearGradient>
-                            ))}
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
-                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" interval="preserveStartEnd" />
-                          <YAxis tick={{ fontSize: 9, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" width={35} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px' }}
-                            formatter={(value: number, name: string, props: any) => {
-                              const rawVal = props.payload?.[`_raw_${name}`];
-                              const displayVal = chartNormalized && rawVal !== undefined ? rawVal : value;
-                              const fmt = typeof displayVal === 'number' ? (displayVal % 1 === 0 ? displayVal.toLocaleString() : displayVal.toFixed(2)) : displayVal;
-                              return [fmt, name];
-                            }}
-                          />
-                          {chartMetrics.map(m => (
-                            <Area key={m.key} type="monotone" dataKey={m.key} stroke={m.color} fill={`url(#${m.gradientId})`} strokeWidth={2} />
-                          ))}
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Performance Chart — UnifiedChart */}
+              <UnifiedChart
+                data={unifiedChartData}
+                metrics={unifiedChartMetrics}
+                title={t('dashboard.performance')}
+                className="lg:col-span-2"
+                defaultMode="normalized"
+                availableModes={['absolute', 'normalized', 'combo', 'individual']}
+                formatValue={(key, val) => {
+                  const col = ALL_METRIC_COLUMNS.find(c => c.key === key);
+                  if (!col) return String(val);
+                  return formatMetricValue(key, val, formatCurrency, formatNumber);
+                }}
+                height={260}
+              />
 
               {/* Right column — Funnel + Spend by Platform */}
               <div className="space-y-4">
