@@ -164,7 +164,10 @@ export default function SyncMonitorPage() {
                           conn.sync_status === 'running' && 'bg-primary/15 text-primary border-primary/20',
                           conn.sync_status === 'idle' && 'bg-muted text-muted-foreground',
                         )}>
-                          {conn.sync_status}
+                          {conn.sync_status === 'success' ? (isRu ? 'Успешно' : 'Success')
+                            : conn.sync_status === 'error' ? (isRu ? 'Ошибка' : 'Error')
+                            : conn.sync_status === 'running' ? (isRu ? 'Синхронизация...' : 'Running')
+                            : (isRu ? 'Ожидание' : 'Idle')}
                         </Badge>
                       </div>
                       {conn.sync_error && (
