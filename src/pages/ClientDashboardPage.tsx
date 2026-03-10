@@ -431,7 +431,7 @@ export default function ClientDashboardPage() {
                 </div>
                 {budgetPlan.planned_leads > 0 && (
                   <div className="flex-shrink-0 text-right sm:text-left">
-                    <p className="text-xs text-muted-foreground">Lead Goal</p>
+                    <p className="text-xs text-muted-foreground">{t('clientDash.leadGoal')}</p>
                     <p className="text-sm font-semibold text-foreground">
                       <span className={currentMonthLeads >= budgetPlan.planned_leads ? 'text-success' : 'text-foreground'}>{currentMonthLeads}</span>
                       <span className="text-muted-foreground"> / {budgetPlan.planned_leads}</span>
