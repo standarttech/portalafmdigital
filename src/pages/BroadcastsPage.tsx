@@ -340,6 +340,41 @@ export default function BroadcastsPage() {
                       );
                     })}
                   </div>
+
+                  {/* Bot Selector — only when Telegram is selected */}
+                  {channels.includes('telegram') && (
+                    <div className="mt-3 p-3 rounded-lg border border-primary/20 bg-primary/5 space-y-2">
+                      <Label className="text-xs flex items-center gap-1.5">
+                        <Bot className="h-3.5 w-3.5 text-primary" />
+                        Бот для отправки
+                      </Label>
+                      {loadingBots ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Загрузка ботов...
+                        </div>
+                      ) : bots.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Нет доступных ботов. Добавьте бота в CRM → Интеграции → Управление ботами
+                        </p>
+                      ) : (
+                        <Select value={selectedBotId} onValueChange={setSelectedBotId}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Выберите бота" /></SelectTrigger>
+                          <SelectContent>
+                            {bots.map(bot => (
+                              <SelectItem key={bot.id} value={bot.id}>
+                                <span className="flex items-center gap-2">
+                                  <Bot className="h-3 w-3" />
+                                  {bot.bot_name}
+                                  <span className="text-muted-foreground">({bot.client_name})</span>
+                                  {bot.is_active && <Badge className="text-[8px] h-3.5 bg-primary/20 text-primary border-primary/30 px-1">●</Badge>}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Subject */}
