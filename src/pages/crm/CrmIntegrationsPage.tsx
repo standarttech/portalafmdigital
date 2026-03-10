@@ -701,11 +701,16 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
 
   const handleSyncNow = async (connId: string) => {
     setSyncing(connId);
-    const { data, error } = await supabase.functions.invoke('crm-external-sync', { body: { connection_id: connId } });
+    const { data, error } = await supabase.functions.invoke('crm-external-sync', { body: { connection_id: connId, first_sync: true } });
     if (error) toast({ title: t.syncError, description: error.message, variant: 'destructive' });
     else {
       const result = data?.results?.[connId];
-      if (result?.success) toast({ title: `✅ ${t.syncComplete}`, description: `${t.leadsImported}: ${result.leads_synced}` });
+      if (result?.success) {
+        const parts = [`${t.leadsImported}: ${result.leads_synced}`];
+        if (result.pipelines_created > 0) parts.push(`Pipelines: ${result.pipelines_created}`);
+        if (result.stages_created > 0) parts.push(`Stages: ${result.stages_created}`);
+        toast({ title: `✅ ${t.syncComplete}`, description: parts.join(' • ') });
+      }
       else toast({ title: `⚠️ ${t.syncError}`, description: result?.error || t.error, variant: 'destructive' });
       fetchConnections();
     }
@@ -978,7 +983,7 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
   );
 }
 
-/* ── Facebook CAPI Config ── */
+/* ── Facebook CAPI Config with Stage-Event Mapping ── */
 function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string }) {
   const isRu = lang === 'ru';
   const [pixelId, setPixelId] = useState('');
@@ -989,12 +994,55 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
   const [saving, setSaving] = useState(false);
   const [testingCapi, setTestingCapi] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [eventMapping, setEventMapping] = useState<Record<string, string>>({});
+  const [stages, setStages] = useState<{ id: string; name: string; pipeline_name: string }[]>([]);
+  const [isActive, setIsActive] = useState(false);
+
+  const META_EVENTS = [
+    { value: '', label: isRu ? '— Не отправлять —' : '— Do not send —' },
+    { value: 'Lead', label: 'Lead' },
+    { value: 'Contact', label: 'Contact' },
+    { value: 'SubmitApplication', label: 'SubmitApplication' },
+    { value: 'CompleteRegistration', label: 'CompleteRegistration' },
+    { value: 'Schedule', label: 'Schedule' },
+    { value: 'InitiateCheckout', label: 'InitiateCheckout' },
+    { value: 'Purchase', label: 'Purchase' },
+    { value: 'Subscribe', label: 'Subscribe' },
+    { value: 'ViewContent', label: 'ViewContent' },
+    { value: 'AddToCart', label: 'AddToCart' },
+    { value: 'AddPaymentInfo', label: 'AddPaymentInfo' },
+    { value: 'FindLocation', label: 'FindLocation' },
+    { value: 'StartTrial', label: 'StartTrial' },
+  ];
 
   useEffect(() => {
     (async () => {
       setLoading(true);
+      // Load config
       const { data } = await supabase.from('client_capi_config' as any).select('*').eq('client_id', clientId).maybeSingle();
-      if (data) { setConfig(data); setPixelId((data as any).pixel_id || ''); setTestCode((data as any).test_event_code || ''); }
+      if (data) {
+        setConfig(data);
+        setPixelId((data as any).pixel_id || '');
+        setTestCode((data as any).test_event_code || '');
+        setIsActive((data as any).is_active || false);
+        setEventMapping((data as any).event_mapping || {});
+      }
+      // Load stages for this client
+      const { data: pipelines } = await supabase.from('crm_pipelines').select('id, name').eq('client_id', clientId);
+      if (pipelines && pipelines.length > 0) {
+        const pipelineIds = pipelines.map(p => p.id);
+        const { data: stageData } = await supabase
+          .from('crm_pipeline_stages')
+          .select('id, name, pipeline_id')
+          .in('pipeline_id', pipelineIds)
+          .order('position');
+        const stagesWithPipeline = (stageData || []).map(s => ({
+          id: s.id,
+          name: s.name,
+          pipeline_name: pipelines.find(p => p.id === s.pipeline_id)?.name || '',
+        }));
+        setStages(stagesWithPipeline);
+      }
       setLoading(false);
     })();
   }, [clientId]);
@@ -1007,7 +1055,14 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
       const { data: ref } = await supabase.rpc('store_capi_token' as any, { _secret_value: accessToken.trim(), _secret_name: `capi_${clientId}_${Date.now()}` });
       if (ref) tokenRef = ref;
     }
-    const payload = { client_id: clientId, pixel_id: pixelId.trim(), access_token_ref: tokenRef, test_event_code: testCode.trim() || null, is_active: true };
+    const payload = {
+      client_id: clientId,
+      pixel_id: pixelId.trim(),
+      access_token_ref: tokenRef,
+      test_event_code: testCode.trim() || null,
+      is_active: isActive,
+      event_mapping: eventMapping,
+    };
     if (config) {
       await supabase.from('client_capi_config' as any).update(payload).eq('id', (config as any).id);
     } else {
@@ -1038,9 +1093,10 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
             <p className="text-sm font-semibold">Facebook Conversions API (CAPI)</p>
+            <Switch checked={isActive} onCheckedChange={setIsActive} className="ml-auto" />
           </div>
           <p className="text-xs text-muted-foreground">
-            {isRu ? 'Отправляйте серверные события конверсий в Meta для улучшения оптимизации рекламы.' : 'Send server-side conversion events to Meta to improve ad optimization.'}
+            {isRu ? 'Серверные конверсии в Meta для глубокой оптимизации рекламы.' : 'Server-side conversions to Meta for deep ad optimization.'}
           </p>
         </CardContent>
       </Card>
@@ -1059,17 +1115,20 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
               '3. Settings → Generate Access Token (System User с правами ads_management)',
               '4. Вставьте Pixel ID и Access Token ниже',
               '5. Для тестирования: Test Event Code из Events Manager → Test Events',
+              '6. Настройте маппинг стадий → событий пикселя в разделе ниже',
             ] : [
               '1. Open Meta Events Manager → select your pixel',
               '2. Copy the Pixel ID (numeric ID)',
               '3. Settings → Generate Access Token (System User with ads_management)',
               '4. Paste Pixel ID and Access Token below',
               '5. For testing: Test Event Code from Events Manager → Test Events',
+              '6. Configure stage-to-pixel event mapping in the section below',
             ]).map((step, i) => <p key={i}>{step}</p>)}
           </div>
         </CollapsibleContent>
       </Collapsible>
 
+      {/* Core fields */}
       <div className="space-y-3">
         <div className="space-y-2">
           <Label className="text-xs">Pixel ID</Label>
@@ -1086,6 +1145,43 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
         </div>
       </div>
 
+      {/* Stage → Event Mapping */}
+      <Card className="border-border/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Settings className="h-4 w-4 text-primary" />
+            {isRu ? 'Маппинг стадий → Событий пикселя' : 'Stage → Pixel Event Mapping'}
+          </CardTitle>
+          <p className="text-[10px] text-muted-foreground">
+            {isRu
+              ? 'Выберите какое событие Meta отправлять при переходе лида на каждую стадию'
+              : 'Choose which Meta event to fire when a lead moves to each stage'}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {stages.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-3 text-center">
+              {isRu ? 'Нет стадий. Сначала создайте пайплайн.' : 'No stages found. Create a pipeline first.'}
+            </p>
+          ) : (
+            stages.map(stage => (
+              <div key={stage.id} className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium text-foreground">{stage.name}</span>
+                  {stages.length > 6 && <span className="text-[9px] text-muted-foreground ml-1">({stage.pipeline_name})</span>}
+                </div>
+                <Select value={eventMapping[stage.id] || ''} onValueChange={v => setEventMapping(prev => ({ ...prev, [stage.id]: v }))}>
+                  <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder={isRu ? 'Не отправлять' : 'Do not send'} /></SelectTrigger>
+                  <SelectContent>
+                    {META_EVENTS.map(ev => <SelectItem key={ev.value} value={ev.value}>{ev.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
       {testResult && (
         <div className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${testResult.ok ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-destructive/10 border border-destructive/20'}`}>
           {testResult.ok ? <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />}
@@ -1096,7 +1192,7 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="gap-1.5" onClick={handleTestCapi} disabled={testingCapi || !pixelId.trim() || (!accessToken.trim() && !config?.access_token_ref)}>
           {testingCapi ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-          {isRu ? 'Тест события' : 'Test Event'}
+          {isRu ? 'Тест события (Lead)' : 'Test Event (Lead)'}
         </Button>
         <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={saving || !pixelId.trim()}>
           {saving && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -1104,10 +1200,14 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
         </Button>
       </div>
 
-      {config?.is_active && (
+      {isActive && config?.access_token_ref && (
         <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-xs space-y-1">
           <p className="font-medium text-foreground">✅ {isRu ? 'CAPI активен' : 'CAPI active'}</p>
-          <p className="text-muted-foreground">{isRu ? 'События конверсий отправляются при смене стадии лида.' : 'Conversion events sent when lead stage changes.'}</p>
+          <p className="text-muted-foreground">
+            {isRu
+              ? `Событие будет отправлено при переходе лида на стадию с настроенным маппингом (${Object.values(eventMapping).filter(Boolean).length} событий настроено)`
+              : `Events will be sent when a lead moves to a mapped stage (${Object.values(eventMapping).filter(Boolean).length} events configured)`}
+          </p>
         </div>
       )}
     </div>
