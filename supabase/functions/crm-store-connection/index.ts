@@ -5,6 +5,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Strip "Bearer " prefix if user accidentally pasted it */
+function normalizeToken(raw: string): string {
+  let token = raw.trim();
+  while (token.toLowerCase().startsWith("bearer ")) {
+    token = token.slice(7).trim();
+  }
+  return token;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -13,14 +22,12 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify user
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) throw new Error("Unauthorized");
 
-    // Verify agency membership
     const adminClient = createClient(supabaseUrl, serviceKey);
     const { data: member } = await adminClient
       .from("agency_users")
@@ -34,7 +41,9 @@ Deno.serve(async (req) => {
 
     if (!client_id) throw new Error("client_id required");
 
-    // If updating existing connection
+    // Normalize the API key before storing
+    const normalizedKey = api_key ? normalizeToken(api_key) : "";
+
     if (connection_id) {
       const updates: Record<string, unknown> = {};
       if (label !== undefined) updates.label = label;
@@ -43,9 +52,7 @@ Deno.serve(async (req) => {
       if (field_mapping !== undefined) updates.field_mapping = field_mapping;
       if (provider !== undefined) updates.provider = provider;
 
-      // If new API key provided, store it and update ref
-      if (api_key) {
-        // Delete old secret
+      if (normalizedKey) {
         const { data: conn } = await adminClient
           .from("crm_external_connections")
           .select("api_key_ref")
@@ -55,7 +62,7 @@ Deno.serve(async (req) => {
           await adminClient.rpc("delete_crm_connection_secret", { _secret_ref: conn.api_key_ref });
         }
         const { data: refData } = await adminClient.rpc("store_crm_connection_secret", {
-          _secret_value: api_key,
+          _secret_value: normalizedKey,
           _secret_name: `crm_conn_${connection_id}`,
         });
         updates.api_key_ref = refData;
@@ -73,12 +80,11 @@ Deno.serve(async (req) => {
     }
 
     // New connection
-    if (!provider || !api_key) throw new Error("provider and api_key required for new connection");
+    if (!provider || !normalizedKey) throw new Error("provider and api_key required for new connection");
 
-    // Store API key in vault
     const secretName = `crm_conn_${client_id}_${provider}_${Date.now()}`;
     const { data: secretRef, error: vaultErr } = await adminClient.rpc("store_crm_connection_secret", {
-      _secret_value: api_key,
+      _secret_value: normalizedKey,
       _secret_name: secretName,
     });
     if (vaultErr) throw vaultErr;
