@@ -449,13 +449,13 @@ export default function ClientDashboardPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Overview</span>
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clientDash.overview')}</span>
             </TabsTrigger>
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Daily Stats</span>
+              <Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clientDash.dailyStats')}</span>
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Reports</span>
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clientDash.reports')}</span>
             </TabsTrigger>
           </TabsList>
 
