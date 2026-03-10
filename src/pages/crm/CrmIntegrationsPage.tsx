@@ -1040,10 +1040,11 @@ export default function CrmIntegrationsPage() {
       </div>
 
       <Tabs defaultValue="notifications" className="space-y-4">
-        <TabsList className="h-9">
+        <TabsList className="h-9 flex-wrap">
           <TabsTrigger value="notifications" className="text-xs gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> {t.notifications}</TabsTrigger>
           <TabsTrigger value="bots" className="text-xs gap-1.5"><Bot className="h-3.5 w-3.5" /> {t.manageBots}</TabsTrigger>
           <TabsTrigger value="external" className="text-xs gap-1.5"><Globe className="h-3.5 w-3.5" /> {t.externalCrm}</TabsTrigger>
+          <TabsTrigger value="capi" className="text-xs gap-1.5"><Zap className="h-3.5 w-3.5" /> {language === 'ru' ? 'API конверсий' : 'Conversions API'}</TabsTrigger>
         </TabsList>
 
         {/* Notifications Tab */}
