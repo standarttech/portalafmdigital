@@ -15,10 +15,18 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   Megaphone, Send, Loader2, Users, Bell, Mail, MessageCircle, History,
-  Clock, CheckCircle2, User,
+  Clock, CheckCircle2, User, Bot,
 } from 'lucide-react';
 
 type RecipientsFilter = 'all' | 'team' | 'clients';
+
+interface BotOption {
+  id: string;
+  bot_name: string;
+  client_id: string;
+  client_name?: string;
+  is_active: boolean;
+}
 
 const CHANNELS = [
   { id: 'in_app', label: 'In-App', icon: Bell },
@@ -45,6 +53,7 @@ interface BroadcastRecord {
   sent_at: string | null;
   created_by: string;
   sender_name?: string;
+  bot_profile_id?: string | null;
 }
 
 export default function BroadcastsPage() {
@@ -57,6 +66,9 @@ export default function BroadcastsPage() {
   const [recipientsFilter, setRecipientsFilter] = useState<RecipientsFilter>('team');
   const [channels, setChannels] = useState<string[]>(['in_app']);
   const [sending, setSending] = useState(false);
+  const [selectedBotId, setSelectedBotId] = useState<string>('');
+  const [bots, setBots] = useState<BotOption[]>([]);
+  const [loadingBots, setLoadingBots] = useState(false);
 
   // History
   const [history, setHistory] = useState<BroadcastRecord[]>([]);
@@ -68,6 +80,39 @@ export default function BroadcastsPage() {
   const toggleChannel = (ch: string) => {
     setChannels(prev => prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]);
   };
+
+  // Fetch available bots when telegram channel is selected
+  useEffect(() => {
+    if (!channels.includes('telegram')) return;
+    setLoadingBots(true);
+    (async () => {
+      const { data: botProfiles } = await supabase
+        .from('crm_bot_profiles')
+        .select('id, bot_name, client_id, is_active')
+        .order('is_active', { ascending: false });
+      
+      if (botProfiles && botProfiles.length > 0) {
+        const clientIds = [...new Set(botProfiles.map(b => b.client_id))];
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, name')
+          .in('id', clientIds);
+        const clientMap = new Map(clients?.map(c => [c.id, c.name]) || []);
+
+        const options: BotOption[] = botProfiles.map(b => ({
+          ...b,
+          client_name: clientMap.get(b.client_id) || 'Unknown',
+        }));
+        setBots(options);
+        // Auto-select active bot
+        const activeBot = options.find(b => b.is_active);
+        if (activeBot && !selectedBotId) setSelectedBotId(activeBot.id);
+      } else {
+        setBots([]);
+      }
+      setLoadingBots(false);
+    })();
+  }, [channels]);
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
