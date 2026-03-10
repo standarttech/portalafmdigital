@@ -26,7 +26,7 @@ import ScalingStackTerms from "@/scaling-stack/ScalingStackTerms";
 import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import NotFound from "./pages/NotFound";
 import CrmLayout from "@/components/layout/CrmLayout";
-import AdminScaleLayout from "@/components/layout/AdminScaleLayout";
+
 import GrowthOsLayout from "@/components/layout/GrowthOsLayout";
 import WebsiteLayout from "@/pages/website/WebsiteLayout";
 import HomePage from "@/pages/website/HomePage";
@@ -61,10 +61,6 @@ const CrmWebhooksPage = React.lazy(() => import("@/pages/crm/CrmWebhooksPage"));
 const CrmSettingsPage = React.lazy(() => import("@/pages/crm/CrmSettingsPage"));
 const CrmAnalyticsPage = React.lazy(() => import("@/pages/crm/CrmAnalyticsPage"));
 const CrmIntegrationsPage = React.lazy(() => import("@/pages/crm/CrmIntegrationsPage"));
-const AdminScaleHome = React.lazy(() => import("@/pages/adminscale/AdminScaleHome"));
-const AdminScaleEditor = React.lazy(() => import("@/pages/adminscale/AdminScaleEditor"));
-const AdminScaleOverview = React.lazy(() => import("@/pages/adminscale/AdminScaleOverview"));
-const AdminScaleReference = React.lazy(() => import("@/pages/adminscale/AdminScaleReference"));
 const UserPresencePage = React.lazy(() => import("@/pages/admin/UserPresencePage"));
 const AboutPage = React.lazy(() => import("@/pages/website/AboutPage"));
 const ServicesPage = React.lazy(() => import("@/pages/website/ServicesPage"));
@@ -526,13 +522,6 @@ function AppRoutes() {
         <Route path="/afm-internal/income-plan" element={<AfmIncomePlan />} />
         <Route path="/afm-internal/financial-planning" element={<AfmFinancialPlanning />} />
         <Route path="/afm-internal/settings" element={<AfmSettings />} />
-      </Route>
-      {/* AdminScale — guarded */}
-      <Route element={<ModuleGuard module="adminscale"><AdminScaleLayout /></ModuleGuard>}>
-        <Route path="/adminscale" element={<AdminScaleHome />} />
-        <Route path="/adminscale/editor" element={<AdminScaleEditor />} />
-        <Route path="/adminscale/overview" element={<AdminScaleOverview />} />
-        <Route path="/adminscale/reference" element={<AdminScaleReference />} />
       </Route>
       {/* Growth OS — guarded */}
       <Route element={<ModuleGuard module="growth_os"><GrowthOsLayout /></ModuleGuard>}>

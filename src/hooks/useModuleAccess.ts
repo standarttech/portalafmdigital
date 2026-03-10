@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-const MODULE_KEYS = ['can_access_afm_internal', 'can_access_adminscale', 'can_access_crm', 'can_access_growth_os', 'can_access_ai_ads', 'can_manage_ai_infra'] as const;
+const MODULE_KEYS = ['can_access_afm_internal', 'can_access_crm', 'can_access_growth_os', 'can_access_ai_ads', 'can_manage_ai_infra'] as const;
 
 const ALL_TRUE = Object.fromEntries(MODULE_KEYS.map(k => [k, true])) as Record<string, boolean>;
 const ALL_FALSE = Object.fromEntries(MODULE_KEYS.map(k => [k, false])) as Record<string, boolean>;
@@ -34,7 +34,7 @@ export function useModuleAccess() {
 
   return {
     canAccessAfmInternal: p.can_access_afm_internal ?? false,
-    canAccessAdminScale: p.can_access_adminscale ?? false,
+    
     canAccessCrm: p.can_access_crm ?? false,
     canAccessGrowthOs: p.can_access_growth_os ?? false,
     canAccessAiAds: p.can_access_ai_ads ?? false,

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ModuleGuardProps {
-  module: 'afm_internal' | 'adminscale' | 'crm' | 'growth_os' | 'ai_ads' | 'ai_infra';
+  module: 'afm_internal' | 'crm' | 'growth_os' | 'ai_ads' | 'ai_infra';
   children: React.ReactElement;
 }
 

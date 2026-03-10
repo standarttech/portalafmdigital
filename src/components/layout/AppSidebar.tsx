@@ -25,12 +25,12 @@ interface ModuleEntry {
   icon: typeof Zap;
   path: string;
   color: 'gold' | 'silver' | 'bronze';
-  permissionKey: 'canAccessAfmInternal' | 'canAccessAdminScale' | 'canAccessCrm' | 'canAccessGrowthOs' | 'canAccessAiAds' | 'canManageAiInfra';
+  permissionKey: 'canAccessAfmInternal' | 'canAccessCrm' | 'canAccessGrowthOs' | 'canAccessAiAds' | 'canManageAiInfra';
 }
 
 const moduleEntries: ModuleEntry[] = [
   { key: 'nav.afmInternal' as TranslationKey, icon: Zap, path: '/afm-internal', color: 'gold', permissionKey: 'canAccessAfmInternal' },
-  { key: 'nav.adminScale' as TranslationKey, icon: BookOpen, path: '/adminscale', color: 'silver', permissionKey: 'canAccessAdminScale' },
+  
   { key: 'nav.crm' as TranslationKey, icon: ContactIcon, path: '/crm', color: 'bronze', permissionKey: 'canAccessCrm' },
   { key: 'nav.growthOs' as TranslationKey, icon: Activity, path: '/growth-os', color: 'emerald' as any, permissionKey: 'canAccessGrowthOs' },
   { key: 'nav.aiAds' as TranslationKey, icon: Bot, path: '/ai-ads', color: 'purple' as any, permissionKey: 'canAccessAiAds' },
