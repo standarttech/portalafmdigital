@@ -196,6 +196,7 @@ export default function BroadcastsPage() {
         channels,
         recipients_filter: recipientsFilter,
         sent_at: new Date().toISOString(),
+        ...(selectedBotId && channels.includes('telegram') ? { bot_profile_id: selectedBotId } : {}),
       });
 
       const { data: session } = await supabase.auth.getSession();
