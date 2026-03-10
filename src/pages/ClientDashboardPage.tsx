@@ -425,7 +425,7 @@ export default function ClientDashboardPage() {
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>$0</span>
-                    <span>{formatCurrency(Math.max(0, budgetPlan.planned_spend - currentMonthSpend))} remaining</span>
+                    <span>{formatCurrency(Math.max(0, budgetPlan.planned_spend - currentMonthSpend))} {t('clientDash.remaining')}</span>
                     <span>{formatCurrency(budgetPlan.planned_spend)}</span>
                   </div>
                 </div>
