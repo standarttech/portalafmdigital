@@ -600,7 +600,7 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
   const [formSyncInterval, setFormSyncInterval] = useState('60');
   const [formFieldMapping, setFormFieldMapping] = useState('');
   const [saving, setSaving] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; diagnostic?: { endpoint?: string; locationId?: string; tokenNormalized?: boolean } } | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
 
   const fetchConnections = async () => {
