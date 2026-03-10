@@ -61,12 +61,36 @@ export default function CrmAnalyticsPage() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-      const { data } = await supabase
+      // Sum spend across all levels but deduplicate by using the most granular available
+      // First try 'campaign' level, fallback to any level
+      let { data } = await supabase
         .from('ad_level_metrics')
         .select('spend')
         .eq('client_id', selectedClientId)
         .eq('level', 'campaign')
         .gte('date', dateStr);
+
+      // If no campaign-level data, try adset level
+      if (!data || data.length === 0) {
+        const res = await supabase
+          .from('ad_level_metrics')
+          .select('spend')
+          .eq('client_id', selectedClientId)
+          .eq('level', 'adset')
+          .gte('date', dateStr);
+        data = res.data;
+      }
+
+      // If still nothing, try ad level
+      if (!data || data.length === 0) {
+        const res = await supabase
+          .from('ad_level_metrics')
+          .select('spend')
+          .eq('client_id', selectedClientId)
+          .eq('level', 'ad')
+          .gte('date', dateStr);
+        data = res.data;
+      }
 
       const totalSpend = (data || []).reduce((sum, row) => sum + (row.spend || 0), 0);
       setAdSpend(totalSpend);
