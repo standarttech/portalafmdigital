@@ -72,7 +72,27 @@ serve(async (req) => {
     });
 
     const payload: NotificationPayload = await req.json();
-    const { type, title, message, link, force_channels } = payload;
+    const { type, title, message, link, force_channels, bot_profile_id } = payload;
+
+    // Resolve bot token: use bot_profile_id if provided, else fallback to env
+    let resolvedTelegramToken = telegramBotToken;
+    if (bot_profile_id) {
+      try {
+        const { data: botProfile } = await supabase
+          .from("crm_bot_profiles")
+          .select("bot_token_ref")
+          .eq("id", bot_profile_id)
+          .single();
+        if (botProfile?.bot_token_ref) {
+          const { data: decryptedToken } = await supabase.rpc("get_social_token", {
+            _token_reference: botProfile.bot_token_ref,
+          });
+          if (decryptedToken) resolvedTelegramToken = decryptedToken;
+        }
+      } catch (e) {
+        console.warn("Failed to resolve bot_profile_id, using default token:", e);
+      }
+    }
 
     const userIds: string[] = payload.user_ids || (payload.user_id ? [payload.user_id] : []);
 
