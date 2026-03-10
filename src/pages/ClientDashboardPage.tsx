@@ -24,9 +24,7 @@ import {
 import type { TranslationKey } from '@/i18n/translations';
 import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { subDays, format } from 'date-fns';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
+import UnifiedChart, { type ChartMetric, type ChartDisplayMode } from '@/components/charts/UnifiedChart';
 import { ShoppingBag, ShoppingCart, CreditCard } from 'lucide-react';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
@@ -71,7 +69,7 @@ export default function ClientDashboardPage() {
   const [recommendations, setRecommendations] = useState<{ id: string; content: string; created_at: string; user_name: string }[]>([]);
   const [hasMetaApiAccounts, setHasMetaApiAccounts] = useState(false);
   const [platformFilter, setPlatformFilter] = useState<PlatformKey>('all');
-  const [chartNormalized, setChartNormalized] = useState(true);
+  const [chartMode, setChartMode] = useState<ChartDisplayMode>('normalized');
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
 
   // Date range
@@ -243,27 +241,26 @@ export default function ClientDashboardPage() {
     return computeDailyRow({ date: 'TOTAL', spend: t.spend, impressions: t.impressions, clicks: t.clicks, leads: t.leads, add_to_cart: t.addToCart, checkouts: t.checkouts, purchases: t.purchases, revenue: t.revenue });
   }, [dailyTableData]);
 
-  const chartMetrics = CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other;
-  const chartData = useMemo(() => {
-    const raw = dailyTableData.map(r => {
+  const catChartMetrics = CATEGORY_CHART_METRICS[category] || CATEGORY_CHART_METRICS.other;
+
+  const unifiedChartMetrics: ChartMetric[] = useMemo(() => {
+    return catChartMetrics.map(m => ({
+      key: m.key,
+      label: t(`metric.${m.key}` as any) || m.key,
+      color: m.color,
+      format: (['spend', 'cpl', 'revenue', 'cpc', 'cpm', 'costPerPurchase', 'costPerAtc', 'costPerCheckout'].includes(m.key) ? 'currency' : ['ctr', 'leadCv', 'cartToCheckout', 'checkoutToPurchase'].includes(m.key) ? 'percent' : 'number') as 'currency' | 'number' | 'percent',
+      asBar: m.key === 'spend',
+      secondaryAxis: ['cpl', 'cpc', 'roas'].includes(m.key),
+    }));
+  }, [catChartMetrics, t]);
+
+  const unifiedChartData = useMemo(() => {
+    return dailyTableData.map(r => {
       const point: Record<string, any> = { date: r.date.slice(5) };
-      chartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; point[`_raw_${m.key}`] = (r as any)[m.key] || 0; });
+      catChartMetrics.forEach(m => { point[m.key] = (r as any)[m.key] || 0; });
       return point;
     });
-    if (chartNormalized && raw.length > 0) {
-      const first = raw[0];
-      return raw.map(d => {
-        const norm: Record<string, any> = { date: d.date };
-        chartMetrics.forEach(m => {
-          const base = first[m.key] as number;
-          norm[m.key] = base > 0 ? Math.round((d[m.key] as number) / base * 100) : 0;
-          norm[`_raw_${m.key}`] = d[`_raw_${m.key}`];
-        });
-        return norm;
-      });
-    }
-    return raw;
-  }, [dailyTableData, chartNormalized, chartMetrics]);
+  }, [dailyTableData, catChartMetrics]);
 
   const kpiKeys = CATEGORY_KPIS[category] || CATEGORY_KPIS.other;
   const kpiCards = useMemo(() => {
@@ -317,8 +314,8 @@ export default function ClientDashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-        <p className="text-lg font-semibold">No client assigned</p>
-        <p className="text-sm text-muted-foreground mt-1">Contact your agency to get access.</p>
+        <p className="text-lg font-semibold">{t('clientDash.noClient')}</p>
+        <p className="text-sm text-muted-foreground mt-1">{t('clientDash.contactAgency')}</p>
       </div>
     );
   }
@@ -404,13 +401,13 @@ export default function ClientDashboardPage() {
                     <Wallet className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Monthly Budget</p>
+                    <p className="text-xs text-muted-foreground">{t('clientDash.monthlyBudget')}</p>
                     <p className="text-sm font-semibold text-foreground">{formatCurrency(budgetPlan.planned_spend)}</p>
                   </div>
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Spent: <span className="text-foreground font-medium">{formatCurrency(currentMonthSpend)}</span></span>
+                    <span className="text-muted-foreground">{t('clientDash.spent')}: <span className="text-foreground font-medium">{formatCurrency(currentMonthSpend)}</span></span>
                     <span className={`font-semibold ${currentMonthSpend / budgetPlan.planned_spend > 0.9 ? 'text-destructive' : currentMonthSpend / budgetPlan.planned_spend > 0.7 ? 'text-warning' : 'text-success'}`}>
                       {Math.min(100, Math.round((currentMonthSpend / budgetPlan.planned_spend) * 100))}%
                     </span>
@@ -428,13 +425,13 @@ export default function ClientDashboardPage() {
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>$0</span>
-                    <span>{formatCurrency(Math.max(0, budgetPlan.planned_spend - currentMonthSpend))} remaining</span>
+                    <span>{formatCurrency(Math.max(0, budgetPlan.planned_spend - currentMonthSpend))} {t('clientDash.remaining')}</span>
                     <span>{formatCurrency(budgetPlan.planned_spend)}</span>
                   </div>
                 </div>
                 {budgetPlan.planned_leads > 0 && (
                   <div className="flex-shrink-0 text-right sm:text-left">
-                    <p className="text-xs text-muted-foreground">Lead Goal</p>
+                    <p className="text-xs text-muted-foreground">{t('clientDash.leadGoal')}</p>
                     <p className="text-sm font-semibold text-foreground">
                       <span className={currentMonthLeads >= budgetPlan.planned_leads ? 'text-success' : 'text-foreground'}>{currentMonthLeads}</span>
                       <span className="text-muted-foreground"> / {budgetPlan.planned_leads}</span>
@@ -452,80 +449,34 @@ export default function ClientDashboardPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="w-full overflow-x-auto scrollbar-none justify-start h-auto flex-nowrap p-1">
             <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Overview</span>
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clientDash.overview')}</span>
             </TabsTrigger>
             <TabsTrigger value="daily" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Daily Stats</span>
+              <Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clientDash.dailyStats')}</span>
             </TabsTrigger>
             <TabsTrigger value="reports" className="gap-1.5 text-xs sm:text-sm flex-shrink-0">
-              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>Reports</span>
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" /><span>{t('clientDash.reports')}</span>
             </TabsTrigger>
           </TabsList>
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-              {/* Performance Chart */}
-              <Card className="glass-card lg:col-span-2">
-                <CardHeader className="pb-2 px-3 sm:px-6">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <CardTitle className="text-sm sm:text-base">Performance</CardTitle>
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      {chartMetrics.map(m => (
-                        <div key={m.key} className="flex items-center gap-1.5 text-xs">
-                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
-                          <span className="text-muted-foreground capitalize">{m.key}</span>
-                        </div>
-                      ))}
-                      <div className="flex bg-secondary/50 rounded-md p-0.5 ml-2">
-                        <Button variant="ghost" size="sm" onClick={() => setChartNormalized(false)}
-                          className={`h-6 px-2 text-[10px] rounded-sm ${!chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
-                          Absolute
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setChartNormalized(true)}
-                          className={`h-6 px-2 text-[10px] rounded-sm ${chartNormalized ? 'bg-primary text-primary-foreground' : ''}`}>
-                          Normalized
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-2 sm:px-6">
-                  <div className="h-[220px] sm:h-[280px]">
-                    {chartData.length === 0 ? (
-                      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No data for this period</div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData}>
-                          <defs>
-                            {chartMetrics.map(m => (
-                              <linearGradient key={m.gradientId} id={m.gradientId} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={m.color} stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={m.color} stopOpacity={0} />
-                              </linearGradient>
-                            ))}
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(225, 20%, 14%)" strokeOpacity={0.5} />
-                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" interval="preserveStartEnd" />
-                          <YAxis tick={{ fontSize: 9, fill: 'hsl(220, 15%, 55%)' }} stroke="hsl(225, 20%, 14%)" width={35} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: 'hsl(225, 30%, 9%)', border: '1px solid hsl(225, 20%, 14%)', borderRadius: '8px', fontSize: '12px' }}
-                            formatter={(value: number, name: string, props: any) => {
-                              const rawVal = props.payload?.[`_raw_${name}`];
-                              const displayVal = chartNormalized && rawVal !== undefined ? rawVal : value;
-                              const fmt = typeof displayVal === 'number' ? (displayVal % 1 === 0 ? displayVal.toLocaleString() : displayVal.toFixed(2)) : displayVal;
-                              return [fmt, name];
-                            }}
-                          />
-                          {chartMetrics.map(m => (
-                            <Area key={m.key} type="monotone" dataKey={m.key} stroke={m.color} fill={`url(#${m.gradientId})`} strokeWidth={2} />
-                          ))}
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Performance Chart — UnifiedChart */}
+              <UnifiedChart
+                data={unifiedChartData}
+                metrics={unifiedChartMetrics}
+                title={t('dashboard.performance')}
+                className="lg:col-span-2"
+                defaultMode="normalized"
+                availableModes={['absolute', 'normalized', 'combo', 'individual']}
+                formatValue={(key, val) => {
+                  const col = ALL_METRIC_COLUMNS.find(c => c.key === key);
+                  if (!col) return String(val);
+                  return formatMetricValue(key, val, formatCurrency, formatNumber);
+                }}
+                height={260}
+              />
 
               {/* Right column — Funnel + Spend by Platform */}
               <div className="space-y-4">
@@ -596,15 +547,15 @@ export default function ClientDashboardPage() {
           {/* DAILY STATS TAB */}
           <TabsContent value="daily" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-semibold">Daily Statistics</h3>
+              <h3 className="text-base sm:text-lg font-semibold">{t('clientDash.dailyStatistics')}</h3>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5 text-[10px] sm:text-xs h-7 sm:h-8">
-                    <Settings2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Columns</span>
+                    <Settings2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t('clientDash.columns')}</span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-3" align="end">
-                  <p className="text-sm font-semibold mb-2">Manage Columns</p>
+                  <p className="text-sm font-semibold mb-2">{t('clientDash.manageColumns')}</p>
                   <div className="space-y-0.5 max-h-[350px] overflow-y-auto">
                     {ALL_METRIC_COLUMNS.map(col => (
                       <div key={col.key} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-secondary/50">
@@ -614,7 +565,7 @@ export default function ClientDashboardPage() {
                     ))}
                   </div>
                   <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setVisibleColumns(CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.other)}>
-                    Reset Defaults
+                    {t('clientDash.resetDefaults')}
                   </Button>
                 </PopoverContent>
               </Popover>
@@ -644,7 +595,7 @@ export default function ClientDashboardPage() {
                     </thead>
                     <tbody>
                       {dailyTableData.length === 0 ? (
-                        <tr><td colSpan={orderedVisibleColumns.length} className="text-center py-8 text-muted-foreground">No data for this period</td></tr>
+                        <tr><td colSpan={orderedVisibleColumns.length} className="text-center py-8 text-muted-foreground">{t('clientDash.noDataPeriod')}</td></tr>
                       ) : (
                         <>
                           {dailyTableData.map(row => (
@@ -659,7 +610,7 @@ export default function ClientDashboardPage() {
                           <tr className="totals-row">
                             {orderedVisibleColumns.map(col => (
                               <td key={col.key} className={`${col.right ? 'text-right' : ''} text-foreground font-bold`}>
-                                {col.key === 'date' ? 'TOTAL' : formatMetricValue(col.key, (totals as any)[col.key] || 0, formatCurrency, formatNumber)}
+                                {col.key === 'date' ? t('clientDash.total') : formatMetricValue(col.key, (totals as any)[col.key] || 0, formatCurrency, formatNumber)}
                               </td>
                             ))}
                           </tr>
@@ -674,12 +625,12 @@ export default function ClientDashboardPage() {
 
           {/* REPORTS TAB */}
           <TabsContent value="reports" className="space-y-3">
-            <h3 className="text-base sm:text-lg font-semibold">Reports</h3>
+            <h3 className="text-base sm:text-lg font-semibold">{t('clientDash.reports')}</h3>
             {reports.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <FileText className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="font-medium text-foreground">No reports yet</p>
-                <p className="text-sm text-muted-foreground mt-1">Published reports from your agency will appear here.</p>
+                <p className="font-medium text-foreground">{t('clientDash.noReports')}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('clientDash.noReportsDesc')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -696,10 +647,10 @@ export default function ClientDashboardPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Badge variant="outline" className="text-[10px] border-success/30 text-success">Published</Badge>
+                        <Badge variant="outline" className="text-[10px] border-success/30 text-success">{t('clientDash.published')}</Badge>
                         {report.pdf_url && (
                           <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
-                            <a href={report.pdf_url} target="_blank" rel="noopener noreferrer">Download</a>
+                            <a href={report.pdf_url} target="_blank" rel="noopener noreferrer">{t('clientDash.download')}</a>
                           </Button>
                         )}
                       </div>

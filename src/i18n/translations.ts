@@ -1195,6 +1195,40 @@ export const translations = {
   'ai.guide': t('Guide', 'Руководство', 'Guida', 'Guía', 'دليل', 'Guide'),
   'ai.howItWorks': t('How it works', 'Как это работает', 'Come funziona', 'Cómo funciona', 'كيف يعمل', 'Comment ça marche'),
 
+  // Client Dashboard
+  'clientDash.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
+  'clientDash.dailyStats': t('Daily Stats', 'Ежедневная статистика', 'Stat. giornaliere', 'Estadísticas diarias', 'إحصائيات يومية', 'Stats quotidiennes'),
+  'clientDash.reports': t('Reports', 'Отчёты', 'Report', 'Informes', 'التقارير', 'Rapports'),
+  'clientDash.monthlyBudget': t('Monthly Budget', 'Месячный бюджет', 'Budget mensile', 'Presupuesto mensual', 'الميزانية الشهرية', 'Budget mensuel'),
+  'clientDash.spent': t('Spent', 'Потрачено', 'Speso', 'Gastado', 'المنفق', 'Dépensé'),
+  'clientDash.remaining': t('remaining', 'осталось', 'rimanente', 'restante', 'متبقي', 'restant'),
+  'clientDash.leadGoal': t('Lead Goal', 'Цель по лидам', 'Obiettivo lead', 'Meta de leads', 'هدف العملاء', 'Objectif leads'),
+  'clientDash.manageColumns': t('Manage Columns', 'Настроить колонки', 'Gestisci colonne', 'Gestionar columnas', 'إدارة الأعمدة', 'Gérer les colonnes'),
+  'clientDash.columns': t('Columns', 'Колонки', 'Colonne', 'Columnas', 'الأعمدة', 'Colonnes'),
+  'clientDash.resetDefaults': t('Reset Defaults', 'Сбросить по умолчанию', 'Ripristina predefiniti', 'Restablecer', 'إعادة تعيين', 'Réinitialiser'),
+  'clientDash.noReports': t('No reports yet', 'Отчётов пока нет', 'Nessun report', 'Sin informes aún', 'لا توجد تقارير بعد', 'Aucun rapport'),
+  'clientDash.noReportsDesc': t('Published reports from your agency will appear here.', 'Опубликованные отчёты от вашего агентства появятся здесь.', 'I report pubblicati dalla tua agenzia appariranno qui.', 'Los informes publicados aparecerán aquí.', 'ستظهر التقارير المنشورة هنا.', 'Les rapports publiés apparaîtront ici.'),
+  'clientDash.download': t('Download', 'Скачать', 'Scarica', 'Descargar', 'تحميل', 'Télécharger'),
+  'clientDash.published': t('Published', 'Опубликован', 'Pubblicato', 'Publicado', 'منشور', 'Publié'),
+  'clientDash.noClient': t('No client assigned', 'Клиент не назначен', 'Nessun cliente assegnato', 'Sin cliente asignado', 'لم يتم تعيين عميل', 'Aucun client assigné'),
+  'clientDash.contactAgency': t('Contact your agency to get access.', 'Свяжитесь с агентством для получения доступа.', "Contatta la tua agenzia per l'accesso.", 'Contacta a tu agencia para obtener acceso.', 'اتصل بوكالتك للحصول على الوصول.', 'Contactez votre agence pour obtenir un accès.'),
+  'clientDash.total': t('TOTAL', 'ИТОГО', 'TOTALE', 'TOTAL', 'المجموع', 'TOTAL'),
+  'clientDash.dailyStatistics': t('Daily Statistics', 'Ежедневная статистика', 'Statistiche giornaliere', 'Estadísticas diarias', 'الإحصائيات اليومية', 'Statistiques quotidiennes'),
+  'clientDash.noDataPeriod': t('No data for this period', 'Нет данных за этот период', 'Nessun dato per questo periodo', 'Sin datos para este período', 'لا توجد بيانات لهذه الفترة', 'Aucune donnée pour cette période'),
+
+  // Chart modes
+  'chart.absolute': t('Absolute', 'Абсолютные', 'Assoluto', 'Absoluto', 'مطلق', 'Absolu'),
+  'chart.trend': t('Trend', 'Тренд', 'Tendenza', 'Tendencia', 'اتجاه', 'Tendance'),
+  'chart.individual': t('Individual', 'По отдельности', 'Individuale', 'Individual', 'فردي', 'Individuel'),
+  'chart.combo': t('Combo', 'Комбо', 'Combinato', 'Combinado', 'مركب', 'Combiné'),
+  'chart.normalizedHint': t('Values normalized to first day = 100%', 'Значения нормализованы к первому дню = 100%', 'Valori normalizzati al primo giorno = 100%', 'Valores normalizados al primer día = 100%', 'القيم الطبيعية إلى اليوم الأول = 100%', 'Valeurs normalisées au premier jour = 100%'),
+
+  // Sync monitor
+  'sync.statusSuccess': t('Success', 'Успешно', 'Successo', 'Éxito', 'نجاح', 'Succès'),
+  'sync.statusError': t('Error', 'Ошибка', 'Errore', 'Error', 'خطأ', 'Erreur'),
+  'sync.statusRunning': t('Running', 'Синхронизация...', 'In esecuzione', 'Ejecutándose', 'جاري التشغيل', 'En cours'),
+  'sync.statusIdle': t('Idle', 'Ожидание', 'Inattivo', 'Inactivo', 'خامل', 'Inactif'),
+
 } as const;
 
 export type TranslationKey = keyof typeof translations;
