@@ -214,6 +214,7 @@ export default function BroadcastsPage() {
             title: subject,
             message: body,
             force_channels: channels,
+            ...(selectedBotId && channels.includes('telegram') ? { bot_profile_id: selectedBotId } : {}),
           }),
         }
       );
