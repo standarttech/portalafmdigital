@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
 import type { CreativeAsset } from '@/types/ai-ads';
+import PlatformIntegrationsPanel from '@/components/integrations/PlatformIntegrationsPanel';
 
 interface Client { id: string; name: string; }
 
