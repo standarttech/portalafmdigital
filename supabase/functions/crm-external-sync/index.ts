@@ -498,6 +498,13 @@ Deno.serve(async (req) => {
             adset_name: lead.adset_name || "",
             ad_name: lead.ad_name || "",
             landing_page: lead.landing_page || "",
+            fbclid: lead.fbclid || null,
+            fbc: lead.fbc || null,
+            fbp: lead.fbp || null,
+            fb_lead_id: lead.fb_lead_id || null,
+            fb_ad_id: lead.fb_ad_id || null,
+            fb_adset_id: lead.fb_adset_id || null,
+            fb_campaign_id: lead.fb_campaign_id || null,
             raw_payload: lead.raw_payload || null,
             updated_at: new Date().toISOString(),
           };
