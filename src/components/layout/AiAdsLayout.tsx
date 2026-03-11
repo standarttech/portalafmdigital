@@ -27,7 +27,7 @@ const navItems: { labelKey: TranslationKey; icon: any; path: string }[] = [
   { labelKey: 'aiAds.optimization', icon: Zap, path: '/ai-ads/optimization' },
   { labelKey: 'aiAds.presets', icon: Settings, path: '/ai-ads/presets' },
   { labelKey: 'aiAds.clientReport', icon: Users, path: '/ai-ads/client-report' },
-  { labelKey: 'common.integrations' as any, icon: Link2, path: '/ai-ads/integrations' },
+  { labelKey: 'common.integrations', icon: Link2, path: '/ai-ads/integrations' },
   { labelKey: 'ai.guide', icon: BookOpen, path: '/ai-ads/guide' },
 ];
 
