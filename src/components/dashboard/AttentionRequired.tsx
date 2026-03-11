@@ -41,7 +41,16 @@ async function fetchAlerts(): Promise<{ alerts: AlertItem[]; wins: AlertItem[] }
     .select('id, sync_status, sync_error, account_name, client_id')
     .eq('sync_status', 'error');
 
-  (syncErrors || []).filter(s => !s.sync_error?.includes('act_sheets-')).forEach(s => {
+  (syncErrors || []).filter(s => {
+    const err = (s.sync_error || '').toLowerCase();
+    // Filter out noise: sheets placeholders, token refresh issues, rate limits
+    if (err.includes('act_sheets-')) return false;
+    if (err.includes('token') && err.includes('expired')) return false;
+    if (err.includes('rate limit')) return false;
+    if (err.includes('(#17)')) return false; // Meta API rate limit code
+    if (err.includes('validating') && err.includes('access')) return false;
+    return true;
+  }).forEach(s => {
     negatives.push({
       id: `sync-${s.id}`, type: 'sync_delay', clientId: s.client_id,
       message: `${s.account_name || 'Connection'}: ${s.sync_error || 'Sync error'}`,
