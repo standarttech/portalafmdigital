@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // Beautiful HTML email template
-function buildApprovalEmail(params: {
+function buildInviteEmail(params: {
   name: string;
   email: string;
   inviteLink: string;
@@ -17,7 +17,17 @@ function buildApprovalEmail(params: {
 }): string {
   const { name, email, inviteLink, role } = params;
   const displayName = name || email.split("@")[0];
-  const roleLabel = role === "Client" ? "Client" : role === "AgencyAdmin" ? "Agency Admin" : "Media Buyer";
+  const roleMap: Record<string, string> = {
+    Client: "Client",
+    AgencyAdmin: "Agency Admin",
+    MediaBuyer: "Media Buyer",
+    Manager: "Manager",
+    SalesManager: "Sales Manager",
+    AccountManager: "Account Manager",
+    Designer: "Designer",
+    Copywriter: "Copywriter",
+  };
+  const roleLabel = roleMap[role] || role;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -69,8 +79,9 @@ function buildApprovalEmail(params: {
                           You're invited, ${displayName}
                         </h1>
                         <p style="margin:0;font-size:15px;color:#71717a;line-height:1.5;">
-                          Your access request has been approved. You've been granted
-                          <strong style="color:#d4a843;">${roleLabel}</strong> access to the AFM DIGITAL Portal.
+                          You've been granted
+                          <strong style="color:#d4a843;">${roleLabel}</strong> access to the AFM DIGITAL platform.
+                          Click the button below to create your account.
                         </p>
                       </td>
                     </tr>
@@ -112,13 +123,13 @@ function buildApprovalEmail(params: {
                         <!--[if mso]>
                         <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${inviteLink}" style="height:48px;v-text-anchor:middle;width:260px;" arcsize="21%" fillcolor="#d4a843">
                           <w:anchorlock/>
-                          <center style="color:#0a0a0b;font-family:sans-serif;font-size:15px;font-weight:bold;">Set Password &amp; Sign In →</center>
+                          <center style="color:#0a0a0b;font-family:sans-serif;font-size:15px;font-weight:bold;">Create Account →</center>
                         </v:roundrect>
                         <![endif]-->
                         <!--[if !mso]><!-->
                         <a href="${inviteLink}" target="_blank"
-                           style="display:inline-block;background:#d4a843;color:#0a0a0b;font-size:15px;font-weight:700;letter-spacing:-0.2px;text-decoration:none;padding:14px 40px;border-radius:10px;min-width:200px;text-align:center;mso-padding-alt:0;mso-text-raise:0;">
-                          Set Password &amp; Sign In →
+                           style="display:inline-block;background:#d4a843;color:#0a0a0b;font-size:15px;font-weight:700;letter-spacing:-0.2px;text-decoration:none;padding:14px 40px;border-radius:10px;min-width:200px;text-align:center;">
+                          Create Account →
                         </a>
                         <!--<![endif]-->
                       </td>
@@ -142,8 +153,8 @@ function buildApprovalEmail(params: {
                     <tr>
                       <td style="background:#1a1a1d;border:1px solid #27272a;border-radius:8px;padding:14px 16px;">
                         <p style="margin:0;font-size:12px;color:#71717a;line-height:1.6;">
-                          This invitation link is <strong style="color:#a1a1aa;">single-use</strong> and expires in <strong style="color:#a1a1aa;">24 hours</strong>.
-                          If you didn't request access, you can safely ignore this email.
+                          This invitation link expires in <strong style="color:#a1a1aa;">7 days</strong>.
+                          If you didn't expect this email, you can safely ignore it.
                         </p>
                       </td>
                     </tr>
@@ -196,7 +207,7 @@ function buildDenialEmail(name: string, email: string): string {
                 Hi ${displayName}, unfortunately your access request to the AFM DIGITAL Portal could not be approved at this time.
               </p>
               <p style="margin:0;font-size:13px;color:#52525b;line-height:1.6;">
-                If you believe this is a mistake or have questions, please reach out to your account manager or reply to this email.
+                If you believe this is a mistake or have questions, please reach out to your account manager.
               </p>
             </td>
           </tr>
@@ -271,14 +282,14 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!adminCheck) {
-      return new Response(JSON.stringify({ error: "Only admins can approve users" }), {
+      return new Response(JSON.stringify({ error: "Only admins can manage invitations" }), {
         status: 403,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
     const body = await req.json();
-    const { action, request_id, invitation_id, email, full_name, role, client_id, client_ids, permissions } = body;
+    const { action, request_id, email, full_name, role, client_id, client_ids, permissions } = body;
 
     console.log("approve-user action:", action);
 
@@ -303,8 +314,12 @@ serve(async (req) => {
       return typeof n === "string" && n.trim().length >= 1 && n.length <= 100;
     }
 
+    const APP_BASE_URL = "https://app.afmdigital.com";
+
     // ────────────────────────────────────────────────────────────────
-    // APPROVE / CREATE_INVITE — magic link flow (no temp passwords)
+    // APPROVE / CREATE_INVITE
+    // Creates an invitation record and sends email with /invite?token=XXX link.
+    // User registration happens on InvitePage when they click the link.
     // ────────────────────────────────────────────────────────────────
     if (action === "approve" || action === "create_invite") {
       if (!email || !validateEmail(email)) {
@@ -331,7 +346,8 @@ serve(async (req) => {
           headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
-      // Validate client_ids array
+
+      // Collect client IDs
       const resolvedClientIds: string[] = [];
       if (client_id) resolvedClientIds.push(client_id);
       if (Array.isArray(client_ids)) {
@@ -351,119 +367,7 @@ serve(async (req) => {
         .eq("email", cleanEmail)
         .eq("status", "pending");
 
-      // Find or create the auth user
-      let resolvedUserId: string | null = null;
-
-      // Check if user already exists
-      const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
-      const existingUser = listData?.users?.find(
-        (u) => u.email?.toLowerCase() === cleanEmail
-      );
-
-      if (existingUser) {
-        resolvedUserId = existingUser.id;
-      } else {
-        // Create a new user with a random secure password (they'll set their own via magic link)
-        const randomPw = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, "0")).join("");
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email: cleanEmail,
-          password: randomPw,
-          email_confirm: true,
-          user_metadata: { display_name: full_name || cleanEmail.split("@")[0] },
-        });
-
-        if (createError) {
-          console.error("Error creating user:", createError);
-          return new Response(JSON.stringify({ error: createError.message }), {
-            status: 400,
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-          });
-        }
-        resolvedUserId = newUser?.user?.id || null;
-      }
-
-      if (resolvedUserId) {
-        // Upsert agency_users
-        const { data: existingAU } = await supabaseAdmin.from("agency_users").select("id").eq("user_id", resolvedUserId).maybeSingle();
-        if (!existingAU) {
-          await supabaseAdmin.from("agency_users").insert({
-            user_id: resolvedUserId,
-            agency_role: role || "MediaBuyer",
-            display_name: full_name || cleanEmail.split("@")[0],
-          });
-        } else {
-          await supabaseAdmin.from("agency_users").update({
-            agency_role: role || "MediaBuyer",
-            display_name: full_name || cleanEmail.split("@")[0],
-          }).eq("user_id", resolvedUserId);
-        }
-
-        // Client role — add to client_users for the selected client
-        if (role === "Client" && resolvedClientIds.length > 0) {
-          for (const cid of resolvedClientIds) {
-            const { data: existingCU } = await supabaseAdmin.from("client_users").select("id").eq("user_id", resolvedUserId).eq("client_id", cid).maybeSingle();
-            if (!existingCU) {
-              await supabaseAdmin.from("client_users").insert({
-                user_id: resolvedUserId,
-                client_id: cid,
-                role: "Client",
-              });
-            }
-          }
-        }
-
-        // Non-Client roles — also assign to selected clients if provided
-        if (role !== "Client" && resolvedClientIds.length > 0) {
-          for (const cid of resolvedClientIds) {
-            const { data: existingCU } = await supabaseAdmin.from("client_users").select("id").eq("user_id", resolvedUserId).eq("client_id", cid).maybeSingle();
-            if (!existingCU) {
-              await supabaseAdmin.from("client_users").insert({
-                user_id: resolvedUserId,
-                client_id: cid,
-                role: "viewer",
-              });
-            }
-          }
-        }
-
-        // Upsert permissions
-        const perms = permissions || {};
-        const { data: existingPerms } = await supabaseAdmin.from("user_permissions").select("id").eq("user_id", resolvedUserId).maybeSingle();
-        if (!existingPerms) {
-          await supabaseAdmin.from("user_permissions").insert({
-            user_id: resolvedUserId,
-            can_add_clients: perms.can_add_clients || false,
-            can_edit_clients: perms.can_edit_clients || false,
-            can_assign_clients_to_users: perms.can_assign_clients_to_users || false,
-            can_connect_integrations: perms.can_connect_integrations || false,
-            can_run_manual_sync: perms.can_run_manual_sync || false,
-            can_edit_metrics_override: perms.can_edit_metrics_override || false,
-            can_manage_tasks: perms.can_manage_tasks || false,
-            can_publish_reports: perms.can_publish_reports || false,
-            can_view_audit_log: perms.can_view_audit_log || false,
-          });
-        }
-
-        // Upsert user_settings — mark needs_password_setup so the app intercepts after magic link
-        const { data: existingSettings } = await supabaseAdmin.from("user_settings").select("id").eq("user_id", resolvedUserId).maybeSingle();
-        if (!existingSettings) {
-          await supabaseAdmin.from("user_settings").insert({
-            user_id: resolvedUserId,
-            force_password_change: false,
-            needs_password_setup: true,
-            language: "ru",
-            theme: "dark",
-          });
-        } else {
-          await supabaseAdmin.from("user_settings").update({
-            force_password_change: false,
-            needs_password_setup: true,
-            temp_password_expires_at: null,
-          }).eq("user_id", resolvedUserId);
-        }
-      }
-
-      // Update access_request status
+      // Update access_request status if approving a request
       if (request_id) {
         await supabaseAdmin.from("access_requests").update({
           status: "approved",
@@ -472,16 +376,8 @@ serve(async (req) => {
         }).eq("id", request_id);
       }
 
-      // Mark invitation as accepted
-      if (invitation_id) {
-        await supabaseAdmin.from("invitations").update({
-          status: "accepted",
-          accepted_at: new Date().toISOString(),
-        }).eq("id", invitation_id);
-      }
-
-      // Create a new invitation record in the invitations table
-      const { data: newInvitation } = await supabaseAdmin.from("invitations").insert({
+      // Create invitation record (token is auto-generated by DB default)
+      const { data: newInvitation, error: invError } = await supabaseAdmin.from("invitations").insert({
         email: cleanEmail,
         role: role || "MediaBuyer",
         status: "pending",
@@ -490,49 +386,68 @@ serve(async (req) => {
         permissions: permissions || {},
       }).select("id, token").single();
 
-      // Generate a magic sign-in link (one-time, expires in 24h)
-      const appBaseUrl = "https://app.afmdigital.com";
-      let inviteLink = `${appBaseUrl}/auth`;
+      if (invError || !newInvitation) {
+        console.error("Error creating invitation:", invError);
+        return new Response(JSON.stringify({ error: "Failed to create invitation" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
 
+      // Store client assignments in invitation permissions for InvitePage to use
+      if (resolvedClientIds.length > 0) {
+        const permsWithClients = {
+          ...(permissions || {}),
+          _client_ids: resolvedClientIds,
+        };
+        await supabaseAdmin.from("invitations")
+          .update({ permissions: permsWithClients })
+          .eq("id", newInvitation.id);
+      }
+
+      // Build the invite link — direct to /invite page with invitation token
+      const inviteLink = `${APP_BASE_URL}/invite?token=${newInvitation.token}`;
+
+      // Send email
       if (resendApiKey) {
         try {
-          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-            type: "magiclink",
-            email: cleanEmail,
-            options: {
-              redirectTo: `${appBaseUrl}/set-password`,
-            },
-          });
-
-          if (!linkError && linkData?.properties?.action_link) {
-            inviteLink = linkData.properties.action_link;
-          } else {
-            console.warn("Could not generate magic link, falling back to login URL:", linkError?.message);
-          }
-
           const resend = new Resend(resendApiKey);
           await resend.emails.send({
             from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
             to: [cleanEmail],
-            subject: "You're invited to AFM DIGITAL Portal",
-            html: buildApprovalEmail({
+            subject: "You're invited to AFM DIGITAL",
+            html: buildInviteEmail({
               name: full_name || "",
               email: cleanEmail,
               inviteLink,
               role: role || "MediaBuyer",
             }),
           });
-
-          console.log("Invitation email sent to:", cleanEmail);
+          console.log("Invitation email sent to:", cleanEmail, "link:", inviteLink);
         } catch (emailError) {
           console.error("Error sending email:", emailError);
+          // Email failed but invitation was created — admin can copy link manually
         }
       } else {
-        console.warn("RESEND_API_KEY not configured, skipping email");
+        console.warn("RESEND_API_KEY not configured, invitation created but email not sent");
       }
 
+      // Audit log
+      await supabaseAdmin.from("audit_log").insert({
+        action: "invitation_created",
+        entity_type: "invitations",
+        entity_id: newInvitation.id,
+        user_id: callerUser.id,
+        details: { email: cleanEmail, role: role || "MediaBuyer", client_ids: resolvedClientIds },
+      });
+
       return new Response(
-        JSON.stringify({ success: true, message: "User approved and invitation sent", invitation_id: newInvitation?.id }),
+        JSON.stringify({
+          success: true,
+          message: "Invitation created and email sent",
+          invitation_id: newInvitation.id,
+          invite_link: inviteLink,
+        }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -567,7 +482,7 @@ serve(async (req) => {
           await resend.emails.send({
             from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
             to: [email.toLowerCase().trim()],
-            subject: "AFM DIGITAL Portal — Access Request Update",
+            subject: "AFM DIGITAL — Access Request Update",
             html: buildDenialEmail(full_name || "", email),
           });
         } catch (emailError) {
@@ -582,108 +497,84 @@ serve(async (req) => {
     }
 
     // ────────────────────────────────────────────────────────────────
-    // RESEND INVITE — regenerate magic link and resend
+    // RESEND INVITE — create new invitation and send email
     // ────────────────────────────────────────────────────────────────
     if (action === "resend_temp_password") {
       let targetEmail = email;
-      let existingUser: any = null;
-
       const user_id = body.user_id;
+
       if (user_id && !validateUUID(user_id)) {
         return new Response(JSON.stringify({ error: "Invalid user_id format" }), {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
+
+      // Resolve email from user_id if needed
       if (user_id) {
         const { data: userData } = await supabaseAdmin.auth.admin.getUserById(user_id);
-        if (userData?.user) {
-          existingUser = userData.user;
+        if (userData?.user?.email) {
           targetEmail = userData.user.email;
         }
-      } else if (targetEmail) {
-        const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
-        existingUser = listData?.users?.find(
-          (u) => u.email?.toLowerCase() === targetEmail.toLowerCase().trim()
-        );
       }
 
-      if (!existingUser || !targetEmail) {
+      if (!targetEmail) {
         return new Response(JSON.stringify({ error: "User not found" }), {
           status: 404,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
 
-      // Clear any leftover force_password_change flag
-      await supabaseAdmin.from("user_settings").update({
-        force_password_change: false,
-        needs_password_setup: true,
-        temp_password_expires_at: null,
-      }).eq("user_id", existingUser.id);
-
-      // Revoke old pending invitations and create a new one
       const cleanTarget = targetEmail.toLowerCase().trim();
+
+      // Revoke old pending invitations
       await supabaseAdmin
         .from("invitations")
         .update({ status: "revoked" })
         .eq("email", cleanTarget)
         .eq("status", "pending");
 
-      // Get display_name from agency_users
+      // Get user info
       const { data: agencyUser } = await supabaseAdmin
         .from("agency_users")
         .select("display_name, agency_role")
-        .eq("user_id", existingUser.id)
+        .eq("user_id", user_id || "")
         .maybeSingle();
 
-      // Create new invitation record
-      await supabaseAdmin.from("invitations").insert({
+      // Create new invitation
+      const { data: newInv } = await supabaseAdmin.from("invitations").insert({
         email: cleanTarget,
         role: agencyUser?.agency_role || "MediaBuyer",
         status: "pending",
         created_by: callerUser.id,
-      });
+      }).select("id, token").single();
+
+      const inviteLink = newInv
+        ? `${APP_BASE_URL}/invite?token=${newInv.token}`
+        : `${APP_BASE_URL}/auth`;
 
       if (resendApiKey) {
         try {
-          const appBaseUrl = "https://app.afmdigital.com";
-          let inviteLink = `${appBaseUrl}/auth`;
-
-          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-            type: "magiclink",
-            email: cleanTarget,
-            options: {
-              redirectTo: `${appBaseUrl}/set-password`,
-            },
-          });
-
-          if (!linkError && linkData?.properties?.action_link) {
-            inviteLink = linkData.properties.action_link;
-          }
-
           const resend = new Resend(resendApiKey);
-
           await resend.emails.send({
             from: "AFM DIGITAL <no-reply@app.afmdigital.com>",
             to: [cleanTarget],
-            subject: "Your new invitation link — AFM DIGITAL Portal",
-            html: buildApprovalEmail({
+            subject: "Your new invitation link — AFM DIGITAL",
+            html: buildInviteEmail({
               name: agencyUser?.display_name || "",
-              email: targetEmail,
+              email: cleanTarget,
               inviteLink,
               role: agencyUser?.agency_role || "MediaBuyer",
             }),
           });
-
-          console.log("Resent invitation to:", targetEmail);
+          console.log("Resent invitation to:", cleanTarget);
         } catch (emailError) {
           console.error("Error sending email:", emailError);
         }
       }
 
       return new Response(
-        JSON.stringify({ success: true, message: "Invitation resent" }),
+        JSON.stringify({ success: true, message: "Invitation resent", invite_link: inviteLink }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }

@@ -84,97 +84,173 @@ export default function InvitePage() {
 
     setIsLoading(true);
 
-    // Create user account
-    const redirectUrl = `${window.location.origin}/`;
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: invitation.email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { display_name: displayName.trim() },
-      },
-    });
+    try {
+      // Step 1: Try to sign up (new user)
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: invitation.email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: { display_name: trimmedName },
+        },
+      });
 
-    if (signUpError) {
-      setIsLoading(false);
-      if (signUpError.message.includes('already registered')) {
-        toast.error(t('auth.userExists'));
+      let userId: string | null = null;
+
+      if (signUpError) {
+        if (signUpError.message.includes('already registered')) {
+          // User already exists (e.g. from a previous invite attempt) — try to sign in
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: invitation.email,
+            password,
+          });
+
+          if (signInError) {
+            // Maybe user has a different password — update via admin in edge function
+            // For now, tell user to use their existing password or contact admin
+            setIsLoading(false);
+            toast.error(t('auth.userExists'));
+            return;
+          }
+
+          userId = signInData.user?.id || null;
+        } else {
+          setIsLoading(false);
+          toast.error(signUpError.message);
+          return;
+        }
       } else {
-        toast.error(signUpError.message);
+        // New user created — sign in immediately (auto-confirm is enabled)
+        if (!signUpData.user) {
+          setIsLoading(false);
+          toast.error('Failed to create account');
+          return;
+        }
+
+        userId = signUpData.user.id;
+
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: invitation.email,
+          password,
+        });
+
+        if (signInError) {
+          setIsLoading(false);
+          toast.error(signInError.message);
+          return;
+        }
       }
-      return;
-    }
 
-    if (!signUpData.user) {
-      setIsLoading(false);
-      toast.error('Failed to create account');
-      return;
-    }
+      if (!userId) {
+        setIsLoading(false);
+        toast.error('Failed to authenticate');
+        return;
+      }
 
-    // Sign in immediately (auto-confirm is enabled for invitations)
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: invitation.email,
-      password,
-    });
+      // Step 2: Fetch invitation details (client_id, permissions)
+      const { data: detailsData } = await supabase
+        .rpc('get_invitation_details', { _invitation_id: invitation.id });
 
-    if (signInError) {
-      setIsLoading(false);
-      toast.error(signInError.message);
-      return;
-    }
+      const details = Array.isArray(detailsData) ? detailsData[0] : detailsData;
+      const perms = (details?.permissions as Record<string, any>) || {};
+      const clientIds: string[] = perms._client_ids || (details?.client_id ? [details.client_id] : []);
 
-    // Fetch invitation details via secure RPC
-    const { data: detailsData } = await supabase
-      .rpc('get_invitation_details', { _invitation_id: invitation.id });
+      // Step 3: Create agency_users or client_users record (idempotent)
+      if (invitation.role === 'Client') {
+        for (const cid of clientIds) {
+          await supabase.from('client_users').upsert({
+            user_id: userId,
+            client_id: cid,
+            role: 'Client',
+          }, { onConflict: 'user_id,client_id' }).select();
+        }
+      } else {
+        // Agency user — upsert to avoid duplicates
+        const { data: existingAU } = await supabase
+          .from('agency_users')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
 
-    const details = Array.isArray(detailsData) ? detailsData[0] : detailsData;
+        if (!existingAU) {
+          await supabase.from('agency_users').insert({
+            user_id: userId,
+            agency_role: invitation.role as any,
+            display_name: trimmedName,
+          });
+        } else {
+          await supabase.from('agency_users').update({
+            agency_role: invitation.role as any,
+            display_name: trimmedName,
+          }).eq('user_id', userId);
+        }
 
-    // Create agency_users or client_users record
-    if (invitation.role === 'Client') {
-      if (details?.client_id) {
-        await supabase.from('client_users').insert({
-          user_id: signUpData.user.id,
-          client_id: details.client_id,
-          role: 'Client',
+        // Assign to clients if provided
+        for (const cid of clientIds) {
+          const { data: existingCU } = await supabase
+            .from('client_users')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('client_id', cid)
+            .maybeSingle();
+
+          if (!existingCU) {
+            await supabase.from('client_users').insert({
+              user_id: userId,
+              client_id: cid,
+              role: 'viewer',
+            });
+          }
+        }
+
+        // Create permissions (idempotent)
+        const { data: existingPerms } = await supabase
+          .from('user_permissions')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!existingPerms) {
+          await supabase.from('user_permissions').insert({
+            user_id: userId,
+            can_add_clients: perms.can_add_clients || false,
+            can_edit_clients: perms.can_edit_clients || false,
+            can_assign_clients_to_users: perms.can_assign_clients_to_users || false,
+            can_connect_integrations: perms.can_connect_integrations || false,
+            can_run_manual_sync: perms.can_run_manual_sync || false,
+            can_edit_metrics_override: perms.can_edit_metrics_override || false,
+            can_manage_tasks: perms.can_manage_tasks || false,
+            can_publish_reports: perms.can_publish_reports || false,
+            can_view_audit_log: perms.can_view_audit_log || false,
+          });
+        }
+      }
+
+      // Step 4: Mark invitation as accepted
+      await supabase.rpc('accept_invitation', { _invitation_id: invitation.id });
+
+      // Step 5: Create default user settings (idempotent)
+      const { data: existingSettings } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!existingSettings) {
+        await supabase.from('user_settings').insert({
+          user_id: userId,
+          language: 'ru',
+          theme: 'dark',
         });
       }
-    } else {
-      // MediaBuyer — agency user
-      await supabase.from('agency_users').insert({
-        user_id: signUpData.user.id,
-        agency_role: invitation.role as any,
-        display_name: displayName.trim(),
-      });
 
-      // Create permissions from invitation
-      const perms = (details?.permissions as Record<string, boolean>) || {};
-      await supabase.from('user_permissions').insert({
-        user_id: signUpData.user.id,
-        can_add_clients: perms.can_add_clients || false,
-        can_edit_clients: perms.can_edit_clients || false,
-        can_assign_clients_to_users: perms.can_assign_clients_to_users || false,
-        can_connect_integrations: perms.can_connect_integrations || false,
-        can_run_manual_sync: perms.can_run_manual_sync || false,
-        can_edit_metrics_override: perms.can_edit_metrics_override || false,
-        can_manage_tasks: perms.can_manage_tasks || false,
-        can_publish_reports: perms.can_publish_reports || false,
-        can_view_audit_log: perms.can_view_audit_log || false,
-      });
+      setIsLoading(false);
+      toast.success(t('invite.accepted'));
+      navigate('/dashboard');
+    } catch (err: any) {
+      setIsLoading(false);
+      toast.error(err?.message || 'An error occurred');
     }
-
-    // Mark invitation as accepted via secure RPC
-    await supabase.rpc('accept_invitation', { _invitation_id: invitation.id });
-
-    // Create default user settings
-    await supabase.from('user_settings').insert({
-      user_id: signUpData.user.id,
-      language: 'ru',
-      theme: 'dark',
-    });
-
-    setIsLoading(false);
-    toast.success(t('invite.accepted'));
-    navigate('/dashboard');
   };
 
   if (loadingInvite) {
@@ -252,10 +328,10 @@ export default function InvitePage() {
                   type="text"
                   placeholder={t('auth.fullNamePlaceholder')}
                   value={displayName}
-                   onChange={(e) => setDisplayName(e.target.value)}
-                   required
-                   maxLength={100}
-                 />
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                  maxLength={100}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">{t('common.password')}</Label>
@@ -266,9 +342,9 @@ export default function InvitePage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                   minLength={8}
-                   maxLength={128}
-                 />
+                  minLength={8}
+                  maxLength={128}
+                />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
