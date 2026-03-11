@@ -35,7 +35,7 @@ interface BotProfile {
   bot_token_ref: string | null;
 }
 
-export default function ClientReportSchedule({ clientId, isAdmin }: Props) {
+export default function ClientReportSchedule({ clientId, isAdmin, onReportsChanged }: Props) {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [bots, setBots] = useState<BotProfile[]>([]);
   const [loading, setLoading] = useState(true);
