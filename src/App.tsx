@@ -270,6 +270,16 @@ function AppRoutes() {
   const routerLocation = useLocation();
   const currentPath = routerLocation.pathname;
 
+  // Public report page — no auth required
+  if (currentPath.startsWith("/r/")) {
+    return (
+      <Routes>
+        <Route path="/r/:id" element={<PublicReportPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
+
   // Public embed routes — no auth, no layout
   if (currentPath.startsWith("/embed/")) {
     return (
