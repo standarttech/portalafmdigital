@@ -1158,7 +1158,7 @@ export const translations = {
 
 
   // AI Ads Copilot
-  'nav.aiAds': t('AI Ads Copilot', 'AI Реклама Копайлот', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot'),
+  'nav.aiAds': t('AI Ads Copilot', 'ИИ Реклама Копайлот', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot'),
   'aiAds.overview': t('Overview', 'Обзор', 'Panoramica', 'Resumen', 'نظرة عامة', 'Aperçu'),
   'aiAds.adAccounts': t('Ad Accounts', 'Рекламные аккаунты', 'Account pubblicitari', 'Cuentas publicitarias', 'حسابات إعلانية', 'Comptes publicitaires'),
   'aiAds.analysis': t('AI Analysis', 'ИИ Анализ', 'Analisi AI', 'Análisis IA', 'تحليل الذكاء الاصطناعي', 'Analyse IA'),

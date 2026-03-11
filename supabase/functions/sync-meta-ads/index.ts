@@ -46,8 +46,15 @@ async function fetchAllPages(url: string): Promise<any[]> {
   
   while (nextUrl) {
     const resp = await fetch(nextUrl);
-    const json = await resp.json();
-    if (json.error) throw new Error(json.error.message);
+    const text = await resp.text();
+    let json: any;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      console.error("Failed to parse Meta API response:", text.substring(0, 500));
+      throw new Error(`Meta API returned invalid JSON (status ${resp.status})`);
+    }
+    if (json.error) throw new Error(json.error.message || JSON.stringify(json.error));
     allData = allData.concat(json.data || []);
     nextUrl = json.paging?.next || null;
     // Safety limit
