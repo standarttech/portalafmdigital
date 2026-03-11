@@ -73,6 +73,18 @@ async function fetchGhlPipelines(token: string, locationId: string): Promise<Ext
   }));
 }
 
+// ── GHL: fetch single contact (full details with attribution) ──
+async function fetchGhlContact(token: string, contactId: string): Promise<Record<string, any> | null> {
+  try {
+    const resp = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+      headers: { Authorization: `Bearer ${token}`, Version: "2021-07-28", Accept: "application/json" },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data.contact || null;
+  } catch { return null; }
+}
+
 // ── GHL: fetch ALL opportunities (paginated) with contact details ──
 async function fetchGhlLeads(token: string, locationId: string): Promise<ExternalLead[]> {
   const results: ExternalLead[] = [];
@@ -80,103 +92,116 @@ async function fetchGhlLeads(token: string, locationId: string): Promise<Externa
   let page = 1;
   const maxPages = 10;
 
+  // Collect all opportunities first
+  const allOpps: any[] = [];
   while (page <= maxPages) {
     const body: Record<string, unknown> = {
-      locationId,
-      query: "",
-      limit: 100,
-      page,
-      searchAfter,
+      locationId, query: "", limit: 100, page, searchAfter,
     };
-
     const resp = await fetch(
       `https://services.leadconnectorhq.com/opportunities/search`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
-          Version: "2021-07-28",
-          Accept: "application/json",
-          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, Version: "2021-07-28",
+          Accept: "application/json", "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
       },
     );
-
     if (!resp.ok) {
-      const errText = await resp.text();
-      console.error(`GHL opportunities error ${resp.status}: ${errText.slice(0, 500)}`);
+      console.error(`GHL opportunities error ${resp.status}: ${(await resp.text()).slice(0, 500)}`);
       break;
     }
-
     const data = await resp.json();
     const opps = data.opportunities || [];
     console.log(`GHL page ${page}: ${opps.length} opportunities`);
     if (opps.length === 0) break;
-
-    for (const o of opps) {
-      const contact = o.contact || {};
-      // Extract UTM / attribution from customFields or source
-      const customFields: Record<string, string> = {};
-      if (Array.isArray(contact.customFields)) {
-        for (const cf of contact.customFields) {
-          if (cf.id && cf.value) customFields[cf.id] = String(cf.value);
-          if (cf.key && cf.value) customFields[cf.key] = String(cf.value);
-        }
-      }
-
-      // GHL stores attribution in contact.attributionSource or custom fields
-      const attribution = contact.attributionSource || {};
-
-      // Extract Facebook-specific IDs for CAPI attribution
-      const fbclid = attribution.fbclid || customFields["fbclid"] || customFields["fb_click_id"] || "";
-      const fbc = attribution.fbc || customFields["fbc"] || "";
-      const fbp = attribution.fbp || customFields["fbp"] || "";
-      const fbLeadId = customFields["fb_lead_id"] || customFields["leadgen_id"] || o.sourceId || "";
-      const fbAdId = attribution.adId || customFields["fb_ad_id"] || customFields["ad_id"] || "";
-      const fbAdsetId = attribution.adsetId || customFields["fb_adset_id"] || customFields["adset_id"] || customFields["adgroup_id"] || "";
-      const fbCampaignId = attribution.campaignId || customFields["fb_campaign_id"] || customFields["campaign_id"] || "";
-
-      results.push({
-        external_id: o.id,
-        first_name: contact.firstName || contact.first_name || "",
-        last_name: contact.lastName || contact.last_name || "",
-        full_name: o.name || contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "",
-        email: contact.email || "",
-        phone: contact.phone || "",
-        company: contact.companyName || contact.company || o.companyName || "",
-        source: contact.source || attribution.medium || "gohighlevel",
-        value: o.monetaryValue || 0,
-        status: o.status || "open",
-        tags: Array.isArray(contact.tags) ? contact.tags.map((t: any) => typeof t === "string" ? t : t.name || "") : [],
-        pipeline_id: o.pipelineId || "",
-        pipeline_stage_id: o.pipelineStageId || "",
-        utm_source: attribution.utmSource || customFields["utm_source"] || "",
-        utm_medium: attribution.utmMedium || attribution.medium || customFields["utm_medium"] || "",
-        utm_campaign: attribution.utmCampaign || customFields["utm_campaign"] || "",
-        utm_content: attribution.utmContent || customFields["utm_content"] || "",
-        utm_term: attribution.utmTerm || customFields["utm_term"] || "",
-        campaign_name: attribution.campaignName || attribution.campaign || customFields["campaign_name"] || "",
-        adset_name: attribution.adgroupName || customFields["adset_name"] || customFields["ad_group_name"] || "",
-        ad_name: attribution.adName || customFields["ad_name"] || "",
-        landing_page: attribution.url || contact.website || "",
-        fbclid,
-        fbc,
-        fbp,
-        fb_lead_id: fbLeadId,
-        fb_ad_id: fbAdId,
-        fb_adset_id: fbAdsetId,
-        fb_campaign_id: fbCampaignId,
-        raw_payload: o,
-      });
-    }
-
-    // GHL pagination
-    if (data.meta?.searchAfter) {
-      searchAfter = data.meta.searchAfter;
-    }
+    allOpps.push(...opps);
+    if (data.meta?.searchAfter) searchAfter = data.meta.searchAfter;
     if (opps.length < 100) break;
     page++;
+  }
+
+  // Fetch full contact details in parallel batches of 5
+  const contactCache: Record<string, Record<string, any>> = {};
+  const uniqueContactIds = [...new Set(allOpps.map(o => o.contactId || o.contact?.id).filter(Boolean))];
+  console.log(`Fetching ${uniqueContactIds.length} contacts for attribution data...`);
+  
+  for (let i = 0; i < uniqueContactIds.length; i += 5) {
+    const batch = uniqueContactIds.slice(i, i + 5);
+    const contacts = await Promise.all(batch.map(cid => fetchGhlContact(token, cid)));
+    for (let j = 0; j < batch.length; j++) {
+      if (contacts[j]) contactCache[batch[j]] = contacts[j]!;
+    }
+  }
+
+  for (const o of allOpps) {
+    const contactId = o.contactId || o.contact?.id || "";
+    const contact = contactCache[contactId] || o.contact || {};
+    
+    // Extract custom fields
+    const customFields: Record<string, string> = {};
+    if (Array.isArray(contact.customFields)) {
+      for (const cf of contact.customFields) {
+        if (cf.id && cf.value) customFields[cf.id] = String(cf.value);
+        if (cf.key && cf.value) customFields[cf.key] = String(cf.value);
+      }
+    }
+
+    // GHL stores attribution in contact.attributionSource or contact.source
+    const attribution = contact.attributionSource || {};
+    const contactSource = contact.source || "";
+
+    // Extract Facebook-specific IDs for CAPI attribution
+    const fbclid = attribution.fbclid || customFields["fbclid"] || customFields["fb_click_id"] || "";
+    const fbc = attribution.fbc || customFields["fbc"] || "";
+    const fbp = attribution.fbp || customFields["fbp"] || "";
+    const fbLeadId = customFields["fb_lead_id"] || customFields["leadgen_id"] || "";
+    const fbAdId = attribution.adId || customFields["fb_ad_id"] || customFields["ad_id"] || "";
+    const fbAdsetId = attribution.adsetId || customFields["fb_adset_id"] || customFields["adset_id"] || customFields["adgroup_id"] || "";
+    const fbCampaignId = attribution.campaignId || customFields["fb_campaign_id"] || customFields["campaign_id"] || "";
+
+    // Determine source - check if from Facebook
+    let leadSource = contactSource || attribution.medium || "gohighlevel";
+    const utmSource = attribution.utmSource || customFields["utm_source"] || "";
+    const isFb = fbclid || fbc || fbp || fbLeadId || fbCampaignId || fbAdId ||
+      utmSource.toLowerCase().includes("facebook") || utmSource.toLowerCase().includes("fb") ||
+      contactSource.toLowerCase().includes("facebook") || contactSource.toLowerCase().includes("fb");
+    if (isFb && leadSource === "gohighlevel") leadSource = "facebook";
+
+    results.push({
+      external_id: o.id,
+      first_name: contact.firstName || contact.first_name || "",
+      last_name: contact.lastName || contact.last_name || "",
+      full_name: o.name || contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "",
+      email: contact.email || "",
+      phone: contact.phone || "",
+      company: contact.companyName || contact.company || o.companyName || "",
+      source: leadSource,
+      value: o.monetaryValue || 0,
+      status: o.status || "open",
+      tags: Array.isArray(contact.tags) ? contact.tags.map((t: any) => typeof t === "string" ? t : t.name || "") : [],
+      pipeline_id: o.pipelineId || "",
+      pipeline_stage_id: o.pipelineStageId || "",
+      utm_source: utmSource,
+      utm_medium: attribution.utmMedium || attribution.medium || customFields["utm_medium"] || "",
+      utm_campaign: attribution.utmCampaign || customFields["utm_campaign"] || "",
+      utm_content: attribution.utmContent || customFields["utm_content"] || "",
+      utm_term: attribution.utmTerm || customFields["utm_term"] || "",
+      campaign_name: attribution.campaignName || attribution.campaign || customFields["campaign_name"] || "",
+      adset_name: attribution.adgroupName || customFields["adset_name"] || customFields["ad_group_name"] || "",
+      ad_name: attribution.adName || customFields["ad_name"] || "",
+      landing_page: attribution.url || contact.website || "",
+      fbclid,
+      fbc,
+      fbp,
+      fb_lead_id: fbLeadId,
+      fb_ad_id: fbAdId,
+      fb_adset_id: fbAdsetId,
+      fb_campaign_id: fbCampaignId,
+      raw_payload: { ...o, contact },
+    });
   }
 
   return results;

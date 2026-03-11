@@ -45,7 +45,7 @@ function isFromFacebook(lead: any): boolean {
   if (utmMed.includes('cpc') || utmMed.includes('paid') || utmMed.includes('cpm')) {
     if (utmSrc.includes('facebook') || utmSrc.includes('fb') || utmSrc.includes('meta')) return true;
   }
-  if (lead.fbclid || lead.fbc || lead.fbp || lead.fb_lead_id || lead.fb_campaign_id) return true;
+  if (lead.fbclid || lead.fbc || lead.fbp || lead.fb_lead_id || lead.fb_campaign_id || lead.fb_ad_id || lead.fb_adset_id) return true;
   return false;
 }
 

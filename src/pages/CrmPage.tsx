@@ -5,11 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Settings, Search, Webhook, LayoutGrid, Filter, X } from 'lucide-react';
+import { Plus, Settings, Search, Webhook, LayoutGrid, Filter, X, Facebook } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import CrmKanbanBoard from '@/components/crm/CrmKanbanBoard';
 import CrmLeadDetailPanel from '@/components/crm/CrmLeadDetailPanel';
 import CrmCreateLeadDialog from '@/components/crm/CrmCreateLeadDialog';
@@ -77,9 +79,22 @@ export default function CrmPage() {
   const [showCreatePipeline, setShowCreatePipeline] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [fbOnly, setFbOnly] = useState(false);
+
+  const isFromFacebook = (lead: CrmLead): boolean => {
+    const src = (lead.source || '').toLowerCase();
+    const utmSrc = (lead.utm_source || '').toLowerCase();
+    if (src.includes('facebook') || src.includes('fb') || src.includes('meta')) return true;
+    if (utmSrc.includes('facebook') || utmSrc.includes('fb') || utmSrc.includes('meta')) return true;
+    if (lead.fbclid || lead.fbc || lead.fbp || lead.fb_lead_id || lead.fb_campaign_id || lead.fb_ad_id || lead.fb_adset_id) return true;
+    return false;
+  };
+
+  const fbCount = useMemo(() => leads.filter(isFromFacebook).length, [leads]);
 
   const filteredLeads = useMemo(() => {
     let result = leads;
+    if (fbOnly) result = result.filter(isFromFacebook);
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(l =>
@@ -92,7 +107,7 @@ export default function CrmPage() {
     if (filterAssignee) result = result.filter(l => l.assignee_id === filterAssignee);
     if (filterTag) result = result.filter(l => l.tags?.includes(filterTag));
     return result;
-  }, [leads, search, filterSource, filterAssignee, filterTag]);
+  }, [leads, search, filterSource, filterAssignee, filterTag, fbOnly]);
 
   const uniqueSources = [...new Set(leads.map(l => l.source).filter(Boolean))];
   const uniqueTags = [...new Set(leads.flatMap(l => l.tags || []))];
@@ -142,6 +157,13 @@ export default function CrmPage() {
             <SelectContent>{pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
           </Select>
         )}
+
+        <div className="flex items-center gap-2 ml-auto">
+          <Facebook className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label htmlFor="fb-only-pipeline" className="text-xs text-muted-foreground cursor-pointer">Facebook only</Label>
+          <Switch id="fb-only-pipeline" checked={fbOnly} onCheckedChange={setFbOnly} className="scale-90" />
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">FB: {fbCount} / {leads.length}</Badge>
+        </div>
       </div>
 
       {/* Row 2: Search + action buttons */}
