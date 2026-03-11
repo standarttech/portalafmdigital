@@ -178,6 +178,17 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); fetchRequests(); fetchInvitations(); fetchClients(); }, [fetchUsers, fetchRequests, fetchInvitations, fetchClients]);
 
+  // Realtime subscription for invitations
+  useEffect(() => {
+    const channel = supabase
+      .channel('invitations-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invitations' }, () => {
+        fetchInvitations();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchInvitations]);
+
   // CRUD handlers
   const handleCreateInvite = async () => {
     if (!inviteEmail.trim()) { toast.error(t('auth.allFieldsRequired')); return; }
