@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-// getAfmCampaignIds no longer used — client dashboard shows all campaigns for full historical data
+import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { motion } from 'framer-motion';
 import {
   Building2, DollarSign, MousePointerClick, Users, Eye, TrendingUp,
@@ -113,11 +113,22 @@ export default function ClientDashboardPage() {
     if (clientIds.length === 0) return;
     const cid = clientIds[0];
 
-    // Show ALL campaigns data for full historical view (no AFM filter for client dashboard)
+    // AFM FILTER: only show metrics for AFM campaigns to match campaigns tab
+    const afmCampaignIds = await getAfmCampaignIds(cid);
+    
+    let metricsQuery = supabase.from('daily_metrics')
+      .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
+      .eq('client_id', cid).order('date', { ascending: true });
+    
+    if (afmCampaignIds.length > 0) {
+      metricsQuery = metricsQuery.in('campaign_id', afmCampaignIds);
+    } else {
+      // No AFM campaigns — show nothing
+      metricsQuery = metricsQuery.eq('campaign_id', '__none__');
+    }
+    
     const [metricsRes, campaignsRes, budgetRes, reportsRes, adAccountsRes, commentsRes] = await Promise.all([
-      supabase.from('daily_metrics')
-        .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-        .eq('client_id', cid).order('date', { ascending: true }),
+      metricsQuery,
       supabase.from('campaigns')
         .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
         .eq('client_id', cid),
