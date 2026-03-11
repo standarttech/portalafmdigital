@@ -79,20 +79,31 @@ async function fetchDashboardData(
 
   if (filteredCampaignIds.length === 0) return { kpis: ZERO_KPIS, chartData: [], platformData: [], clientsData: [], hasRealData: true };
 
-  // === PARALLEL: Fetch current metrics, prev metrics, counts, platform maps all at once ===
-  let currentQuery = supabase
-    .from('daily_metrics')
-    .select('spend, leads, link_clicks, impressions, date, client_id, campaign_id, revenue, purchases')
-    .gte('date', range.from).lte('date', range.to)
-    .in('campaign_id', filteredCampaignIds);
-  if (clientIds && clientIds.length > 0) currentQuery = currentQuery.in('client_id', clientIds);
-
-  let prevQuery = supabase
-    .from('daily_metrics')
-    .select('spend, leads, link_clicks, impressions, revenue, purchases')
-    .gte('date', prevRange.from).lte('date', prevRange.to)
-    .in('campaign_id', filteredCampaignIds);
-  if (clientIds && clientIds.length > 0) prevQuery = prevQuery.in('client_id', clientIds);
+  // === Paginated fetch helper to bypass 1000-row limit ===
+  async function fetchAllMetrics(
+    dateFrom: string, dateTo: string,
+    campaignIds: string[], scopeClientIds: string[] | null | undefined,
+    columns: string,
+  ) {
+    const PAGE_SIZE = 1000;
+    let allRows: any[] = [];
+    let offset = 0;
+    while (true) {
+      let q = supabase
+        .from('daily_metrics')
+        .select(columns)
+        .gte('date', dateFrom).lte('date', dateTo)
+        .in('campaign_id', campaignIds)
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (scopeClientIds && scopeClientIds.length > 0) q = q.in('client_id', scopeClientIds);
+      const { data } = await q;
+      if (!data || data.length === 0) break;
+      allRows = allRows.concat(data);
+      if (data.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
+    return allRows;
+  }
 
   let activeClientsQuery = supabase.from('clients').select('id', { count: 'exact', head: true }).eq('status', 'active').neq('category', 'agency');
   if (clientIds && clientIds.length > 0) activeClientsQuery = activeClientsQuery.in('id', clientIds);
@@ -100,18 +111,18 @@ async function fetchDashboardData(
   let activeCampaignsQuery = supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('status', 'active').ilike('campaign_name', '%AFM%');
   if (clientIds && clientIds.length > 0) activeCampaignsQuery = activeCampaignsQuery.in('client_id', clientIds);
 
-  // Fire ALL queries in parallel
+  // Fire ALL queries in parallel (metrics use paginated fetch)
   const [
-    { data: currentMetrics },
-    { data: prevMetrics },
+    currentMetrics,
+    prevMetrics,
     { count: clientCount },
     { count: campaignCount },
     { data: allConnections },
     { data: allAdAccounts },
     { data: allCampaigns },
   ] = await Promise.all([
-    currentQuery,
-    prevQuery,
+    fetchAllMetrics(range.from, range.to, filteredCampaignIds, clientIds, 'spend, leads, link_clicks, impressions, date, client_id, campaign_id, revenue, purchases'),
+    fetchAllMetrics(prevRange.from, prevRange.to, filteredCampaignIds, clientIds, 'spend, leads, link_clicks, impressions, revenue, purchases'),
     activeClientsQuery,
     activeCampaignsQuery,
     supabase.from('platform_connections').select('id, platform').eq('is_active', true),
@@ -126,8 +137,8 @@ async function fetchDashboardData(
     revenue: a.revenue + Number(r.revenue || 0), purchases: a.purchases + (r.purchases || 0),
   }), { spend: 0, leads: 0, clicks: 0, impressions: 0, revenue: 0, purchases: 0 });
 
-  const cur = agg(currentMetrics || []);
-  const prev = agg(prevMetrics || []);
+  const cur = agg(currentMetrics);
+  const prev = agg(prevMetrics);
 
   const kpis: KpiData = {
     spend: cur.spend, leads: cur.leads, clicks: cur.clicks, impressions: cur.impressions,
