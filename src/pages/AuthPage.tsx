@@ -57,7 +57,7 @@ export default function AuthPage() {
     e.preventDefault();
 
     if (rateLimit.isBlocked()) {
-      toast.error('Too many attempts. Please wait 5 minutes before trying again.');
+      toast.error(t('auth.tooManyAttempts'));
       return;
     }
 
@@ -73,7 +73,7 @@ export default function AuthPage() {
 
     const { blocked } = rateLimit.record();
     if (blocked) {
-      toast.error('Too many attempts. Please wait 5 minutes before trying again.');
+      toast.error(t('auth.tooManyAttempts'));
       return;
     }
 

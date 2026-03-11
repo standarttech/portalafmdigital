@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { useRateLimit } from '@/hooks/useRateLimit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import {
 export default function PortalLoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const rateLimit = useRateLimit('portal_login');
 
   const [email, setEmail] = useState('');
@@ -61,13 +63,13 @@ export default function PortalLoginPage() {
     setError('');
 
     if (rateLimit.isBlocked()) {
-      setError('Too many attempts. Please wait 5 minutes before trying again.');
+      setError(t('auth.tooManyAttempts'));
       return;
     }
 
     const { blocked } = rateLimit.record();
     if (blocked) {
-      setError('Too many attempts. Please wait 5 minutes before trying again.');
+      setError(t('auth.tooManyAttempts'));
       return;
     }
 
@@ -76,14 +78,14 @@ export default function PortalLoginPage() {
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) {
       setError(err.message === 'Invalid login credentials'
-        ? 'Invalid email or password. Please check your credentials.'
+        ? t('portal.invalidCredentials')
         : err.message);
       setLoading(false);
       return;
     }
 
     const { data: { user: u } } = await supabase.auth.getUser();
-    if (!u) { setError('Authentication failed. Please try again.'); setLoading(false); return; }
+    if (!u) { setError(t('portal.authFailed')); setLoading(false); return; }
 
     const { data: pu } = await supabase
       .from('client_portal_users' as any)
@@ -96,10 +98,10 @@ export default function PortalLoginPage() {
         await supabase.rpc('update_portal_last_login', { _user_id: u.id });
         navigate('/portal', { replace: true });
       } else if ((pu as any).status === 'deactivated') {
-        setError('Your portal access has been deactivated. Please contact your account manager.');
+        setError(t('portal.deactivated'));
         await supabase.auth.signOut();
       } else {
-        setError('Your portal account is not yet activated. Please check your invite email.');
+        setError(t('portal.notActivated'));
         await supabase.auth.signOut();
       }
       setLoading(false);
@@ -115,7 +117,7 @@ export default function PortalLoginPage() {
     if (au?.agency_role === 'AgencyAdmin') {
       navigate('/portal', { replace: true });
     } else {
-      setError('You do not have portal access. If you received an invite, please use the link in your email.');
+      setError(t('portal.noAccess'));
       await supabase.auth.signOut();
     }
     setLoading(false);
@@ -147,7 +149,7 @@ export default function PortalLoginPage() {
   const formatLastUsed = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours < 1) return 'Just now';
+    if (hours < 1) return t('auth.justNow');
     if (hours < 24) return `${hours}h ago`;
     return `${Math.floor(hours / 24)}d ago`;
   };
@@ -166,14 +168,14 @@ export default function PortalLoginPage() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (newPassword.length < 8) { setError('Password must be at least 8 characters'); return; }
-    if (newPassword !== confirmNewPassword) { setError('Passwords do not match'); return; }
+    if (newPassword.length < 8) { setError(t('portal.passwordTooShort')); return; }
+    if (newPassword !== confirmNewPassword) { setError(t('portal.passwordMismatch')); return; }
     setResetLoading(true);
     const { error: err } = await supabase.auth.updateUser({ password: newPassword });
     if (err) { setError(err.message); setResetLoading(false); return; }
     setResetSuccess(true);
     setResetLoading(false);
-    toast.success('Password updated successfully');
+    toast.success(t('portal.passwordUpdatedSuccess'));
     const { data: { user: u } } = await supabase.auth.getUser();
     if (u) {
       await supabase.from('audit_log').insert({
@@ -194,8 +196,8 @@ export default function PortalLoginPage() {
           <Card className="w-full max-w-sm text-center">
             <CardContent className="py-10 space-y-4">
               <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
-              <h2 className="text-lg font-semibold text-foreground">Password Updated</h2>
-              <p className="text-sm text-muted-foreground">Redirecting to sign in...</p>
+              <h2 className="text-lg font-semibold text-foreground">{t('portal.passwordUpdated')}</h2>
+              <p className="text-sm text-muted-foreground">{t('portal.redirectingToSignIn')}</p>
             </CardContent>
           </Card>
         </div>
@@ -205,20 +207,20 @@ export default function PortalLoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
-            <CardTitle className="text-lg">Set New Password</CardTitle>
-            <p className="text-sm text-muted-foreground">Choose a new password for your portal account</p>
+            <CardTitle className="text-lg">{t('portal.setNewPassword')}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t('portal.setNewPasswordSubtitle')}</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleResetPassword} className="space-y-4">
-              <div><Label htmlFor="new-password">New Password</Label>
+              <div><Label htmlFor="new-password">{t('portal.newPassword')}</Label>
                 <Input id="new-password" type="password" value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)} required placeholder="Min 8 characters" /></div>
-              <div><Label htmlFor="confirm-password">Confirm Password</Label>
+                  onChange={e => setNewPassword(e.target.value)} required placeholder={t('portal.minChars')} /></div>
+              <div><Label htmlFor="confirm-password">{t('portal.confirmPassword')}</Label>
                 <Input id="confirm-password" type="password" value={confirmNewPassword}
                   onChange={e => setConfirmNewPassword(e.target.value)} required /></div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={resetLoading}>
-                {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Update Password'}
+                {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('portal.updatePassword')}
               </Button>
             </form>
           </CardContent>
@@ -232,19 +234,19 @@ export default function PortalLoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
-            <CardTitle className="text-lg">Reset Password</CardTitle>
-            <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link</p>
+            <CardTitle className="text-lg">{t('portal.resetPassword')}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t('portal.resetPasswordSubtitle')}</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div><Label htmlFor="reset-email">Email</Label>
                 <Input id="reset-email" type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} required placeholder="your@email.com" /></div>
               <Button type="submit" className="w-full" disabled={resetLoading}>
-                {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send Reset Link'}
+                {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('portal.sendResetLink')}
               </Button>
               <button type="button" onClick={() => setView('login')}
                 className="w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1">
-                <ArrowLeft className="h-3 w-3" /> Back to sign in
+                <ArrowLeft className="h-3 w-3" /> {t('portal.backToSignIn')}
               </button>
             </form>
           </CardContent>
@@ -259,12 +261,12 @@ export default function PortalLoginPage() {
         <Card className="w-full max-w-sm text-center">
           <CardContent className="py-10 space-y-4">
             <Mail className="h-10 w-10 text-primary mx-auto" />
-            <h2 className="text-lg font-semibold text-foreground">Check Your Email</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('portal.checkYourEmail')}</h2>
             <p className="text-sm text-muted-foreground">
               If an account exists for <strong>{resetEmail}</strong>, we've sent password reset instructions.
             </p>
             <Button variant="outline" size="sm" onClick={() => { setView('login'); setResetEmail(''); }}>
-              Back to Sign In
+              {t('portal.backToSignIn')}
             </Button>
           </CardContent>
         </Card>
@@ -285,10 +287,10 @@ export default function PortalLoginPage() {
       >
         <div className="text-center mb-6">
           <h1 className="text-lg font-bold text-foreground">
-            {hasRecentAccounts ? 'Welcome back' : 'Client Portal'}
+            {hasRecentAccounts ? t('auth.welcomeBack') : t('portal.title')}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {hasRecentAccounts ? 'Choose an account to continue' : 'Sign in to view your performance data'}
+            {hasRecentAccounts ? t('auth.chooseAccount') : t('portal.signInSubtitle')}
           </p>
         </div>
 
@@ -320,7 +322,7 @@ export default function PortalLoginPage() {
                             {account.displayName || account.email}
                           </p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{account.portalClientLabel || 'Portal'}</span>
+                            <span>{account.portalClientLabel || t('portal.title')}</span>
                             <span>·</span>
                             <Clock className="h-3 w-3" />
                             <span>{formatLastUsed(account.lastUsedAt)}</span>
@@ -338,7 +340,7 @@ export default function PortalLoginPage() {
                   })}
                   <div className="pt-3">
                     <Button variant="outline" className="w-full gap-2" onClick={() => setShowLoginForm(true)}>
-                      <UserPlus className="h-4 w-4" /> Use another account
+                      <UserPlus className="h-4 w-4" /> {t('auth.useAnotherAccount')}
                     </Button>
                   </div>
                 </CardContent>
@@ -365,8 +367,8 @@ export default function PortalLoginPage() {
                     </div>
                   ) : (
                     <>
-                      <CardTitle className="text-lg">Client Portal</CardTitle>
-                      <p className="text-sm text-muted-foreground">Sign in to view your performance data</p>
+                      <CardTitle className="text-lg">{t('portal.title')}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{t('portal.signInSubtitle')}</p>
                     </>
                   )}
                 </CardHeader>
@@ -381,14 +383,14 @@ export default function PortalLoginPage() {
                     {error && <p className="text-sm text-destructive">{error}</p>}
                     <Button type="submit" className="w-full gap-2" disabled={loading}>
                       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : selectedAccount ? (
-                        <><LogIn className="h-4 w-4" /> Continue as {selectedAccount.displayName || selectedAccount.email.split('@')[0]}</>
-                      ) : 'Sign In'}
+                        <><LogIn className="h-4 w-4" /> {t('auth.continueAs')} {selectedAccount.displayName || selectedAccount.email.split('@')[0]}</>
+                      ) : t('auth.login')}
                     </Button>
                   </form>
                   <div className="mt-3 text-center">
                     <button type="button" onClick={() => { setView('forgot'); setResetEmail(email); setError(''); }}
                       className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                      Forgot your password?
+                      {t('portal.forgotPassword')}
                     </button>
                   </div>
                   {(selectedAccount || (rememberedAccounts.length > 0 && showLoginForm)) && (
@@ -396,7 +398,7 @@ export default function PortalLoginPage() {
                       onClick={() => { setShowLoginForm(false); setSelectedAccount(null); setEmail(''); setPassword(''); setError(''); }}
                       className="w-full text-xs text-muted-foreground hover:text-foreground mt-3 text-center flex items-center justify-center gap-1"
                     >
-                      ← Back to account list
+                      ← {t('portal.backToAccountList')}
                     </button>
                   )}
                 </CardContent>
