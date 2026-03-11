@@ -260,11 +260,11 @@ export default function CrmLeadDetailPanel({ lead, stages, agencyUsers, open, on
                 </div>
               )}
 
-              {/* UTM / Campaign */}
-              {(lead.utm_source || lead.campaign_name || lead.landing_page) && (
-                <Collapsible>
+              {/* UTM / Campaign / FB Attribution */}
+              {(lead.utm_source || lead.campaign_name || lead.landing_page || lead.fbclid || lead.fb_campaign_id) && (
+                <Collapsible defaultOpen={!!(lead.fbclid || lead.fb_campaign_id)}>
                   <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                    <ChevronDown className="h-3 w-3" />Campaign & UTM Data
+                    <ChevronDown className="h-3 w-3" />Campaign & Attribution Data
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 space-y-1">
                     {lead.utm_source && <DetailRow icon={<Tag className="h-3 w-3" />} label="UTM Source" value={lead.utm_source} />}
@@ -275,6 +275,14 @@ export default function CrmLeadDetailPanel({ lead, stages, agencyUsers, open, on
                     {lead.ad_name && <DetailRow icon={<Tag className="h-3 w-3" />} label="Ad" value={lead.ad_name} />}
                     {lead.form_name && <DetailRow icon={<Tag className="h-3 w-3" />} label="Form" value={lead.form_name} />}
                     {lead.landing_page && <DetailRow icon={<Globe className="h-3 w-3" />} label="Landing Page" value={lead.landing_page} />}
+                    {/* Facebook-specific attribution */}
+                    {lead.fbclid && <DetailRow icon={<Tag className="h-3 w-3" />} label="FB Click ID" value={lead.fbclid} />}
+                    {lead.fbc && <DetailRow icon={<Tag className="h-3 w-3" />} label="FBC" value={lead.fbc} />}
+                    {lead.fbp && <DetailRow icon={<Tag className="h-3 w-3" />} label="FBP" value={lead.fbp} />}
+                    {lead.fb_lead_id && <DetailRow icon={<Tag className="h-3 w-3" />} label="FB Lead ID" value={lead.fb_lead_id} />}
+                    {lead.fb_campaign_id && <DetailRow icon={<Tag className="h-3 w-3" />} label="FB Campaign ID" value={lead.fb_campaign_id} />}
+                    {lead.fb_adset_id && <DetailRow icon={<Tag className="h-3 w-3" />} label="FB Adset ID" value={lead.fb_adset_id} />}
+                    {lead.fb_ad_id && <DetailRow icon={<Tag className="h-3 w-3" />} label="FB Ad ID" value={lead.fb_ad_id} />}
                   </CollapsibleContent>
                 </Collapsible>
               )}
