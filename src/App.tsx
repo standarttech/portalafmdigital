@@ -92,6 +92,7 @@ const GosSystemHealthPage = React.lazy(() => import("@/pages/growth-os/GosSystem
 const GosIntegrityChecksPage = React.lazy(() => import("@/pages/growth-os/GosIntegrityChecksPage"));
 const GosGuidePage = React.lazy(() => import("@/pages/growth-os/GosGuidePage"));
 const EmbedOnboardingPage = React.lazy(() => import("@/pages/embed/EmbedOnboardingPage"));
+const PublicReportPage = React.lazy(() => import("@/pages/PublicReportPage"));
 const AiAdsOverviewPage = React.lazy(() => import("@/pages/ai-ads/AiAdsOverviewPage"));
 const AiAdsAccountsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsAccountsPage"));
 const AiAdsAnalysisPage = React.lazy(() => import("@/pages/ai-ads/AiAdsAnalysisPage"));
@@ -269,6 +270,16 @@ function AppRoutes() {
   // Use React Router location for proper re-render on navigation
   const routerLocation = useLocation();
   const currentPath = routerLocation.pathname;
+
+  // Public report page — no auth required
+  if (currentPath.startsWith("/r/")) {
+    return (
+      <Routes>
+        <Route path="/r/:id" element={<PublicReportPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
 
   // Public embed routes — no auth, no layout
   if (currentPath.startsWith("/embed/")) {

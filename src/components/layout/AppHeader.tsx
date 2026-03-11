@@ -111,7 +111,7 @@ export default function AppHeader() {
   };
 
   return (
-    <div className="flex flex-col relative z-10 sticky top-0 bg-background/95 backdrop-blur-sm">
+    <div className="flex flex-col relative bg-background/95 backdrop-blur-sm">
       {/* Preview Banner */}
       {isPreviewing && (
         <div className="bg-amber-500/15 border-b border-amber-500/25 px-4 py-1.5 flex items-center justify-between">
