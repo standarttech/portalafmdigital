@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useRateLimit } from '@/hooks/useRateLimit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +21,7 @@ import {
 export default function PortalLoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const rateLimit = useRateLimit('portal_login');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,6 +59,18 @@ export default function PortalLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (rateLimit.isBlocked()) {
+      setError('Too many attempts. Please wait 5 minutes before trying again.');
+      return;
+    }
+
+    const { blocked } = rateLimit.record();
+    if (blocked) {
+      setError('Too many attempts. Please wait 5 minutes before trying again.');
+      return;
+    }
+
     setLoading(true);
 
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });

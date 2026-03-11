@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRateLimit } from '@/hooks/useRateLimit';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ export default function AuthPage() {
   const { t } = useLanguage();
   const { user, signIn, agencyRole } = useAuth();
   const navigate = useNavigate();
+  const rateLimit = useRateLimit('auth_login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +56,11 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (rateLimit.isBlocked()) {
+      toast.error('Too many attempts. Please wait 5 minutes before trying again.');
+      return;
+    }
+
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
       toast.error(t('auth.invalidEmail'));
       return;
@@ -61,6 +68,12 @@ export default function AuthPage() {
 
     if (password.length < 6) {
       toast.error(t('auth.passwordTooShort'));
+      return;
+    }
+
+    const { blocked } = rateLimit.record();
+    if (blocked) {
+      toast.error('Too many attempts. Please wait 5 minutes before trying again.');
       return;
     }
 
