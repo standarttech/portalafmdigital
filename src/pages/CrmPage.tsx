@@ -157,6 +157,13 @@ export default function CrmPage() {
             <SelectContent>{pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
           </Select>
         )}
+
+        <div className="flex items-center gap-2 ml-auto">
+          <Facebook className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label htmlFor="fb-only-pipeline" className="text-xs text-muted-foreground cursor-pointer">Facebook only</Label>
+          <Switch id="fb-only-pipeline" checked={fbOnly} onCheckedChange={setFbOnly} className="scale-90" />
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">FB: {fbCount} / {leads.length}</Badge>
+        </div>
       </div>
 
       {/* Row 2: Search + action buttons */}
