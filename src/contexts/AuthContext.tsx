@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { queryClient } from '@/lib/queryClient';
 import {
   upsertRememberedAccount,
   removeRememberedAccount as removeRemembered,
@@ -334,6 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const target = storedAccountsRef.current.find(a => a.userId === userId);
     if (!target) return { error: 'Account not found' };
 
+    queryClient.clear();
     const { error } = await supabase.auth.setSession({
       access_token: '',
       refresh_token: target.refreshToken,
@@ -411,6 +413,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    queryClient.clear();
     localStorage.removeItem('afm_cached_role');
     localStorage.removeItem('afm_admin_exists');
     sessionStorage.removeItem('afm_fpc_checked');
