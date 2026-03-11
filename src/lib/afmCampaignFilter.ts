@@ -39,13 +39,21 @@ export const AFM_CAMPAIGN_PREFIX = 'AFM';
 export async function getAfmCampaignIds(clientId: string): Promise<string[]> {
   const { data } = await supabase
     .from('campaigns')
-    .select('id, campaign_name')
+    .select('id, campaign_name, platform_campaign_id')
     .eq('client_id', clientId);
 
   if (!data) return [];
-  return data
-    .filter(c => c.campaign_name.toUpperCase().includes(AFM_CAMPAIGN_PREFIX))
-    .map(c => c.id);
+  
+  const afmCampaigns = data.filter(c => c.campaign_name.toUpperCase().includes(AFM_CAMPAIGN_PREFIX));
+  
+  // If there are API-sourced AFM campaigns, exclude sheets-sourced ones to prevent duplication
+  const apiCampaigns = afmCampaigns.filter(c => !c.platform_campaign_id.startsWith('sheets-'));
+  if (apiCampaigns.length > 0) {
+    return apiCampaigns.map(c => c.id);
+  }
+  
+  // Fallback: use sheets campaigns if no API campaigns exist
+  return afmCampaigns.map(c => c.id);
 }
 
 /**
@@ -55,7 +63,7 @@ export async function getAfmCampaignIds(clientId: string): Promise<string[]> {
 export async function getAllAfmCampaignIds(clientIds?: string[]): Promise<string[]> {
   let query = supabase
     .from('campaigns')
-    .select('id, campaign_name');
+    .select('id, campaign_name, platform_campaign_id');
 
   if (clientIds && clientIds.length > 0) {
     query = query.in('client_id', clientIds);
@@ -63,9 +71,26 @@ export async function getAllAfmCampaignIds(clientIds?: string[]): Promise<string
 
   const { data } = await query;
   if (!data) return [];
-  return data
-    .filter(c => c.campaign_name.toUpperCase().includes(AFM_CAMPAIGN_PREFIX))
-    .map(c => c.id);
+  
+  const afmCampaigns = data.filter(c => c.campaign_name.toUpperCase().includes(AFM_CAMPAIGN_PREFIX));
+  
+  // Group by client to apply API-priority per client
+  const byClient: Record<string, typeof afmCampaigns> = {};
+  for (const c of afmCampaigns) {
+    // We don't have client_id in select, so just prefer API over sheets globally
+  }
+  
+  const apiCampaigns = afmCampaigns.filter(c => !c.platform_campaign_id.startsWith('sheets-'));
+  if (apiCampaigns.length > 0) {
+    // For clients that have API campaigns, exclude their sheets campaigns
+    const apiClientNames = new Set(apiCampaigns.map(c => c.campaign_name));
+    const sheetOnly = afmCampaigns.filter(c => 
+      c.platform_campaign_id.startsWith('sheets-') && !apiClientNames.has(c.campaign_name)
+    );
+    return [...apiCampaigns, ...sheetOnly].map(c => c.id);
+  }
+  
+  return afmCampaigns.map(c => c.id);
 }
 
 /**

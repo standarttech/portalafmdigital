@@ -81,13 +81,23 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
       });
       setData(Object.values(agg).filter(a => a.spend > 0 || a.impressions > 0 || a.leads > 0));
     } else {
+      // AFM FILTER: get AFM campaign IDs to restrict adset/ad data
+      const { data: afmCampaigns } = await supabase
+        .from('campaigns')
+        .select('id, campaign_name, platform_campaign_id')
+        .eq('client_id', clientId);
+      const afmCampIds = (afmCampaigns || [])
+        .filter(c => !c.platform_campaign_id.startsWith('sheets-') && isAfmCampaign(c.campaign_name || ''))
+        .map(c => c.id);
+
+      if (afmCampIds.length === 0) { setData([]); setLoading(false); return; }
+
       let query = supabase
         .from('ad_level_metrics')
-        .select('platform_id, name, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, status, parent_platform_id, date')
+        .select('platform_id, name, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts, status, parent_platform_id, date, campaign_id')
         .eq('client_id', clientId)
-        .eq('level', level);
-
-      // Note: at adset/ad level, parent campaign was already AFM-filtered via breadcrumb navigation
+        .eq('level', level)
+        .in('campaign_id', afmCampIds);
 
       if (current.platformId) query = query.eq('parent_platform_id', current.platformId);
       if (dateFrom) query = query.gte('date', dateFrom);

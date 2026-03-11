@@ -36,9 +36,25 @@ function KpiCard({ label, value, sub, icon: Icon, color }: { label: string; valu
 }
 
 export default function GosOverviewPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { data: metrics, isLoading } = useGosMetrics();
+  const isRu = language === 'ru';
+
+  const kpiLabels = {
+    publishedForms: isRu ? 'Опубликованные формы' : 'Published Forms',
+    publishedLandings: isRu ? 'Опубликованные лендинги' : 'Published Landings',
+    submissions7d: isRu ? 'Заявки (7д)' : 'Submissions (7d)',
+    submissions30d: isRu ? 'Заявки (30д)' : 'Submissions (30d)',
+    activeOnboarding: isRu ? 'Активный онбординг' : 'Active Onboarding',
+    completedOnboarding: isRu ? 'Завершённый онбординг' : 'Completed Onboarding',
+    activeIntegrations: isRu ? 'Активные интеграции' : 'Active Integrations',
+    routing7d: isRu ? 'Маршрутизация (7д)' : 'Routing (7d)',
+    total: isRu ? 'всего' : 'total',
+    rate: isRu ? '% завершения' : '% rate',
+    withErrors: isRu ? 'с ошибками' : 'with errors',
+    activeRules: isRu ? 'активных правил' : 'active rules',
+  };
 
   return (
     <div className="space-y-6">
@@ -54,14 +70,14 @@ export default function GosOverviewPage() {
         </div>
       ) : metrics ? (
         <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          <KpiCard label="Published Forms" value={metrics.publishedForms} icon={FormInput} color="bg-violet-500/10 text-violet-400" />
-          <KpiCard label="Published Landings" value={metrics.publishedLandings} icon={FileCode2} color="bg-blue-500/10 text-blue-400" />
-          <KpiCard label="Submissions (7d)" value={metrics.submissions7d} sub={`${metrics.totalSubmissions} total`} icon={Inbox} color="bg-emerald-500/10 text-emerald-400" />
-          <KpiCard label="Submissions (30d)" value={metrics.submissions30d} icon={TrendingUp} color="bg-cyan-500/10 text-cyan-400" />
-          <KpiCard label="Active Onboarding" value={metrics.activeOnboarding} icon={ClipboardCheck} color="bg-amber-500/10 text-amber-400" />
-          <KpiCard label="Completed Onboarding" value={metrics.completedOnboarding} sub={`${metrics.onboardingCompletionRate}% rate`} icon={CheckCircle2} color="bg-emerald-500/10 text-emerald-400" />
-          <KpiCard label="Active Integrations" value={metrics.activeIntegrations} sub={metrics.integrationErrors > 0 ? `${metrics.integrationErrors} with errors` : undefined} icon={Plug} color="bg-teal-500/10 text-teal-400" />
-          <KpiCard label="Routing (7d)" value={metrics.routingLogs7d} sub={`${metrics.activeRules} active rules`} icon={GitBranch} color="bg-rose-500/10 text-rose-400" />
+          <KpiCard label={kpiLabels.publishedForms} value={metrics.publishedForms} icon={FormInput} color="bg-violet-500/10 text-violet-400" />
+          <KpiCard label={kpiLabels.publishedLandings} value={metrics.publishedLandings} icon={FileCode2} color="bg-blue-500/10 text-blue-400" />
+          <KpiCard label={kpiLabels.submissions7d} value={metrics.submissions7d} sub={`${metrics.totalSubmissions} ${kpiLabels.total}`} icon={Inbox} color="bg-emerald-500/10 text-emerald-400" />
+          <KpiCard label={kpiLabels.submissions30d} value={metrics.submissions30d} icon={TrendingUp} color="bg-cyan-500/10 text-cyan-400" />
+          <KpiCard label={kpiLabels.activeOnboarding} value={metrics.activeOnboarding} icon={ClipboardCheck} color="bg-amber-500/10 text-amber-400" />
+          <KpiCard label={kpiLabels.completedOnboarding} value={metrics.completedOnboarding} sub={`${metrics.onboardingCompletionRate}${kpiLabels.rate}`} icon={CheckCircle2} color="bg-emerald-500/10 text-emerald-400" />
+          <KpiCard label={kpiLabels.activeIntegrations} value={metrics.activeIntegrations} sub={metrics.integrationErrors > 0 ? `${metrics.integrationErrors} ${kpiLabels.withErrors}` : undefined} icon={Plug} color="bg-teal-500/10 text-teal-400" />
+          <KpiCard label={kpiLabels.routing7d} value={metrics.routingLogs7d} sub={`${metrics.activeRules} ${kpiLabels.activeRules}`} icon={GitBranch} color="bg-rose-500/10 text-rose-400" />
         </div>
       ) : null}
 
@@ -72,11 +88,11 @@ export default function GosOverviewPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Recent Submissions</h3>
-                <button onClick={() => navigate('/growth-os/forms')} className="text-xs text-primary hover:underline">View All</button>
+                <h3 className="text-sm font-semibold text-foreground">{isRu ? 'Последние заявки' : 'Recent Submissions'}</h3>
+                <button onClick={() => navigate('/growth-os/forms')} className="text-xs text-primary hover:underline">{isRu ? 'Все' : 'View All'}</button>
               </div>
               {metrics.recentSubmissions.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No submissions yet</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{isRu ? 'Заявок пока нет' : 'No submissions yet'}</p>
               ) : (
                 <div className="space-y-2">
                   {metrics.recentSubmissions.map((sub: any) => (
@@ -100,11 +116,11 @@ export default function GosOverviewPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Recent Routing</h3>
-                <button onClick={() => navigate('/growth-os/lead-routing')} className="text-xs text-primary hover:underline">View All</button>
+                <h3 className="text-sm font-semibold text-foreground">{isRu ? 'Последняя маршрутизация' : 'Recent Routing'}</h3>
+                <button onClick={() => navigate('/growth-os/lead-routing')} className="text-xs text-primary hover:underline">{isRu ? 'Все' : 'View All'}</button>
               </div>
               {metrics.recentRoutingLogs.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No routing events yet</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{isRu ? 'Событий маршрутизации пока нет' : 'No routing events yet'}</p>
               ) : (
                 <div className="space-y-2">
                   {metrics.recentRoutingLogs.map((log: any) => (
@@ -127,11 +143,11 @@ export default function GosOverviewPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Onboarding Sessions</h3>
-                <button onClick={() => navigate('/growth-os/onboarding')} className="text-xs text-primary hover:underline">View All</button>
+                <h3 className="text-sm font-semibold text-foreground">{isRu ? 'Сессии онбординга' : 'Onboarding Sessions'}</h3>
+                <button onClick={() => navigate('/growth-os/onboarding')} className="text-xs text-primary hover:underline">{isRu ? 'Все' : 'View All'}</button>
               </div>
               {metrics.onboardingSessions.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No sessions yet</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{isRu ? 'Сессий пока нет' : 'No sessions yet'}</p>
               ) : (
                 <div className="space-y-2">
                   {metrics.onboardingSessions.map((s: any) => {
@@ -159,11 +175,11 @@ export default function GosOverviewPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Integrations Health</h3>
-                <button onClick={() => navigate('/growth-os/integrations')} className="text-xs text-primary hover:underline">View All</button>
+                <h3 className="text-sm font-semibold text-foreground">{isRu ? 'Состояние интеграций' : 'Integrations Health'}</h3>
+                <button onClick={() => navigate('/growth-os/integrations')} className="text-xs text-primary hover:underline">{isRu ? 'Все' : 'View All'}</button>
               </div>
               {metrics.integrationInstances.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No integrations configured</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{isRu ? 'Интеграции не настроены' : 'No integrations configured'}</p>
               ) : (
                 <div className="space-y-2">
                   {metrics.integrationInstances.map((inst: any) => {
@@ -196,7 +212,7 @@ export default function GosOverviewPage() {
 
       {/* Module Navigation */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3">Modules</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-3">{isRu ? 'Модули' : 'Modules'}</h2>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {modules.map(mod => {
             const Icon = mod.icon;
