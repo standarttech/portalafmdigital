@@ -452,7 +452,6 @@ export default function UsersPage() {
               <TabsTrigger value="invitations" className="gap-1.5 text-xs sm:text-sm"><Mail className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabInvitations')}</span><span className="sm:hidden">Inv</span></TabsTrigger>
               <TabsTrigger value="clients" className="gap-1.5 text-xs sm:text-sm"><Building2 className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabClients')}</span><span className="sm:hidden">Cli</span></TabsTrigger>
               <TabsTrigger value="approvals" className="gap-1.5 text-xs sm:text-sm"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Approvals</span><span className="sm:hidden">Appr</span></TabsTrigger>
-              <TabsTrigger value="portal" className="gap-1.5 text-xs sm:text-sm"><UserCheck className="h-4 w-4" /><span className="hidden sm:inline">Portal</span><span className="sm:hidden">Port</span></TabsTrigger>
             </TabsList>
           </div>
 
