@@ -148,13 +148,12 @@ async function fetchGhlLeads(token: string, locationId: string): Promise<Externa
       });
     }
 
-    // GHL pagination: use meta or last item id
-    if (data.meta?.nextPageUrl || opps.length === 100) {
-      startAfterId = opps[opps.length - 1].id;
-      page++;
-    } else {
-      break;
+    // GHL pagination
+    if (data.meta?.searchAfter) {
+      searchAfter = data.meta.searchAfter;
     }
+    if (opps.length < 100) break;
+    page++;
   }
 
   return results;
