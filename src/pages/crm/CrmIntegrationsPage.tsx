@@ -893,6 +893,11 @@ function ExternalCrmConnectors({ clientId, lang }: { clientId: string; lang: str
                 className="h-9 text-sm font-mono" type="password" />
               <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <Shield className="h-3 w-3" /> {t.keyEncrypted}
+                {editConnection && editConnection.api_key_ref && !formApiKey && (
+                  <span className="ml-2 text-emerald-500 font-medium">
+                    ✅ {lang === 'ru' ? 'Ключ сохранён' : 'Key saved'}
+                  </span>
+                )}
               </p>
             </div>
 
