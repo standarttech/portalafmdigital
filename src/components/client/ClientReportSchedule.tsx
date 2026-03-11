@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 interface Props {
   clientId: string;
   isAdmin: boolean;
+  onReportsChanged?: () => void;
 }
 
 interface Schedule {
@@ -24,6 +25,7 @@ interface Schedule {
   telegram_bot_profile_id: string | null;
   is_active: boolean;
   sections: string[];
+  created_by?: string | null;
 }
 
 interface BotProfile {
