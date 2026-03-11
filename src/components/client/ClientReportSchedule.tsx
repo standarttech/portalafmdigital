@@ -168,6 +168,7 @@ export default function ClientReportSchedule({ clientId, isAdmin, onReportsChang
       if (error) throw error;
       if (data?.sent > 0) {
         toast.success('Тестовый отчёт отправлен и сохранён в разделе отчётов');
+        onReportsChanged?.();
       } else {
         toast.error(data?.errors?.[0] || data?.message || 'Не удалось отправить тестовый отчёт');
       }
