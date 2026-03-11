@@ -84,7 +84,7 @@ export default function CampaignsBreakdownTab({ clientId, dateFrom, dateTo }: { 
       // AFM FILTER: get AFM campaign IDs to restrict adset/ad data
       const { data: afmCampaigns } = await supabase
         .from('campaigns')
-        .select('id, platform_campaign_id')
+        .select('id, campaign_name, platform_campaign_id')
         .eq('client_id', clientId);
       const afmCampIds = (afmCampaigns || [])
         .filter(c => !c.platform_campaign_id.startsWith('sheets-') && isAfmCampaign(c.campaign_name || ''))
