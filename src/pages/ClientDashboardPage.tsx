@@ -143,6 +143,9 @@ export default function ClientDashboardPage() {
     const metricsPromise = afmCampaignIds.length > 0
       ? fetchAllPages(afmCampaignIds)
       : Promise.resolve([]);
+
+    const [metricsData, campaignsRes, budgetRes, reportsRes, adAccountsRes, commentsRes] = await Promise.all([
+      metricsPromise,
       supabase.from('campaigns')
         .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
         .eq('client_id', cid),
@@ -168,7 +171,7 @@ export default function ClientDashboardPage() {
         .limit(10),
     ]);
 
-    if (metricsRes.data) setDailyMetrics(metricsRes.data as DailyRow[]);
+    setDailyMetrics(metricsData as DailyRow[]);
 
     if (campaignsRes.data) {
       const map: Record<string, string> = {};
