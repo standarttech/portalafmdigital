@@ -262,25 +262,25 @@ serve(async (req) => {
         if (reportError) throw reportError;
         if (savedReport?.id) reportIds.push(savedReport.id);
 
-        const reportUrl = `https://portalafmdigital.lovable.app/reports${savedReport ? `?preview=${savedReport.id}` : ""}`;
+        const reportUrl = `https://portalafmdigital.lovable.app/r/${savedReport?.id || ""}`;
         const isEcom = ["ecom", "e-commerce", "ecommerce"].includes((client.category || "").toLowerCase());
 
-        let msg = `📊 *${reportType === "monthly" ? "Ежемесячный" : "Еженедельный"} отчёт*\n`;
+        let msg = `📊 *${reportType === "monthly" ? "Monthly" : "Weekly"} Report*\n`;
         msg += `🏢 ${client.name}\n`;
         msg += `📅 ${periodLabel}\n\n`;
-        msg += `💰 Расход: $${totals.spend.toFixed(0)}\n`;
-        msg += `👁 Показы: ${totals.impressions.toLocaleString()}\n`;
-        msg += `🖱 Клики: ${totals.clicks.toLocaleString()}\n`;
-        msg += `📋 Лиды: ${totals.leads}\n`;
+        msg += `💰 Spend: $${totals.spend.toFixed(0)}\n`;
+        msg += `👁 Impressions: ${totals.impressions.toLocaleString()}\n`;
+        msg += `🖱 Clicks: ${totals.clicks.toLocaleString()}\n`;
+        msg += `📋 Leads: ${totals.leads}\n`;
         msg += `💵 CPL: $${cpl}\n`;
         msg += `📈 CTR: ${ctr}%\n`;
         if (isEcom && totals.purchases > 0) {
-          msg += `🛒 Покупки: ${totals.purchases}\n`;
-          msg += `💎 Выручка: $${totals.revenue.toFixed(0)}\n`;
+          msg += `🛒 Purchases: ${totals.purchases}\n`;
+          msg += `💎 Revenue: $${totals.revenue.toFixed(0)}\n`;
           msg += `🔥 ROAS: ${roas}x\n`;
         }
-        msg += `\n🔗 [Открыть полный отчёт](${reportUrl})`;
-        msg += `\n📥 Доступны PDF и CSV в отчёте`;
+        msg += `\n🔗 [View Full Report](${reportUrl})`;
+        msg += `\n📥 CSV download available in the report`;
 
         const res = await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
           method: "POST",
