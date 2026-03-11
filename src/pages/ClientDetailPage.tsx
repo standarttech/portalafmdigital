@@ -128,7 +128,7 @@ export default function ClientDetailPage() {
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [hasMetaApiAccounts, setHasMetaApiAccounts] = useState(false);
   const [lastSyncDate, setLastSyncDate] = useState<string | null>(null);
-  const [showAllCampaigns, setShowAllCampaigns] = useState(true); // show ALL campaigns by default for historical data
+  const [showAllCampaigns, setShowAllCampaigns] = useState(false); // AFM-only by default to match dashboard
 
   // Unified DateRangePicker state
   const [dateRange, setDateRange] = useState<DateRange>('30d');
