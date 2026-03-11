@@ -1,8 +1,10 @@
-# Welcome to your Lovable project
+# Portal AFM Digital
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Portal AFM Digital** — internal agency portal and client-facing dashboard built with React + TypeScript + Vite + Supabase.
+
+Stack: React, TypeScript, Vite, Supabase, shadcn-ui, Tailwind CSS.
 
 ## How can I edit this code?
 
@@ -10,7 +12,7 @@ There are several ways of editing your application.
 
 **Use Lovable**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Simply visit the [Lovable Project](https://lovable.dev) and start prompting.
 
 Changes made via Lovable will be committed automatically to this repo.
 
@@ -62,7 +64,7 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Simply open [Lovable](https://lovable.dev) and click on Share -> Publish.
 
 ## Can I connect a custom domain to my Lovable project?
 
