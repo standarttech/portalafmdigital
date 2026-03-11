@@ -65,8 +65,11 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            {report.title}
+          <DialogTitle className="flex items-center gap-3 flex-wrap">
+            {content?.clientName || report.title}
+            <Badge variant="outline" className="text-[10px]">
+              {report.date_from} → {report.date_to}
+            </Badge>
             <Badge variant="outline" className={report.status === 'published' ? 'border-emerald-500/30 text-emerald-500' : 'border-amber-500/30 text-amber-500'}>
               {report.status}
             </Badge>
@@ -74,7 +77,6 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
               {categoryLabel}
             </Badge>
           </DialogTitle>
-          <p className="text-sm text-muted-foreground">{report.date_from} → {report.date_to} · {content?.clientName}</p>
         </DialogHeader>
 
         <div className="space-y-6 mt-2">

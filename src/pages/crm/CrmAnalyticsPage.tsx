@@ -5,7 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, TrendingUp, DollarSign, Users, Target, Percent, Minus, ArrowDown } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { BarChart3, TrendingUp, DollarSign, Users, Target, Percent, Minus, ArrowDown, Facebook } from 'lucide-react';
 import { useCrmPipelines, useCrmStages, useCrmLeads } from '@/hooks/useCrmData';
 
 function fmt(v: number | null, prefix = '', suffix = '', decimals = 1): string {
@@ -33,6 +35,20 @@ function MetricCard({ title, value, subtitle, icon: Icon }: { title: string; val
   );
 }
 
+// Check if a lead came from Facebook based on source, UTM, or FB-specific IDs
+function isFromFacebook(lead: any): boolean {
+  const src = (lead.source || '').toLowerCase();
+  const utmSrc = (lead.utm_source || '').toLowerCase();
+  const utmMed = (lead.utm_medium || '').toLowerCase();
+  if (src.includes('facebook') || src.includes('fb') || src.includes('meta') || src === 'ig') return true;
+  if (utmSrc.includes('facebook') || utmSrc.includes('fb') || utmSrc.includes('meta') || utmSrc.includes('ig')) return true;
+  if (utmMed.includes('cpc') || utmMed.includes('paid') || utmMed.includes('cpm')) {
+    if (utmSrc.includes('facebook') || utmSrc.includes('fb') || utmSrc.includes('meta')) return true;
+  }
+  if (lead.fbclid || lead.fbc || lead.fbp || lead.fb_lead_id || lead.fb_campaign_id) return true;
+  return false;
+}
+
 export default function CrmAnalyticsPage() {
   const { t, language } = useLanguage();
   const isRu = language === 'ru';
@@ -41,6 +57,7 @@ export default function CrmAnalyticsPage() {
   const [loadingClients, setLoadingClients] = useState(true);
   const [adSpend, setAdSpend] = useState<number>(0);
   const [loadingSpend, setLoadingSpend] = useState(false);
+  const [fbOnly, setFbOnly] = useState(true); // Default: show only Facebook leads
 
   useEffect(() => {
     (async () => {
@@ -51,47 +68,23 @@ export default function CrmAnalyticsPage() {
     })();
   }, []);
 
-  // Fetch ad spend from ad_level_metrics for this client
   useEffect(() => {
     if (!selectedClientId) { setAdSpend(0); return; }
     (async () => {
       setLoadingSpend(true);
-      // Get spend from ad_level_metrics for this client (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-      // Sum spend across all levels but deduplicate by using the most granular available
-      // First try 'campaign' level, fallback to any level
-      let { data } = await supabase
-        .from('ad_level_metrics')
-        .select('spend')
-        .eq('client_id', selectedClientId)
-        .eq('level', 'campaign')
-        .gte('date', dateStr);
-
-      // If no campaign-level data, try adset level
+      let { data } = await supabase.from('ad_level_metrics').select('spend').eq('client_id', selectedClientId).eq('level', 'campaign').gte('date', dateStr);
       if (!data || data.length === 0) {
-        const res = await supabase
-          .from('ad_level_metrics')
-          .select('spend')
-          .eq('client_id', selectedClientId)
-          .eq('level', 'adset')
-          .gte('date', dateStr);
+        const res = await supabase.from('ad_level_metrics').select('spend').eq('client_id', selectedClientId).eq('level', 'adset').gte('date', dateStr);
         data = res.data;
       }
-
-      // If still nothing, try ad level
       if (!data || data.length === 0) {
-        const res = await supabase
-          .from('ad_level_metrics')
-          .select('spend')
-          .eq('client_id', selectedClientId)
-          .eq('level', 'ad')
-          .gte('date', dateStr);
+        const res = await supabase.from('ad_level_metrics').select('spend').eq('client_id', selectedClientId).eq('level', 'ad').gte('date', dateStr);
         data = res.data;
       }
-
       const totalSpend = (data || []).reduce((sum, row) => sum + (row.spend || 0), 0);
       setAdSpend(totalSpend);
       setLoadingSpend(false);
@@ -107,7 +100,15 @@ export default function CrmAnalyticsPage() {
   }, [pipelines]);
 
   const { stages } = useCrmStages(selectedPipelineId);
-  const { leads, loading: loadingLeads } = useCrmLeads(selectedPipelineId, selectedClientId);
+  const { leads: allLeads, loading: loadingLeads } = useCrmLeads(selectedPipelineId, selectedClientId);
+
+  // Filter leads based on source toggle
+  const leads = useMemo(() => {
+    if (!fbOnly) return allLeads;
+    return allLeads.filter(isFromFacebook);
+  }, [allLeads, fbOnly]);
+
+  const fbLeadCount = useMemo(() => allLeads.filter(isFromFacebook).length, [allLeads]);
 
   const metrics = useMemo(() => {
     const totalLeads = leads.length;
@@ -189,18 +190,39 @@ export default function CrmAnalyticsPage() {
             <SelectContent>{pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
           </Select>
         )}
-        {adSpend > 0 && (
-          <Badge variant="outline" className="text-[10px] ml-auto bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-            {isRu ? 'Расходы подключены' : 'Ad spend connected'} ✓
-          </Badge>
-        )}
+
+        {/* Source filter toggle */}
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border/40">
+            <Facebook className="h-3.5 w-3.5 text-blue-500" />
+            <Label htmlFor="fb-filter" className="text-xs cursor-pointer">
+              {isRu ? 'Только Facebook' : 'Facebook only'}
+            </Label>
+            <Switch id="fb-filter" checked={fbOnly} onCheckedChange={setFbOnly} />
+          </div>
+          {!fbOnly && (
+            <Badge variant="outline" className="text-[10px] bg-muted/30">
+              {isRu ? 'Все источники' : 'All sources'} · {allLeads.length} {isRu ? 'лидов' : 'leads'}
+            </Badge>
+          )}
+          {fbOnly && (
+            <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-500 border-blue-500/30">
+              FB: {fbLeadCount} / {allLeads.length}
+            </Badge>
+          )}
+        </div>
       </div>
+
+      {adSpend > 0 && (
+        <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+          {isRu ? 'Расходы подключены' : 'Ad spend connected'} ✓
+        </Badge>
+      )}
 
       {loadingLeads ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[1, 2, 3, 4, 5, 6, 7, 8].map(i => <Skeleton key={i} className="h-24" />)}</div>
       ) : (
         <>
-          {/* Core metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <MetricCard title={t('crm.totalLeads')} value={fmtInt(metrics.totalLeads)} icon={Users} />
             <MetricCard title={t('crm.qualified')} value={fmtInt(metrics.totalQualified)} subtitle={metrics.qualRate !== null ? `${(metrics.qualRate * 100).toFixed(1)}% ${t('crm.qualRate')}` : undefined} icon={Target} />
@@ -212,7 +234,6 @@ export default function CrmAnalyticsPage() {
             <MetricCard title={t('crm.closeRate')} value={fmt(metrics.closeRate !== null ? metrics.closeRate * 100 : null, '', '%')} icon={Percent} />
           </div>
 
-          {/* Ad spend metrics (only if spend data available) */}
           {adSpend > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <MetricCard title={isRu ? 'Рекл. расходы (30д)' : 'Ad Spend (30d)'} value={fmt(metrics.adSpend, '$', '', 0)} icon={ArrowDown} />
@@ -293,7 +314,6 @@ export default function CrmAnalyticsPage() {
             </Card>
           )}
 
-          {/* No spend data card */}
           {adSpend === 0 && (
             <Card className="bg-card/30 border-border/20 border-dashed">
               <CardContent className="p-6 text-center">
