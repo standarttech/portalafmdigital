@@ -36,6 +36,13 @@ interface ExternalLead {
   adset_name?: string;
   ad_name?: string;
   landing_page?: string;
+  fbclid?: string;
+  fbc?: string;
+  fbp?: string;
+  fb_lead_id?: string;
+  fb_ad_id?: string;
+  fb_adset_id?: string;
+  fb_campaign_id?: string;
   raw_payload?: Record<string, unknown>;
   [key: string]: unknown;
 }
