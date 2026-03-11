@@ -79,9 +79,22 @@ export default function CrmPage() {
   const [showCreatePipeline, setShowCreatePipeline] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [fbOnly, setFbOnly] = useState(false);
+
+  const isFromFacebook = (lead: CrmLead): boolean => {
+    const src = (lead.source || '').toLowerCase();
+    const utmSrc = (lead.utm_source || '').toLowerCase();
+    if (src.includes('facebook') || src.includes('fb') || src.includes('meta')) return true;
+    if (utmSrc.includes('facebook') || utmSrc.includes('fb') || utmSrc.includes('meta')) return true;
+    if (lead.fbclid || lead.fbc || lead.fbp || lead.fb_lead_id || lead.fb_campaign_id || lead.fb_ad_id || lead.fb_adset_id) return true;
+    return false;
+  };
+
+  const fbCount = useMemo(() => leads.filter(isFromFacebook).length, [leads]);
 
   const filteredLeads = useMemo(() => {
     let result = leads;
+    if (fbOnly) result = result.filter(isFromFacebook);
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(l =>
@@ -94,7 +107,7 @@ export default function CrmPage() {
     if (filterAssignee) result = result.filter(l => l.assignee_id === filterAssignee);
     if (filterTag) result = result.filter(l => l.tags?.includes(filterTag));
     return result;
-  }, [leads, search, filterSource, filterAssignee, filterTag]);
+  }, [leads, search, filterSource, filterAssignee, filterTag, fbOnly]);
 
   const uniqueSources = [...new Set(leads.map(l => l.source).filter(Boolean))];
   const uniqueTags = [...new Set(leads.flatMap(l => l.tags || []))];
