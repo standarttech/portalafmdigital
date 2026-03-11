@@ -116,11 +116,11 @@ export default function GosOverviewPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Recent Routing</h3>
-                <button onClick={() => navigate('/growth-os/lead-routing')} className="text-xs text-primary hover:underline">View All</button>
+                <h3 className="text-sm font-semibold text-foreground">{isRu ? 'Последняя маршрутизация' : 'Recent Routing'}</h3>
+                <button onClick={() => navigate('/growth-os/lead-routing')} className="text-xs text-primary hover:underline">{isRu ? 'Все' : 'View All'}</button>
               </div>
               {metrics.recentRoutingLogs.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No routing events yet</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{isRu ? 'Событий маршрутизации пока нет' : 'No routing events yet'}</p>
               ) : (
                 <div className="space-y-2">
                   {metrics.recentRoutingLogs.map((log: any) => (
