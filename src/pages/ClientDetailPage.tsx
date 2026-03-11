@@ -324,20 +324,35 @@ export default function ClientDetailPage() {
 
   const fetchDailyMetrics = useCallback(async () => {
     if (!id) return;
+
+    // Paginated fetch to bypass 1000-row limit
+    const PAGE_SIZE = 1000;
+    async function fetchAllPages(campaignIds?: string[]) {
+      let allRows: any[] = [];
+      let offset = 0;
+      while (true) {
+        let q = supabase.from('daily_metrics')
+          .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
+          .eq('client_id', id!).order('date', { ascending: true })
+          .range(offset, offset + PAGE_SIZE - 1);
+        if (campaignIds) q = q.in('campaign_id', campaignIds);
+        const { data } = await q;
+        if (!data || data.length === 0) break;
+        allRows = allRows.concat(data);
+        if (data.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+      return allRows;
+    }
+
     if (showAllCampaigns) {
-      // Show ALL campaigns data — full historical view
-      const { data } = await supabase.from('daily_metrics')
-        .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-        .eq('client_id', id).order('date', { ascending: true });
-      if (data) setDailyMetrics(data as DailyRow[]);
+      const data = await fetchAllPages();
+      setDailyMetrics(data as DailyRow[]);
     } else {
-      // AFM-only filter
       const afmIds = await getAfmCampaignIds(id);
       if (afmIds.length === 0) { setDailyMetrics([]); return; }
-      const { data } = await supabase.from('daily_metrics')
-        .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-        .eq('client_id', id).in('campaign_id', afmIds).order('date', { ascending: true });
-      if (data) setDailyMetrics(data as DailyRow[]);
+      const data = await fetchAllPages(afmIds);
+      setDailyMetrics(data as DailyRow[]);
     }
   }, [id, showAllCampaigns]);
 
