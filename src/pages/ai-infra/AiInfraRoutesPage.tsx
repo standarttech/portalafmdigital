@@ -164,10 +164,29 @@ export default function AiInfraRoutesPage() {
       </div>
       <div>
         <Label>Model Override <span className="text-muted-foreground">(leave empty to use provider default)</span></Label>
-        <Input value={form.model_override} onChange={e => setForm(f => ({ ...f, model_override: e.target.value }))}
-          placeholder={providerModel(form.primary_provider_id) || 'e.g. openai/gpt-4o'} />
-        {form.primary_provider_id && providerModel(form.primary_provider_id) && !form.model_override && (
-          <p className="text-xs text-muted-foreground mt-1">Will use provider default: <code className="font-mono">{providerModel(form.primary_provider_id)}</code></p>
+        <Select
+          value={form.model_override || '__default__'}
+          onValueChange={v => setForm(f => ({ ...f, model_override: v === '__default__' ? '' : v }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={providerModel(form.primary_provider_id) || 'Provider default'} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__default__">
+              <span className="text-muted-foreground">Provider default{providerModel(form.primary_provider_id) ? ` (${providerModel(form.primary_provider_id)})` : ''}</span>
+            </SelectItem>
+            {KNOWN_MODELS.map(m => (
+              <SelectItem key={m.value} value={m.value}>
+                <span className="flex items-center gap-2">
+                  <span className="font-mono text-xs">{m.value}</span>
+                  <span className="text-[10px] text-muted-foreground">{m.label}</span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {form.model_override && (
+          <p className="text-xs text-emerald-400 mt-1">Override active: <code className="font-mono">{form.model_override}</code></p>
         )}
       </div>
       <div className="grid grid-cols-2 gap-3">
