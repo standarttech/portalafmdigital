@@ -111,16 +111,15 @@ export default function InvitePage() {
       return;
     }
 
-    // Try to sign in (if auto-confirm is on)
+    // Sign in immediately (auto-confirm is enabled for invitations)
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: invitation.email,
       password,
     });
 
     if (signInError) {
-      // User needs to confirm email first
       setIsLoading(false);
-      toast.success(t('invite.checkEmail'));
+      toast.error(signInError.message);
       return;
     }
 
