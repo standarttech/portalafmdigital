@@ -2629,6 +2629,13 @@ export type Database = {
           duplicate_of: string | null
           email: string
           external_lead_id: string | null
+          fb_ad_id: string | null
+          fb_adset_id: string | null
+          fb_campaign_id: string | null
+          fb_lead_id: string | null
+          fbc: string | null
+          fbclid: string | null
+          fbp: string | null
           first_name: string
           form_name: string | null
           full_name: string
@@ -2668,6 +2675,13 @@ export type Database = {
           duplicate_of?: string | null
           email?: string
           external_lead_id?: string | null
+          fb_ad_id?: string | null
+          fb_adset_id?: string | null
+          fb_campaign_id?: string | null
+          fb_lead_id?: string | null
+          fbc?: string | null
+          fbclid?: string | null
+          fbp?: string | null
           first_name?: string
           form_name?: string | null
           full_name?: string
@@ -2707,6 +2721,13 @@ export type Database = {
           duplicate_of?: string | null
           email?: string
           external_lead_id?: string | null
+          fb_ad_id?: string | null
+          fb_adset_id?: string | null
+          fb_campaign_id?: string | null
+          fb_lead_id?: string | null
+          fbc?: string | null
+          fbclid?: string | null
+          fbp?: string | null
           first_name?: string
           form_name?: string | null
           full_name?: string
