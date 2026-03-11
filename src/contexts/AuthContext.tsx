@@ -31,7 +31,6 @@ interface StoredLinkedAccount {
   email: string;
   agencyRole: AgencyRole;
   displayName: string | null;
-  accessToken: string;
   refreshToken: string;
   lastUsedAt: string;
 }
@@ -68,7 +67,6 @@ const readStoredLinkedAccounts = (): StoredLinkedAccount[] => {
     return parsed.filter((a: any) =>
       typeof a?.userId === 'string' &&
       typeof a?.email === 'string' &&
-      typeof a?.accessToken === 'string' &&
       typeof a?.refreshToken === 'string'
     );
   } catch {
@@ -146,7 +144,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: payload.user.email || existing?.email || '',
       agencyRole: payload.agencyRole ?? existing?.agencyRole ?? null,
       displayName: payload.displayName ?? existing?.displayName ?? (payload.user.user_metadata?.display_name || null),
-      accessToken: payload.session.access_token,
       refreshToken: payload.session.refresh_token,
       lastUsedAt: new Date().toISOString(),
     };
@@ -338,7 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!target) return { error: 'Account not found' };
 
     const { error } = await supabase.auth.setSession({
-      access_token: target.accessToken,
+      access_token: '',
       refresh_token: target.refreshToken,
     });
 
@@ -364,7 +361,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fallback = filtered[0];
       if (fallback) {
         const { error } = await supabase.auth.setSession({
-          access_token: fallback.accessToken,
+          access_token: '',
           refresh_token: fallback.refreshToken,
         });
         if (error) return { error: error.message };
