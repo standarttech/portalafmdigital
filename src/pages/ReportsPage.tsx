@@ -471,7 +471,7 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                     <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                   {selectedClientId && (
-                    <ClientReportSchedule clientId={selectedClientId} isAdmin={isAdmin} />
+                    <ClientReportSchedule clientId={selectedClientId} isAdmin={isAdmin} onReportsChanged={fetchReports} />
                   )}
                 </div>
               )}

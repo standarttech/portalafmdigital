@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 interface Props {
   clientId: string;
   isAdmin: boolean;
+  onReportsChanged?: () => void;
 }
 
 interface Schedule {
@@ -24,6 +25,7 @@ interface Schedule {
   telegram_bot_profile_id: string | null;
   is_active: boolean;
   sections: string[];
+  created_by?: string | null;
 }
 
 interface BotProfile {
@@ -33,7 +35,7 @@ interface BotProfile {
   bot_token_ref: string | null;
 }
 
-export default function ClientReportSchedule({ clientId, isAdmin }: Props) {
+export default function ClientReportSchedule({ clientId, isAdmin, onReportsChanged }: Props) {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [bots, setBots] = useState<BotProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,23 +78,30 @@ export default function ClientReportSchedule({ clientId, isAdmin }: Props) {
 
   useEffect(() => { load(); }, [load]);
 
-  const saveSchedule = async (type: 'weekly' | 'monthly') => {
-    setSaving(true);
-    const chatId = type === 'weekly' ? weeklyChat : monthlyChat;
-    const active = type === 'weekly' ? weeklyActive : monthlyActive;
-    const botId = type === 'weekly' ? weeklyBotId : monthlyBotId;
+  const saveSchedule = async (
+    type: 'weekly' | 'monthly',
+    overrides?: { chatId?: string; active?: boolean; botId?: string; silent?: boolean }
+  ) => {
+    const chatId = overrides?.chatId ?? (type === 'weekly' ? weeklyChat : monthlyChat);
+    const active = overrides?.active ?? (type === 'weekly' ? weeklyActive : monthlyActive);
+    const botId = overrides?.botId ?? (type === 'weekly' ? weeklyBotId : monthlyBotId);
 
+    if (active && (!chatId || !botId)) {
+      toast.error('Для активации укажите Telegram Chat ID и выберите бота');
+      return false;
+    }
+
+    setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
 
     const existing = schedules.find(s => s.report_type === type);
-
     const payload: any = {
       client_id: clientId,
       report_type: type,
       telegram_chat_id: chatId || null,
       telegram_bot_profile_id: botId || null,
       is_active: active,
-      created_by: user?.id,
+      created_by: existing?.created_by || user?.id,
     };
 
     let error;
@@ -105,25 +114,66 @@ export default function ClientReportSchedule({ clientId, isAdmin }: Props) {
     }
 
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`${type === 'weekly' ? 'Еженедельный' : 'Ежемесячный'} отчёт настроен`);
-    load();
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+
+    if (!overrides?.silent) {
+      toast.success(`${type === 'weekly' ? 'Еженедельный' : 'Ежемесячный'} отчёт настроен`);
+    }
+
+    await load();
+    return true;
+  };
+
+  const handleToggleSchedule = async (
+    type: 'weekly' | 'monthly',
+    nextValue: boolean,
+    setActive: (v: boolean) => void,
+    chatId: string,
+    botId: string,
+  ) => {
+    if (nextValue && (!chatId || !botId)) {
+      toast.error('Сначала выберите бота и укажите Telegram Chat ID');
+      return;
+    }
+
+    setActive(nextValue);
+    const ok = await saveSchedule(type, { active: nextValue, chatId, botId, silent: true });
+    if (!ok) setActive(!nextValue);
   };
 
   const testSend = async (type: 'weekly' | 'monthly') => {
+    const chatId = type === 'weekly' ? weeklyChat : monthlyChat;
+    const botId = type === 'weekly' ? weeklyBotId : monthlyBotId;
+
+    if (!chatId || !botId) {
+      toast.error('Для теста выберите бота и укажите Telegram Chat ID');
+      return;
+    }
+
     setTestingSend(type);
     try {
       const { data, error } = await supabase.functions.invoke('scheduled-report', {
-        body: { report_type: type, client_id: clientId },
+        body: {
+          report_type: type,
+          client_id: clientId,
+          test_mode: true,
+          telegram_chat_id: chatId,
+          telegram_bot_profile_id: botId,
+        },
       });
+
       if (error) throw error;
       if (data?.sent > 0) {
-        toast.success('Тестовый отчёт отправлен в Telegram');
+        toast.success('Тестовый отчёт отправлен и сохранён в разделе отчётов');
+        onReportsChanged?.();
       } else {
-        toast.error(data?.errors?.[0] || 'Не удалось отправить');
+        toast.error(data?.errors?.[0] || data?.message || 'Не удалось отправить тестовый отчёт');
       }
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || 'Не удалось отправить тестовый отчёт');
     } finally {
       setTestingSend(null);
     }
@@ -187,7 +237,10 @@ export default function ClientReportSchedule({ clientId, isAdmin }: Props) {
           <Badge variant="outline" className="text-[10px]">{badge}</Badge>
           <span className="text-sm font-medium">{label}</span>
         </div>
-        <Switch checked={active} onCheckedChange={setActive} />
+        <Switch
+          checked={active}
+          onCheckedChange={(checked) => void handleToggleSchedule(type, checked, setActive, chatId, botId)}
+        />
       </div>
 
       {/* Bot selection */}
