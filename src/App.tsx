@@ -127,6 +127,12 @@ const AiInfraGuidePage = React.lazy(() => import("@/pages/ai-infra/AiInfraGuideP
 const AiAdsGuidePage = React.lazy(() => import("@/pages/ai-ads/AiAdsGuidePage"));
 
 
+const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
+  Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
+
 function AppRoutes() {
   const { user, loading, adminExists, signOut, agencyRole, effectiveRole } = useAuth();
   const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(() => {
@@ -225,11 +231,17 @@ function AppRoutes() {
       // If user has no verified MFA factor, don't force challenge and clean stale factors.
       if (verifiedFactors.length === 0) {
         if (unverifiedFactors.length > 0) {
-          await Promise.all(
-            unverifiedFactors.map((f) =>
-              supabase.auth.mfa.unenroll({ factorId: f.id }).catch(() => null),
+          await Promise.race([
+            Promise.all(
+              unverifiedFactors.map((f) =>
+                withTimeout(
+                  supabase.auth.mfa.unenroll({ factorId: f.id }).catch(() => null),
+                  3000,
+                ),
+              ),
             ),
-          );
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+          ]);
         }
         setMfaPending(false);
         sessionStorage.setItem('afm_mfa_checked', '1');
