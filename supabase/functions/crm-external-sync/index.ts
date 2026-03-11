@@ -121,6 +121,15 @@ async function fetchGhlLeads(token: string, locationId: string): Promise<Externa
       // GHL stores attribution in contact.attributionSource or custom fields
       const attribution = contact.attributionSource || {};
 
+      // Extract Facebook-specific IDs for CAPI attribution
+      const fbclid = attribution.fbclid || customFields["fbclid"] || customFields["fb_click_id"] || "";
+      const fbc = attribution.fbc || customFields["fbc"] || "";
+      const fbp = attribution.fbp || customFields["fbp"] || "";
+      const fbLeadId = customFields["fb_lead_id"] || customFields["leadgen_id"] || o.sourceId || "";
+      const fbAdId = attribution.adId || customFields["fb_ad_id"] || customFields["ad_id"] || "";
+      const fbAdsetId = attribution.adsetId || customFields["fb_adset_id"] || customFields["adset_id"] || customFields["adgroup_id"] || "";
+      const fbCampaignId = attribution.campaignId || customFields["fb_campaign_id"] || customFields["campaign_id"] || "";
+
       results.push({
         external_id: o.id,
         first_name: contact.firstName || contact.first_name || "",
@@ -144,6 +153,13 @@ async function fetchGhlLeads(token: string, locationId: string): Promise<Externa
         adset_name: attribution.adgroupName || customFields["adset_name"] || customFields["ad_group_name"] || "",
         ad_name: attribution.adName || customFields["ad_name"] || "",
         landing_page: attribution.url || contact.website || "",
+        fbclid,
+        fbc,
+        fbp,
+        fb_lead_id: fbLeadId,
+        fb_ad_id: fbAdId,
+        fb_adset_id: fbAdsetId,
+        fb_campaign_id: fbCampaignId,
         raw_payload: o,
       });
     }
