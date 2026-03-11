@@ -69,16 +69,21 @@ async function fetchGhlPipelines(token: string, locationId: string): Promise<Ext
 // ── GHL: fetch ALL opportunities (paginated) with contact details ──
 async function fetchGhlLeads(token: string, locationId: string): Promise<ExternalLead[]> {
   const results: ExternalLead[] = [];
-  let startAfterId = "";
-  let page = 0;
-  const maxPages = 10; // safety: 100 per page × 10 = 1000 max
+  let searchAfter: string[] = [];
+  let page = 1;
+  const maxPages = 10;
 
-  while (page < maxPages) {
-    const params = new URLSearchParams({ location_id: locationId, limit: "100" });
-    if (startAfterId) params.set("startAfterId", startAfterId);
+  while (page <= maxPages) {
+    const body: Record<string, unknown> = {
+      locationId,
+      query: "",
+      limit: 100,
+      page,
+      searchAfter,
+    };
 
     const resp = await fetch(
-      `https://services.leadconnectorhq.com/opportunities/search?${params.toString()}`,
+      `https://services.leadconnectorhq.com/opportunities/search`,
       {
         method: "POST",
         headers: {
@@ -87,17 +92,19 @@ async function fetchGhlLeads(token: string, locationId: string): Promise<Externa
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ location_id: locationId, limit: 100, ...(startAfterId ? { startAfterId } : {}) }),
+        body: JSON.stringify(body),
       },
     );
 
     if (!resp.ok) {
-      console.error(`GHL opportunities error ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
+      const errText = await resp.text();
+      console.error(`GHL opportunities error ${resp.status}: ${errText.slice(0, 500)}`);
       break;
     }
 
     const data = await resp.json();
     const opps = data.opportunities || [];
+    console.log(`GHL page ${page}: ${opps.length} opportunities`);
     if (opps.length === 0) break;
 
     for (const o of opps) {
