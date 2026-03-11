@@ -58,6 +58,32 @@ interface AuthContextType {
 }
 
 const LINKED_ACCOUNTS_KEY = 'afm_linked_accounts';
+const ROLE_CACHE_KEY = 'afm_cached_role';
+const ROLE_TTL_MS = 30 * 60 * 1000;
+
+const getCachedRole = (): AgencyRole => {
+  try {
+    const raw = localStorage.getItem(ROLE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'string') return parsed as AgencyRole; // legacy plain string
+    if (Date.now() - parsed.cachedAt > ROLE_TTL_MS) {
+      localStorage.removeItem(ROLE_CACHE_KEY);
+      return null;
+    }
+    return parsed.role as AgencyRole;
+  } catch {
+    return null;
+  }
+};
+
+const setCachedRole = (role: AgencyRole) => {
+  if (role) {
+    localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ role, cachedAt: Date.now() }));
+  } else {
+    localStorage.removeItem(ROLE_CACHE_KEY);
+  }
+};
 
 const readStoredLinkedAccounts = (): StoredLinkedAccount[] => {
   try {
@@ -104,9 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [agencyRole, setAgencyRole] = useState<AgencyRole>(() => {
-    return (localStorage.getItem('afm_cached_role') as AgencyRole) || null;
-  });
+  const [agencyRole, setAgencyRole] = useState<AgencyRole>(() => getCachedRole());
   const [adminExists, setAdminExists] = useState<boolean | null>(() => {
     const cached = localStorage.getItem('afm_admin_exists');
     return cached !== null ? cached === 'true' : null;
@@ -182,11 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const role = data ? (data.agency_role as AgencyRole) : null;
       setAgencyRole(role);
-      if (role) {
-        localStorage.setItem('afm_cached_role', role);
-      } else {
-        localStorage.removeItem('afm_cached_role');
-      }
+      setCachedRole(role);
 
       if (activeSession?.user) {
         upsertLinkedAccount({
@@ -212,7 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {
       setAgencyRole(null);
-      localStorage.removeItem('afm_cached_role');
+      setCachedRole(null);
     }
   }, [upsertLinkedAccount]);
 
@@ -246,7 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           setAgencyRole(null);
-          localStorage.removeItem('afm_cached_role');
+          setCachedRole(null);
         }
 
         // Clear MFA/FPC checks only on real sign-in transitions (different user)
@@ -259,7 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAgencyRole(null);
           setViewAsRole(null);
           setSimulatedUser(null);
-          localStorage.removeItem('afm_cached_role');
+          setCachedRole(null);
           lastAuthUserIdRef.current = null;
           syncLinkedAccounts(null);
           return;
@@ -405,7 +425,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     setAgencyRole('AgencyAdmin');
-    localStorage.setItem('afm_cached_role', 'AgencyAdmin');
+    setCachedRole('AgencyAdmin');
     setAdminExists(true);
     localStorage.setItem('afm_admin_exists', 'true');
 
@@ -414,7 +434,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     queryClient.clear();
-    localStorage.removeItem('afm_cached_role');
+    setCachedRole(null);
     localStorage.removeItem('afm_admin_exists');
     sessionStorage.removeItem('afm_fpc_checked');
     sessionStorage.removeItem('afm_mfa_checked');
