@@ -58,6 +58,10 @@ function SortableLeadCard({ lead, onClick, agencyUsers }: { lead: CrmLead; onCli
         <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground flex-shrink-0 mt-0.5" />
       </div>
 
+      {lead.company && (
+        <div className="text-[11px] text-muted-foreground mb-1 truncate">{lead.company}</div>
+      )}
+
       {(lead.phone || lead.email) && (
         <div className="space-y-0.5 mb-1.5">
           {lead.phone && (
@@ -78,6 +82,11 @@ function SortableLeadCard({ lead, onClick, agencyUsers }: { lead: CrmLead; onCli
       <div className="flex items-center gap-1.5 flex-wrap">
         {lead.source && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{lead.source}</span>
+        )}
+        {(lead as any).utm_campaign && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/50 text-accent-foreground font-medium truncate max-w-[100px]" title={(lead as any).utm_campaign}>
+            {(lead as any).utm_campaign}
+          </span>
         )}
         {lead.tags?.slice(0, 2).map(tag => (
           <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
