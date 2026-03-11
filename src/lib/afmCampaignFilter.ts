@@ -39,13 +39,21 @@ export const AFM_CAMPAIGN_PREFIX = 'AFM';
 export async function getAfmCampaignIds(clientId: string): Promise<string[]> {
   const { data } = await supabase
     .from('campaigns')
-    .select('id, campaign_name')
+    .select('id, campaign_name, platform_campaign_id')
     .eq('client_id', clientId);
 
   if (!data) return [];
-  return data
-    .filter(c => c.campaign_name.toUpperCase().includes(AFM_CAMPAIGN_PREFIX))
-    .map(c => c.id);
+  
+  const afmCampaigns = data.filter(c => c.campaign_name.toUpperCase().includes(AFM_CAMPAIGN_PREFIX));
+  
+  // If there are API-sourced AFM campaigns, exclude sheets-sourced ones to prevent duplication
+  const apiCampaigns = afmCampaigns.filter(c => !c.platform_campaign_id.startsWith('sheets-'));
+  if (apiCampaigns.length > 0) {
+    return apiCampaigns.map(c => c.id);
+  }
+  
+  // Fallback: use sheets campaigns if no API campaigns exist
+  return afmCampaigns.map(c => c.id);
 }
 
 /**
