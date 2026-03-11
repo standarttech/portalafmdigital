@@ -999,7 +999,7 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
   const [isActive, setIsActive] = useState(false);
 
   const META_EVENTS = [
-    { value: '', label: isRu ? '— Не отправлять —' : '— Do not send —' },
+    { value: '__none__', label: isRu ? '— Не отправлять —' : '— Do not send —' },
     { value: 'Lead', label: 'Lead' },
     { value: 'Contact', label: 'Contact' },
     { value: 'SubmitApplication', label: 'SubmitApplication' },
