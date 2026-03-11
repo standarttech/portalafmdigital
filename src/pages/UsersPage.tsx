@@ -151,16 +151,21 @@ export default function UsersPage() {
   const fetchInvitations = useCallback(async () => {
     const { data } = await supabase.from('invitations').select('id, email, role, token, status, created_at, expires_at, accepted_at').order('created_at', { ascending: false });
     if (data) {
-      for (const inv of data) {
-        if (inv.status === 'pending') {
-          if ((inv as any).accepted_at) {
-            inv.status = 'accepted';
-          } else if (new Date(inv.expires_at) < new Date()) {
-            inv.status = 'expired';
-          }
+      // Compute real status from DB fields
+      const processed = data.map((inv: any) => {
+        let status = inv.status;
+        if (status === 'pending') {
+          if (inv.accepted_at) status = 'accepted';
+          else if (new Date(inv.expires_at) < new Date()) status = 'expired';
         }
-      }
-      setInvitations(data as Invitation[]);
+        return { ...inv, status } as Invitation;
+      });
+      // Show only active invitations: pending first, then recently accepted/expired (last 7 days)
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const filtered = processed.filter(inv => 
+        inv.status === 'pending' || new Date(inv.created_at) > weekAgo
+      );
+      setInvitations(filtered);
     } else {
       setInvitations([]);
     }
@@ -172,6 +177,17 @@ export default function UsersPage() {
   }, []);
 
   useEffect(() => { fetchUsers(); fetchRequests(); fetchInvitations(); fetchClients(); }, [fetchUsers, fetchRequests, fetchInvitations, fetchClients]);
+
+  // Realtime subscription for invitations
+  useEffect(() => {
+    const channel = supabase
+      .channel('invitations-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invitations' }, () => {
+        fetchInvitations();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchInvitations]);
 
   // CRUD handlers
   const handleCreateInvite = async () => {
@@ -452,7 +468,6 @@ export default function UsersPage() {
               <TabsTrigger value="invitations" className="gap-1.5 text-xs sm:text-sm"><Mail className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabInvitations')}</span><span className="sm:hidden">Inv</span></TabsTrigger>
               <TabsTrigger value="clients" className="gap-1.5 text-xs sm:text-sm"><Building2 className="h-4 w-4" /><span className="hidden sm:inline">{t('users.tabClients')}</span><span className="sm:hidden">Cli</span></TabsTrigger>
               <TabsTrigger value="approvals" className="gap-1.5 text-xs sm:text-sm"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Approvals</span><span className="sm:hidden">Appr</span></TabsTrigger>
-              <TabsTrigger value="portal" className="gap-1.5 text-xs sm:text-sm"><UserCheck className="h-4 w-4" /><span className="hidden sm:inline">Portal</span><span className="sm:hidden">Port</span></TabsTrigger>
             </TabsList>
           </div>
 

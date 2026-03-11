@@ -76,7 +76,7 @@ serve(async (req) => {
             messages: aiMessages,
             tools: toolsDef.tools,
             tool_choice: toolsDef.tool_choice,
-            model: "google/gemini-3-flash-preview",
+            // Do NOT hardcode model here — let ai-router use the route's model_override
           },
         }),
       });

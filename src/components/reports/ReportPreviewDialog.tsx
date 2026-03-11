@@ -103,14 +103,15 @@ export default function ReportPreviewDialog({ open, onOpenChange, report }: Repo
                     <AreaChart data={daily}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-                      <YAxis tick={{ fontSize: 10 }} className="text-muted-foreground" />
+                      <YAxis yAxisId="spend" tick={{ fontSize: 10 }} className="text-muted-foreground" />
+                      <YAxis yAxisId="leads" orientation="right" tick={{ fontSize: 10 }} className="text-muted-foreground" />
                       <Tooltip
                         contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                         labelStyle={{ color: 'hsl(var(--foreground))' }}
                       />
-                      <Area type="monotone" dataKey="spend" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" name="Spend" />
-                      <Area type="monotone" dataKey="leads" stroke="hsl(142 76% 36%)" fill="hsl(142 76% 36% / 0.15)" name="Leads" />
-                      {isEcom && <Area type="monotone" dataKey="revenue" stroke="hsl(120 60% 45%)" fill="hsl(120 60% 45% / 0.15)" name="Revenue" />}
+                      <Area yAxisId="spend" type="monotone" dataKey="spend" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" name="Spend" />
+                      <Area yAxisId="leads" type="monotone" dataKey="leads" stroke="hsl(142 76% 36%)" fill="hsl(142 76% 36% / 0.15)" name="Leads" strokeWidth={2} />
+                      {isEcom && <Area yAxisId="spend" type="monotone" dataKey="revenue" stroke="hsl(120 60% 45%)" fill="hsl(120 60% 45% / 0.15)" name="Revenue" />}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>

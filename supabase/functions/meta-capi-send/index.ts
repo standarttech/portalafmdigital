@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     if (!accessToken) throw new Error("No access token configured for CAPI");
 
     // Build user data with hashing
-    const userData: Record<string, string> = {};
+    const userData: Record<string, unknown> = {};
     if (lead_data?.email) userData.em = [sha256(lead_data.email)];
     if (lead_data?.phone) userData.ph = [sha256(lead_data.phone.replace(/[^0-9]/g, ""))];
     if (lead_data?.first_name) userData.fn = [sha256(lead_data.first_name)];
@@ -64,12 +64,22 @@ Deno.serve(async (req) => {
     if (lead_data?.country) userData.country = [sha256(lead_data.country)];
     if (lead_data?.city) userData.ct = [sha256(lead_data.city)];
     if (lead_data?.external_id) userData.external_id = [lead_data.external_id];
+    // Facebook click/browser identifiers — NOT hashed (sent as-is per Meta docs)
+    if (lead_data?.fbc) userData.fbc = lead_data.fbc;
+    if (lead_data?.fbp) userData.fbp = lead_data.fbp;
+    if (lead_data?.fbclid) {
+      // If we have fbclid but no fbc, construct fbc from fbclid
+      if (!lead_data.fbc) {
+        userData.fbc = `fb.1.${Date.now()}.${lead_data.fbclid}`;
+      }
+    }
+    if (lead_data?.fb_lead_id) userData.lead_id = lead_data.fb_lead_id;
 
     // Build event
     const event: Record<string, unknown> = {
       event_name,
       event_time: Math.floor(Date.now() / 1000),
-      action_source: "system",
+      action_source: lead_data?.fbc || lead_data?.fbclid ? "website" : "system",
       user_data: userData,
     };
 

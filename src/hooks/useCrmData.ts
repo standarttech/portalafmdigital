@@ -53,6 +53,13 @@ export interface CrmLead {
   form_name: string | null;
   landing_page: string | null;
   external_lead_id: string | null;
+  fbclid: string | null;
+  fbc: string | null;
+  fbp: string | null;
+  fb_lead_id: string | null;
+  fb_ad_id: string | null;
+  fb_adset_id: string | null;
+  fb_campaign_id: string | null;
   raw_payload: any;
   is_duplicate: boolean;
   duplicate_of: string | null;
