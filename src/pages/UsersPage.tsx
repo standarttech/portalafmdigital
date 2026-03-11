@@ -151,16 +151,21 @@ export default function UsersPage() {
   const fetchInvitations = useCallback(async () => {
     const { data } = await supabase.from('invitations').select('id, email, role, token, status, created_at, expires_at, accepted_at').order('created_at', { ascending: false });
     if (data) {
-      for (const inv of data) {
-        if (inv.status === 'pending') {
-          if ((inv as any).accepted_at) {
-            inv.status = 'accepted';
-          } else if (new Date(inv.expires_at) < new Date()) {
-            inv.status = 'expired';
-          }
+      // Compute real status from DB fields
+      const processed = data.map((inv: any) => {
+        let status = inv.status;
+        if (status === 'pending') {
+          if (inv.accepted_at) status = 'accepted';
+          else if (new Date(inv.expires_at) < new Date()) status = 'expired';
         }
-      }
-      setInvitations(data as Invitation[]);
+        return { ...inv, status } as Invitation;
+      });
+      // Show only active invitations: pending first, then recently accepted/expired (last 7 days)
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const filtered = processed.filter(inv => 
+        inv.status === 'pending' || new Date(inv.created_at) > weekAgo
+      );
+      setInvitations(filtered);
     } else {
       setInvitations([]);
     }
