@@ -416,7 +416,6 @@ Deno.serve(async (req) => {
             }
           }
         }
-        }
 
         // ── 2. GET DEFAULT PIPELINE & STAGE ──────────────────
         const { data: clientPipeline } = await admin
