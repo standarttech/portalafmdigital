@@ -143,6 +143,7 @@ function AppRoutes() {
     return sessionStorage.getItem('afm_fpc_checked') === '1' ? false : null;
   });
   const [checkingFpc, setCheckingFpc] = useState(false);
+  const [fpcCheckError, setFpcCheckError] = useState(false);
   const [mfaPending, setMfaPending] = useState(false);
   const [checkingMfa, setCheckingMfa] = useState(() => {
     return sessionStorage.getItem('afm_mfa_checked') !== '1';
@@ -200,10 +201,7 @@ function AppRoutes() {
         setForcePasswordChange(false);
       }
     } catch {
-      // Fail open for UX stability; protected routes still require valid auth session.
-      setNeedsPasswordSetup(false);
-      setForcePasswordChange(false);
-      sessionStorage.setItem('afm_fpc_checked', '1');
+      setFpcCheckError(true);
     } finally {
       setCheckingFpc(false);
     }
@@ -255,8 +253,8 @@ function AppRoutes() {
         sessionStorage.setItem('afm_mfa_checked', '1');
       }
     } catch {
+      await supabase.auth.signOut();
       setMfaPending(false);
-      sessionStorage.setItem('afm_mfa_checked', '1');
     } finally {
       setCheckingMfa(false);
     }
@@ -340,6 +338,22 @@ function AppRoutes() {
         <Route path="/set-password" element={<SetPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    );
+  }
+
+  if (fpcCheckError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
+          <p className="text-muted-foreground text-sm">Failed to verify account status.</p>
+          <button
+            onClick={() => { setFpcCheckError(false); checkForcePasswordChange(); }}
+            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
     );
   }
 
