@@ -12,7 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Settings, Search, Webhook, LayoutGrid, Filter, X, Facebook } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import CrmKanbanBoard from '@/components/crm/CrmKanbanBoard';
 import CrmLeadDetailPanel from '@/components/crm/CrmLeadDetailPanel';
 import CrmCreateLeadDialog from '@/components/crm/CrmCreateLeadDialog';
