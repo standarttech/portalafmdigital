@@ -332,7 +332,8 @@ Deno.serve(async (req) => {
         const { count: existingPipelines } = await admin
           .from("crm_pipelines").select("id", { count: "exact", head: true }).eq("client_id", conn.client_id);
 
-        const shouldImportPipelines = isFirstSync || (existingPipelines ?? 0) === 0;
+        // Only import pipelines if NONE exist for this client — never duplicate
+        const shouldImportPipelines = (existingPipelines ?? 0) === 0;
 
         if (shouldImportPipelines) {
           const extPipelines = conn.provider === "gohighlevel"
@@ -368,7 +369,7 @@ Deno.serve(async (req) => {
           }
 
           // fallback default pipeline
-          if (pCount === 0 && (existingPipelines ?? 0) === 0) {
+          if (pCount === 0) {
             const { data: dp } = await admin.from("crm_pipelines")
               .insert({ client_id: conn.client_id, name: "Default Pipeline", is_default: true }).select("id").single();
             if (dp) {
@@ -383,27 +384,34 @@ Deno.serve(async (req) => {
               }
             }
           }
-        } else {
-          // Build existing mappings from DB (for incremental syncs)
-          // We need external→internal stage map for GHL stage matching
-          // Load all stages for this client's pipelines
-          const { data: existingStages } = await admin
-            .from("crm_pipeline_stages")
-            .select("id, name, pipeline_id, position")
-            .in("pipeline_id", (
-              await admin.from("crm_pipelines").select("id").eq("client_id", conn.client_id)
-            ).data?.map((p: any) => p.id) || []);
+        }
 
-          // For GHL, we need to re-fetch pipeline structure to map external stage IDs
-          if (conn.provider === "gohighlevel" && existingStages?.length) {
-            const extPipelines = await fetchGhlPipelines(token, conn.base_url?.trim() || "");
-            // Match by name
-            for (const ep of extPipelines) {
-              for (const es of ep.stages) {
-                const match = existingStages.find(
-                  (is: any) => is.name.toLowerCase() === es.name.toLowerCase()
-                );
-                if (match) externalToInternalStage[es.id] = match.id;
+        // Always build external→internal stage map by matching names
+        {
+          const { data: allPipelineIds } = await admin
+            .from("crm_pipelines").select("id").eq("client_id", conn.client_id);
+          const pipeIds = allPipelineIds?.map((p: any) => p.id) || [];
+
+          if (pipeIds.length > 0) {
+            const { data: existingStages } = await admin
+              .from("crm_pipeline_stages")
+              .select("id, name, pipeline_id")
+              .in("pipeline_id", pipeIds);
+
+            // Map pipeline IDs by name for GHL
+            for (const pid of pipeIds) {
+              // We don't know external pipeline IDs here, but we map stages by name
+            }
+
+            if (conn.provider === "gohighlevel" && existingStages?.length) {
+              const extPipelines = await fetchGhlPipelines(token, conn.base_url?.trim() || "");
+              for (const ep of extPipelines) {
+                for (const es of ep.stages) {
+                  const match = existingStages.find(
+                    (is: any) => is.name.toLowerCase() === es.name.toLowerCase()
+                  );
+                  if (match) externalToInternalStage[es.id] = match.id;
+                }
               }
             }
           }
