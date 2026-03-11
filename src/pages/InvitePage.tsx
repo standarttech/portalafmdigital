@@ -109,7 +109,7 @@ export default function InvitePage() {
             // Maybe user has a different password — update via admin in edge function
             // For now, tell user to use their existing password or contact admin
             setIsLoading(false);
-            toast.error(t('auth.userExists') + '. ' + t('auth.tryExistingPassword'));
+            toast.error(t('auth.userExists'));
             return;
           }
 
