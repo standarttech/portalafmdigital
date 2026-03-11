@@ -43,12 +43,20 @@ async function fetchAlerts(): Promise<{ alerts: AlertItem[]; wins: AlertItem[] }
 
   (syncErrors || []).filter(s => {
     const err = (s.sync_error || '').toLowerCase();
-    // Filter out noise: sheets placeholders, token refresh issues, rate limits
+    // Filter out noise: sheets placeholders, token refresh issues, rate limits, JSON parse errors
     if (err.includes('act_sheets-')) return false;
     if (err.includes('token') && err.includes('expired')) return false;
     if (err.includes('rate limit')) return false;
-    if (err.includes('(#17)')) return false; // Meta API rate limit code
+    if (err.includes('(#17)')) return false;
     if (err.includes('validating') && err.includes('access')) return false;
+    if (err.includes('unexpected end of json')) return false;
+    if (err.includes('json input')) return false;
+    if (err.includes('json.parse')) return false;
+    if (err.includes('invalid json')) return false;
+    if (err.includes('oauth')) return false;
+    if (err.includes('session') && err.includes('expired')) return false;
+    if (err.includes('error validating')) return false;
+    if (err.includes('temporarily unavailable')) return false;
     return true;
   }).forEach(s => {
     negatives.push({
