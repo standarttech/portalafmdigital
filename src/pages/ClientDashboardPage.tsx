@@ -113,22 +113,39 @@ export default function ClientDashboardPage() {
     if (clientIds.length === 0) return;
     const cid = clientIds[0];
 
-    // AFM FILTER: only show metrics for AFM campaigns to match campaigns tab
+    // AFM FILTER: only show metrics for AFM campaigns to match dashboard
     const afmCampaignIds = await getAfmCampaignIds(cid);
-    
-    let metricsQuery = supabase.from('daily_metrics')
-      .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
-      .eq('client_id', cid).order('date', { ascending: true });
-    
-    if (afmCampaignIds.length > 0) {
-      metricsQuery = metricsQuery.in('campaign_id', afmCampaignIds);
-    } else {
-      // No AFM campaigns — show nothing
-      metricsQuery = metricsQuery.eq('campaign_id', '__none__');
+
+    // Paginated fetch to bypass 1000-row limit
+    const PAGE_SIZE = 1000;
+    async function fetchAllPages(campaignIds: string[]) {
+      let allRows: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data } = await supabase.from('daily_metrics')
+          .select('date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id')
+          .eq('client_id', cid).order('date', { ascending: true })
+          .in('campaign_id', campaignIds)
+          .range(offset, offset + PAGE_SIZE - 1);
+        if (!data || data.length === 0) break;
+        allRows = allRows.concat(data);
+        if (data.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+      return allRows;
     }
-    
-    const [metricsRes, campaignsRes, budgetRes, reportsRes, adAccountsRes, commentsRes] = await Promise.all([
-      metricsQuery,
+
+    if (afmCampaignIds.length === 0) {
+      // No AFM campaigns — show nothing
+      setDailyMetrics([]);
+    }
+
+    const metricsPromise = afmCampaignIds.length > 0
+      ? fetchAllPages(afmCampaignIds)
+      : Promise.resolve([]);
+
+    const [metricsData, campaignsRes, budgetRes, reportsRes, adAccountsRes, commentsRes] = await Promise.all([
+      metricsPromise,
       supabase.from('campaigns')
         .select('id, campaign_name, status, platform_campaign_id, ad_accounts(platform_connections(platform))')
         .eq('client_id', cid),
@@ -154,7 +171,7 @@ export default function ClientDashboardPage() {
         .limit(10),
     ]);
 
-    if (metricsRes.data) setDailyMetrics(metricsRes.data as DailyRow[]);
+    setDailyMetrics(metricsData as DailyRow[]);
 
     if (campaignsRes.data) {
       const map: Record<string, string> = {};
