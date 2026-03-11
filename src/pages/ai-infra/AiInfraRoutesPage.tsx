@@ -23,6 +23,29 @@ interface Provider {
 }
 interface SecretInfo { provider_id: string; secret_ref: string | null; }
 
+const KNOWN_MODELS = [
+  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash' },
+  { value: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
+  { value: 'openai/gpt-5', label: 'GPT-5' },
+  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
+  { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano' },
+  { value: 'openai/gpt-5.2', label: 'GPT-5.2' },
+  { value: 'openai/gpt-4o', label: 'GPT-4o' },
+  { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
+  { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+  { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
+  { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
+  { value: 'meta-llama/llama-4-maverick', label: 'Llama 4 Maverick' },
+  { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1' },
+  { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3' },
+  { value: 'qwen/qwen-2.5-72b-instruct', label: 'Qwen 2.5 72B' },
+  { value: 'mistralai/mistral-large-2411', label: 'Mistral Large' },
+  { value: 'mistralai/mistral-small-3.1-24b-instruct', label: 'Mistral Small 3.1' },
+];
+
 export default function AiInfraRoutesPage() {
   const { logGosAction } = useGosAuditLog();
   const [routes, setRoutes] = useState<Route[]>([]);
