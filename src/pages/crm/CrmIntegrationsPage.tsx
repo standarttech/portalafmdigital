@@ -1170,7 +1170,7 @@ function CapiConfigPanel({ clientId, lang }: { clientId: string; lang: string })
                   <span className="text-xs font-medium text-foreground">{stage.name}</span>
                   {stages.length > 6 && <span className="text-[9px] text-muted-foreground ml-1">({stage.pipeline_name})</span>}
                 </div>
-                <Select value={eventMapping[stage.id] || ''} onValueChange={v => setEventMapping(prev => ({ ...prev, [stage.id]: v }))}>
+                <Select value={eventMapping[stage.id] || '__none__'} onValueChange={v => setEventMapping(prev => ({ ...prev, [stage.id]: v === '__none__' ? '' : v }))}>
                   <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder={isRu ? 'Не отправлять' : 'Do not send'} /></SelectTrigger>
                   <SelectContent>
                     {META_EVENTS.map(ev => <SelectItem key={ev.value} value={ev.value}>{ev.label}</SelectItem>)}
