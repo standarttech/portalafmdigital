@@ -321,34 +321,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const addAccount = async (email: string, password: string) => {
     const currentSession = session ?? (await supabase.auth.getSession()).data.session;
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    if (!data.session || !data.user) return { error: 'Failed to sign in account' };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      if (!data.session || !data.user) return { error: 'Failed to sign in account' };
 
-    const { data: roleData } = await supabase
-      .from('agency_users')
-      .select('agency_role, display_name')
-      .eq('user_id', data.user.id)
-      .maybeSingle();
+      const { data: roleData } = await supabase
+        .from('agency_users')
+        .select('agency_role, display_name')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
 
-    upsertLinkedAccount({
-      session: data.session,
-      user: data.user,
-      agencyRole: (roleData?.agency_role as AgencyRole) ?? null,
-      displayName: roleData?.display_name || null,
-    }, currentSession?.user?.id ?? data.user.id);
+      upsertLinkedAccount({
+        session: data.session,
+        user: data.user,
+        agencyRole: (roleData?.agency_role as AgencyRole) ?? null,
+        displayName: roleData?.display_name || null,
+      }, currentSession?.user?.id ?? data.user.id);
 
-    if (currentSession && currentSession.user.id !== data.user.id) {
-      const { error: restoreError } = await supabase.auth.setSession({
-        access_token: currentSession.access_token,
-        refresh_token: currentSession.refresh_token,
-      });
-      if (restoreError) return { error: restoreError.message };
-    } else {
-      fetchRole(data.user.id, data.session);
+      if (currentSession && currentSession.user.id !== data.user.id) {
+        const { error: restoreError } = await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token,
+        });
+        if (restoreError) return { error: restoreError.message };
+      } else {
+        fetchRole(data.user.id, data.session);
+      }
+
+      return { error: null };
+    } catch (err) {
+      if (currentSession?.refresh_token) {
+        await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token,
+        }).catch(() => null);
+      }
+      return { error: err instanceof Error ? err.message : 'Unexpected error adding account' };
     }
-
-    return { error: null };
   };
 
   const switchAccount = async (userId: string) => {
