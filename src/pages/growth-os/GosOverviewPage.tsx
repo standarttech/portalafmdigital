@@ -143,11 +143,11 @@ export default function GosOverviewPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Onboarding Sessions</h3>
-                <button onClick={() => navigate('/growth-os/onboarding')} className="text-xs text-primary hover:underline">View All</button>
+                <h3 className="text-sm font-semibold text-foreground">{isRu ? 'Сессии онбординга' : 'Onboarding Sessions'}</h3>
+                <button onClick={() => navigate('/growth-os/onboarding')} className="text-xs text-primary hover:underline">{isRu ? 'Все' : 'View All'}</button>
               </div>
               {metrics.onboardingSessions.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No sessions yet</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{isRu ? 'Сессий пока нет' : 'No sessions yet'}</p>
               ) : (
                 <div className="space-y-2">
                   {metrics.onboardingSessions.map((s: any) => {
