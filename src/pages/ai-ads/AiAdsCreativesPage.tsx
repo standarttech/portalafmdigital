@@ -104,6 +104,20 @@ export default function AiAdsCreativesPage() {
         </Button>
       </div>
 
+      {/* Integration hint */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-3 flex items-center gap-3">
+          <ImageIcon className="h-5 w-5 text-primary shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-foreground">Need Freepik AI or Meta Ads Management?</p>
+            <p className="text-xs text-muted-foreground">Configure external platform connections in the Integrations section.</p>
+          </div>
+          <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={() => window.location.href = '/ai-ads/integrations'}>
+            Go to Integrations
+          </Button>
+        </CardContent>
+      </Card>
+
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -166,9 +180,6 @@ export default function AiAdsCreativesPage() {
         <AssetDetailDialog asset={detailAsset} clientName={clientName(detailAsset.client_id)}
           usage={usageCounts[detailAsset.id] || 0} onClose={() => setDetailAsset(null)} />
       )}
-
-      {/* Platform Integrations (Freepik, Meta Ads Management) */}
-      <PlatformIntegrationsPanel />
     </div>
   );
 }

@@ -555,6 +555,7 @@ function AppRoutes() {
         <Route path="/ai-ads/creatives" element={<AiAdsCreativesPage />} />
         <Route path="/ai-ads/presets" element={<AiAdsPresetsPage />} />
         <Route path="/ai-ads/client-report" element={<AiAdsClientReportPage />} />
+        <Route path="/ai-ads/integrations" element={<AiAdsIntegrationsPage />} />
         <Route path="/ai-ads/guide" element={<AiAdsGuidePage />} />
       </Route>
       {/* AI Infrastructure — admin only */}
