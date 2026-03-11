@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
 import type { CreativeAsset } from '@/types/ai-ads';
+import PlatformIntegrationsPanel from '@/components/integrations/PlatformIntegrationsPanel';
 
 interface Client { id: string; name: string; }
 
@@ -166,6 +167,9 @@ export default function AiAdsCreativesPage() {
         <AssetDetailDialog asset={detailAsset} clientName={clientName(detailAsset.client_id)}
           usage={usageCounts[detailAsset.id] || 0} onClose={() => setDetailAsset(null)} />
       )}
+
+      {/* Platform Integrations (Freepik, Meta Ads Management) */}
+      <PlatformIntegrationsPanel />
     </div>
   );
 }

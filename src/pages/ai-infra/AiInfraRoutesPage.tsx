@@ -23,6 +23,29 @@ interface Provider {
 }
 interface SecretInfo { provider_id: string; secret_ref: string | null; }
 
+const KNOWN_MODELS = [
+  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash' },
+  { value: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro' },
+  { value: 'openai/gpt-5', label: 'GPT-5' },
+  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
+  { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano' },
+  { value: 'openai/gpt-5.2', label: 'GPT-5.2' },
+  { value: 'openai/gpt-4o', label: 'GPT-4o' },
+  { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
+  { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+  { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku' },
+  { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
+  { value: 'meta-llama/llama-4-maverick', label: 'Llama 4 Maverick' },
+  { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1' },
+  { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3' },
+  { value: 'qwen/qwen-2.5-72b-instruct', label: 'Qwen 2.5 72B' },
+  { value: 'mistralai/mistral-large-2411', label: 'Mistral Large' },
+  { value: 'mistralai/mistral-small-3.1-24b-instruct', label: 'Mistral Small 3.1' },
+];
+
 export default function AiInfraRoutesPage() {
   const { logGosAction } = useGosAuditLog();
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -164,10 +187,29 @@ export default function AiInfraRoutesPage() {
       </div>
       <div>
         <Label>Model Override <span className="text-muted-foreground">(leave empty to use provider default)</span></Label>
-        <Input value={form.model_override} onChange={e => setForm(f => ({ ...f, model_override: e.target.value }))}
-          placeholder={providerModel(form.primary_provider_id) || 'e.g. openai/gpt-4o'} />
-        {form.primary_provider_id && providerModel(form.primary_provider_id) && !form.model_override && (
-          <p className="text-xs text-muted-foreground mt-1">Will use provider default: <code className="font-mono">{providerModel(form.primary_provider_id)}</code></p>
+        <Select
+          value={form.model_override || '__default__'}
+          onValueChange={v => setForm(f => ({ ...f, model_override: v === '__default__' ? '' : v }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={providerModel(form.primary_provider_id) || 'Provider default'} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__default__">
+              <span className="text-muted-foreground">Provider default{providerModel(form.primary_provider_id) ? ` (${providerModel(form.primary_provider_id)})` : ''}</span>
+            </SelectItem>
+            {KNOWN_MODELS.map(m => (
+              <SelectItem key={m.value} value={m.value}>
+                <span className="flex items-center gap-2">
+                  <span className="font-mono text-xs">{m.value}</span>
+                  <span className="text-[10px] text-muted-foreground">{m.label}</span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {form.model_override && (
+          <p className="text-xs text-emerald-400 mt-1">Override active: <code className="font-mono">{form.model_override}</code></p>
         )}
       </div>
       <div className="grid grid-cols-2 gap-3">

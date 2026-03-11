@@ -15,6 +15,7 @@ import {
 import ConversionFunnel from '@/components/client/ConversionFunnel';
 import ClientComments from '@/components/client/ClientComments';
 import ClientWebhooks from '@/components/client/ClientWebhooks';
+import ClientReportSchedule from '@/components/client/ClientReportSchedule';
 import ClientInfoTab from '@/components/client/ClientInfoTab';
 import GoogleSheetConnection from '@/components/client/GoogleSheetConnection';
 import CampaignsBreakdownTab from '@/components/client/CampaignsBreakdownTab';
@@ -1043,7 +1044,10 @@ export default function ClientDetailPage() {
           {/* WEBHOOKS TAB */}
           {isAdmin && (
             <TabsContent value="webhooks">
-              <ClientWebhooks clientId={id!} />
+              <div className="space-y-6">
+                <ClientWebhooks clientId={id!} />
+                <ClientReportSchedule clientId={id!} isAdmin={isAdmin} />
+              </div>
             </TabsContent>
           )}
         </Tabs>

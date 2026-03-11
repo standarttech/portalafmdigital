@@ -72,3 +72,6 @@ verify_jwt = false
 [functions.crm-external-sync]
 verify_jwt = false
 
+[functions.scheduled-report]
+verify_jwt = false
+
