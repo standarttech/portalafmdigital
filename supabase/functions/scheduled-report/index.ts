@@ -105,12 +105,14 @@ serve(async (req) => {
     const now = new Date();
     let dateFrom: string, dateTo: string, periodLabel: string;
 
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
     if (reportType === "monthly") {
       const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
       dateFrom = prevMonth.toISOString().split("T")[0];
       dateTo = lastDay.toISOString().split("T")[0];
-      periodLabel = prevMonth.toLocaleString("ru-RU", { month: "long", year: "numeric" });
+      periodLabel = `${monthNames[prevMonth.getMonth()]} ${prevMonth.getFullYear()}`;
     } else {
       const dayOfWeek = now.getDay() || 7;
       const lastSun = new Date(now);
