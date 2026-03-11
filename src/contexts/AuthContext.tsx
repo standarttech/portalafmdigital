@@ -406,7 +406,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!signUpData.user) return { error: 'Failed to create user' };
 
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) return { error: null };
+    if (signInError) return { error: signInError.message };
 
     const { error: roleError } = await supabase.from('agency_users').insert({
       user_id: signUpData.user.id, agency_role: 'AgencyAdmin', display_name: displayName,
