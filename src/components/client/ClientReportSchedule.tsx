@@ -234,7 +234,10 @@ export default function ClientReportSchedule({ clientId, isAdmin }: Props) {
           <Badge variant="outline" className="text-[10px]">{badge}</Badge>
           <span className="text-sm font-medium">{label}</span>
         </div>
-        <Switch checked={active} onCheckedChange={setActive} />
+        <Switch
+          checked={active}
+          onCheckedChange={(checked) => void handleToggleSchedule(type, checked, setActive, chatId, botId)}
+        />
       </div>
 
       {/* Bot selection */}
