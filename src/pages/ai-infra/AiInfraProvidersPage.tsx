@@ -461,7 +461,32 @@ export default function AiInfraProvidersPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div><Label>Default Model</Label><Input value={editForm.default_model || ''} onChange={e => setEditForm(f => ({ ...f, default_model: e.target.value }))} placeholder="e.g. google/gemini-2.5-flash" /></div>
+                    <div>
+                      <Label>Default Model</Label>
+                      <Input 
+                        value={editForm.default_model || ''} 
+                        onChange={e => setEditForm(f => ({ ...f, default_model: e.target.value }))} 
+                        placeholder="e.g. google/gemini-2.5-flash"
+                        list="model-suggestions"
+                      />
+                      <datalist id="model-suggestions">
+                        <option value="google/gemini-2.5-pro" />
+                        <option value="google/gemini-2.5-flash" />
+                        <option value="google/gemini-2.5-flash-lite" />
+                        <option value="openai/gpt-4o" />
+                        <option value="openai/gpt-4o-mini" />
+                        <option value="anthropic/claude-sonnet-4" />
+                        <option value="anthropic/claude-3.5-haiku" />
+                        <option value="meta-llama/llama-3.3-70b-instruct" />
+                        <option value="meta-llama/llama-4-maverick" />
+                        <option value="deepseek/deepseek-chat-v3-0324" />
+                        <option value="deepseek/deepseek-r1" />
+                        <option value="qwen/qwen-2.5-72b-instruct" />
+                        <option value="mistralai/mistral-large-latest" />
+                        <option value="mistralai/mistral-small-latest" />
+                      </datalist>
+                      <p className="text-[10px] text-muted-foreground mt-1">Type to search or select from suggestions</p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <label className="flex items-center gap-2 text-xs"><Switch checked={!!editForm.supports_text} onCheckedChange={v => setEditForm(f => ({ ...f, supports_text: v }))} />Text</label>
