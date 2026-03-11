@@ -1956,6 +1956,53 @@ export type Database = {
           },
         ]
       }
+      client_report_schedules: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          report_type: string
+          sections: Json
+          telegram_bot_profile_id: string | null
+          telegram_chat_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          report_type?: string
+          sections?: Json
+          telegram_bot_profile_id?: string | null
+          telegram_chat_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          report_type?: string
+          sections?: Json
+          telegram_bot_profile_id?: string | null
+          telegram_chat_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_report_schedules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_status_history: {
         Row: {
           changed_at: string
@@ -4358,6 +4405,42 @@ export type Database = {
           },
         ]
       }
+      platform_integrations: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          integration_type: string
+          is_active: boolean
+          secret_ref: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          integration_type: string
+          is_active?: boolean
+          secret_ref?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          integration_type?: string
+          is_active?: boolean
+          secret_ref?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_settings: {
         Row: {
           id: string
@@ -5372,6 +5455,10 @@ export type Database = {
           permissions: Json
         }[]
       }
+      get_platform_integration_secret: {
+        Args: { _integration_type: string }
+        Returns: string
+      }
       get_social_token: { Args: { _token_reference: string }; Returns: string }
       has_client_access: {
         Args: { _client_id: string; _user_id: string }
@@ -5410,6 +5497,10 @@ export type Database = {
       }
       store_gos_secret: {
         Args: { _secret_name: string; _secret_value: string }
+        Returns: string
+      }
+      store_platform_integration_secret: {
+        Args: { _integration_type: string; _secret_value: string }
         Returns: string
       }
       store_social_token: {
