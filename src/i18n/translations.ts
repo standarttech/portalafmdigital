@@ -7,6 +7,7 @@ export const translations = {
   // Common
   'app.name': t('AFM DIGITAL', 'AFM DIGITAL', 'AFM DIGITAL', 'AFM DIGITAL', 'AFM DIGITAL', 'AFM DIGITAL'),
   'common.save': t('Save', 'Сохранить', 'Salva', 'Guardar', 'حفظ', 'Enregistrer'),
+  'common.integrations': t('Integrations', 'Интеграции', 'Integrazioni', 'Integraciones', 'التكاملات', 'Intégrations'),
   'common.cancel': t('Cancel', 'Отмена', 'Annulla', 'Cancelar', 'إلغاء', 'Annuler'),
   'common.delete': t('Delete', 'Удалить', 'Elimina', 'Eliminar', 'حذف', 'Supprimer'),
   'common.edit': t('Edit', 'Редактировать', 'Modifica', 'Editar', 'تعديل', 'Modifier'),
