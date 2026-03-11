@@ -137,8 +137,8 @@ async function fetchDashboardData(
     revenue: a.revenue + Number(r.revenue || 0), purchases: a.purchases + (r.purchases || 0),
   }), { spend: 0, leads: 0, clicks: 0, impressions: 0, revenue: 0, purchases: 0 });
 
-  const cur = agg(currentMetrics || []);
-  const prev = agg(prevMetrics || []);
+  const cur = agg(currentMetrics);
+  const prev = agg(prevMetrics);
 
   const kpis: KpiData = {
     spend: cur.spend, leads: cur.leads, clicks: cur.clicks, impressions: cur.impressions,
