@@ -212,7 +212,7 @@ export default function GosOverviewPage() {
 
       {/* Module Navigation */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3">Modules</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-3">{isRu ? 'Модули' : 'Modules'}</h2>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {modules.map(mod => {
             const Icon = mod.icon;
