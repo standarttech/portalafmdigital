@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
+const AFM_PREFIX = "AFM";
+const PUBLIC_DOMAIN = "https://app.afmdigital.com";
+
 type ClientSummary = {
   id: string;
   name: string;
@@ -27,7 +30,6 @@ type ScheduleRow = {
 async function requireAgencyMember(req: Request, supabaseUrl: string, serviceKey: string) {
   const authHeader = req.headers.get("Authorization");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-
   if (!authHeader || !anonKey) return false;
 
   const anonClient = createClient(supabaseUrl, anonKey, {
@@ -35,11 +37,7 @@ async function requireAgencyMember(req: Request, supabaseUrl: string, serviceKey
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const {
-    data: { user },
-    error: authErr,
-  } = await anonClient.auth.getUser();
-
+  const { data: { user }, error: authErr } = await anonClient.auth.getUser();
   if (authErr || !user) return false;
 
   const adminClient = createClient(supabaseUrl, serviceKey, {
@@ -70,6 +68,73 @@ async function resolveTelegramToken(
   });
 
   return decryptedToken || fallbackToken;
+}
+
+/**
+ * Get AFM campaign IDs for a client, applying API-over-sheets dedup
+ * (mirrors src/lib/afmCampaignFilter.ts logic exactly)
+ */
+async function getAfmCampaignIds(
+  supabase: ReturnType<typeof createClient>,
+  clientId: string,
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("campaigns")
+    .select("id, campaign_name, platform_campaign_id")
+    .eq("client_id", clientId);
+
+  if (!data) return [];
+
+  const afmCampaigns = data.filter(
+    (c: any) => c.campaign_name.toUpperCase().includes(AFM_PREFIX),
+  );
+
+  // If there are API-sourced AFM campaigns, exclude sheets-sourced ones to prevent duplication
+  const apiCampaigns = afmCampaigns.filter(
+    (c: any) => !c.platform_campaign_id.startsWith("sheets-"),
+  );
+  if (apiCampaigns.length > 0) {
+    return apiCampaigns.map((c: any) => c.id);
+  }
+
+  // Fallback: use sheets campaigns if no API campaigns exist
+  return afmCampaigns.map((c: any) => c.id);
+}
+
+/**
+ * Fetch all daily_metrics for given campaign IDs and date range,
+ * handling the 1000-row Supabase limit by paginating.
+ */
+async function fetchAllMetrics(
+  supabase: ReturnType<typeof createClient>,
+  clientId: string,
+  campaignIds: string[],
+  dateFrom: string,
+  dateTo: string,
+): Promise<any[]> {
+  const PAGE_SIZE = 1000;
+  let allRows: any[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data } = await supabase
+      .from("daily_metrics")
+      .select("date, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts")
+      .eq("client_id", clientId)
+      .in("campaign_id", campaignIds)
+      .gte("date", dateFrom)
+      .lte("date", dateTo)
+      .order("date")
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    const rows = data || [];
+    allRows = allRows.concat(rows);
+    hasMore = rows.length === PAGE_SIZE;
+    offset += PAGE_SIZE;
+  }
+
+  return allRows;
 }
 
 serve(async (req) => {
@@ -199,25 +264,18 @@ serve(async (req) => {
       }
 
       try {
+        // Use the same AFM filter + API-over-sheets dedup as dashboard
+        const campaignIds = await getAfmCampaignIds(supabase, client.id);
+
+        // Also fetch campaign details for the report
         const { data: campaigns } = await supabase
           .from("campaigns")
           .select("id, campaign_name, status")
-          .eq("client_id", client.id)
-          .ilike("campaign_name", "%AFM%");
-
-        const campaignIds = (campaigns || []).map((c: any) => c.id);
+          .in("id", campaignIds.length > 0 ? campaignIds : ["__none__"]);
 
         let metrics: any[] = [];
         if (campaignIds.length > 0) {
-          const { data } = await supabase
-            .from("daily_metrics")
-            .select("date, spend, impressions, link_clicks, leads, purchases, revenue, add_to_cart, checkouts")
-            .eq("client_id", client.id)
-            .in("campaign_id", campaignIds)
-            .gte("date", dateFrom)
-            .lte("date", dateTo)
-            .order("date");
-          metrics = data || [];
+          metrics = await fetchAllMetrics(supabase, client.id, campaignIds, dateFrom, dateTo);
         }
 
         const totals = metrics.reduce((acc, m) => ({
@@ -262,7 +320,7 @@ serve(async (req) => {
         if (reportError) throw reportError;
         if (savedReport?.id) reportIds.push(savedReport.id);
 
-        const reportUrl = `https://portalafmdigital.lovable.app/r/${savedReport?.id || ""}`;
+        const reportUrl = `${PUBLIC_DOMAIN}/r/${savedReport?.id || ""}`;
         const isEcom = ["ecom", "e-commerce", "ecommerce"].includes((client.category || "").toLowerCase());
 
         let msg = `📊 *${reportType === "monthly" ? "Monthly" : "Weekly"} Report*\n`;
@@ -297,6 +355,7 @@ serve(async (req) => {
           const errText = await res.text();
           errors.push(`${client.name}: Telegram ${res.status} — ${errText.substring(0, 200)}`);
         } else {
+          await res.text(); // consume body
           sentCount++;
         }
       } catch (e: any) {
