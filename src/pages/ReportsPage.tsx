@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { motion } from 'framer-motion';
-import { FileText, Plus, Clock, Calendar, Send, Download, Trash2, Loader2, Eye } from 'lucide-react';
+import { FileText, Plus, Clock, Calendar as CalendarIcon, Send, Download, Trash2, Loader2, Eye, CalendarClock } from 'lucide-react';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,8 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import ReportPreviewDialog from '@/components/reports/ReportPreviewDialog';
+import ClientReportSchedule from '@/components/client/ClientReportSchedule';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
 const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
@@ -37,8 +41,45 @@ const reportSections = [
   { key: 'notes', label: 'Notes / Annotations' },
 ];
 
+function DatePickerPopover({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const [open, setOpen] = useState(false);
+  const selected = value ? new Date(value + 'T00:00:00') : undefined;
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full justify-start text-left font-normal h-9 text-sm"
+          >
+            <CalendarIcon className="h-4 w-4 mr-2 text-foreground" />
+            {value ? format(new Date(value + 'T00:00:00'), 'dd.MM.yyyy') : <span className="text-muted-foreground">дд.мм.гггг</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(day) => {
+              if (day) {
+                onChange(format(day, 'yyyy-MM-dd'));
+                setOpen(false);
+              }
+            }}
+            disabled={date => date > new Date()}
+            weekStartsOn={1}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 export default function ReportsPage() {
-  const { t, formatCurrency, formatNumber } = useLanguage();
+  const { t, formatCurrency, formatNumber, language } = useLanguage();
+  const isRu = language === 'ru';
   const { user, effectiveRole, simulatedUser } = useAuth();
   const isAdmin = effectiveRole === 'AgencyAdmin';
   const targetUserId = simulatedUser ? simulatedUser.userId : user?.id;
@@ -55,6 +96,7 @@ export default function ReportsPage() {
   const [reportTitle, setReportTitle] = useState('');
   const [selectedSections, setSelectedSections] = useState<string[]>(['kpi_summary', 'daily_table', 'campaigns_list']);
   const [creating, setCreating] = useState(false);
+  const [activeTab, setActiveTab] = useState('reports');
 
   const [clients, setClients] = useState<Client[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -67,69 +109,26 @@ export default function ReportsPage() {
       setClients(data || []);
       return;
     }
-
-    if (!targetUserId) {
-      setClients([]);
-      return;
-    }
-
-    const { data: assignments } = await supabase
-      .from('client_users')
-      .select('client_id')
-      .eq('user_id', targetUserId);
-
+    if (!targetUserId) { setClients([]); return; }
+    const { data: assignments } = await supabase.from('client_users').select('client_id').eq('user_id', targetUserId);
     const scopedClientIds = (assignments || []).map((a) => a.client_id);
-    if (scopedClientIds.length === 0) {
-      setClients([]);
-      return;
-    }
-
-    const { data } = await supabase
-      .from('clients')
-      .select('id, name, category')
-      .in('id', scopedClientIds)
-      .order('name');
-
+    if (scopedClientIds.length === 0) { setClients([]); return; }
+    const { data } = await supabase.from('clients').select('id, name, category').in('id', scopedClientIds).order('name');
     setClients(data || []);
   }, [isAdmin, targetUserId]);
 
   const fetchReports = useCallback(async () => {
     if (isAdmin) {
-      const { data } = await supabase
-        .from('reports')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const { data } = await supabase.from('reports').select('*').order('created_at', { ascending: false }).limit(50);
       setReports(data || []);
       setLoading(false);
       return;
     }
-
-    if (!targetUserId) {
-      setReports([]);
-      setLoading(false);
-      return;
-    }
-
-    const { data: assignments } = await supabase
-      .from('client_users')
-      .select('client_id')
-      .eq('user_id', targetUserId);
-
+    if (!targetUserId) { setReports([]); setLoading(false); return; }
+    const { data: assignments } = await supabase.from('client_users').select('client_id').eq('user_id', targetUserId);
     const scopedClientIds = (assignments || []).map((a) => a.client_id);
-    if (scopedClientIds.length === 0) {
-      setReports([]);
-      setLoading(false);
-      return;
-    }
-
-    const { data } = await supabase
-      .from('reports')
-      .select('*')
-      .in('client_id', scopedClientIds)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
+    if (scopedClientIds.length === 0) { setReports([]); setLoading(false); return; }
+    const { data } = await supabase.from('reports').select('*').in('client_id', scopedClientIds).order('created_at', { ascending: false }).limit(50);
     setReports(data || []);
     setLoading(false);
   }, [isAdmin, targetUserId]);
@@ -151,62 +150,31 @@ export default function ReportsPage() {
 
     const client = clients.find(c => c.id === selectedClientId);
     const clientCategory = client?.category || 'other';
-
-    // AFM FILTER: only AFM campaigns
     const afmIds = await getAfmCampaignIds(selectedClientId);
-
-    // Fetch metrics with category-aware fields
     const isEcom = ['ecom', 'e-commerce', 'ecommerce'].includes(clientCategory.toLowerCase());
     const selectFields = isEcom
       ? 'date, spend, impressions, link_clicks, leads, add_to_cart, checkouts, purchases, revenue, campaign_id'
       : 'date, spend, impressions, link_clicks, leads, campaign_id';
 
     const { data: metrics } = afmIds.length > 0
-      ? await supabase
-          .from('daily_metrics')
-          .select(selectFields)
-          .eq('client_id', selectedClientId)
-          .in('campaign_id', afmIds)
-          .gte('date', dateFrom)
-          .lte('date', dateTo)
-          .order('date')
+      ? await supabase.from('daily_metrics').select(selectFields).eq('client_id', selectedClientId).in('campaign_id', afmIds).gte('date', dateFrom).lte('date', dateTo).order('date')
       : { data: [] };
 
-    const { data: campaigns } = await supabase
-      .from('campaigns')
-      .select('id, campaign_name, status')
-      .eq('client_id', selectedClientId)
-      .ilike('campaign_name', '%AFM%');
+    const { data: campaigns } = await supabase.from('campaigns').select('id, campaign_name, status').eq('client_id', selectedClientId).ilike('campaign_name', '%AFM%');
 
     const rawMetrics = metrics || [];
     const totals = rawMetrics.reduce((acc, m: any) => ({
       spend: acc.spend + Number(m.spend), impressions: acc.impressions + m.impressions,
       clicks: acc.clicks + m.link_clicks, leads: acc.leads + m.leads,
-      purchases: acc.purchases + Number(m.purchases || 0),
-      revenue: acc.revenue + Number(m.revenue || 0),
-      addToCart: acc.addToCart + Number(m.add_to_cart || 0),
-      checkouts: acc.checkouts + Number(m.checkouts || 0),
+      purchases: acc.purchases + Number(m.purchases || 0), revenue: acc.revenue + Number(m.revenue || 0),
+      addToCart: acc.addToCart + Number(m.add_to_cart || 0), checkouts: acc.checkouts + Number(m.checkouts || 0),
     }), { spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, addToCart: 0, checkouts: 0 });
 
-    const content = {
-      sections: selectedSections,
-      totals,
-      daily: rawMetrics,
-      campaigns: campaigns || [],
-      clientName: client?.name || '',
-      category: clientCategory,
-    };
-
+    const content = { sections: selectedSections, totals, daily: rawMetrics, campaigns: campaigns || [], clientName: client?.name || '', category: clientCategory };
     const title = reportTitle || `${client?.name} — ${dateFrom} to ${dateTo}`;
 
     const { error } = await supabase.from('reports').insert({
-      client_id: selectedClientId,
-      title,
-      date_from: dateFrom,
-      date_to: dateTo,
-      status: 'draft',
-      content,
-      created_by: user?.id,
+      client_id: selectedClientId, title, date_from: dateFrom, date_to: dateTo, status: 'draft', content, created_by: user?.id,
     });
 
     setCreating(false);
@@ -230,7 +198,6 @@ export default function ReportsPage() {
   const handleDownloadCsv = (report: Report) => {
     const content = report.content as any;
     if (!content?.daily?.length) { toast.error(t('common.noData')); return; }
-
     const isEcom = ['ecom', 'e-commerce', 'ecommerce'].includes((content.category || '').toLowerCase());
     const headers = isEcom
       ? ['Date', 'Spend', 'Impressions', 'Clicks', 'Leads', 'Add to Cart', 'Checkouts', 'Purchases', 'Revenue']
@@ -241,13 +208,10 @@ export default function ReportsPage() {
       return base.join(',');
     });
     const csv = [headers.join(','), ...rows].join('\n');
-
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `${report.title.replace(/[^a-z0-9]/gi, '_')}.csv`;
-    a.click();
+    a.href = url; a.download = `${report.title.replace(/[^a-z0-9]/gi, '_')}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -314,15 +278,8 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const w = window.open(url, '_blank');
-    if (w) {
-      w.addEventListener('load', () => { setTimeout(() => w.print(), 500); });
-    } else {
-      // Fallback: download as HTML
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${report.title.replace(/[^a-z0-9]/gi, '_')}.html`;
-      a.click();
-    }
+    if (w) { w.addEventListener('load', () => { setTimeout(() => w.print(), 500); }); }
+    else { const a = document.createElement('a'); a.href = url; a.download = `${report.title.replace(/[^a-z0-9]/gi, '_')}.html`; a.click(); }
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
@@ -336,16 +293,6 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
           <p className="text-muted-foreground text-sm mt-1">{t('reports.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <DateRangePicker
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-            comparison={comparison}
-            onComparisonChange={setComparison}
-            customDateRange={customDateRange}
-            onCustomDateRangeChange={setCustomDateRange}
-            compareEnabled={compareEnabled}
-            onCompareEnabledChange={setCompareEnabled}
-          />
         <Dialog open={wizardOpen} onOpenChange={(o) => { setWizardOpen(o); if (!o) resetWizard(); }}>
           <DialogTrigger asChild><Button className="gap-2"><Plus className="h-4 w-4" />{t('reports.createReport')}</Button></DialogTrigger>
           <DialogContent className="sm:max-w-lg">
@@ -354,7 +301,6 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
               <DialogDescription>{t('reports.wizardDesc')}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-2">
-              {/* Step indicator */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {[1, 2, 3].map(s => (
                   <div key={s} className={`flex items-center gap-1 ${wizardStep >= s ? 'text-primary' : ''}`}>
@@ -374,18 +320,12 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                     </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>{t('common.from')}</Label>
-                      <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{t('common.to')}</Label>
-                      <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-                    </div>
+                    <DatePickerPopover value={dateFrom} onChange={setDateFrom} label={t('common.from')} />
+                    <DatePickerPopover value={dateTo} onChange={setDateTo} label={t('common.to')} />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('common.title')} ({t('auth.messageOptional').split('(')[1]?.replace(')', '') || 'optional'})</Label>
-                    <Input value={reportTitle} onChange={(e) => setReportTitle(e.target.value)} placeholder="Auto-generated if empty" />
+                    <Label>{t('common.title')} ({isRu ? 'опционально' : 'optional'})</Label>
+                    <Input value={reportTitle} onChange={(e) => setReportTitle(e.target.value)} placeholder={isRu ? 'Авто-генерация если пусто' : 'Auto-generated if empty'} />
                   </div>
                   <Button onClick={() => setWizardStep(2)} className="w-full" disabled={!selectedClientId || !dateFrom || !dateTo}>
                     {t('reports.next')}
@@ -415,8 +355,8 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                 <div className="space-y-3">
                   <div className="rounded-lg bg-secondary/50 p-4 text-sm space-y-2">
                     <p><strong>{t('reports.selectClient')}:</strong> {getClientName(selectedClientId)}</p>
-                    <p><strong>{t('reports.selectPeriod')}:</strong> {dateFrom} → {dateTo}</p>
-                    <p><strong>{t('reports.sections')}:</strong> {selectedSections.length} selected</p>
+                    <p><strong>{isRu ? 'Период' : 'Period'}:</strong> {dateFrom} → {dateTo}</p>
+                    <p><strong>{t('reports.sections')}:</strong> {selectedSections.length} {isRu ? 'выбрано' : 'selected'}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setWizardStep(2)} className="flex-1">{t('common.back')}</Button>
@@ -433,72 +373,111 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
         </div>
       </motion.div>
 
+      {/* Tabs: Reports / Auto-scheduling */}
       <motion.div variants={item}>
-        {loading ? (
-          <div className="flex items-center justify-center py-20"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
-        ) : reports.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4"><FileText className="h-8 w-8 text-primary" /></div>
-            <h2 className="text-lg font-semibold text-foreground mb-2">{t('common.noData')}</h2>
-            <p className="text-muted-foreground text-sm max-w-md">{t('reports.wizardDesc')}</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {reports.map(report => {
-              const content = report.content as any;
-              const totals = content?.totals;
-              return (
-                <Card key={report.id} className="glass-card">
-                  <CardContent className="py-4 px-5">
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <FileText className="h-5 w-5 text-primary" />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="reports" className="gap-1.5 text-xs">
+              <FileText className="h-3.5 w-3.5" />{isRu ? 'Отчёты' : 'Reports'}
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="gap-1.5 text-xs">
+              <CalendarClock className="h-3.5 w-3.5" />{isRu ? 'Авторассылка' : 'Auto-send'}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="reports" className="mt-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-20"><div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            ) : reports.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4"><FileText className="h-8 w-8 text-primary" /></div>
+                <h2 className="text-lg font-semibold text-foreground mb-2">{t('common.noData')}</h2>
+                <p className="text-muted-foreground text-sm max-w-md">{t('reports.wizardDesc')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {reports.map(report => {
+                  const content = report.content as any;
+                  const totals = content?.totals;
+                  return (
+                    <Card key={report.id} className="glass-card">
+                      <CardContent className="py-4 px-5">
+                        <div className="flex items-center justify-between flex-wrap gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <FileText className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground text-sm truncate">{report.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {getClientName(report.client_id)}
+                                {content?.category && <span className="ml-1.5 text-primary">({content.category})</span>}
+                              </p>
+                              {totals && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Spend: {formatCurrency(totals.spend)} · Leads: {formatNumber(totals.leads)} · Clicks: {formatNumber(totals.clicks)}
+                                  {totals.purchases > 0 && ` · Purchases: ${formatNumber(totals.purchases)}`}
+                                  {totals.revenue > 0 && ` · Revenue: ${formatCurrency(totals.revenue)}`}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={report.status === 'published' ? 'bg-success/15 text-success border-success/20' : 'bg-warning/15 text-warning border-warning/20'}>
+                              {report.status === 'published' ? t('reports.published') : t('reports.draft')}
+                            </Badge>
+                            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setPreviewReport(report)}>
+                              <Eye className="h-3.5 w-3.5" />{t('reports.preview' as any)}
+                            </Button>
+                            {report.status === 'draft' && (
+                              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handlePublish(report.id)}>
+                                <Send className="h-3.5 w-3.5" />{t('reports.published')}
+                              </Button>
+                            )}
+                            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadPdf(report)}>
+                              <Download className="h-3.5 w-3.5" />PDF
+                            </Button>
+                            <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadCsv(report)}>
+                              <Download className="h-3.5 w-3.5" />CSV
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteReport(report.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">{report.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {report.date_from} → {report.date_to} · {getClientName(report.client_id)}
-                            {content?.category && <span className="ml-1.5 text-primary">({content.category})</span>}
-                          </p>
-                          {totals && (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Spend: {formatCurrency(totals.spend)} · Leads: {formatNumber(totals.leads)} · Clicks: {formatNumber(totals.clicks)}
-                              {totals.purchases > 0 && ` · Purchases: ${formatNumber(totals.purchases)}`}
-                              {totals.revenue > 0 && ` · Revenue: ${formatCurrency(totals.revenue)}`}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={report.status === 'published' ? 'bg-success/15 text-success border-success/20' : 'bg-warning/15 text-warning border-warning/20'}>
-                          {report.status === 'published' ? t('reports.published') : t('reports.draft')}
-                        </Badge>
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setPreviewReport(report)}>
-                          <Eye className="h-3.5 w-3.5" />{t('reports.preview' as any)}
-                        </Button>
-                        {report.status === 'draft' && (
-                          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handlePublish(report.id)}>
-                            <Send className="h-3.5 w-3.5" />{t('reports.published')}
-                          </Button>
-                        )}
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadPdf(report)}>
-                          <Download className="h-3.5 w-3.5" />PDF
-                        </Button>
-                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadCsv(report)}>
-                          <Download className="h-3.5 w-3.5" />CSV
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteReport(report.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="schedule" className="mt-4">
+            <div className="max-w-2xl space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {isRu
+                  ? 'Настройте автоматическую генерацию и отправку отчётов в Telegram для каждого клиента.'
+                  : 'Configure automatic report generation and delivery to Telegram for each client.'}
+              </p>
+              {clients.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">{isRu ? 'Нет клиентов' : 'No clients'}</p>
+              ) : (
+                <div className="space-y-4">
+                  <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                    <SelectTrigger className="w-[240px]">
+                      <SelectValue placeholder={isRu ? 'Выберите клиента' : 'Select client'} />
+                    </SelectTrigger>
+                    <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {selectedClientId && (
+                    <ClientReportSchedule clientId={selectedClientId} isAdmin={isAdmin} />
+                  )}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </motion.div>
 
       <ReportPreviewDialog
