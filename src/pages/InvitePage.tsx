@@ -188,6 +188,11 @@ export default function InvitePage() {
         return;
       }
 
+      // Refresh role in AuthContext so Access Denied screen doesn't flash
+      refreshRole();
+      // Give the role fetch a moment to complete before navigating
+      await new Promise(resolve => setTimeout(resolve, 600));
+
       setIsLoading(false);
       toast.success(t('invite.accepted'));
       navigate('/dashboard');
