@@ -187,11 +187,14 @@ export default function PortalAcceptInvitePage() {
       toast.success('Account created and portal activated!');
       setTimeout(() => navigate('/portal', { replace: true }), 1500);
     } else {
-      // Email confirmation required
+      // Email confirmation required — store invite_id in sessionStorage
+      // so PortalLoginPage can call accept_portal_invite after user confirms email and signs in
+      sessionStorage.setItem('pending_portal_invite_id', inviteState.id);
+      sessionStorage.setItem('pending_portal_invite_client', inviteState.client_id);
       setSubmitting(false);
       setError('');
       setSuccess(true);
-      toast.info('Please check your email to verify your account, then sign in.');
+      toast.info('Please check your email to verify your account, then return here to sign in.');
     }
   };
 

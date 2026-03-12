@@ -87,17 +87,30 @@ export default function PortalLoginPage() {
     const { data: { user: u } } = await supabase.auth.getUser();
     if (!u) { setError(t('portal.authFailed')); setLoading(false); return; }
 
-    const { data: pu } = await supabase
+    // If there's a pending invite (from email-confirmation signup), accept it now
+    const pendingInviteId = sessionStorage.getItem('pending_portal_invite_id');
+    if (pendingInviteId) {
+      sessionStorage.removeItem('pending_portal_invite_id');
+      sessionStorage.removeItem('pending_portal_invite_client');
+      await supabase.rpc('accept_portal_invite', {
+        _invite_id: pendingInviteId,
+        _user_id: u.id,
+      });
+    }
+
+    const { data: portalRecords } = await supabase
       .from('client_portal_users' as any)
       .select('id, status')
-      .eq('user_id', u.id)
-      .maybeSingle();
+      .eq('user_id', u.id);
 
-    if (pu) {
-      if ((pu as any).status === 'active') {
+    const records = (portalRecords as any[]) || [];
+    if (records.length > 0) {
+      const activeRecord = records.find((r: any) => r.status === 'active');
+      const deactivatedRecord = records.find((r: any) => r.status === 'deactivated');
+      if (activeRecord) {
         await supabase.rpc('update_portal_last_login', { _user_id: u.id });
         navigate('/portal', { replace: true });
-      } else if ((pu as any).status === 'deactivated') {
+      } else if (deactivatedRecord) {
         setError(t('portal.deactivated'));
         await supabase.auth.signOut();
       } else {
