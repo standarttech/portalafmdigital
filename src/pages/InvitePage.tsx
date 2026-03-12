@@ -10,6 +10,7 @@ import logoAfm from '@/assets/logo-afm.png';
 import { motion } from 'framer-motion';
 import { Loader2, UserPlus, AlertCircle, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Invitation {
   id: string;
