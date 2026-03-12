@@ -10,6 +10,7 @@ import logoAfm from '@/assets/logo-afm.png';
 import { motion } from 'framer-motion';
 import { Loader2, UserPlus, AlertCircle, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Invitation {
   id: string;
@@ -31,6 +32,7 @@ const PASSWORD_RULES = [
 
 export default function InvitePage() {
   const { t, language } = useLanguage();
+  const { refreshRole } = useAuth();
   const isRu = language === 'ru';
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -185,6 +187,11 @@ export default function InvitePage() {
         setIsLoading(false);
         return;
       }
+
+      // Refresh role in AuthContext so Access Denied screen doesn't flash
+      refreshRole();
+      // Give the role fetch a moment to complete before navigating
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       setIsLoading(false);
       toast.success(t('invite.accepted'));
