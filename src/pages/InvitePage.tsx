@@ -297,10 +297,10 @@ export default function InvitePage() {
                       return (
                         <div key={rule.key} className="flex items-center gap-1.5 text-xs">
                           {passed
-                            ? <Check className="h-3.5 w-3.5 text-green-500" />
+                            ? <Check className="h-3.5 w-3.5 text-success" />
                             : <X className="h-3.5 w-3.5 text-muted-foreground" />
                           }
-                          <span className={passed ? 'text-green-500' : 'text-muted-foreground'}>
+                          <span className={passed ? 'text-success' : 'text-muted-foreground'}>
                             {isRu ? rule.ru : rule.en}
                           </span>
                         </div>
