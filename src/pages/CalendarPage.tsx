@@ -50,8 +50,10 @@ export default function CalendarPage() {
   const startDow = getDay(monthStart);
 
   const fetchEvents = useCallback(async () => {
-    const from = format(monthStart, 'yyyy-MM-dd');
-    const to = format(monthEnd, 'yyyy-MM-dd');
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    const from = format(start, 'yyyy-MM-dd');
+    const to = format(end, 'yyyy-MM-dd');
 
     const [{ data: tasks }, { data: annotations }, { data: cls }] = await Promise.all([
       supabase.from('tasks').select('id, title, due_date, status, client_id').gte('due_date', from).lte('due_date', to),
@@ -60,15 +62,22 @@ export default function CalendarPage() {
     ]);
 
     setClients(cls || []);
-    const clientIds = new Set([...(tasks || []).map(t => t.client_id), ...(annotations || []).map(a => a.client_id)]);
-    const { data: allClients } = await supabase.from('clients').select('id, name').in('id', [...clientIds]);
-    const nameMap = new Map(allClients?.map(c => [c.id, c.name]) || []);
+    const clientIds = [...new Set([
+      ...(tasks || []).map(t => t.client_id),
+      ...(annotations || []).map(a => a.client_id),
+    ])].filter((id): id is string => id != null);
+
+    const nameMap = new Map<string, string>();
+    if (clientIds.length > 0) {
+      const { data: allClients } = await supabase.from('clients').select('id, name').in('id', clientIds);
+      (allClients || []).forEach(c => nameMap.set(c.id, c.name));
+    }
 
     setEvents([
-      ...(tasks || []).filter(t => t.due_date).map(t => ({ id: t.id, date: t.due_date!, title: t.title, type: 'task' as const, client_name: nameMap.get(t.client_id), status: t.status })),
-      ...(annotations || []).map(a => ({ id: a.id, date: a.date, title: a.text, type: 'annotation' as const, client_name: nameMap.get(a.client_id) })),
+      ...(tasks || []).filter(t => t.due_date).map(t => ({ id: t.id, date: t.due_date!, title: t.title, type: 'task' as const, client_name: nameMap.get(t.client_id ?? ''), status: t.status })),
+      ...(annotations || []).map(a => ({ id: a.id, date: a.date, title: a.text, type: 'annotation' as const, client_name: nameMap.get(a.client_id ?? '') })),
     ]);
-  }, [monthStart, monthEnd]);
+  }, [currentMonth]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
