@@ -269,13 +269,19 @@ export default function UsersPage() {
     });
     if (!canProceed) { setDeleteOpen(false); setDeleteUser(null); return; }
     
-    await Promise.all([
-      supabase.from('agency_users').delete().eq('user_id', deleteUser.user_id),
-      supabase.from('user_permissions').delete().eq('user_id', deleteUser.user_id),
-      supabase.from('client_users').delete().eq('user_id', deleteUser.user_id),
-      supabase.from('user_settings').delete().eq('user_id', deleteUser.user_id),
-    ]);
-    toast.success(t('users.userDeleted'));
+    // Use edge function to fully delete user (including auth.users)
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { target_user_id: deleteUser.user_id },
+    });
+
+    if (error) {
+      toast.error('Failed to delete user: ' + error.message);
+    } else {
+      toast.success(t('users.userDeleted'));
+      if (data?.warning) {
+        toast.warning(data.warning);
+      }
+    }
     setDeleteOpen(false); setDeleteUser(null); fetchUsers();
   };
 
