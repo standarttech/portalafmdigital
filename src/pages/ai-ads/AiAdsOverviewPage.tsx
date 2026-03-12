@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Bot, MonitorSmartphone, BrainCircuit, Lightbulb, FileStack, Rocket,
   ArrowRight, Activity, TrendingUp, AlertCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/i18n/LanguageContext';
+import type { TranslationKey } from '@/i18n/translations';
 
 interface Metrics {
   accounts: number;
@@ -17,15 +18,6 @@ interface Metrics {
   hypotheses: number;
   recommendations: number;
 }
-
-const modules = [
-  { label: 'Ad Accounts', desc: 'Connect and manage advertising platform accounts', icon: MonitorSmartphone, path: '/ai-ads/accounts', color: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30', iconColor: 'text-blue-400' },
-  { label: 'AI Analysis', desc: 'AI-powered campaign analysis and insights', icon: BrainCircuit, path: '/ai-ads/analysis', color: 'from-violet-500/20 to-purple-500/20 border-violet-500/30', iconColor: 'text-violet-400' },
-  { label: 'Recommendations', desc: 'Review and act on AI-generated recommendations', icon: TrendingUp, path: '/ai-ads/recommendations', color: 'from-cyan-500/20 to-blue-500/20 border-cyan-500/30', iconColor: 'text-cyan-400' },
-  { label: 'Hypotheses', desc: 'Brainstorm and discuss optimization strategies', icon: Lightbulb, path: '/ai-ads/hypotheses', color: 'from-amber-500/20 to-orange-500/20 border-amber-500/30', iconColor: 'text-amber-400' },
-  { label: 'Campaign Drafts', desc: 'Build and review campaign configurations', icon: FileStack, path: '/ai-ads/drafts', color: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30', iconColor: 'text-emerald-400' },
-  { label: 'Executions', desc: 'Approve and monitor campaign launches', icon: Rocket, path: '/ai-ads/executions', color: 'from-rose-500/20 to-pink-500/20 border-rose-500/30', iconColor: 'text-rose-400' },
-];
 
 function KpiCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
   return (
@@ -45,6 +37,7 @@ function KpiCard({ label, value, icon: Icon, color }: { label: string; value: nu
 
 export default function AiAdsOverviewPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [metrics, setMetrics] = useState<Metrics>({ accounts: 0, sessions: 0, drafts: 0, pendingLaunches: 0, hypotheses: 0, recommendations: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -71,14 +64,23 @@ export default function AiAdsOverviewPage() {
     load();
   }, []);
 
+  const modules = [
+    { labelKey: 'aiAds.adAccounts' as TranslationKey, descKey: 'aiAds.adAccountsDesc' as TranslationKey, icon: MonitorSmartphone, path: '/ai-ads/accounts', color: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30', iconColor: 'text-blue-400' },
+    { labelKey: 'aiAds.analysis' as TranslationKey, descKey: 'aiAds.analysisDesc' as TranslationKey, icon: BrainCircuit, path: '/ai-ads/analysis', color: 'from-violet-500/20 to-purple-500/20 border-violet-500/30', iconColor: 'text-violet-400' },
+    { labelKey: 'aiAds.recommendations' as TranslationKey, descKey: 'aiAds.recommendationsDesc' as TranslationKey, icon: TrendingUp, path: '/ai-ads/recommendations', color: 'from-cyan-500/20 to-blue-500/20 border-cyan-500/30', iconColor: 'text-cyan-400' },
+    { labelKey: 'aiAds.hypotheses' as TranslationKey, descKey: 'aiAds.hypothesesDesc' as TranslationKey, icon: Lightbulb, path: '/ai-ads/hypotheses', color: 'from-amber-500/20 to-orange-500/20 border-amber-500/30', iconColor: 'text-amber-400' },
+    { labelKey: 'aiAds.campaignDrafts' as TranslationKey, descKey: 'aiAds.campaignDraftsDesc' as TranslationKey, icon: FileStack, path: '/ai-ads/drafts', color: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30', iconColor: 'text-emerald-400' },
+    { labelKey: 'aiAds.executions' as TranslationKey, descKey: 'aiAds.executionsDesc' as TranslationKey, icon: Rocket, path: '/ai-ads/executions', color: 'from-rose-500/20 to-pink-500/20 border-rose-500/30', iconColor: 'text-rose-400' },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
           <Bot className="h-6 w-6 text-[hsl(270,70%,60%)]" />
-          AI Ads Copilot
+          {t('aiAds.copilotTitle')}
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">AI-assisted campaign creation with guarded execution</p>
+        <p className="text-sm text-muted-foreground mt-1">{t('aiAds.copilotDesc')}</p>
       </div>
 
       {/* Workflow badge */}
@@ -86,10 +88,10 @@ export default function AiAdsOverviewPage() {
         <CardContent className="p-4 flex items-center gap-3">
           <Activity className="h-5 w-5 text-[hsl(270,70%,60%)]" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">Draft → Review → Approve → Execute</p>
-            <p className="text-xs text-muted-foreground">All campaign launches require explicit approval before execution</p>
+            <p className="text-sm font-medium text-foreground">{t('aiAds.workflow')}</p>
+            <p className="text-xs text-muted-foreground">{t('aiAds.workflowDesc')}</p>
           </div>
-          <Badge variant="outline" className="border-[hsl(270,70%,50%)]/30 text-[hsl(270,70%,60%)]">Guarded</Badge>
+          <Badge variant="outline" className="border-[hsl(270,70%,50%)]/30 text-[hsl(270,70%,60%)]">{t('aiAds.guarded')}</Badge>
         </CardContent>
       </Card>
 
@@ -102,12 +104,12 @@ export default function AiAdsOverviewPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <KpiCard label="Ad Accounts" value={metrics.accounts} icon={MonitorSmartphone} color="bg-blue-500/10 text-blue-400" />
-          <KpiCard label="AI Sessions" value={metrics.sessions} icon={BrainCircuit} color="bg-violet-500/10 text-violet-400" />
-          <KpiCard label="Drafts" value={metrics.drafts} icon={FileStack} color="bg-emerald-500/10 text-emerald-400" />
-          <KpiCard label="Pending Launches" value={metrics.pendingLaunches} icon={AlertCircle} color="bg-rose-500/10 text-rose-400" />
-          <KpiCard label="Hypotheses" value={metrics.hypotheses} icon={Lightbulb} color="bg-amber-500/10 text-amber-400" />
-          <KpiCard label="Recommendations" value={metrics.recommendations} icon={TrendingUp} color="bg-cyan-500/10 text-cyan-400" />
+          <KpiCard label={t('aiAds.adAccounts')} value={metrics.accounts} icon={MonitorSmartphone} color="bg-blue-500/10 text-blue-400" />
+          <KpiCard label={t('aiAds.aiSessions')} value={metrics.sessions} icon={BrainCircuit} color="bg-violet-500/10 text-violet-400" />
+          <KpiCard label={t('aiAds.drafts')} value={metrics.drafts} icon={FileStack} color="bg-emerald-500/10 text-emerald-400" />
+          <KpiCard label={t('aiAds.pendingLaunches')} value={metrics.pendingLaunches} icon={AlertCircle} color="bg-rose-500/10 text-rose-400" />
+          <KpiCard label={t('aiAds.hypotheses')} value={metrics.hypotheses} icon={Lightbulb} color="bg-amber-500/10 text-amber-400" />
+          <KpiCard label={t('aiAds.recommendations')} value={metrics.recommendations} icon={TrendingUp} color="bg-cyan-500/10 text-cyan-400" />
         </div>
       )}
 
@@ -122,9 +124,9 @@ export default function AiAdsOverviewPage() {
             <CardContent className="p-5 flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <m.icon className={`h-5 w-5 ${m.iconColor}`} />
-                <span className="font-semibold text-foreground">{m.label}</span>
+                <span className="font-semibold text-foreground">{t(m.labelKey)}</span>
               </div>
-              <p className="text-xs text-muted-foreground">{m.desc}</p>
+              <p className="text-xs text-muted-foreground">{t(m.descKey)}</p>
               <div className="flex justify-end">
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>

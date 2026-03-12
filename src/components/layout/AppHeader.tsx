@@ -29,11 +29,11 @@ const languageOptions: { code: Language; flag: string; label: string }[] = [
   { code: 'fr', flag: '🇫🇷', label: 'Français' },
 ];
 
-const themeOptions: { id: ColorScheme | 'dark' | 'light'; label: string; icon: string }[] = [
-  { id: 'dark', label: 'Dark', icon: '🌙' },
-  { id: 'light', label: 'Light', icon: '☀️' },
-  { id: 'midnight-blue', label: 'Midnight Blue', icon: '🌊' },
-  { id: 'clean-light', label: 'Clean Light', icon: '💎' },
+const themeOptionDefs: { id: ColorScheme | 'dark' | 'light'; labelKey: string; icon: string }[] = [
+  { id: 'dark', labelKey: 'theme.dark', icon: '🌙' },
+  { id: 'light', labelKey: 'theme.light', icon: '☀️' },
+  { id: 'midnight-blue', labelKey: 'theme.midnightBlue', icon: '🌊' },
+  { id: 'clean-light', labelKey: 'theme.cleanLight', icon: '💎' },
 ];
 
 const ALL_PREVIEW_ROLES = [
@@ -57,6 +57,7 @@ export default function AppHeader() {
   const isPreviewing = (viewAsRole && viewAsRole !== agencyRole) || simulatedUser;
 
   const activeThemeId = colorScheme !== 'default' ? colorScheme : theme;
+  const themeOptions = themeOptionDefs.map(o => ({ ...o, label: t(o.labelKey as any) }));
 
   const handleThemeSelect = (id: string) => {
     if (id === 'dark' || id === 'light') setTheme(id);
@@ -118,7 +119,7 @@ export default function AppHeader() {
           <div className="flex items-center gap-2">
             <Eye className="h-3.5 w-3.5 text-amber-500" />
             <span className="text-xs text-amber-500 font-medium">
-              {simulatedUser ? '👁 Просмотр как' : (t('admin.viewingAs' as any) || 'Viewing as')}: <strong>{previewLabel}</strong>
+              👁 {t('header.viewingAs' as any)}: <strong>{previewLabel}</strong>
             </span>
           </div>
           <Button variant="ghost" size="sm" onClick={handleExitSimulation}
@@ -171,7 +172,7 @@ export default function AppHeader() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={8}>
-                {isFuturistic ? 'Disable FX' : 'Enable FX ✨'}
+                {isFuturistic ? t('header.fxDisable' as any) : t('header.fxEnable' as any)}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -250,7 +251,7 @@ export default function AppHeader() {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <Eye className="h-3 w-3" /> Симуляция роли
+                    <Eye className="h-3 w-3" /> {t('header.simulateRole' as any)}
                   </DropdownMenuLabel>
                   {ALL_PREVIEW_ROLES.map(pr => {
                     const isActive = !simulatedUser && (pr.role === null ? !viewAsRole : viewAsRole === pr.role);
@@ -268,7 +269,7 @@ export default function AppHeader() {
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger className="gap-2 text-sm" onClick={() => setSimMenuOpened(true)}>
-                      <Users className="h-3.5 w-3.5" /> Просмотр как пользователь
+                      <Users className="h-3.5 w-3.5" /> {t('header.viewAsUser' as any)}
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto w-56">
                       {allUsers.filter(u => u.user_id !== user?.id).map(u => (
@@ -285,7 +286,7 @@ export default function AppHeader() {
                         </DropdownMenuItem>
                       ))}
                       {allUsers.length <= 1 && (
-                        <div className="px-2 py-3 text-xs text-muted-foreground text-center">Нет других пользователей</div>
+                        <div className="px-2 py-3 text-xs text-muted-foreground text-center">{t('header.noOtherUsers' as any)}</div>
                       )}
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>

@@ -34,16 +34,17 @@ interface Report {
 }
 
 const reportSections = [
-  { key: 'kpi_summary', label: 'KPI Summary' },
-  { key: 'performance_chart', label: 'Performance Chart' },
-  { key: 'platform_breakdown', label: 'Platform Breakdown' },
-  { key: 'daily_table', label: 'Daily Table' },
-  { key: 'campaigns_list', label: 'Campaigns List' },
-  { key: 'notes', label: 'Notes / Annotations' },
+  { key: 'kpi_summary', labelKey: 'reports.kpiSummary' },
+  { key: 'performance_chart', labelKey: 'reports.performanceChart' },
+  { key: 'platform_breakdown', labelKey: 'reports.platformBreakdown' },
+  { key: 'daily_table', labelKey: 'reports.dailyTable' },
+  { key: 'campaigns_list', labelKey: 'reports.campaignsList' },
+  { key: 'notes', labelKey: 'reports.notesAnnotations' },
 ];
 
 function DatePickerPopover({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const [open, setOpen] = useState(false);
+  const { t } = useLanguage();
   const selected = value ? new Date(value + 'T00:00:00') : undefined;
 
   return (
@@ -56,7 +57,7 @@ function DatePickerPopover({ value, onChange, label }: { value: string; onChange
             className="w-full justify-start text-left font-normal h-9 text-sm"
           >
             <CalendarIcon className="h-4 w-4 mr-2 text-foreground" />
-            {value ? format(new Date(value + 'T00:00:00'), 'dd.MM.yyyy') : <span className="text-muted-foreground">дд.мм.гггг</span>}
+            {value ? format(new Date(value + 'T00:00:00'), 'dd.MM.yyyy') : <span className="text-muted-foreground">{t('reports.dateFormat' as any)}</span>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -341,7 +342,7 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                     {reportSections.map(sec => (
                       <label key={sec.key} className="flex items-center gap-2 text-sm cursor-pointer">
                         <Checkbox checked={selectedSections.includes(sec.key)} onCheckedChange={() => toggleSection(sec.key)} />
-                        {sec.label}
+                        {t(sec.labelKey as any)}
                       </label>
                     ))}
                   </div>

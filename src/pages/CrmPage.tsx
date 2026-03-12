@@ -280,7 +280,7 @@ export default function CrmPage() {
           <div className="space-y-3">
             <div>
               <Label className="text-xs">{t('crm.pipelineName')}</Label>
-              <Input placeholder="e.g. Main Leads" value={newPipelineName} onChange={e => setNewPipelineName(e.target.value)} className="text-sm h-9 mt-1" onKeyDown={e => e.key === 'Enter' && handleCreatePipeline()} />
+              <Input placeholder={t('crm.pipelineNamePlaceholder' as any)} value={newPipelineName} onChange={e => setNewPipelineName(e.target.value)} className="text-sm h-9 mt-1" onKeyDown={e => e.key === 'Enter' && handleCreatePipeline()} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowCreatePipeline(false)}>{t('common.cancel')}</Button>

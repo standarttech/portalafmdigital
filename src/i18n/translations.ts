@@ -1172,6 +1172,20 @@ export const translations = {
   'aiAds.optimization': t('Optimization', 'Оптимизация', 'Ottimizzazione', 'Optimización', 'التحسين', 'Optimisation'),
   'aiAds.presets': t('Presets', 'Пресеты', 'Preset', 'Presets', 'الإعدادات المسبقة', 'Préréglages'),
   'aiAds.clientReport': t('Client Report', 'Отчёт клиенту', 'Report cliente', 'Informe al cliente', 'تقرير العميل', 'Rapport client'),
+  'aiAds.copilotTitle': t('AI Ads Copilot', 'ИИ Копилот для Рекламы', 'AI Ads Copilot', 'Copiloto de IA para Anuncios', 'مساعد الذكاء الاصطناعي للإعلانات', 'Copilote IA Pub'),
+  'aiAds.copilotDesc': t('AI-assisted campaign creation with guarded execution', 'Создание кампаний с помощью ИИ и защищённым запуском', 'Creazione campagne assistita da AI con esecuzione protetta', 'Creación de campañas asistida por IA con ejecución protegida', 'إنشاء حملات بمساعدة الذكاء الاصطناعي مع تنفيذ محمي', 'Création de campagnes assistée par IA avec exécution sécurisée'),
+  'aiAds.workflow': t('Draft → Review → Approve → Execute', 'Черновик → Проверка → Одобрение → Запуск', 'Bozza → Revisione → Approvazione → Esecuzione', 'Borrador → Revisión → Aprobación → Ejecución', 'مسودة → مراجعة → موافقة → تنفيذ', 'Brouillon → Révision → Approbation → Exécution'),
+  'aiAds.workflowDesc': t('All campaign launches require explicit approval before execution', 'Все запуски кампаний требуют явного одобрения перед выполнением', "Tutti i lanci di campagne richiedono un'approvazione esplicita prima dell'esecuzione", 'Todos los lanzamientos de campaña requieren aprobación explícita antes de la ejecución', 'تتطلب جميع عمليات إطلاق الحملات موافقة صريحة قبل التنفيذ', "Tous les lancements de campagne nécessitent une approbation explicite avant l'exécution"),
+  'aiAds.guarded': t('Guarded', 'Защищено', 'Protetto', 'Protegido', 'محمي', 'Protégé'),
+  'aiAds.aiSessions': t('AI Sessions', 'ИИ Сессии', 'Sessioni AI', 'Sesiones IA', 'جلسات الذكاء الاصطناعي', 'Sessions IA'),
+  'aiAds.drafts': t('Drafts', 'Черновики', 'Bozze', 'Borradores', 'المسودات', 'Brouillons'),
+  'aiAds.pendingLaunches': t('Pending Launches', 'Ожидают запуска', 'Lanci in attesa', 'Lanzamientos pendientes', 'إطلاقات معلقة', 'Lancements en attente'),
+  'aiAds.adAccountsDesc': t('Connect and manage advertising platform accounts', 'Подключайте и управляйте аккаунтами рекламных платформ', 'Collega e gestisci gli account delle piattaforme pubblicitarie', 'Conecta y gestiona cuentas de plataformas publicitarias', 'ربط وإدارة حسابات المنصات الإعلانية', 'Connectez et gérez les comptes de plateformes publicitaires'),
+  'aiAds.analysisDesc': t('AI-powered campaign analysis and insights', 'Анализ кампаний и инсайты на основе ИИ', 'Analisi delle campagne e insights basati su AI', 'Análisis de campañas e insights impulsados por IA', 'تحليل الحملات ورؤى مدعومة بالذكاء الاصطناعي', 'Analyse de campagnes et insights alimentés par IA'),
+  'aiAds.recommendationsDesc': t('Review and act on AI-generated recommendations', 'Просматривайте и применяйте рекомендации ИИ', 'Esamina e agisci in base alle raccomandazioni generate da AI', 'Revisa y actúa sobre las recomendaciones generadas por IA', 'راجع التوصيات المولّدة بالذكاء الاصطناعي وتصرف بناءً عليها', 'Examinez et agissez sur les recommandations générées par IA'),
+  'aiAds.hypothesesDesc': t('Brainstorm and discuss optimization strategies', 'Обсуждайте стратегии оптимизации', 'Esplora e discuti strategie di ottimizzazione', 'Explora y debate estrategias de optimización', 'استكشف استراتيجيات التحسين وناقشها', "Explorez et discutez des stratégies d'optimisation"),
+  'aiAds.campaignDraftsDesc': t('Build and review campaign configurations', 'Создавайте и проверяйте конфигурации кампаний', 'Crea e rivedi le configurazioni delle campagne', 'Crea y revisa configuraciones de campaña', 'أنشئ تكوينات الحملات وراجعها', 'Créez et examinez les configurations de campagne'),
+  'aiAds.executionsDesc': t('Approve and monitor campaign launches', 'Одобряйте и отслеживайте запуски кампаний', 'Approva e monitora i lanci di campagne', 'Aprueba y monitorea los lanzamientos de campañas', 'وافق على إطلاق الحملات وراقبها', 'Approuvez et surveillez les lancements de campagne'),
 
   // AI Infrastructure
   'nav.aiInfra': t('AI Infrastructure', 'ИИ Инфраструктура', 'AI Infrastruttura', 'AI Infraestructura', 'البنية التحتية للذكاء الاصطناعي', 'Infrastructure IA'),
@@ -1254,6 +1268,60 @@ export const translations = {
   'portal.invalidCredentials': t('Invalid email or password. Please check your credentials.', 'Неверный email или пароль. Проверьте введённые данные.', 'Email o password non validi. Controlla le tue credenziali.', 'Email o contraseña inválidos. Verifica tus credenciales.', 'البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التحقق من بيانات الاعتماد.', "Email ou mot de passe invalide. Vérifiez vos identifiants."),
   'portal.authFailed': t('Authentication failed. Please try again.', 'Ошибка аутентификации. Попробуйте ещё раз.', 'Autenticazione fallita. Riprova.', 'Autenticación fallida. Inténtalo de nuevo.', 'فشل المصادقة. يرجى المحاولة مرة أخرى.', 'Échec de l\'authentification. Veuillez réessayer.'),
   'portal.minChars': t('Min 8 characters', 'Мин. 8 символов', 'Min 8 caratteri', 'Mín. 8 caracteres', '8 أحرف على الأقل', 'Min. 8 caractères'),
+
+  // Reports page sections
+  'reports.kpiSummary': t('KPI Summary', 'Сводка KPI', 'Riepilogo KPI', 'Resumen KPI', 'ملخص المؤشرات', 'Résumé KPI'),
+  'reports.performanceChart': t('Performance Chart', 'График эффективности', 'Grafico performance', 'Gráfico de rendimiento', 'مخطط الأداء', 'Graphique de performance'),
+  'reports.platformBreakdown': t('Platform Breakdown', 'Разбивка по платформам', 'Suddivisione per piattaforma', 'Desglose por plataforma', 'تفصيل المنصة', 'Répartition par plateforme'),
+  'reports.dailyTable': t('Daily Table', 'Ежедневная таблица', 'Tabella giornaliera', 'Tabla diaria', 'جدول يومي', 'Tableau quotidien'),
+  'reports.campaignsList': t('Campaigns List', 'Список кампаний', 'Elenco campagne', 'Lista de campañas', 'قائمة الحملات', 'Liste des campagnes'),
+  'reports.notesAnnotations': t('Notes / Annotations', 'Заметки / Аннотации', 'Note / Annotazioni', 'Notas / Anotaciones', 'ملاحظات / تعليقات', 'Notes / Annotations'),
+  'reports.dateFormat': t('dd.mm.yyyy', 'дд.мм.гггг', 'gg.mm.aaaa', 'dd.mm.aaaa', 'يي.شش.سسسس', 'jj.mm.aaaa'),
+
+  // AppHeader
+  'header.simulateRole': t('Role simulation', 'Симуляция роли', 'Simulazione ruolo', 'Simulación de rol', 'محاكاة الدور', 'Simulation de rôle'),
+  'header.viewAsUser': t('View as user', 'Просмотр как пользователь', 'Visualizza come utente', 'Ver como usuario', 'عرض كمستخدم', 'Voir en tant qu\'utilisateur'),
+  'header.noOtherUsers': t('No other users', 'Нет других пользователей', 'Nessun altro utente', 'No hay otros usuarios', 'لا يوجد مستخدمون آخرون', 'Aucun autre utilisateur'),
+  'header.viewingAs': t('Viewing as', 'Просмотр как', 'Visualizzazione come', 'Viendo como', 'عرض بوصفك', 'Voir en tant que'),
+  'header.fxEnable': t('Enable FX ✨', 'Включить FX ✨', 'Abilita FX ✨', 'Activar FX ✨', 'تفعيل التأثيرات ✨', 'Activer FX ✨'),
+  'header.fxDisable': t('Disable FX', 'Отключить FX', 'Disabilita FX', 'Desactivar FX', 'تعطيل التأثيرات', 'Désactiver FX'),
+
+  // Theme names
+  'theme.dark': t('Dark', 'Тёмная', 'Scuro', 'Oscuro', 'داكن', 'Sombre'),
+  'theme.light': t('Light', 'Светлая', 'Chiaro', 'Claro', 'فاتح', 'Clair'),
+  'theme.midnightBlue': t('Midnight Blue', 'Синяя ночь', 'Blu notte', 'Azul medianoche', 'أزرق منتصف الليل', 'Bleu nuit'),
+  'theme.cleanLight': t('Clean Light', 'Чистая светлая', 'Chiaro pulito', 'Claro limpio', 'فاتح نظيف', 'Clair épuré'),
+
+  // Portal Dashboard
+  'portalDash.performancePortal': t('Performance Portal', 'Портал эффективности', 'Portale performance', 'Portal de rendimiento', 'بوابة الأداء', 'Portail de performance'),
+  'portalDash.campaignOverview': t('Campaign performance overview', 'Обзор эффективности кампаний', 'Panoramica performance campagne', 'Resumen de rendimiento de campañas', 'نظرة عامة على أداء الحملات', 'Aperçu des performances des campagnes'),
+  'portalDash.updated': t('Updated', 'Обновлено', 'Aggiornato', 'Actualizado', 'تم التحديث', 'Mis à jour'),
+  'portalDash.totalSpend': t('Total Spend', 'Общие расходы', 'Spesa totale', 'Gasto total', 'إجمالي الإنفاق', 'Dépense totale'),
+  'portalDash.clicks': t('Clicks', 'Клики', 'Clic', 'Clics', 'النقرات', 'Clics'),
+  'portalDash.leads': t('Leads', 'Лиды', 'Lead', 'Leads', 'العملاء المحتملون', 'Prospects'),
+  'portalDash.revenue': t('Revenue', 'Доход', 'Ricavi', 'Ingresos', 'الإيرادات', 'Revenus'),
+  'portalDash.spend': t('Spend', 'Расходы', 'Spesa', 'Gasto', 'الإنفاق', 'Dépense'),
+  'portalDash.reportExported': t('Report exported', 'Отчёт экспортирован', 'Report esportato', 'Informe exportado', 'تم تصدير التقرير', 'Rapport exporté'),
+  'portalDash.noDataExport': t('No data to export', 'Нет данных для экспорта', 'Nessun dato da esportare', 'Sin datos para exportar', 'لا توجد بيانات للتصدير', 'Aucune donnée à exporter'),
+  'portalDash.reportDownloaded': t('Report downloaded — open in browser and use Print → Save as PDF', 'Отчёт загружен — откройте в браузере и используйте Печать → Сохранить как PDF', 'Report scaricato — apri nel browser e usa Stampa → Salva come PDF', 'Informe descargado — ábrelo en el navegador y usa Imprimir → Guardar como PDF', 'تم تنزيل التقرير — افتحه في المتصفح واستخدم طباعة → حفظ بصيغة PDF', 'Rapport téléchargé — ouvrez dans le navigateur et utilisez Imprimer → Enregistrer en PDF'),
+  'portalDash.reportError': t('Could not generate report. Please try again.', 'Не удалось создать отчёт. Попробуйте ещё раз.', 'Impossibile generare il report. Riprova.', 'No se pudo generar el informe. Inténtalo de nuevo.', 'تعذّر إنشاء التقرير. يرجى المحاولة مرة أخرى.', 'Impossible de générer le rapport. Veuillez réessayer.'),
+  'portalDash.deliveryStatus': t('Delivery Status', 'Статус доставки', 'Stato consegna', 'Estado de entrega', 'حالة التسليم', 'Statut de livraison'),
+  'portalDash.noCampaigns': t('No campaigns launched yet.', 'Кампании ещё не запущены.', 'Nessuna campagna lanciata ancora.', 'Ninguna campaña lanzada aún.', 'لم يتم إطلاق أي حملات بعد.', 'Aucune campagne lancée pour le moment.'),
+  'portalDash.campaignsRunning': t('campaign(s) running smoothly', 'кампания(и) работают без сбоев', 'campagna/e in esecuzione', 'campaña(s) funcionando correctamente', 'حملة/حملات تعمل بسلاسة', 'campagne(s) fonctionnent bien'),
+  'portalDash.campaignsUnderReview': t('campaign(s) under review by our team', 'кампания(и) проверяются нашей командой', 'campagna/e in revisione', 'campaña(s) en revisión por nuestro equipo', 'حملة/حملات قيد المراجعة من فريقنا', 'campagne(s) en cours d\'examen par notre équipe'),
+  'portalDash.allCampaignsHealthy': t('All campaigns healthy — no issues detected', 'Все кампании в норме — проблем не обнаружено', 'Tutte le campagne sono integre — nessun problema rilevato', 'Todas las campañas saludables — sin problemas detectados', 'جميع الحملات بصحة جيدة — لم يتم اكتشاف أي مشاكل', 'Toutes les campagnes sont saines — aucun problème détecté'),
+  'portalDash.optimizationProgress': t('Optimization Progress', 'Прогресс оптимизации', 'Progresso ottimizzazione', 'Progreso de optimización', 'تقدم التحسين', "Progrès d'optimisation"),
+  'portalDash.totalInsights': t('Total Insights', 'Всего инсайтов', 'Totale insights', 'Total de insights', 'إجمالي الرؤى', 'Total des insights'),
+  'portalDash.resolved': t('Resolved', 'Решено', 'Risolti', 'Resueltos', 'تم الحل', 'Résolus'),
+  'portalDash.actionsCompleted': t('Actions Completed', 'Действий выполнено', 'Azioni completate', 'Acciones completadas', 'الإجراءات المكتملة', 'Actions effectuées'),
+  'portalDash.inProgress': t('In Progress', 'В процессе', 'In corso', 'En progreso', 'جاري التنفيذ', 'En cours'),
+  'portalDash.recentCampaigns': t('Recent Campaigns', 'Последние кампании', 'Campagne recenti', 'Campañas recientes', 'الحملات الأخيرة', 'Campagnes récentes'),
+  'portalDash.currentInsights': t('Current Insights', 'Актуальные инсайты', 'Insights attuali', 'Insights actuales', 'الرؤى الحالية', 'Insights actuels'),
+  'portalDash.comparisonUnavailable': t('Comparison unavailable — not enough data for the', 'Сравнение недоступно — недостаточно данных для', 'Confronto non disponibile — dati insufficienti per il', 'Comparación no disponible — datos insuficientes para el', 'المقارنة غير متاحة — بيانات غير كافية لـ', 'Comparaison indisponible — données insuffisantes pour le'),
+  'portalDash.allTime': t('All Time', 'За всё время', 'Tutto il tempo', 'Todo el tiempo', 'كل الوقت', 'Tout le temps'),
+
+  // CRM
+  'crm.pipelineNamePlaceholder': t('e.g. Main Leads', 'напр. Основные лиды', 'es. Lead Principali', 'p.ej. Leads Principales', 'مثل: العملاء الرئيسيون', 'ex. Leads Principaux'),
 
   // Sync monitor
   'sync.statusSuccess': t('Success', 'Успешно', 'Successo', 'Éxito', 'نجاح', 'Succès'),

@@ -12,6 +12,7 @@ import { exportPerformanceSummary } from '@/lib/portalExport';
 import { getPreviousPeriod } from '@/lib/portalPeriod';
 import { toast } from 'sonner';
 import type { PortalUser, PortalBranding } from '@/types/portal';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Ctx { portalUser: PortalUser | null; branding: PortalBranding | null; isAdmin: boolean; }
 
@@ -39,6 +40,7 @@ function sumMetrics(snaps: any[]) {
 export default function PortalDashboardPage() {
   const { portalUser, branding, isAdmin } = useOutletContext<Ctx>();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [clientName, setClientName] = useState('');
   const [snapshots, setSnapshots] = useState<any[]>([]);
@@ -135,7 +137,7 @@ export default function PortalDashboardPage() {
   const handleExport = () => {
     const ok = exportPerformanceSummary(latest, dateRange?.label || 'all-time');
     if (ok) {
-      toast.success('Report exported');
+      toast.success(t('portalDash.reportExported' as any));
       supabase.from('audit_log').insert({
         action: 'portal_report_exported', entity_type: 'portal_export',
         entity_id: portalUser?.client_id || selectedClient || 'unknown',
@@ -143,7 +145,7 @@ export default function PortalDashboardPage() {
         details: { period: dateRange?.label || 'all-time', rows: latest.length },
       });
     } else {
-      toast.error('No data to export');
+      toast.error(t('portalDash.noDataExport' as any));
     }
   };
 
@@ -173,17 +175,17 @@ export default function PortalDashboardPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Report downloaded — open in browser and use Print → Save as PDF');
+      toast.success(t('portalDash.reportDownloaded' as any));
     } catch (err) {
       console.error('PDF export error:', err);
-      toast.error('Could not generate report. Please try again.');
+      toast.error(t('portalDash.reportError' as any));
     }
     setPdfLoading(false);
   };
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
 
-  const title = branding?.portal_title || 'Performance Portal';
+  const title = branding?.portal_title || t('portalDash.performancePortal' as any);
   const showComparison = dateRange && prevSnapshots.length > 0;
   const prevLabel = dateRange ? getPreviousPeriod(dateRange).label : 'previous period';
 
@@ -193,8 +195,8 @@ export default function PortalDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {clientName ? `${clientName} — ` : ''}Campaign performance overview
-            {lastSync && <span className="ml-2 text-[10px]">· Updated: {new Date(lastSync).toLocaleString()}</span>}
+            {clientName ? `${clientName} — ` : ''}{t('portalDash.campaignOverview' as any)}
+            {lastSync && <span className="ml-2 text-[10px]">· {t('portalDash.updated' as any)}: {new Date(lastSync).toLocaleString()}</span>}
           </p>
           {isAdmin && !portalUser && clients.length > 1 && (
             <select className="mt-2 text-xs border rounded px-2 py-1 bg-background text-foreground"
@@ -222,10 +224,10 @@ export default function PortalDashboardPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Spend', value: `$${current.spend.toFixed(0)}` },
-          { label: 'Clicks', value: current.clicks.toLocaleString() },
-          { label: 'Leads', value: String(current.leads) },
-          { label: 'Revenue', value: `$${current.revenue.toFixed(0)}` },
+          { label: t('portalDash.totalSpend' as any), value: `$${current.spend.toFixed(0)}` },
+          { label: t('portalDash.clicks' as any), value: current.clicks.toLocaleString() },
+          { label: t('portalDash.leads' as any), value: String(current.leads) },
+          { label: t('portalDash.revenue' as any), value: `$${current.revenue.toFixed(0)}` },
         ].map(kpi => (
           <Card key={kpi.label}>
             <CardContent className="p-4 text-center">
@@ -241,45 +243,45 @@ export default function PortalDashboardPage() {
         <PeriodComparison
           previousLabel={prevLabel}
           metrics={[
-            { label: 'Spend', current: current.spend, previous: previous.spend, format: 'currency' },
-            { label: 'Clicks', current: current.clicks, previous: previous.clicks },
-            { label: 'Leads', current: current.leads, previous: previous.leads },
-            { label: 'Revenue', current: current.revenue, previous: previous.revenue, format: 'currency' },
+            { label: t('portalDash.spend' as any), current: current.spend, previous: previous.spend, format: 'currency' },
+            { label: t('portalDash.clicks' as any), current: current.clicks, previous: previous.clicks },
+            { label: t('portalDash.leads' as any), current: current.leads, previous: previous.leads },
+            { label: t('portalDash.revenue' as any), current: current.revenue, previous: previous.revenue, format: 'currency' },
           ]}
         />
       )}
       {dateRange && prevSnapshots.length === 0 && snapshots.length > 0 && (
-        <p className="text-[10px] text-muted-foreground italic">Comparison unavailable — not enough data for the {prevLabel}.</p>
+        <p className="text-[10px] text-muted-foreground italic">{t('portalDash.comparisonUnavailable' as any)} {prevLabel}.</p>
       )}
 
       {/* Delivery Health */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Delivery Status
+            <Activity className="h-4 w-4 text-primary" /> {t('portalDash.deliveryStatus' as any)}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {launches.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No campaigns launched yet.</p>
+            <p className="text-sm text-muted-foreground">{t('portalDash.noCampaigns' as any)}</p>
           ) : (
             <>
               {activeCampaigns > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span>{activeCampaigns} campaign{activeCampaigns !== 1 ? 's' : ''} running smoothly</span>
+                  <span>{activeCampaigns} {t('portalDash.campaignsRunning' as any)}</span>
                 </div>
               )}
               {issuesCampaigns > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                  <span>{issuesCampaigns} campaign{issuesCampaigns !== 1 ? 's' : ''} under review by our team</span>
+                  <span>{issuesCampaigns} {t('portalDash.campaignsUnderReview' as any)}</span>
                 </div>
               )}
               {issuesCampaigns === 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span>All campaigns healthy — no issues detected</span>
+                  <span>{t('portalDash.allCampaignsHealthy' as any)}</span>
                 </div>
               )}
             </>
@@ -291,15 +293,15 @@ export default function PortalDashboardPage() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" /> Optimization Progress
+            <Zap className="h-4 w-4 text-primary" /> {t('portalDash.optimizationProgress' as any)}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="text-center"><p className="text-xl font-bold text-foreground">{recs.length}</p><p className="text-[10px] text-muted-foreground">Total Insights</p></div>
-            <div className="text-center"><p className="text-xl font-bold text-emerald-500">{recs.filter(r => ['dismissed', 'converted_to_draft'].includes(r.status)).length}</p><p className="text-[10px] text-muted-foreground">Resolved</p></div>
-            <div className="text-center"><p className="text-xl font-bold text-foreground">{executedActions}</p><p className="text-[10px] text-muted-foreground">Actions Completed</p></div>
-            <div className="text-center"><p className="text-xl font-bold text-amber-500">{pendingActions}</p><p className="text-[10px] text-muted-foreground">In Progress</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-foreground">{recs.length}</p><p className="text-[10px] text-muted-foreground">{t('portalDash.totalInsights' as any)}</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-emerald-500">{recs.filter(r => ['dismissed', 'converted_to_draft'].includes(r.status)).length}</p><p className="text-[10px] text-muted-foreground">{t('portalDash.resolved' as any)}</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-foreground">{executedActions}</p><p className="text-[10px] text-muted-foreground">{t('portalDash.actionsCompleted' as any)}</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-amber-500">{pendingActions}</p><p className="text-[10px] text-muted-foreground">{t('portalDash.inProgress' as any)}</p></div>
           </div>
         </CardContent>
       </Card>
@@ -309,7 +311,7 @@ export default function PortalDashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-500" /> Recent Campaigns
+              <TrendingUp className="h-4 w-4 text-emerald-500" /> {t('portalDash.recentCampaigns' as any)}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -336,7 +338,7 @@ export default function PortalDashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-amber-500" /> Current Insights
+              <Lightbulb className="h-4 w-4 text-amber-500" /> {t('portalDash.currentInsights' as any)}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
