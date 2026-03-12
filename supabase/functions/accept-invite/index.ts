@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
     if (!existingSettings) {
       await svc.from("user_settings").insert({
         user_id: user.id,
-        language: "ru",
+        language: language || "en",
         theme: "dark",
       });
     }

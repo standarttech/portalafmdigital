@@ -134,11 +134,18 @@ export default function UnifiedChart({
   // Normalized data
   const chartData = useMemo(() => {
     if (mode !== 'normalized' || data.length === 0) return data;
-    const first = data[0];
+    // Find first non-zero value per metric for normalization base
+    const bases: Record<string, number> = {};
+    metrics.forEach(m => {
+      for (const d of data) {
+        const v = Number(d[m.key]) || 0;
+        if (v > 0) { bases[m.key] = v; break; }
+      }
+    });
     return data.map(d => {
       const norm: Record<string, any> = { [dateKey]: d[dateKey] };
       metrics.forEach(m => {
-        const base = Number(first[m.key]) || 0;
+        const base = bases[m.key] || 0;
         const val = Number(d[m.key]) || 0;
         norm[m.key] = base > 0 ? Math.round((val / base) * 100) : 0;
         norm[`_raw_${m.key}`] = val;
