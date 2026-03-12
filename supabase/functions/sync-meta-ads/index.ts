@@ -10,14 +10,15 @@ const META_API_BASE = "https://graph.facebook.com/v21.0";
 
 // Smart lookback strategy:
 // - Hourly cron: 3 days (covers Facebook attribution window)
-// - Manual sync: user-specified range or default 30 days
+// - Manual sync (single client): 7 days — fast enough to stay under 60s timeout
+// - Manual sync (all clients, no client_id): same as cron
 const HOURLY_LOOKBACK_DAYS = 3;
-const MANUAL_DEFAULT_LOOKBACK_DAYS = 30;
+const MANUAL_DEFAULT_LOOKBACK_DAYS = 7;
 
 function getDateRange(isCron: boolean, bodyDateFrom?: string, bodyDateTo?: string) {
   const dateTo = bodyDateTo || new Date().toISOString().split("T")[0];
   let dateFrom: string;
-  
+
   if (bodyDateFrom) {
     dateFrom = bodyDateFrom;
   } else if (isCron) {
@@ -43,7 +44,7 @@ function extractActionNumericValue(actionValues: any[], ...types: string[]): num
 async function fetchAllPages(url: string): Promise<any[]> {
   let allData: any[] = [];
   let nextUrl: string | null = url;
-  
+
   while (nextUrl) {
     const resp = await fetch(nextUrl);
     const text = await resp.text();
@@ -57,10 +58,16 @@ async function fetchAllPages(url: string): Promise<any[]> {
     if (json.error) throw new Error(json.error.message || JSON.stringify(json.error));
     allData = allData.concat(json.data || []);
     nextUrl = json.paging?.next || null;
-    // Safety limit
     if (allData.length > 5000) break;
   }
   return allData;
+}
+
+// Upsert rows in chunks to avoid request size limits
+async function batchUpsert(supabase: any, table: string, rows: any[], conflictCol: string, chunkSize = 500) {
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    await supabase.from(table).upsert(rows.slice(i, i + chunkSize), { onConflict: conflictCol });
+  }
 }
 
 async function syncAccountLevel(
@@ -83,85 +90,94 @@ async function syncAccountLevel(
     `&time_increment=1&level=${level}&limit=500&access_token=${metaToken}`;
 
   const rows = await fetchAllPages(insightsUrl);
-  let synced = 0;
+  if (!rows.length) return 0;
 
-  for (const row of rows) {
-    const leads = extractActionValue(row.actions, "lead");
-    const purchases = extractActionValue(row.actions, "purchase", "omni_purchase");
-    const revenue = extractActionNumericValue(row.action_values, "purchase", "omni_purchase");
-    const addToCart = extractActionValue(row.actions, "add_to_cart");
-    const checkouts = extractActionValue(row.actions, "initiate_checkout");
-
-    if (level === "campaign") {
-      // Upsert campaign record
-      const { data: campaign } = await supabase
-        .from("campaigns")
-        .upsert({
-          ad_account_id: account.id,
-          client_id: account.client_id,
-          platform_campaign_id: row.campaign_id,
-          campaign_name: row.campaign_name || "Unknown",
-          status: "active",
-        }, { onConflict: "ad_account_id,platform_campaign_id" })
-        .select("id")
-        .single();
-
-      if (!campaign) continue;
-
-      await supabase
-        .from("daily_metrics")
-        .upsert({
-          client_id: account.client_id,
-          campaign_id: campaign.id,
-          date: row.date_start,
-          spend: parseFloat(row.spend || "0"),
-          impressions: parseInt(row.impressions || "0"),
-          link_clicks: parseInt(row.clicks || "0"),
-          leads,
-          purchases,
-          revenue,
-          add_to_cart: addToCart,
-          checkouts,
-        }, { onConflict: "campaign_id,date" });
-
-      synced++;
-    } else {
-      // adset or ad level → ad_level_metrics
-      const platformId = level === "adset" ? row.adset_id : row.ad_id;
-      const name = level === "adset" ? (row.adset_name || "Unknown Adset") : (row.ad_name || "Unknown Ad");
-      const parentId = level === "adset" ? row.campaign_id : row.adset_id;
-
-      // Look up campaign internal id
-      const { data: campRow } = await supabase
-        .from("campaigns")
-        .select("id")
-        .eq("ad_account_id", account.id)
-        .eq("platform_campaign_id", row.campaign_id)
-        .maybeSingle();
-
-      await supabase.from("ad_level_metrics").upsert({
-        client_id: account.client_id,
-        campaign_id: campRow?.id || null,
+  if (level === "campaign") {
+    // ── 1. Batch upsert unique campaigns (deduplicated) ──
+    const uniqueCampaigns = [...new Map(rows.map(r => [r.campaign_id, r])).values()];
+    await batchUpsert(
+      supabase,
+      "campaigns",
+      uniqueCampaigns.map(r => ({
         ad_account_id: account.id,
-        level,
-        platform_id: platformId,
-        name,
-        parent_platform_id: parentId,
+        client_id: account.client_id,
+        platform_campaign_id: r.campaign_id,
+        campaign_name: r.campaign_name || "Unknown",
+        status: "active",
+      })),
+      "ad_account_id,platform_campaign_id"
+    );
+
+    // ── 2. Fetch internal campaign IDs in one query ──
+    const { data: campaignRows } = await supabase
+      .from("campaigns")
+      .select("id, platform_campaign_id")
+      .eq("ad_account_id", account.id)
+      .in("platform_campaign_id", uniqueCampaigns.map(c => c.campaign_id));
+
+    const campaignMap = new Map(
+      (campaignRows || []).map((c: any) => [c.platform_campaign_id, c.id])
+    );
+
+    // ── 3. Batch upsert daily_metrics ──
+    const metricsRows = rows
+      .map(row => ({
+        client_id: account.client_id,
+        campaign_id: campaignMap.get(row.campaign_id),
         date: row.date_start,
         spend: parseFloat(row.spend || "0"),
         impressions: parseInt(row.impressions || "0"),
         link_clicks: parseInt(row.clicks || "0"),
-        leads,
-        purchases,
-        revenue,
-        add_to_cart: addToCart,
-        checkouts,
-      }, { onConflict: "campaign_id,level,platform_id,date" });
+        leads: extractActionValue(row.actions, "lead"),
+        purchases: extractActionValue(row.actions, "purchase", "omni_purchase"),
+        revenue: extractActionNumericValue(row.action_values, "purchase", "omni_purchase"),
+        add_to_cart: extractActionValue(row.actions, "add_to_cart"),
+        checkouts: extractActionValue(row.actions, "initiate_checkout"),
+      }))
+      .filter(m => m.campaign_id != null);
 
-      synced++;
-    }
+    await batchUpsert(supabase, "daily_metrics", metricsRows, "campaign_id,date");
+    return metricsRows.length;
+  } else {
+    // adset or ad level → ad_level_metrics (batched)
+    const platformId = (row: any) => level === "adset" ? row.adset_id : row.ad_id;
+    const name = (row: any) => level === "adset" ? (row.adset_name || "Unknown Adset") : (row.ad_name || "Unknown Ad");
+    const parentId = (row: any) => level === "adset" ? row.campaign_id : row.adset_id;
+
+    // Fetch all relevant campaign IDs in one shot
+    const platformCampaignIds = [...new Set(rows.map(r => r.campaign_id))];
+    const { data: campaignRows } = await supabase
+      .from("campaigns")
+      .select("id, platform_campaign_id")
+      .eq("ad_account_id", account.id)
+      .in("platform_campaign_id", platformCampaignIds);
+
+    const campaignMap = new Map(
+      (campaignRows || []).map((c: any) => [c.platform_campaign_id, c.id])
+    );
+
+    const adLevelRows = rows.map(row => ({
+      client_id: account.client_id,
+      campaign_id: campaignMap.get(row.campaign_id) || null,
+      ad_account_id: account.id,
+      level,
+      platform_id: platformId(row),
+      name: name(row),
+      parent_platform_id: parentId(row),
+      date: row.date_start,
+      spend: parseFloat(row.spend || "0"),
+      impressions: parseInt(row.impressions || "0"),
+      link_clicks: parseInt(row.clicks || "0"),
+      leads: extractActionValue(row.actions, "lead"),
+      purchases: extractActionValue(row.actions, "purchase", "omni_purchase"),
+      revenue: extractActionNumericValue(row.action_values, "purchase", "omni_purchase"),
+      add_to_cart: extractActionValue(row.actions, "add_to_cart"),
+      checkouts: extractActionValue(row.actions, "initiate_checkout"),
+    }));
+
+    await batchUpsert(supabase, "ad_level_metrics", adLevelRows, "campaign_id,level,platform_id,date");
+    return adLevelRows.length;
   }
-  return synced;
 }
 
 serve(async (req) => {
@@ -225,7 +241,6 @@ serve(async (req) => {
 
     // --- SYNC ---
     if (action === "sync") {
-      // Get active ad accounts, optionally filtered by client
       let query = supabase
         .from("ad_accounts")
         .select("id, platform_account_id, client_id, account_name")
@@ -244,30 +259,27 @@ serve(async (req) => {
         });
       }
 
-      // For cron: only sync clients with meta_auto_sync enabled
-      // Filter out Google Sheets-originated accounts (platform_account_id starts with "sheets-")
-      let accountsToSync = adAccounts.filter(a => !a.platform_account_id.startsWith("sheets-"));
+      // Filter out Google Sheets-originated accounts
+      let accountsToSync = adAccounts.filter((a: any) => !a.platform_account_id.startsWith("sheets-"));
 
       if (isCron && !targetClientId) {
-        // Check which clients have meta auto-sync on
-        const clientIds = [...new Set(accountsToSync.map(a => a.client_id))];
+        const clientIds = [...new Set(accountsToSync.map((a: any) => a.client_id))];
         const { data: settings } = await supabase
           .from("platform_settings")
           .select("key, value")
           .in("key", clientIds.map(id => `meta_auto_sync_${id}`));
-        
+
         const enabledClients = new Set<string>();
         (settings || []).forEach((s: any) => {
           const cid = s.key.replace("meta_auto_sync_", "");
           if (s.value?.enabled !== false) enabledClients.add(cid);
         });
 
-        // If no settings found, default to enabled for clients that have ad accounts
         if (!settings?.length) {
           clientIds.forEach(id => enabledClients.add(id));
         }
 
-        accountsToSync = accountsToSync.filter(a => enabledClients.has(a.client_id));
+        accountsToSync = accountsToSync.filter((a: any) => enabledClients.has(a.client_id));
       }
 
       if (!accountsToSync.length) {
@@ -283,24 +295,23 @@ serve(async (req) => {
 
       for (const account of accountsToSync) {
         try {
-          // Sync all three levels
           const campaignSynced = await syncAccountLevel(supabase, account, "campaign", dateFrom, dateTo, metaToken);
           totalSynced += campaignSynced;
 
-          // Adset & Ad levels — non-critical
-          try {
-            await syncAccountLevel(supabase, account, "adset", dateFrom, dateTo, metaToken);
-          } catch (e) { /* non-critical */ }
+          // Adset & Ad levels — non-critical, skip on manual single-client sync to stay within timeout
+          if (isCron || !targetClientId) {
+            try {
+              await syncAccountLevel(supabase, account, "adset", dateFrom, dateTo, metaToken);
+            } catch { /* non-critical */ }
 
-          try {
-            await syncAccountLevel(supabase, account, "ad", dateFrom, dateTo, metaToken);
-          } catch (e) { /* non-critical */ }
-
+            try {
+              await syncAccountLevel(supabase, account, "ad", dateFrom, dateTo, metaToken);
+            } catch { /* non-critical */ }
+          }
         } catch (err) {
           const errMsg = (err as Error).message;
           errors.push(`Account ${account.platform_account_id}: ${errMsg}`);
 
-          // Log to raw_api_logs for diagnostics
           await supabase.from("raw_api_logs").insert({
             client_id: account.client_id,
             platform: "meta" as any,
@@ -312,9 +323,11 @@ serve(async (req) => {
       }
 
       // Update sync status for each client
-      const clientIds = [...new Set(accountsToSync.map(a => a.client_id))];
+      const clientIds = [...new Set(accountsToSync.map((a: any) => a.client_id))];
       for (const clientId of clientIds) {
-        const clientAccountIds = accountsToSync.filter(a => a.client_id === clientId).map(a => a.platform_account_id);
+        const clientAccountIds = accountsToSync
+          .filter((a: any) => a.client_id === clientId)
+          .map((a: any) => a.platform_account_id);
         const clientErrors = errors.filter(e => clientAccountIds.some(id => e.includes(id)));
 
         const syncStatus = clientErrors.length ? "error" : "synced";
@@ -330,7 +343,6 @@ serve(async (req) => {
           .eq("client_id", clientId)
           .eq("platform", "meta");
 
-        // Create admin notification on sync failure
         if (clientErrors.length > 0) {
           const { data: admins } = await supabase.from("agency_users").select("user_id").eq("agency_role", "AgencyAdmin");
           const { data: clientRow } = await supabase.from("clients").select("name").eq("id", clientId).single();
