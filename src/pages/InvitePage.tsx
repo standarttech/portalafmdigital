@@ -98,18 +98,22 @@ export default function InvitePage() {
       let userId: string | null = null;
 
       if (signUpError) {
-        if (signUpError.message.includes('already registered')) {
-          // User already exists (e.g. from a previous invite attempt) — try to sign in
+        if (signUpError.message.includes('already registered') || signUpError.message.includes('User already registered')) {
+          // User already exists in auth — try to sign in with the provided password
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: invitation.email,
             password,
           });
 
           if (signInError) {
-            // Maybe user has a different password — update via admin in edge function
-            // For now, tell user to use their existing password or contact admin
+            // Password doesn't match the old auth record.
+            // This means the auth.users record was left behind after platform deletion.
+            // Show a clear message to the user.
             setIsLoading(false);
-            toast.error(t('auth.userExists'));
+            toast.error(
+              'Аккаунт с этой почтой уже существует. Попробуйте использовать предыдущий пароль или обратитесь к администратору для полного удаления аккаунта.',
+              { duration: 8000 }
+            );
             return;
           }
 
