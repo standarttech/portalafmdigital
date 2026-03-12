@@ -477,7 +477,8 @@ export default function UsersPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder={t('common.search') + '...'} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <Card className="glass-card overflow-hidden">
+            {/* Desktop table */}
+            <Card className="glass-card overflow-hidden hidden sm:block">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <Table>
@@ -568,11 +569,66 @@ export default function UsersPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Mobile card list */}
+            <div className="sm:hidden space-y-2">
+              {loadingUsers ? (
+                <p className="text-center py-8 text-muted-foreground">{t('common.loading')}</p>
+              ) : filteredUsers.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">{t('common.noData')}</p>
+              ) : filteredUsers.map(u => (
+                <Card key={u.id} className="glass-card">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative group/avatar flex-shrink-0">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                          {u.avatar_url
+                            ? <img src={u.avatar_url} alt={u.display_name || ''} className="h-full w-full object-cover" />
+                            : u.agency_role === 'AgencyAdmin' ? <Shield className="h-4 w-4 text-primary" /> : <UserCheck className="h-4 w-4 text-primary" />
+                          }
+                        </div>
+                        <button
+                          onClick={() => { setAvatarTargetUser(u); avatarFileRef.current?.click(); }}
+                          className="absolute inset-0 rounded-full bg-black/50 opacity-0 active:opacity-100 flex items-center justify-center"
+                        >
+                          {avatarUploadingFor === u.user_id
+                            ? <LoaderIcon className="h-3 w-3 text-white animate-spin" />
+                            : <Camera className="h-3 w-3 text-white" />}
+                        </button>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{u.display_name || 'No name'}</p>
+                        <Badge variant="outline" className={`text-[10px] px-1.5 mt-0.5 ${roleStyles[u.agency_role] || ''}`}>
+                          {ALL_AGENCY_ROLES.find(r => r.value === u.agency_role)?.label || u.agency_role}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openClientAssignments(u)}>
+                          <Users className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditNameUser(u); setEditNameValue(u.display_name || ''); setEditNameOpen(true); }}>
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openPermissions(u)}>
+                          <Shield className="h-4 w-4" />
+                        </Button>
+                        {u.user_id !== currentUser?.id && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDeleteUser(u); setDeleteOpen(true); }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
 
           {/* ACCESS REQUESTS TAB */}
           <TabsContent value="requests" className="space-y-4">
-            <Card className="glass-card overflow-hidden">
+            {/* Desktop table */}
+            <Card className="glass-card overflow-hidden hidden sm:block">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <Table>
@@ -621,11 +677,47 @@ export default function UsersPage() {
                 </div>
               </CardContent>
             </Card>
+            {/* Mobile card list */}
+            <div className="sm:hidden space-y-2">
+              {loadingRequests ? (
+                <p className="text-center py-8 text-muted-foreground">{t('common.loading')}</p>
+              ) : requests.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">{t('users.noRequests')}</p>
+              ) : requests.map(r => (
+                <Card key={r.id} className="glass-card">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate">{r.full_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                        {r.message && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.message}</p>}
+                      </div>
+                      <Badge variant="outline" className={`flex-shrink-0 ${requestStatusStyles[r.status] || ''}`}>
+                        {r.status === 'pending' ? t('common.pending') : r.status === 'approved' ? t('common.approved') : t('common.denied')}
+                      </Badge>
+                    </div>
+                    {r.status === 'pending' && (
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1 gap-1 text-success border-success/30 hover:bg-success/10"
+                          onClick={() => { setApproveRequest(r); setApproveOpen(true); }}>
+                          <CheckCircle2 className="h-3.5 w-3.5" />{t('common.approve')}
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                          onClick={() => handleDenyRequest(r)}>
+                          <XCircle className="h-3.5 w-3.5" />{t('common.deny')}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
 
           {/* INVITATIONS TAB */}
           <TabsContent value="invitations" className="space-y-4">
-            <Card className="glass-card overflow-hidden">
+            {/* Desktop table */}
+            <Card className="glass-card overflow-hidden hidden sm:block">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <Table>
@@ -679,6 +771,47 @@ export default function UsersPage() {
                 </div>
               </CardContent>
             </Card>
+            {/* Mobile card list */}
+            <div className="sm:hidden space-y-2">
+              {loadingInvitations ? (
+                <p className="text-center py-8 text-muted-foreground">{t('common.loading')}</p>
+              ) : invitations.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">{t('users.noInvitations')}</p>
+              ) : invitations.map(inv => (
+                <Card key={inv.id} className="glass-card">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate">{inv.email}</p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <Badge variant="outline" className={`text-[10px] px-1.5 ${roleStyles[inv.role] || roleStyles.Client}`}>
+                            {ALL_AGENCY_ROLES.find(r => r.value === inv.role)?.label || inv.role}
+                          </Badge>
+                          <Badge variant="outline" className={`text-[10px] px-1.5 ${inviteStatusStyles[inv.status] || ''}`}>
+                            {inv.status === 'pending' ? t('common.pending') : inv.status === 'accepted' ? t('common.accepted') : inv.status === 'expired' ? t('common.expired' as any) : t('common.revoked')}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    {inv.status === 'pending' && (
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => copyInviteLink(inv.token)}>
+                          <Copy className="h-3.5 w-3.5" />{t('invite.copyLink')}
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => handleRevokeInvitation(inv.id)}>
+                          <XCircle className="h-3.5 w-3.5" />{t('invite.revoke')}
+                        </Button>
+                      </div>
+                    )}
+                    {inv.status === 'accepted' && (
+                      <Button variant="outline" size="sm" className="w-full gap-1" onClick={() => handleResendTempPassword(inv.email)}>
+                        <RefreshCw className="h-3.5 w-3.5" />{t('users.resendTempPassword')}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
           {/* CLIENTS TAB */}
           <TabsContent value="clients" className="space-y-4">
@@ -686,7 +819,8 @@ export default function UsersPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder={t('common.search') + '...'} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <Card className="glass-card overflow-hidden">
+            {/* Desktop table */}
+            <Card className="glass-card overflow-hidden hidden sm:block">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <Table>
@@ -745,6 +879,41 @@ export default function UsersPage() {
                 </div>
               </CardContent>
             </Card>
+            {/* Mobile card list */}
+            <div className="sm:hidden space-y-2">
+              {loadingUsers ? (
+                <p className="text-center py-8 text-muted-foreground">{t('common.loading')}</p>
+              ) : clientUsers.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">{t('users.noClients')}</p>
+              ) : clientUsers.map(u => (
+                <Card key={u.id} className="glass-card">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{u.display_name || 'No name'}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{u.user_id.slice(0, 8)}...</p>
+                      </div>
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openClientAssignments(u)}>
+                          <Users className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditNameUser(u); setEditNameValue(u.display_name || ''); setEditNameOpen(true); }}>
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                        {u.user_id !== currentUser?.id && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDeleteUser(u); setDeleteOpen(true); }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
 
           {/* APPROVALS TAB */}

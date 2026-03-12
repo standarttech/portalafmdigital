@@ -205,7 +205,7 @@ export default function AppHeader() {
                 <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-1rem)]">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{user?.email}</p>
                 <p className="text-xs text-muted-foreground capitalize">{agencyRole || 'User'}</p>

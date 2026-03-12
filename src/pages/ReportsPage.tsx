@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { motion } from 'framer-motion';
-import { FileText, Plus, Clock, Calendar as CalendarIcon, Send, Download, Trash2, Loader2, Eye, CalendarClock } from 'lucide-react';
+import { FileText, Plus, Clock, Calendar as CalendarIcon, Send, Download, Trash2, Loader2, Eye, CalendarClock, MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
 import { Card, CardContent } from '@/components/ui/card';
@@ -422,27 +423,57 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
                             <Badge variant="outline" className={report.status === 'published' ? 'bg-success/15 text-success border-success/20' : 'bg-warning/15 text-warning border-warning/20'}>
                               {report.status === 'published' ? t('reports.published') : t('reports.draft')}
                             </Badge>
-                            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setPreviewReport(report)}>
+                            {/* Desktop buttons */}
+                            <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 text-xs" onClick={() => setPreviewReport(report)}>
                               <Eye className="h-3.5 w-3.5" />{t('reports.preview' as any)}
                             </Button>
                             {report.status === 'draft' && (
-                              <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handlePublish(report.id)}>
+                              <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 text-xs" onClick={() => handlePublish(report.id)}>
                                 <Send className="h-3.5 w-3.5" />{t('reports.published')}
                               </Button>
                             )}
-                            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadPdf(report)}>
+                            <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 text-xs" onClick={() => handleDownloadPdf(report)}>
                               <Download className="h-3.5 w-3.5" />PDF
                             </Button>
-                            <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => handleDownloadCsv(report)}>
+                            <Button variant="ghost" size="sm" className="hidden sm:flex gap-1.5 text-xs" onClick={() => handleDownloadCsv(report)}>
                               <Download className="h-3.5 w-3.5" />CSV
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteReport(report.id)}>
+                            <Button variant="ghost" size="icon" className="hidden sm:flex h-8 w-8 text-destructive" onClick={() => handleDeleteReport(report.id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            {/* Mobile compact menu */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="icon" className="sm:hidden h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setPreviewReport(report)}>
+                                  <Eye className="h-3.5 w-3.5 mr-2" />{t('reports.preview' as any)}
+                                </DropdownMenuItem>
+                                {report.status === 'draft' && (
+                                  <DropdownMenuItem onClick={() => handlePublish(report.id)}>
+                                    <Send className="h-3.5 w-3.5 mr-2" />{t('reports.published')}
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDownloadPdf(report)}>
+                                  <Download className="h-3.5 w-3.5 mr-2" />PDF
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownloadCsv(report)}>
+                                  <Download className="h-3.5 w-3.5 mr-2" />CSV
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDeleteReport(report.id)} className="text-destructive">
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" />{t('common.delete')}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       </CardContent>

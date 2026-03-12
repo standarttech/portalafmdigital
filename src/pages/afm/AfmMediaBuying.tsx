@@ -417,11 +417,11 @@ export default function AfmMediaBuying() {
       </motion.div>
 
       <Tabs defaultValue="daily" className="space-y-4">
-        <TabsList className="h-9">
-          <TabsTrigger value="daily" className="text-xs">{t('afm.mb.dailyStats' as any)}</TabsTrigger>
-          <TabsTrigger value="campaigns" className="text-xs">{t('afm.mb.campaigns' as any)}</TabsTrigger>
-          <TabsTrigger value="budget" className="text-xs">{t('afm.mb.budgetPlanMonth' as any)}</TabsTrigger>
-          <TabsTrigger value="goals" className="text-xs">{t('afm.mb.goalsTitle' as any)}</TabsTrigger>
+        <TabsList className="h-9 w-full overflow-x-auto scrollbar-none justify-start flex-nowrap">
+          <TabsTrigger value="daily" className="text-xs flex-shrink-0">{t('afm.mb.dailyStats' as any)}</TabsTrigger>
+          <TabsTrigger value="campaigns" className="text-xs flex-shrink-0">{t('afm.mb.campaigns' as any)}</TabsTrigger>
+          <TabsTrigger value="budget" className="text-xs flex-shrink-0">{t('afm.mb.budgetPlanMonth' as any)}</TabsTrigger>
+          <TabsTrigger value="goals" className="text-xs flex-shrink-0">{t('afm.mb.goalsTitle' as any)}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="daily" className="space-y-4">
@@ -482,8 +482,8 @@ export default function AfmMediaBuying() {
                       </tr>
                     </thead>
                     <tbody>
-                      {metrics.slice().reverse().map(m => (
-                        <tr key={m.date} className="border-b border-border/20 hover:bg-muted/10">
+                      {metrics.slice().reverse().map((m, idx) => (
+                        <tr key={`${m.date}-${idx}`} className="border-b border-border/20 hover:bg-muted/10">
                           <td className="px-3 py-1.5 text-foreground">{format(new Date(m.date), 'dd.MM.yyyy')}</td>
                           <td className="px-3 py-1.5 text-right text-blue-400 font-mono">{formatCurrency(m.spend)}</td>
                           <td className="px-3 py-1.5 text-right text-green-400 font-mono">{formatNumber(m.leads)}</td>

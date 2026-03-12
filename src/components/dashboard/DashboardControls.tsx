@@ -40,7 +40,7 @@ export default function DashboardControls({
   const { t } = useLanguage();
 
   return (
-    <div className="sticky top-0 z-20 -mx-4 lg:-mx-6 px-4 lg:px-6 py-3 bg-background/95 backdrop-blur-lg border-b border-border/50 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-3">
+    <div className="sticky top-0 z-20 -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6 py-3 bg-background/95 backdrop-blur-lg border-b border-border/50 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-3">
       {/* Date Range Picker */}
       <DateRangePicker
         dateRange={dateRange}

@@ -141,7 +141,7 @@ export default function SyncMonitorPage() {
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
       <motion.div variants={item} className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{isRu ? 'Мониторинг синхронизации' : 'Sync Monitor'}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{isRu ? 'Мониторинг синхронизации' : 'Sync Monitor'}</h1>
           <p className="text-muted-foreground text-sm mt-1">{isRu ? 'Статус данных рекламных аккаунтов' : 'Ad account data freshness'}</p>
         </div>
         <Button onClick={triggerSync} disabled={syncing} size="sm" className="gap-2">

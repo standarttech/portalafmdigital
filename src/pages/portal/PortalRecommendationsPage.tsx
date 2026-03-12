@@ -54,7 +54,7 @@ export default function PortalRecommendationsPage() {
   const resolved = recs.filter(r => ['dismissed', 'converted_to_draft', 'acted_on'].includes(r.status));
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
       <div>
         <h1 className="text-xl font-bold text-foreground">Recommendations & Insights</h1>
         <p className="text-sm text-muted-foreground">Performance insights and suggested improvements for your campaigns</p>

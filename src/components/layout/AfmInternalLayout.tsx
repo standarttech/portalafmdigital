@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
   LayoutDashboard, TrendingUp, Globe, Settings,
   ArrowLeftCircle, Zap, Menu, LogOut,
@@ -192,6 +193,7 @@ export default function AfmInternalLayout() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-60 p-0 bg-sidebar border-sidebar-border">
+              <VisuallyHidden><SheetTitle>Navigation</SheetTitle></VisuallyHidden>
               <AfmSidebarContent onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>

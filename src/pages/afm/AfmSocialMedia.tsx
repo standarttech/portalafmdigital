@@ -546,7 +546,7 @@ export default function AfmSocialMedia() {
 
                 {/* Connect button */}
                 {!hasAny && (
-                  <Button onClick={handleConnect} disabled={connecting} className="w-full gap-2">
+                  <Button onClick={handleConnect} disabled={connecting} className="w-full gap-2 h-auto py-2.5 whitespace-normal">
                     {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
                     {t('afm.sm.connectOAuth')} (Instagram + Facebook)
                   </Button>

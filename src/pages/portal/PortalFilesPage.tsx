@@ -91,7 +91,7 @@ export default function PortalFilesPage() {
   const types = Array.from(new Set(files.map(f => f.file_type)));
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
       <div>
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
           <FolderOpen className="h-5 w-5 text-primary" /> Shared Files
@@ -105,7 +105,7 @@ export default function PortalFilesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search files..." className="pl-9 h-8 text-xs" />
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
             <Button size="sm" variant={typeFilter === 'all' ? 'default' : 'outline'} onClick={() => setTypeFilter('all')} className="text-xs h-8">All</Button>
             {types.map(t => (
               <Button key={t} size="sm" variant={typeFilter === t ? 'default' : 'outline'} onClick={() => setTypeFilter(t)} className="text-xs h-8">

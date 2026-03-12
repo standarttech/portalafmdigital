@@ -319,12 +319,12 @@ export default function AfmSales() {
                     key={status}
                     onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
                     className={cn(
-                      'flex-1 min-w-[80px] rounded-lg px-2 py-2 border cursor-pointer transition-all',
+                      'flex-1 min-w-[96px] rounded-lg px-2 py-2 border cursor-pointer transition-all',
                       cfg.bg,
                       filterStatus === status ? 'border-current ring-1 ring-current' : 'border-border/30 hover:border-border/60'
                     )}
                   >
-                    <p className={`text-[10px] font-semibold ${cfg.color}`}>{cfg.label}</p>
+                    <p className={`text-[10px] font-semibold truncate ${cfg.color}`}>{cfg.label}</p>
                     <p className="text-lg font-bold text-foreground">{count}</p>
                     <p className="text-[10px] text-muted-foreground">${val.toLocaleString()}</p>
                   </div>
