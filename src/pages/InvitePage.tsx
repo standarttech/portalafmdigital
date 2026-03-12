@@ -151,101 +151,19 @@ export default function InvitePage() {
         return;
       }
 
-      // Step 2: Fetch invitation details (client_id, permissions)
-      const { data: detailsData } = await supabase
-        .rpc('get_invitation_details', { _invitation_id: invitation.id });
+      // Step 2: Use edge function to provision all records (bypasses RLS)
+      const { data: acceptData, error: acceptError } = await supabase.functions.invoke('accept-invite', {
+        body: {
+          invitation_id: invitation.id,
+          display_name: trimmedName,
+        },
+      });
 
-      const details = Array.isArray(detailsData) ? detailsData[0] : detailsData;
-      const perms = (details?.permissions as Record<string, any>) || {};
-      const clientIds: string[] = perms._client_ids || (details?.client_id ? [details.client_id] : []);
-
-      // Step 3: Create agency_users or client_users record (idempotent)
-      if (invitation.role === 'Client') {
-        for (const cid of clientIds) {
-          await supabase.from('client_users').upsert({
-            user_id: userId,
-            client_id: cid,
-            role: 'Client',
-          }, { onConflict: 'user_id,client_id' }).select();
-        }
-      } else {
-        // Agency user — upsert to avoid duplicates
-        const { data: existingAU } = await supabase
-          .from('agency_users')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (!existingAU) {
-          await supabase.from('agency_users').insert({
-            user_id: userId,
-            agency_role: invitation.role as any,
-            display_name: trimmedName,
-          });
-        } else {
-          await supabase.from('agency_users').update({
-            agency_role: invitation.role as any,
-            display_name: trimmedName,
-          }).eq('user_id', userId);
-        }
-
-        // Assign to clients if provided
-        for (const cid of clientIds) {
-          const { data: existingCU } = await supabase
-            .from('client_users')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('client_id', cid)
-            .maybeSingle();
-
-          if (!existingCU) {
-            await supabase.from('client_users').insert({
-              user_id: userId,
-              client_id: cid,
-              role: 'viewer',
-            });
-          }
-        }
-
-        // Create permissions (idempotent)
-        const { data: existingPerms } = await supabase
-          .from('user_permissions')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (!existingPerms) {
-          await supabase.from('user_permissions').insert({
-            user_id: userId,
-            can_add_clients: perms.can_add_clients || false,
-            can_edit_clients: perms.can_edit_clients || false,
-            can_assign_clients_to_users: perms.can_assign_clients_to_users || false,
-            can_connect_integrations: perms.can_connect_integrations || false,
-            can_run_manual_sync: perms.can_run_manual_sync || false,
-            can_edit_metrics_override: perms.can_edit_metrics_override || false,
-            can_manage_tasks: perms.can_manage_tasks || false,
-            can_publish_reports: perms.can_publish_reports || false,
-            can_view_audit_log: perms.can_view_audit_log || false,
-          });
-        }
-      }
-
-      // Step 4: Mark invitation as accepted
-      await supabase.rpc('accept_invitation', { _invitation_id: invitation.id });
-
-      // Step 5: Create default user settings (idempotent)
-      const { data: existingSettings } = await supabase
-        .from('user_settings')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!existingSettings) {
-        await supabase.from('user_settings').insert({
-          user_id: userId,
-          language: 'ru',
-          theme: 'dark',
-        });
+      if (acceptError) {
+        console.error('Accept invite error:', acceptError);
+        toast.error('Failed to provision account. Please contact administrator.');
+        setIsLoading(false);
+        return;
       }
 
       setIsLoading(false);
