@@ -32,6 +32,7 @@ const PASSWORD_RULES = [
 
 export default function InvitePage() {
   const { t, language } = useLanguage();
+  const { refreshRole } = useAuth();
   const isRu = language === 'ru';
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
