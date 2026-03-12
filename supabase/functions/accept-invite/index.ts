@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { invitation_id, display_name } = await req.json();
+    const { invitation_id, display_name, language } = await req.json();
     if (!invitation_id) {
       return new Response(JSON.stringify({ error: "Missing invitation_id" }), {
         status: 400,
@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
     if (!existingSettings) {
       await svc.from("user_settings").insert({
         user_id: user.id,
-        language: "ru",
+        language: language || "en",
         theme: "dark",
       });
     }

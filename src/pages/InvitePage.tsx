@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import logoAfm from '@/assets/logo-afm.png';
 import { motion } from 'framer-motion';
-import { Loader2, UserPlus, AlertCircle } from 'lucide-react';
+import { Loader2, UserPlus, AlertCircle, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Invitation {
@@ -20,8 +20,18 @@ interface Invitation {
   expires_at: string;
 }
 
+/* ── Password requirements ── */
+const PASSWORD_MIN = 8;
+const PASSWORD_RULES = [
+  { key: 'length', test: (p: string) => p.length >= PASSWORD_MIN, en: `At least ${PASSWORD_MIN} characters`, ru: `Минимум ${PASSWORD_MIN} символов` },
+  { key: 'upper', test: (p: string) => /[A-Z]/.test(p), en: 'One uppercase letter', ru: 'Одна заглавная буква' },
+  { key: 'lower', test: (p: string) => /[a-z]/.test(p), en: 'One lowercase letter', ru: 'Одна строчная буква' },
+  { key: 'digit', test: (p: string) => /\d/.test(p), en: 'One digit', ru: 'Одна цифра' },
+];
+
 export default function InvitePage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isRu = language === 'ru';
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
@@ -31,8 +41,10 @@ export default function InvitePage() {
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -60,6 +72,9 @@ export default function InvitePage() {
     fetchInvitation();
   }, [token, t]);
 
+  const allRulesPassed = PASSWORD_RULES.every(r => r.test(password));
+  const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -73,12 +88,17 @@ export default function InvitePage() {
     }
 
     if (trimmedName.length < 2 || trimmedName.length > 100) {
-      toast.error('Name must be 2-100 characters');
+      toast.error(isRu ? 'Имя должно быть от 2 до 100 символов' : 'Name must be 2-100 characters');
       return;
     }
 
-    if (password.length < 8 || password.length > 128) {
-      toast.error(t('auth.passwordTooShort'));
+    if (!allRulesPassed) {
+      toast.error(isRu ? 'Пароль не соответствует требованиям' : 'Password does not meet requirements');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error(isRu ? 'Пароли не совпадают' : 'Passwords do not match');
       return;
     }
 
@@ -99,19 +119,18 @@ export default function InvitePage() {
 
       if (signUpError) {
         if (signUpError.message.includes('already registered') || signUpError.message.includes('User already registered')) {
-          // User already exists in auth — try to sign in with the provided password
+          // User exists in auth — try to sign in with the provided password
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: invitation.email,
             password,
           });
 
           if (signInError) {
-            // Password doesn't match the old auth record.
-            // This means the auth.users record was left behind after platform deletion.
-            // Show a clear message to the user.
             setIsLoading(false);
             toast.error(
-              'Аккаунт с этой почтой уже существует. Попробуйте использовать предыдущий пароль или обратитесь к администратору для полного удаления аккаунта.',
+              isRu
+                ? 'Аккаунт с этой почтой уже существует. Попробуйте использовать предыдущий пароль или обратитесь к администратору для полного удаления аккаунта.'
+                : 'An account with this email already exists. Try using your previous password or contact an administrator for a full account reset.',
               { duration: 8000 }
             );
             return;
@@ -127,7 +146,7 @@ export default function InvitePage() {
         // New user created — sign in immediately (auto-confirm is enabled)
         if (!signUpData.user) {
           setIsLoading(false);
-          toast.error('Failed to create account');
+          toast.error(isRu ? 'Не удалось создать аккаунт' : 'Failed to create account');
           return;
         }
 
@@ -147,7 +166,7 @@ export default function InvitePage() {
 
       if (!userId) {
         setIsLoading(false);
-        toast.error('Failed to authenticate');
+        toast.error(isRu ? 'Не удалось авторизоваться' : 'Failed to authenticate');
         return;
       }
 
@@ -156,12 +175,13 @@ export default function InvitePage() {
         body: {
           invitation_id: invitation.id,
           display_name: trimmedName,
+          language: language || 'en',
         },
       });
 
       if (acceptError) {
         console.error('Accept invite error:', acceptError);
-        toast.error('Failed to provision account. Please contact administrator.');
+        toast.error(isRu ? 'Не удалось активировать аккаунт. Обратитесь к администратору.' : 'Failed to provision account. Please contact administrator.');
         setIsLoading(false);
         return;
       }
@@ -255,20 +275,68 @@ export default function InvitePage() {
                   maxLength={100}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="password">{t('common.password')}</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder={t('auth.passwordPlaceholder')}
+                  placeholder={isRu ? 'Введите пароль' : 'Enter password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => setShowRules(true)}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN}
                   maxLength={128}
                 />
+                {/* Password requirements */}
+                {showRules && (
+                  <div className="space-y-1 pt-1">
+                    {PASSWORD_RULES.map(rule => {
+                      const passed = rule.test(password);
+                      return (
+                        <div key={rule.key} className="flex items-center gap-1.5 text-xs">
+                          {passed
+                            ? <Check className="h-3.5 w-3.5 text-success" />
+                            : <X className="h-3.5 w-3.5 text-muted-foreground" />
+                          }
+                          <span className={passed ? 'text-success' : 'text-muted-foreground'}>
+                            {isRu ? rule.ru : rule.en}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">{isRu ? 'Подтвердите пароль' : 'Confirm Password'}</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder={isRu ? 'Повторите пароль' : 'Confirm password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={PASSWORD_MIN}
+                  maxLength={128}
+                />
+                {confirmPassword.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {passwordsMatch
+                      ? <><Check className="h-3.5 w-3.5 text-success" /><span className="text-success">{isRu ? 'Пароли совпадают' : 'Passwords match'}</span></>
+                      : <><X className="h-3.5 w-3.5 text-destructive" /><span className="text-destructive">{isRu ? 'Пароли не совпадают' : 'Passwords do not match'}</span></>
+                    }
+                  </div>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || !allRulesPassed || !passwordsMatch}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
