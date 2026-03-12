@@ -325,7 +325,7 @@ export default function InvitePage() {
                 {confirmPassword.length > 0 && (
                   <div className="flex items-center gap-1.5 text-xs">
                     {passwordsMatch
-                      ? <><Check className="h-3.5 w-3.5 text-green-500" /><span className="text-green-500">{isRu ? 'Пароли совпадают' : 'Passwords match'}</span></>
+                      ? <><Check className="h-3.5 w-3.5 text-success" /><span className="text-success">{isRu ? 'Пароли совпадают' : 'Passwords match'}</span></>
                       : <><X className="h-3.5 w-3.5 text-destructive" /><span className="text-destructive">{isRu ? 'Пароли не совпадают' : 'Passwords do not match'}</span></>
                     }
                   </div>
