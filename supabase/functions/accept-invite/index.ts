@@ -167,6 +167,23 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Add user to support chat rooms for their clients
+    for (const cid of clientIds) {
+      const { data: supportRoom } = await svc
+        .from("chat_rooms")
+        .select("id")
+        .eq("type", "support")
+        .eq("client_id", cid)
+        .maybeSingle();
+
+      if (supportRoom) {
+        await svc.from("chat_members").upsert(
+          { room_id: supportRoom.id, user_id: user.id, can_write: true },
+          { onConflict: "room_id,user_id" }
+        ).select();
+      }
+    }
+
     // Mark invitation as accepted
     await svc.from("invitations").update({
       status: "accepted",
