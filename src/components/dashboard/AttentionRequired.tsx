@@ -142,7 +142,7 @@ async function fetchAlerts(): Promise<{ alerts: AlertItem[]; wins: AlertItem[] }
           }
         }
 
-        if (data.prev.days >= 3 && data.recent.days >= 2) {
+        if (data.prev.days >= 3 && data.recent.days >= 2 && hasRecentSpend) {
           const prevDaily = data.prev.spend / data.prev.days;
           const recentDaily = data.recent.spend / data.recent.days;
           if (prevDaily > 10 && recentDaily > prevDaily * 1.5) {
