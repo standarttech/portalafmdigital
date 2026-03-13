@@ -176,6 +176,8 @@ function buildPreviewPayload(draft: Draft, items: DraftItem[]): any {
 export default function AiAdsDraftsPage() {
   const { user } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
