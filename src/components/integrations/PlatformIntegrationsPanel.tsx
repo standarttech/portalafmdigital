@@ -37,7 +37,7 @@ interface IntegrationConfig {
   type: string;
   name: string;
   icon: React.ReactNode;
-  category: 'ads' | 'creative' | 'analytics' | 'automation' | 'landing';
+  category: 'ads' | 'creative' | 'analytics' | 'automation' | 'landing' | 'storage';
   description: string;
   descriptionRu: string;
   docsUrl: string;
