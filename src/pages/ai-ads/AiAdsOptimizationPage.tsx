@@ -78,6 +78,8 @@ const typeIcons: Record<string, React.ReactNode> = {
 export default function AiAdsOptimizationPage() {
   const { user, agencyRole } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [actions, setActions] = useState<OptAction[]>([]);
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
