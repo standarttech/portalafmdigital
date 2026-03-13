@@ -24,6 +24,8 @@ interface ActionSummary { total: number; executed: number; pending: number; fail
 
 export default function AiAdsClientReportPage() {
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState('all');
   const [loading, setLoading] = useState(true);
