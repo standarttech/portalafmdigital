@@ -43,6 +43,8 @@ const ACTION_TYPES = [
 export default function AiAdsPresetsPage() {
   const { user, agencyRole } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [presets, setPresets] = useState<Preset[]>([]);
   const [loading, setLoading] = useState(true);
   const [editPreset, setEditPreset] = useState<Preset | null>(null);
