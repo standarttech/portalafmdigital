@@ -437,6 +437,9 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                                 <Send className="h-3.5 w-3.5" />{t('reports.published')}
                               </Button>
                             )}
+                            <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 text-xs" onClick={() => handleCopyLink(report.id)}>
+                              <Link2 className="h-3.5 w-3.5" />{isRu ? 'Ссылка' : 'Link'}
+                            </Button>
                             <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 text-xs" onClick={() => handleDownloadPdf(report)}>
                               <Download className="h-3.5 w-3.5" />PDF
                             </Button>
