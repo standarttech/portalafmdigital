@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Palette, Globe, Loader2, CheckCircle2, Key, Settings, Link2, ShieldCheck, Eye, EyeOff,
   ImageIcon, BarChart3, Target, Megaphone, Zap, Brain, Search, Video, FileText, Layout, Webhook,
-  DollarSign, ExternalLink, Info,
+  DollarSign, ExternalLink, Info, HardDrive, Cloud, Workflow, Bot,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
