@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { motion } from 'framer-motion';
-import { FileText, Plus, Clock, Calendar as CalendarIcon, Send, Download, Trash2, Loader2, Eye, CalendarClock, MoreHorizontal } from 'lucide-react';
+import { FileText, Plus, Clock, Calendar as CalendarIcon, Send, Download, Trash2, Loader2, Eye, CalendarClock, MoreHorizontal, Link2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
@@ -195,6 +195,22 @@ export default function ReportsPage() {
     await supabase.from('reports').update({ status: 'published' }).eq('id', id);
     toast.success(t('reports.published'));
     fetchReports();
+  };
+
+  const handleCopyLink = (id: string) => {
+    const url = `${window.location.origin}/r/${id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success(isRu ? 'Ссылка скопирована' : 'Link copied to clipboard');
+    }).catch(() => {
+      // Fallback
+      const input = document.createElement('input');
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      toast.success(isRu ? 'Ссылка скопирована' : 'Link copied to clipboard');
+    });
   };
 
   const handleDownloadCsv = (report: Report) => {
@@ -437,6 +453,9 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                                 <Send className="h-3.5 w-3.5" />{t('reports.published')}
                               </Button>
                             )}
+                            <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 text-xs" onClick={() => handleCopyLink(report.id)}>
+                              <Link2 className="h-3.5 w-3.5" />{isRu ? 'Ссылка' : 'Link'}
+                            </Button>
                             <Button variant="outline" size="sm" className="hidden sm:flex gap-1.5 text-xs" onClick={() => handleDownloadPdf(report)}>
                               <Download className="h-3.5 w-3.5" />PDF
                             </Button>
@@ -462,6 +481,9 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                                     <Send className="h-3.5 w-3.5 mr-2" />{t('reports.published')}
                                   </DropdownMenuItem>
                                 )}
+                                <DropdownMenuItem onClick={() => handleCopyLink(report.id)}>
+                                  <Link2 className="h-3.5 w-3.5 mr-2" />{isRu ? 'Скопировать ссылку' : 'Copy link'}
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => handleDownloadPdf(report)}>
                                   <Download className="h-3.5 w-3.5 mr-2" />PDF
