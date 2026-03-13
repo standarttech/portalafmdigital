@@ -106,9 +106,9 @@ export default function AiAdsClientReportPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Users className="h-6 w-6 text-cyan-400" /> Performance Report
+            <Users className="h-6 w-6 text-cyan-400" /> {isRu ? 'Отчёт по эффективности' : 'Performance Report'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Client-facing campaign performance summary</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Сводка эффективности кампаний для клиента' : 'Client-facing campaign performance summary'}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedClient} onValueChange={setSelectedClient}>

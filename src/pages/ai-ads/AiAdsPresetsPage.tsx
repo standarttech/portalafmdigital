@@ -85,11 +85,11 @@ export default function AiAdsPresetsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Settings className="h-6 w-6 text-cyan-400" /> Optimization Presets
+            <Settings className="h-6 w-6 text-cyan-400" /> {isRu ? 'Пресеты оптимизации' : 'Optimization Presets'}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Rule-based presets that auto-generate optimization proposals during sync.
-            {' '}<Badge variant="outline" className="text-[9px] text-emerald-400 border-emerald-400/30">{activeCount} active</Badge>
+            {isRu ? 'Правила автоматизации, генерирующие предложения во время синхронизации.' : 'Rule-based presets that auto-generate optimization proposals during sync.'}
+            {' '}<Badge variant="outline" className="text-[9px] text-emerald-400 border-emerald-400/30">{activeCount} {isRu ? 'активных' : 'active'}</Badge>
           </p>
         </div>
         {isAdmin && (

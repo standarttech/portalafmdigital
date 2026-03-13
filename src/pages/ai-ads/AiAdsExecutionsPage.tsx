@@ -192,9 +192,9 @@ export default function AiAdsExecutionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-          <Rocket className="h-6 w-6 text-rose-400" /> Executions
+          <Rocket className="h-6 w-6 text-rose-400" /> {isRu ? 'Запуски' : 'Executions'}
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">Campaign launch requests, approvals, execution monitoring, and post-launch ops</p>
+        <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Запросы на запуск кампаний, одобрения и мониторинг' : 'Campaign launch requests, approvals, execution monitoring, and post-launch ops'}</p>
       </div>
 
       <Card className="border-amber-400/20 bg-amber-400/5">

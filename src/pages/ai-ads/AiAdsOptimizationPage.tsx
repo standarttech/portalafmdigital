@@ -204,9 +204,9 @@ export default function AiAdsOptimizationPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Zap className="h-6 w-6 text-cyan-400" /> Optimization Actions
+            <Zap className="h-6 w-6 text-cyan-400" /> {isRu ? 'Оптимизация' : 'Optimization Actions'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Propose, approve, and execute campaign optimizations safely</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Предлагайте, одобряйте и выполняйте оптимизации безопасно' : 'Propose, approve, and execute campaign optimizations safely'}</p>
         </div>
         <Button size="sm" className="gap-2" onClick={() => setProposeOpen(true)}>
           <Zap className="h-4 w-4" /> Propose Action
