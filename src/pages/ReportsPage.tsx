@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getAfmCampaignIds } from '@/lib/afmCampaignFilter';
 import { motion } from 'framer-motion';
-import { FileText, Plus, Clock, Calendar as CalendarIcon, Send, Download, Trash2, Loader2, Eye, CalendarClock, MoreHorizontal } from 'lucide-react';
+import { FileText, Plus, Clock, Calendar as CalendarIcon, Send, Download, Trash2, Loader2, Eye, CalendarClock, MoreHorizontal, Link2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
 import type { DateRange, Comparison } from '@/components/dashboard/dashboardData';
