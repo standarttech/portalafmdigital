@@ -1157,7 +1157,7 @@ export const translations = {
 
 
   'crm.guide': t('Guide', 'Руководство', 'Guida', 'Guía', 'دليل', 'Guide'),
-
+  'aiAds.metaAutomation': t('Meta Automation', 'Meta Автоматизация', 'Automazione Meta', 'Automatización Meta', 'أتمتة ميتا', 'Automatisation Meta'),
 
   // AI Ads Copilot
   'nav.aiAds': t('AI Ads Copilot', 'ИИ Реклама Копайлот', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot', 'AI Ads Copilot'),
