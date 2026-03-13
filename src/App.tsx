@@ -107,6 +107,7 @@ const AiAdsCreativesPage = React.lazy(() => import("@/pages/ai-ads/AiAdsCreative
 const AiAdsPresetsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsPresetsPage"));
 const AiAdsClientReportPage = React.lazy(() => import("@/pages/ai-ads/AiAdsClientReportPage"));
 const AiAdsIntegrationsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsIntegrationsPage"));
+const AiAdsMetaAutomationPage = React.lazy(() => import("@/pages/ai-ads/AiAdsMetaAutomationPage"));
 const PortalLayout = React.lazy(() => import("@/components/layout/PortalLayout"));
 const PortalDashboardPage = React.lazy(() => import("@/pages/portal/PortalDashboardPage"));
 const PortalCampaignsPage = React.lazy(() => import("@/pages/portal/PortalCampaignsPage"));
@@ -583,6 +584,7 @@ function AppRoutes() {
         <Route path="/ai-ads/presets" element={<AiAdsPresetsPage />} />
         <Route path="/ai-ads/client-report" element={<AiAdsClientReportPage />} />
         <Route path="/ai-ads/integrations" element={<AiAdsIntegrationsPage />} />
+        <Route path="/ai-ads/meta-automation" element={<AiAdsMetaAutomationPage />} />
         <Route path="/ai-ads/guide" element={<AiAdsGuidePage />} />
       </Route>
       {/* AI Infrastructure — admin only */}

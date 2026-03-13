@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ArrowLeftCircle, Menu, LogOut, Bot, MonitorSmartphone, BrainCircuit,
-  Lightbulb, FileStack, Rocket, TrendingUp, Brain, Zap, ImageIcon, Settings, Users, BookOpen, Link2
+  Lightbulb, FileStack, Rocket, TrendingUp, Brain, Zap, ImageIcon, Settings, Users, BookOpen, Link2, Target
 } from 'lucide-react';
 import { useState } from 'react';
 import FuturisticOverlay from '@/components/futuristic/FuturisticOverlay';
@@ -28,6 +28,7 @@ const navItems: { labelKey: TranslationKey; icon: any; path: string }[] = [
   { labelKey: 'aiAds.presets', icon: Settings, path: '/ai-ads/presets' },
   { labelKey: 'aiAds.clientReport', icon: Users, path: '/ai-ads/client-report' },
   { labelKey: 'common.integrations', icon: Link2, path: '/ai-ads/integrations' },
+  { labelKey: 'aiAds.metaAutomation', icon: Target, path: '/ai-ads/meta-automation' },
   { labelKey: 'ai.guide', icon: BookOpen, path: '/ai-ads/guide' },
 ];
 
