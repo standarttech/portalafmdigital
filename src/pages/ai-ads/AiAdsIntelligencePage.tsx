@@ -181,6 +181,8 @@ const scoreColors: Record<string, string> = {
 export default function AiAdsIntelligencePage() {
   const { user } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [launches, setLaunches] = useState<LaunchRequest[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [optRecs, setOptRecs] = useState<Recommendation[]>([]);
