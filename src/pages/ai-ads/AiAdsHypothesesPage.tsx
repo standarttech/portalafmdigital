@@ -141,9 +141,9 @@ export default function AiAdsHypothesesPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Lightbulb className="h-6 w-6 text-amber-400" /> Hypotheses
+            <Lightbulb className="h-6 w-6 text-amber-400" /> {isRu ? 'Гипотезы' : 'Hypotheses'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Brainstorm and validate optimization strategies</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Генерируйте и тестируйте стратегии оптимизации' : 'Brainstorm and validate optimization strategies'}</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
