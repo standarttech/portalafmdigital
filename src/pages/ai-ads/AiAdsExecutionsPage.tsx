@@ -73,6 +73,8 @@ const stepStatusColors: Record<string, string> = {
 export default function AiAdsExecutionsPage() {
   const { user, effectiveRole } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [requests, setRequests] = useState<LaunchRequest[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
