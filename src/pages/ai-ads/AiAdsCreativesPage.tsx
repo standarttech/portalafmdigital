@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import {
   ImageIcon, Plus, Loader2, Search, Video, Link2, FileText, Trash2, Eye, Tag, Upload, AlertTriangle, FileStack,
 } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +32,8 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'vi
 export default function AiAdsCreativesPage() {
   const { user, agencyRole } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [assets, setAssets] = useState<CreativeAsset[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,12 +98,12 @@ export default function AiAdsCreativesPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <ImageIcon className="h-6 w-6 text-cyan-400" /> Creative Library
+            <ImageIcon className="h-6 w-6 text-cyan-400" /> {isRu ? 'Библиотека креативов' : 'Creative Library'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage creative assets for campaign drafts. Upload files or reference external URLs.</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Управляйте креативами для рекламных кампаний. Загружайте файлы или добавляйте ссылки.' : 'Manage creative assets for campaign drafts. Upload files or reference external URLs.'}</p>
         </div>
         <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" /> Add Asset
+          <Plus className="h-4 w-4" /> {isRu ? 'Добавить' : 'Add Asset'}
         </Button>
       </div>
 

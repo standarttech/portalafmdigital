@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 // ── Types ──
 
@@ -180,6 +181,8 @@ const scoreColors: Record<string, string> = {
 export default function AiAdsIntelligencePage() {
   const { user } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [launches, setLaunches] = useState<LaunchRequest[]>([]);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [optRecs, setOptRecs] = useState<Recommendation[]>([]);
@@ -282,9 +285,9 @@ export default function AiAdsIntelligencePage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Brain className="h-6 w-6 text-cyan-400" /> Post-Launch Intelligence
+            <Brain className="h-6 w-6 text-cyan-400" /> {isRu ? 'Пост-запуск аналитика' : 'Post-Launch Intelligence'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Campaign health, performance metrics, anomaly detection, optimization queue</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Мониторинг здоровья кампаний, метрики, обнаружение аномалий' : 'Campaign health, performance metrics, anomaly detection, optimization queue'}</p>
         </div>
         <div className="flex items-center gap-2">
           {lastSyncTime && <span className="text-[10px] text-muted-foreground">Last sync: {new Date(lastSyncTime).toLocaleString()}</span>}

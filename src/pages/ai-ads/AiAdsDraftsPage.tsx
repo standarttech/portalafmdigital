@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 // ── Types ──
 
@@ -175,6 +176,8 @@ function buildPreviewPayload(draft: Draft, items: DraftItem[]): any {
 export default function AiAdsDraftsPage() {
   const { user } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,9 +245,9 @@ export default function AiAdsDraftsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <FileStack className="h-6 w-6 text-emerald-400" /> Campaign Drafts
+            <FileStack className="h-6 w-6 text-emerald-400" /> {isRu ? 'Черновики кампаний' : 'Campaign Drafts'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Build, validate, and prepare campaigns for launch</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Создавайте, проверяйте и готовьте кампании к запуску' : 'Build, validate, and prepare campaigns for launch'}</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild><Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> New Draft</Button></DialogTrigger>

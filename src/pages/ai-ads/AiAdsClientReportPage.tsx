@@ -9,6 +9,7 @@ import {
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Client { id: string; name: string; }
 
@@ -23,6 +24,8 @@ interface ActionSummary { total: number; executed: number; pending: number; fail
 
 export default function AiAdsClientReportPage() {
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -103,9 +106,9 @@ export default function AiAdsClientReportPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Users className="h-6 w-6 text-cyan-400" /> Performance Report
+            <Users className="h-6 w-6 text-cyan-400" /> {isRu ? 'Отчёт по эффективности' : 'Performance Report'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Client-facing campaign performance summary</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Сводка эффективности кампаний для клиента' : 'Client-facing campaign performance summary'}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedClient} onValueChange={setSelectedClient}>

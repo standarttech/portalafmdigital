@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 // ── Types ──
 
@@ -77,6 +78,8 @@ const typeIcons: Record<string, React.ReactNode> = {
 export default function AiAdsOptimizationPage() {
   const { user, agencyRole } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [actions, setActions] = useState<OptAction[]>([]);
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -201,9 +204,9 @@ export default function AiAdsOptimizationPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Zap className="h-6 w-6 text-cyan-400" /> Optimization Actions
+            <Zap className="h-6 w-6 text-cyan-400" /> {isRu ? 'Оптимизация' : 'Optimization Actions'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Propose, approve, and execute campaign optimizations safely</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Предлагайте, одобряйте и выполняйте оптимизации безопасно' : 'Propose, approve, and execute campaign optimizations safely'}</p>
         </div>
         <Button size="sm" className="gap-2" onClick={() => setProposeOpen(true)}>
           <Zap className="h-4 w-4" /> Propose Action

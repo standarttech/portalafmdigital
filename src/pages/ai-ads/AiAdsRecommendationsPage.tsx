@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Recommendation {
   id: string; title: string; description: string; recommendation_type: string;
@@ -41,6 +42,8 @@ const recTypes = [
 export default function AiAdsRecommendationsPage() {
   const { user } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,9 +141,9 @@ export default function AiAdsRecommendationsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-          <TrendingUp className="h-6 w-6 text-cyan-400" /> Recommendations
+          <TrendingUp className="h-6 w-6 text-cyan-400" /> {isRu ? 'Рекомендации' : 'Recommendations'}
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">AI-generated actionable recommendations from analysis runs</p>
+        <p className="text-sm text-muted-foreground mt-1">{isRu ? 'ИИ-рекомендации по оптимизации из результатов анализа' : 'AI-generated actionable recommendations from analysis runs'}</p>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">

@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Session {
   id: string; title: string; status: string; session_type: string; created_at: string; client_id: string; metadata: any;
@@ -48,6 +49,7 @@ const statusColor: Record<string, string> = {
 export default function AiAdsAnalysisPage() {
   const { user } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { t, language } = useLanguage();
   const [clients, setClients] = useState<Client[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [runs, setRuns] = useState<AnalysisRun[]>([]);
@@ -157,9 +159,9 @@ export default function AiAdsAnalysisPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
             <BrainCircuit className="h-6 w-6 text-violet-400" />
-            AI Analysis
+            {t('aiAds.analysis')}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">AI-powered campaign analysis with structured insights</p>
+          <p className="text-sm text-muted-foreground mt-1">{language === 'ru' ? 'ИИ-анализ кампаний со структурированными инсайтами' : 'AI-powered campaign analysis with structured insights'}</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

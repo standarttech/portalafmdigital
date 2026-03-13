@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGosAuditLog } from '@/hooks/useGosAuditLog';
 import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Preset {
   id: string; name: string; description: string; rule_condition: any;
@@ -42,6 +43,8 @@ const ACTION_TYPES = [
 export default function AiAdsPresetsPage() {
   const { user, agencyRole } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [presets, setPresets] = useState<Preset[]>([]);
   const [loading, setLoading] = useState(true);
   const [editPreset, setEditPreset] = useState<Preset | null>(null);
@@ -82,11 +85,11 @@ export default function AiAdsPresetsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Settings className="h-6 w-6 text-cyan-400" /> Optimization Presets
+            <Settings className="h-6 w-6 text-cyan-400" /> {isRu ? 'Пресеты оптимизации' : 'Optimization Presets'}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Rule-based presets that auto-generate optimization proposals during sync.
-            {' '}<Badge variant="outline" className="text-[9px] text-emerald-400 border-emerald-400/30">{activeCount} active</Badge>
+            {isRu ? 'Правила автоматизации, генерирующие предложения во время синхронизации.' : 'Rule-based presets that auto-generate optimization proposals during sync.'}
+            {' '}<Badge variant="outline" className="text-[9px] text-emerald-400 border-emerald-400/30">{activeCount} {isRu ? 'активных' : 'active'}</Badge>
           </p>
         </div>
         {isAdmin && (
