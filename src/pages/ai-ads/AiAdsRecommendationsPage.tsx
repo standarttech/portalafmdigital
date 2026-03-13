@@ -42,6 +42,8 @@ const recTypes = [
 export default function AiAdsRecommendationsPage() {
   const { user } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
