@@ -123,7 +123,10 @@ async function fetchAlerts(): Promise<{ alerts: AlertItem[]; wins: AlertItem[] }
           });
         }
 
-        if (prevConv > 0 && recentConv > 0 && data.prev.days >= 3) {
+        // Skip clients with zero recent spend (ads turned off) — not a real signal
+        const hasRecentSpend = data.recent.spend > 5;
+
+        if (prevConv > 0 && recentConv > 0 && data.prev.days >= 3 && hasRecentSpend) {
           const prevCost = data.prev.spend / prevConv;
           const recentCost = data.recent.spend / recentConv;
           const costLabel = ecom ? 'CPS' : 'CPL';

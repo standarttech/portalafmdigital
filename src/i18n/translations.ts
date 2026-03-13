@@ -1286,9 +1286,7 @@ export const translations = {
   'header.fxEnable': t('Enable FX ✨', 'Включить FX ✨', 'Abilita FX ✨', 'Activar FX ✨', 'تفعيل التأثيرات ✨', 'Activer FX ✨'),
   'header.fxDisable': t('Disable FX', 'Отключить FX', 'Disabilita FX', 'Desactivar FX', 'تعطيل التأثيرات', 'Désactiver FX'),
 
-  // Theme names
-  'theme.dark': t('Dark', 'Тёмная', 'Scuro', 'Oscuro', 'داكن', 'Sombre'),
-  'theme.light': t('Light', 'Светлая', 'Chiaro', 'Claro', 'فاتح', 'Clair'),
+  // Theme names (dark/light already defined above)
   'theme.midnightBlue': t('Midnight Blue', 'Синяя ночь', 'Blu notte', 'Azul medianoche', 'أزرق منتصف الليل', 'Bleu nuit'),
   'theme.cleanLight': t('Clean Light', 'Чистая светлая', 'Chiaro pulito', 'Claro limpio', 'فاتح نظيف', 'Clair épuré'),
 
