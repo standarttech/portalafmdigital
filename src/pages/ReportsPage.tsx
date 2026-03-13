@@ -465,6 +465,9 @@ ${campaigns.length > 0 ? `<div class="section"><h2>Campaigns (${campaigns.length
                                     <Send className="h-3.5 w-3.5 mr-2" />{t('reports.published')}
                                   </DropdownMenuItem>
                                 )}
+                                <DropdownMenuItem onClick={() => handleCopyLink(report.id)}>
+                                  <Link2 className="h-3.5 w-3.5 mr-2" />{isRu ? 'Скопировать ссылку' : 'Copy link'}
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => handleDownloadPdf(report)}>
                                   <Download className="h-3.5 w-3.5 mr-2" />PDF
