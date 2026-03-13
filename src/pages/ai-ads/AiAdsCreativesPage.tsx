@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import {
   ImageIcon, Plus, Loader2, Search, Video, Link2, FileText, Trash2, Eye, Tag, Upload, AlertTriangle, FileStack,
 } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
