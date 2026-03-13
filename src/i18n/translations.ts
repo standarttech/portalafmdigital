@@ -1155,8 +1155,8 @@ export const translations = {
   'gos.integrityChecks': t('Integrity Checks', 'Проверки целостности', 'Controlli di integrità', 'Comprobaciones de integridad', 'فحوصات السلامة', "Contrôles d'intégrité"),
   'gos.integrityChecksDesc': t('Validate data consistency and detect anomalies early', 'Проверяйте консистентность данных и заранее выявляйте аномалии', 'Valida coerenza dei dati e rileva anomalie', 'Valida consistencia de datos y detecta anomalías', 'تحقق من اتساق البيانات واكتشف الشذوذ', 'Validez cohérence des données et détectez les anomalies'),
 
+
   'crm.guide': t('Guide', 'Руководство', 'Guida', 'Guía', 'دليل', 'Guide'),
-  'aiAds.metaAutomation': t('Meta Automation', 'Meta Автоматизация', 'Automazione Meta', 'Automatización Meta', 'أتمتة ميتا', 'Automatisation Meta'),
 
 
   // AI Ads Copilot
