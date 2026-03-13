@@ -98,12 +98,12 @@ export default function AiAdsCreativesPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <ImageIcon className="h-6 w-6 text-cyan-400" /> Creative Library
+            <ImageIcon className="h-6 w-6 text-cyan-400" /> {isRu ? 'Библиотека креативов' : 'Creative Library'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage creative assets for campaign drafts. Upload files or reference external URLs.</p>
+          <p className="text-sm text-muted-foreground mt-1">{isRu ? 'Управляйте креативами для рекламных кампаний. Загружайте файлы или добавляйте ссылки.' : 'Manage creative assets for campaign drafts. Upload files or reference external URLs.'}</p>
         </div>
         <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" /> Add Asset
+          <Plus className="h-4 w-4" /> {isRu ? 'Добавить' : 'Add Asset'}
         </Button>
       </div>
 

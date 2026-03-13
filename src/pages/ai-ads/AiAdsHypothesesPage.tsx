@@ -39,6 +39,8 @@ const allStatuses = ['open', 'testing', 'blocked', 'validated', 'rejected', 'con
 export default function AiAdsHypothesesPage() {
   const { user } = useAuth();
   const { logGosAction } = useGosAuditLog();
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
   const [threads, setThreads] = useState<Thread[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);

@@ -141,9 +141,9 @@ export default function AiAdsRecommendationsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-          <TrendingUp className="h-6 w-6 text-cyan-400" /> Recommendations
+          <TrendingUp className="h-6 w-6 text-cyan-400" /> {isRu ? 'Рекомендации' : 'Recommendations'}
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">AI-generated actionable recommendations from analysis runs</p>
+        <p className="text-sm text-muted-foreground mt-1">{isRu ? 'ИИ-рекомендации по оптимизации из результатов анализа' : 'AI-generated actionable recommendations from analysis runs'}</p>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
