@@ -197,6 +197,22 @@ export default function ReportsPage() {
     fetchReports();
   };
 
+  const handleCopyLink = (id: string) => {
+    const url = `${window.location.origin}/r/${id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success(isRu ? 'Ссылка скопирована' : 'Link copied to clipboard');
+    }).catch(() => {
+      // Fallback
+      const input = document.createElement('input');
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      toast.success(isRu ? 'Ссылка скопирована' : 'Link copied to clipboard');
+    });
+  };
+
   const handleDownloadCsv = (report: Report) => {
     const content = report.content as any;
     if (!content?.daily?.length) { toast.error(t('common.noData')); return; }
