@@ -236,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setAgencyRole(null);
       setCachedRole(null);
+      setRoleLoaded(true);
     }
   }, [upsertLinkedAccount]);
 
