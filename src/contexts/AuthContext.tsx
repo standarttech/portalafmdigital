@@ -209,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const role = data ? (data.agency_role as AgencyRole) : null;
       setAgencyRole(role);
       setCachedRole(role);
+      setRoleLoaded(true);
 
       if (activeSession?.user) {
         upsertLinkedAccount({
