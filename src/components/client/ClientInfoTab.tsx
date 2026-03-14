@@ -58,8 +58,9 @@ const defaultInfo: ClientInfo = {
 
 
 export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
-  const { t } = useLanguage();
-  const canEdit = true; // Only agency users see this tab now
+  const { t, language } = useLanguage();
+  const isRu = language === 'ru';
+  const canEdit = true;
 
   const [info, setInfo] = useState<ClientInfo>(defaultInfo);
   const [saving, setSaving] = useState(false);
