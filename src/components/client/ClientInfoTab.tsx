@@ -379,11 +379,59 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
       </Card>
 
       {canEdit && (
-        <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {t('common.save')}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-2">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {t('common.save')}
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={() => setBriefDialogOpen(true)}>
+            <Sparkles className="h-4 w-4 text-primary" />
+            {isRu ? 'AI из брифа' : 'AI from Brief'}
+          </Button>
+        </div>
       )}
+
+      {/* AI Brief Parsing Dialog */}
+      <Dialog open={briefDialogOpen} onOpenChange={setBriefDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              {isRu ? 'Заполнить карточку из брифа' : 'Fill Card from Brief'}
+            </DialogTitle>
+            <DialogDescription>
+              {isRu
+                ? 'Вставьте текст брифа клиента и ИИ автоматически извлечёт данные и заполнит пустые поля карточки.'
+                : 'Paste the client brief text and AI will extract data to fill empty card fields.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={briefText}
+              onChange={e => setBriefText(e.target.value)}
+              placeholder={isRu
+                ? 'Вставьте текст брифа: описание бизнеса, аудитория, бюджет, контакты, ссылки...'
+                : 'Paste brief text: business description, audience, budget, contacts, links...'}
+              rows={12}
+              className="text-sm font-mono"
+            />
+            <div className="text-[11px] text-muted-foreground bg-muted/30 rounded-lg p-2 space-y-1">
+              <p className="font-medium">{isRu ? 'ИИ заполнит:' : 'AI will fill:'}</p>
+              <p>{isRu
+                ? 'Ниша, ЦА, гео, конкуренты, соцсети, бюджет, контакты, CRM, лендинги и заметки'
+                : 'Niche, audience, geo, competitors, socials, budget, contacts, CRM, landing pages & notes'}</p>
+              <p className="text-primary">{isRu ? '⚡ Заполняются только пустые поля' : '⚡ Only empty fields will be filled'}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBriefDialogOpen(false)}>{isRu ? 'Отмена' : 'Cancel'}</Button>
+            <Button onClick={handleParseBrief} disabled={briefParsing || briefText.trim().length < 20} className="gap-2">
+              {briefParsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {isRu ? 'Извлечь данные' : 'Extract Data'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
