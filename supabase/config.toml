@@ -75,3 +75,6 @@ verify_jwt = false
 [functions.scheduled-report]
 verify_jwt = false
 
+[functions.generate-content-plan]
+verify_jwt = false
+
