@@ -36,30 +36,35 @@ serve(async (req) => {
       throw new Error("Meta Ads Management not connected. Go to Integrations to set up.");
     }
 
-    // Get ad account ID
-    const adAccountId = body.ad_account_id || await getDefaultAdAccountId(supabase);
-
     let result: any;
 
     switch (action) {
       case "list_ad_accounts":
         result = await listAdAccounts(accessToken);
         break;
-      case "list_pixels":
+      case "list_pixels": {
+        const adAccountId = body.ad_account_id || await getDefaultAdAccountId(supabase);
         result = await listPixels(accessToken, adAccountId);
         break;
-      case "create_pixel":
+      }
+      case "create_pixel": {
+        const adAccountId = body.ad_account_id || await getDefaultAdAccountId(supabase);
         result = await createPixel(accessToken, adAccountId, body);
         break;
-      case "create_audience":
+      }
+      case "create_audience": {
+        const adAccountId = body.ad_account_id || await getDefaultAdAccountId(supabase);
         result = await createAudience(accessToken, adAccountId, body);
         break;
+      }
       case "create_lead_form":
         result = await createLeadForm(accessToken, body);
         break;
-      case "create_campaign":
+      case "create_campaign": {
+        const adAccountId = body.ad_account_id || await getDefaultAdAccountId(supabase);
         result = await createCampaign(accessToken, adAccountId, body);
         break;
+      }
       default:
         throw new Error(`Unknown action: ${action}`);
     }
