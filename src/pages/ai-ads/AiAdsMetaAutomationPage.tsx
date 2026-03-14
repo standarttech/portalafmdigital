@@ -110,11 +110,15 @@ export default function AiAdsMetaAutomationPage() {
   const [activeTab, setActiveTab] = useState('pixels');
   const [metaConnected, setMetaConnected] = useState(false);
 
-  // Ad account selector
-  const [adAccounts, setAdAccounts] = useState<Array<{ id: string; platform_account_id: string; account_name: string | null }>>([]);
+  // Ad account selector — fetched from Meta API via management token
+  const [adAccounts, setAdAccounts] = useState<Array<{ account_id: string; act_id: string; name: string; status: number; currency?: string; business_name?: string }>>([]);
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [accountSearch, setAccountSearch] = useState('');
   const [loadingAccounts, setLoadingAccounts] = useState(true);
+
+  // Pixels for selected account
+  const [availablePixels, setAvailablePixels] = useState<Array<{ pixel_id: string; name: string }>>([]);
+  const [loadingPixels, setLoadingPixels] = useState(false);
 
   // Pixel state
   const [pixelName, setPixelName] = useState('');
@@ -155,27 +159,63 @@ export default function AiAdsMetaAutomationPage() {
   const [campaignBudgetType, setCampaignBudgetType] = useState<'daily' | 'lifetime'>('daily');
   const [campaignCreating, setCampaignCreating] = useState(false);
 
-  // Load data
+  // Load Meta connection status + fetch ad accounts from Meta API
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [metaRes, accountsRes] = await Promise.all([
-        supabase.from('platform_integrations' as any).select('*').eq('integration_type', 'meta_ads_management').maybeSingle(),
-        supabase.from('ad_accounts').select('id, platform_account_id, account_name').eq('is_active', true),
-      ]);
+      // Check if meta_ads_management integration exists
+      const metaRes = await supabase.from('platform_integrations' as any)
+        .select('*').eq('integration_type', 'meta_ads_management').maybeSingle();
       if (cancelled) return;
-      setMetaConnected(!!(metaRes.data as any)?.is_active && !!(metaRes.data as any)?.secret_ref);
-      setAdAccounts(accountsRes.data || []);
-      if (accountsRes.data?.length) setSelectedAccountId(accountsRes.data[0].platform_account_id);
+      const connected = !!(metaRes.data as any)?.is_active && !!(metaRes.data as any)?.secret_ref;
+      setMetaConnected(connected);
+
+      if (connected) {
+        try {
+          const { data, error } = await supabase.functions.invoke('meta-automation', {
+            body: { action: 'list_ad_accounts' },
+          });
+          if (!cancelled && data?.accounts) {
+            // Only show active accounts (status 1 = ACTIVE)
+            const active = data.accounts.filter((a: any) => a.status === 1);
+            setAdAccounts(active);
+            if (active.length) setSelectedAccountId(active[0].account_id);
+          }
+        } catch (e) {
+          console.error('Failed to load ad accounts from Meta API:', e);
+        }
+      }
       setLoadingAccounts(false);
     })();
     return () => { cancelled = true; };
   }, []);
 
+  // Load pixels when account changes
+  useEffect(() => {
+    if (!selectedAccountId || !metaConnected) {
+      setAvailablePixels([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingPixels(true);
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke('meta-automation', {
+          body: { action: 'list_pixels', ad_account_id: selectedAccountId },
+        });
+        if (!cancelled && data?.pixels) setAvailablePixels(data.pixels);
+      } catch (e) {
+        console.error('Failed to load pixels:', e);
+      }
+      if (!cancelled) setLoadingPixels(false);
+    })();
+    return () => { cancelled = true; };
+  }, [selectedAccountId, metaConnected]);
+
   const selectedActId = selectedAccountId.startsWith('act_') ? selectedAccountId : selectedAccountId ? `act_${selectedAccountId}` : '';
 
   const filteredAccounts = adAccounts.filter(a =>
-    !accountSearch || (a.account_name || a.platform_account_id).toLowerCase().includes(accountSearch.toLowerCase())
+    !accountSearch || (a.name || a.account_id).toLowerCase().includes(accountSearch.toLowerCase())
   );
 
   const toggleEvent = useCallback((ev: string) => {
