@@ -467,7 +467,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, session, agencyRole, effectiveRole, viewAsRole, setViewAsRole,
+      user, session, agencyRole, roleLoaded, effectiveRole, viewAsRole, setViewAsRole,
       simulatedUser, setSimulatedUser,
       linkedAccounts,
       loading, adminExists, signIn, addAccount, switchAccount, removeLinkedAccount, signOut, setupAdmin, refreshRole,
