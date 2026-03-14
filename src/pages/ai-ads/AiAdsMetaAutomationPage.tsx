@@ -327,26 +327,32 @@ export default function AiAdsMetaAutomationPage() {
         </Badge>
       </div>
 
-      {/* Account Selector */}
+      {/* Account Selector — from Meta API (management token) */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-4">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="text-xs text-muted-foreground space-y-1">
-                <p className="font-semibold text-foreground">{isRu ? 'Рекламный аккаунт' : 'Ad Account'}</p>
-                <p>{isRu ? 'Выберите аккаунт из подключённых к платформе. Подключите новые аккаунты в разделе Клиенты → Connections.' : 'Select from connected accounts. Add new ones in Clients → Connections.'}</p>
+                <p className="font-semibold text-foreground">{isRu ? 'Рекламный аккаунт (Meta Ads Management)' : 'Ad Account (Meta Ads Management)'}</p>
+                <p>{isRu ? 'Аккаунты загружаются из интеграции Meta Ads Management. Подключите в Интеграциях → Meta Ads Management.' : 'Accounts loaded from Meta Ads Management integration. Set up in Integrations → Meta Ads Management.'}</p>
               </div>
             </div>
 
             {loadingAccounts ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" /> {isRu ? 'Загрузка аккаунтов...' : 'Loading accounts...'}
+                <Loader2 className="h-3 w-3 animate-spin" /> {isRu ? 'Загрузка аккаунтов из Meta API...' : 'Loading accounts from Meta API...'}
+              </div>
+            ) : !metaConnected ? (
+              <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
+                <p>{isRu ? 'Meta Ads Management не подключена.' : 'Meta Ads Management not connected.'}</p>
+                <Button size="sm" variant="outline" className="mt-2 gap-1.5 text-xs" onClick={() => window.location.href = '/ai-ads/integrations'}>
+                  <ExternalLink className="h-3 w-3" /> {isRu ? 'Подключить' : 'Connect'}
+                </Button>
               </div>
             ) : adAccounts.length === 0 ? (
               <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
-                <p>{isRu ? 'Нет подключённых рекламных аккаунтов.' : 'No ad accounts connected.'}</p>
-                <p className="mt-1">{isRu ? 'Перейдите в раздел Клиенты → Connections для подключения.' : 'Go to Clients → Connections to connect.'}</p>
+                <p>{isRu ? 'Нет активных рекламных аккаунтов на этом токене Meta.' : 'No active ad accounts on this Meta token.'}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -358,28 +364,50 @@ export default function AiAdsMetaAutomationPage() {
                     className="h-8 text-xs"
                   />
                 )}
-                <ScrollArea className={adAccounts.length > 4 ? 'max-h-32' : ''}>
+                <ScrollArea className={adAccounts.length > 4 ? 'max-h-40' : ''}>
                   <div className="flex flex-wrap gap-2">
                     {filteredAccounts.map(acc => (
                       <div
-                        key={acc.id}
-                        onClick={() => setSelectedAccountId(acc.platform_account_id)}
+                        key={acc.account_id}
+                        onClick={() => setSelectedAccountId(acc.account_id)}
                         className={cn(
                           'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-xs transition-all',
-                          selectedAccountId === acc.platform_account_id
+                          selectedAccountId === acc.account_id
                             ? 'bg-primary/15 border-primary/40 text-foreground ring-1 ring-primary/20'
                             : 'border-border/50 text-muted-foreground hover:border-primary/25 hover:bg-muted/30'
                         )}
                       >
                         <Target className="h-3.5 w-3.5 flex-shrink-0" />
                         <div>
-                          <span className="font-medium">{acc.account_name || acc.platform_account_id}</span>
-                          {acc.account_name && <span className="text-muted-foreground ml-1">({acc.platform_account_id})</span>}
+                          <span className="font-medium">{acc.name}</span>
+                          <span className="text-muted-foreground ml-1">({acc.account_id})</span>
+                          {acc.currency && <Badge variant="outline" className="ml-1.5 text-[9px] py-0">{acc.currency}</Badge>}
                         </div>
                       </div>
                     ))}
                   </div>
                 </ScrollArea>
+
+                {/* Pixels on selected account */}
+                {selectedAccountId && (
+                  <div className="pt-2 border-t border-border/30">
+                    <p className="text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <Crosshair className="h-3 w-3" /> {isRu ? 'Пиксели на аккаунте:' : 'Pixels on account:'}
+                      {loadingPixels && <Loader2 className="h-3 w-3 animate-spin" />}
+                    </p>
+                    {!loadingPixels && availablePixels.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground">{isRu ? 'Пиксели не найдены' : 'No pixels found'}</p>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {availablePixels.map(px => (
+                        <Badge key={px.pixel_id} variant="secondary" className="text-[10px] gap-1 cursor-pointer"
+                          onClick={() => { setCreatedPixelId(px.pixel_id); setShowPixelSetup(true); }}>
+                          <Crosshair className="h-2.5 w-2.5" /> {px.name} ({px.pixel_id})
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
