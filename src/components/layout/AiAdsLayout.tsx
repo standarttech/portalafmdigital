@@ -22,6 +22,7 @@ const navItems: { labelKey: TranslationKey; icon: any; path: string }[] = [
   { labelKey: 'aiAds.hypotheses', icon: Lightbulb, path: '/ai-ads/hypotheses' },
   { labelKey: 'aiAds.campaignDrafts', icon: FileStack, path: '/ai-ads/drafts' },
   { labelKey: 'aiAds.creatives', icon: ImageIcon, path: '/ai-ads/creatives' },
+  { labelKey: 'aiAds.creativeStudio', icon: Sparkles, path: '/ai-ads/creative-studio' },
   { labelKey: 'aiAds.executions', icon: Rocket, path: '/ai-ads/executions' },
   { labelKey: 'aiAds.intelligence', icon: Brain, path: '/ai-ads/intelligence' },
   { labelKey: 'aiAds.optimization', icon: Zap, path: '/ai-ads/optimization' },

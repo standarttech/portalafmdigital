@@ -593,6 +593,7 @@ function AppRoutes() {
         <Route path="/ai-ads/intelligence" element={<AiAdsIntelligencePage />} />
         <Route path="/ai-ads/optimization" element={<AiAdsOptimizationPage />} />
         <Route path="/ai-ads/creatives" element={<AiAdsCreativesPage />} />
+        <Route path="/ai-ads/creative-studio" element={<AiAdsCreativeStudioPage />} />
         <Route path="/ai-ads/presets" element={<AiAdsPresetsPage />} />
         <Route path="/ai-ads/client-report" element={<AiAdsClientReportPage />} />
         <Route path="/ai-ads/integrations" element={<AiAdsIntegrationsPage />} />

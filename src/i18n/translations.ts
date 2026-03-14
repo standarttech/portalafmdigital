@@ -1168,6 +1168,7 @@ export const translations = {
   'aiAds.hypotheses': t('Hypotheses', 'Гипотезы', 'Ipotesi', 'Hipótesis', 'الفرضيات', 'Hypothèses'),
   'aiAds.campaignDrafts': t('Campaign Drafts', 'Черновики кампаний', 'Bozze campagna', 'Borradores de campaña', 'مسودات الحملات', 'Brouillons de campagne'),
   'aiAds.creatives': t('Creatives', 'Креативы', 'Creativi', 'Creativos', 'الإبداعات', 'Créatifs'),
+  'aiAds.creativeStudio': t('Creative Studio', 'Креативная студия', 'Studio Creativo', 'Estudio Creativo', 'استوديو إبداعي', 'Studio Créatif'),
   'aiAds.executions': t('Executions', 'Запуски', 'Esecuzioni', 'Ejecuciones', 'التنفيذات', 'Exécutions'),
   'aiAds.intelligence': t('Intelligence', 'Аналитика', 'Intelligence', 'Inteligencia', 'الذكاء', 'Intelligence'),
   'aiAds.optimization': t('Optimization', 'Оптимизация', 'Ottimizzazione', 'Optimización', 'التحسين', 'Optimisation'),
