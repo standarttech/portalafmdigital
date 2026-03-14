@@ -40,6 +40,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   agencyRole: AgencyRole;
+  roleLoaded: boolean;
   effectiveRole: AgencyRole;
   viewAsRole: AgencyRole;
   setViewAsRole: (role: AgencyRole) => void;
