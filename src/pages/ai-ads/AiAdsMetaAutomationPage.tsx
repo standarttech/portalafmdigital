@@ -176,10 +176,8 @@ export default function AiAdsMetaAutomationPage() {
             body: { action: 'list_ad_accounts' },
           });
           if (!cancelled && data?.accounts) {
-            // Only show active accounts (status 1 = ACTIVE)
-            const active = data.accounts.filter((a: any) => a.status === 1);
-            setAdAccounts(active);
-            if (active.length) setSelectedAccountId(active[0].account_id);
+            setAdAccounts(data.accounts);
+            if (data.accounts.length) setSelectedAccountId(data.accounts[0].account_id);
           }
         } catch (e) {
           console.error('Failed to load ad accounts from Meta API:', e);

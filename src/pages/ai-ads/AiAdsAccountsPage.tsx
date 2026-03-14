@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MonitorSmartphone, Plus, CheckCircle2, XCircle, Loader2, Link2, Info } from 'lucide-react';
+import { MonitorSmartphone, Plus, CheckCircle2, XCircle, Loader2, Link2, Info, Pencil, Eye, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -18,23 +18,53 @@ interface AdAccount {
   client?: { name: string };
 }
 
+interface MgmtAccount {
+  account_id: string;
+  name: string;
+}
+
 export default function AiAdsAccountsPage() {
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
+  const [mgmtAccountIds, setMgmtAccountIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const { language } = useLanguage();
   const navigate = useNavigate();
   const isRu = language === 'ru';
 
   useEffect(() => {
-    supabase
-      .from('ad_accounts')
-      .select('*, client:clients(name)')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setAccounts((data as any[]) || []);
+    let cancelled = false;
+    (async () => {
+      // Load ad_accounts from DB
+      const { data: dbAccounts } = await supabase
+        .from('ad_accounts')
+        .select('*, client:clients(name)')
+        .order('created_at', { ascending: false });
+
+      // Load management accounts from Meta API (if integration exists)
+      let mgmtIds = new Set<string>();
+      try {
+        const { data } = await supabase.functions.invoke('meta-automation', {
+          body: { action: 'list_ad_accounts' },
+        });
+        if (data?.accounts) {
+          mgmtIds = new Set(data.accounts.map((a: MgmtAccount) => a.account_id));
+        }
+      } catch {
+        // Management integration not connected — all are read-only
+      }
+
+      if (!cancelled) {
+        setAccounts((dbAccounts as any[]) || []);
+        setMgmtAccountIds(mgmtIds);
         setLoading(false);
-      });
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
+
+  const getAccessLevel = (acc: AdAccount): 'management' | 'read_only' => {
+    return mgmtAccountIds.has(acc.platform_account_id) ? 'management' : 'read_only';
+  };
 
   return (
     <div className="space-y-6">
@@ -75,6 +105,22 @@ export default function AiAdsAccountsPage() {
         </CardContent>
       </Card>
 
+      {/* Access level legend */}
+      <div className="flex gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <Badge className="gap-1 text-[10px] bg-primary/15 text-primary border-primary/30 hover:bg-primary/20">
+            <Pencil className="h-2.5 w-2.5" /> Management
+          </Badge>
+          <span>{isRu ? '— полный доступ: создание, редактирование, запуск' : '— full access: create, edit, launch'}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className="gap-1 text-[10px]">
+            <Eye className="h-2.5 w-2.5" /> Read Only
+          </Badge>
+          <span>{isRu ? '— только чтение: статистика и метрики' : '— read only: statistics and metrics'}</span>
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -95,63 +141,87 @@ export default function AiAdsAccountsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {accounts.map(acc => (
-            <Card key={acc.id} className="hover:border-primary/20 transition-colors">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold truncate">
-                    {acc.account_name || acc.platform_account_id}
-                  </CardTitle>
-                  {acc.is_active ? (
-                    <Badge variant="outline" className="gap-1 text-[hsl(var(--success))] border-[hsl(var(--success))]/30">
-                      <CheckCircle2 className="h-3 w-3" /> {isRu ? 'Активен' : 'Active'}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="gap-1 text-destructive border-destructive/30">
-                      <XCircle className="h-3 w-3" /> {isRu ? 'Неактивен' : 'Inactive'}
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Platform ID</span>
-                  <span className="font-mono text-foreground">{acc.platform_account_id}</span>
-                </div>
-                {(acc as any).client?.name && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{isRu ? 'Клиент' : 'Client'}</span>
-                    <span className="text-foreground">{(acc as any).client.name}</span>
+          {accounts.map(acc => {
+            const access = getAccessLevel(acc);
+            const isManagement = access === 'management';
+            return (
+              <Card key={acc.id} className={`hover:border-primary/20 transition-colors ${isManagement ? 'border-primary/10' : ''}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-sm font-semibold truncate">
+                      {acc.account_name || acc.platform_account_id}
+                    </CardTitle>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {isManagement ? (
+                        <Badge className="gap-1 text-[10px] bg-primary/15 text-primary border-primary/30 hover:bg-primary/20">
+                          <Pencil className="h-2.5 w-2.5" /> Management
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1 text-[10px]">
+                          <Eye className="h-2.5 w-2.5" /> Read Only
+                        </Badge>
+                      )}
+                      {acc.is_active ? (
+                        <Badge variant="outline" className="gap-1 text-[10px] text-[hsl(var(--success))] border-[hsl(var(--success))]/30">
+                          <CheckCircle2 className="h-2.5 w-2.5" />
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1 text-[10px] text-destructive border-destructive/30">
+                          <XCircle className="h-2.5 w-2.5" />
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{isRu ? 'Подключён' : 'Connected'}</span>
-                  <span className="text-foreground">{new Date(acc.created_at).toLocaleDateString()}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Platform ID</span>
+                    <span className="font-mono text-foreground">{acc.platform_account_id}</span>
+                  </div>
+                  {(acc as any).client?.name && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{isRu ? 'Клиент' : 'Client'}</span>
+                      <span className="text-foreground">{(acc as any).client.name}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{isRu ? 'Доступ' : 'Access'}</span>
+                    <span className="text-foreground">
+                      {isManagement
+                        ? (isRu ? 'Создание, редактирование, запуск' : 'Create, edit, launch')
+                        : (isRu ? 'Только статистика' : 'Statistics only')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{isRu ? 'Подключён' : 'Connected'}</span>
+                    <span className="text-foreground">{new Date(acc.created_at).toLocaleDateString()}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
       {/* Permissions Info */}
       <Card className="border-muted">
         <CardContent className="p-4">
-          <h4 className="text-sm font-semibold text-foreground mb-2">
+          <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" />
             {isRu ? 'Модель разрешений' : 'Permissions Model'}
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-muted-foreground">
             <div className="flex items-start gap-2">
               <Badge variant="outline" className="text-[10px] shrink-0">{isRu ? 'Просмотр' : 'View'}</Badge>
-              <span>{isRu ? 'Все участники агентства с доступом к клиенту видят аккаунты' : 'All agency members with client access can view connected accounts'}</span>
+              <span>{isRu ? 'Все участники с доступом к клиенту видят аккаунты и статистику' : 'All members with client access can view accounts and stats'}</span>
             </div>
             <div className="flex items-start gap-2">
-              <Badge variant="outline" className="text-[10px] shrink-0">{isRu ? 'Подключение' : 'Connect'}</Badge>
-              <span>{isRu ? 'Только администраторы могут подключать новые аккаунты' : 'Only admins can connect new ad platform accounts'}</span>
+              <Badge variant="outline" className="text-[10px] shrink-0">Management</Badge>
+              <span>{isRu ? 'Аккаунты из Meta Ads Management — создание пикселей, аудиторий, кампаний' : 'Accounts from Meta Ads Management — create pixels, audiences, campaigns'}</span>
             </div>
             <div className="flex items-start gap-2">
-              <Badge variant="outline" className="text-[10px] shrink-0">{isRu ? 'Черновики' : 'Draft'}</Badge>
-              <span>{isRu ? 'Участники с доступом к клиенту создают черновики' : 'Members with client access can create campaign drafts'}</span>
+              <Badge variant="outline" className="text-[10px] shrink-0">Read Only</Badge>
+              <span>{isRu ? 'Аккаунты из интеграции для статистики — только чтение метрик' : 'Accounts from stats integration — read-only metrics'}</span>
             </div>
             <div className="flex items-start gap-2">
               <Badge variant="outline" className="text-[10px] shrink-0">{isRu ? 'Запуск' : 'Execute'}</Badge>
