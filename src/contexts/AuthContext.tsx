@@ -271,6 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setAgencyRole(null);
           setCachedRole(null);
+          setRoleLoaded(true);
         }
 
         // Clear MFA/FPC checks only on real sign-in transitions (different user)
