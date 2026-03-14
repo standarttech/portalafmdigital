@@ -42,6 +42,12 @@ serve(async (req) => {
     let result: any;
 
     switch (action) {
+      case "list_ad_accounts":
+        result = await listAdAccounts(accessToken);
+        break;
+      case "list_pixels":
+        result = await listPixels(accessToken, adAccountId);
+        break;
       case "create_pixel":
         result = await createPixel(accessToken, adAccountId, body);
         break;
@@ -126,6 +132,40 @@ async function metaFetch(url: string, token: string, method = "GET", body?: any)
   }
 
   return data;
+}
+
+// ─── List Ad Accounts from Meta API ───
+async function listAdAccounts(token: string) {
+  const data = await metaFetch(
+    `${META_BASE}/me/adaccounts?fields=name,account_id,account_status,currency,timezone_name,business_name&limit=100`,
+    token
+  );
+  const accounts = (data.data || []).map((a: any) => ({
+    account_id: a.account_id,
+    act_id: a.id,
+    name: a.name || a.account_id,
+    status: a.account_status,
+    currency: a.currency,
+    timezone: a.timezone_name,
+    business_name: a.business_name,
+  }));
+  return { accounts };
+}
+
+// ─── List Pixels for Account ───
+async function listPixels(token: string, adAccountId: string) {
+  const actId = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const data = await metaFetch(
+    `${META_BASE}/${actId}/adspixels?fields=name,id,creation_time,is_unavailable&limit=50`,
+    token
+  );
+  const pixels = (data.data || []).map((p: any) => ({
+    pixel_id: p.id,
+    name: p.name,
+    created: p.creation_time,
+    unavailable: p.is_unavailable,
+  }));
+  return { pixels };
 }
 
 // ─── Create Pixel ───

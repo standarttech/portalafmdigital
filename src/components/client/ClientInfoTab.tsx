@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Save, Loader2, ExternalLink, Globe, Instagram, Facebook, Linkedin, Youtube, MessageSquare, FileText, Users, MapPin, Target, Briefcase, Phone, Mail, Calendar, Lock, TrendingUp } from 'lucide-react';
+import { Save, Loader2, ExternalLink, Globe, Instagram, Facebook, Linkedin, Youtube, MessageSquare, FileText, Users, MapPin, Target, Briefcase, Phone, Mail, Calendar, Lock, TrendingUp, Sparkles, Upload } from 'lucide-react';
 import type { TranslationKey } from '@/i18n/translations';
 
 interface ClientInfo {
@@ -57,8 +58,9 @@ const defaultInfo: ClientInfo = {
 
 
 export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string; isAdmin: boolean }) {
-  const { t } = useLanguage();
-  const canEdit = true; // Only agency users see this tab now
+  const { t, language } = useLanguage();
+  const isRu = language === 'ru';
+  const canEdit = true;
 
   const [info, setInfo] = useState<ClientInfo>(defaultInfo);
   const [saving, setSaving] = useState(false);
@@ -163,6 +165,58 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
   };
 
   const u = (key: keyof ClientInfo, value: string | number) => setInfo(prev => ({ ...prev, [key]: value }));
+
+  // AI Brief parsing state
+  const [briefDialogOpen, setBriefDialogOpen] = useState(false);
+  const [briefText, setBriefText] = useState('');
+  const [briefParsing, setBriefParsing] = useState(false);
+
+  const handleParseBrief = async () => {
+    if (briefText.trim().length < 20) {
+      toast.error(isRu ? 'Введите текст брифа (минимум 20 символов)' : 'Enter brief text (min 20 characters)');
+      return;
+    }
+    setBriefParsing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-brief', {
+        body: { brief_text: briefText },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      
+      const ex = data.extracted;
+      if (!ex) throw new Error('No data extracted');
+
+      // Merge extracted data into info state (only non-null values, only if current field is empty)
+      setInfo(prev => {
+        const updated = { ...prev };
+        const fields: (keyof ClientInfo)[] = [
+          'business_niche', 'target_audience', 'geo_targeting', 'key_competitors',
+          'website_url', 'instagram_url', 'facebook_url', 'tiktok_url', 'linkedin_url',
+          'youtube_url', 'twitter_url', 'telegram_url', 'landing_pages', 'contact_person',
+          'contact_phone', 'contact_email', 'crm_system', 'brand_guidelines_url',
+          'payment_terms', 'additional_notes',
+        ];
+        for (const f of fields) {
+          if (ex[f] && (!prev[f] || prev[f] === '' || prev[f] === 0)) {
+            (updated as any)[f] = ex[f];
+          }
+        }
+        if (ex.monthly_budget && (!prev.monthly_budget || prev.monthly_budget === 0)) {
+          updated.monthly_budget = Number(ex.monthly_budget) || 0;
+        }
+        return updated;
+      });
+
+      toast.success(isRu ? 'Данные из брифа извлечены и заполнены!' : 'Brief data extracted and filled!');
+      setBriefDialogOpen(false);
+      setBriefText('');
+    } catch (e: any) {
+      toast.error(e.message || 'Error parsing brief');
+    } finally {
+      setBriefParsing(false);
+    }
+  };
 
   const isFieldEditable = (_key: keyof ClientInfo) => true;
 
@@ -325,11 +379,59 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
       </Card>
 
       {canEdit && (
-        <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {t('common.save')}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-2">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {t('common.save')}
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={() => setBriefDialogOpen(true)}>
+            <Sparkles className="h-4 w-4 text-primary" />
+            {isRu ? 'AI из брифа' : 'AI from Brief'}
+          </Button>
+        </div>
       )}
+
+      {/* AI Brief Parsing Dialog */}
+      <Dialog open={briefDialogOpen} onOpenChange={setBriefDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              {isRu ? 'Заполнить карточку из брифа' : 'Fill Card from Brief'}
+            </DialogTitle>
+            <DialogDescription>
+              {isRu
+                ? 'Вставьте текст брифа клиента и ИИ автоматически извлечёт данные и заполнит пустые поля карточки.'
+                : 'Paste the client brief text and AI will extract data to fill empty card fields.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={briefText}
+              onChange={e => setBriefText(e.target.value)}
+              placeholder={isRu
+                ? 'Вставьте текст брифа: описание бизнеса, аудитория, бюджет, контакты, ссылки...'
+                : 'Paste brief text: business description, audience, budget, contacts, links...'}
+              rows={12}
+              className="text-sm font-mono"
+            />
+            <div className="text-[11px] text-muted-foreground bg-muted/30 rounded-lg p-2 space-y-1">
+              <p className="font-medium">{isRu ? 'ИИ заполнит:' : 'AI will fill:'}</p>
+              <p>{isRu
+                ? 'Ниша, ЦА, гео, конкуренты, соцсети, бюджет, контакты, CRM, лендинги и заметки'
+                : 'Niche, audience, geo, competitors, socials, budget, contacts, CRM, landing pages & notes'}</p>
+              <p className="text-primary">{isRu ? '⚡ Заполняются только пустые поля' : '⚡ Only empty fields will be filled'}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBriefDialogOpen(false)}>{isRu ? 'Отмена' : 'Cancel'}</Button>
+            <Button onClick={handleParseBrief} disabled={briefParsing || briefText.trim().length < 20} className="gap-2">
+              {briefParsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {isRu ? 'Извлечь данные' : 'Extract Data'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
