@@ -42,6 +42,12 @@ serve(async (req) => {
     let result: any;
 
     switch (action) {
+      case "list_ad_accounts":
+        result = await listAdAccounts(accessToken);
+        break;
+      case "list_pixels":
+        result = await listPixels(accessToken, adAccountId);
+        break;
       case "create_pixel":
         result = await createPixel(accessToken, adAccountId, body);
         break;
