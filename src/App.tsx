@@ -104,6 +104,7 @@ const AiAdsRecommendationsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsRe
 const AiAdsIntelligencePage = React.lazy(() => import("@/pages/ai-ads/AiAdsIntelligencePage"));
 const AiAdsOptimizationPage = React.lazy(() => import("@/pages/ai-ads/AiAdsOptimizationPage"));
 const AiAdsCreativesPage = React.lazy(() => import("@/pages/ai-ads/AiAdsCreativesPage"));
+const AiAdsCreativeStudioPage = React.lazy(() => import("@/pages/ai-ads/AiAdsCreativeStudioPage"));
 const AiAdsPresetsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsPresetsPage"));
 const AiAdsClientReportPage = React.lazy(() => import("@/pages/ai-ads/AiAdsClientReportPage"));
 const AiAdsIntegrationsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsIntegrationsPage"));
