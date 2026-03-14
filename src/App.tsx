@@ -135,7 +135,7 @@ const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
   ]);
 
 function AppRoutes() {
-  const { user, loading, adminExists, signOut, agencyRole, effectiveRole } = useAuth();
+  const { user, loading, adminExists, signOut, agencyRole, effectiveRole, roleLoaded } = useAuth();
   const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(() => {
     return sessionStorage.getItem('afm_fpc_checked') === '1' ? false : null;
   });
