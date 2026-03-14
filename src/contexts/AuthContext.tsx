@@ -285,6 +285,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setViewAsRole(null);
           setSimulatedUser(null);
           setCachedRole(null);
+          setRoleLoaded(false);
+          setSimulatedUser(null);
+          setCachedRole(null);
           lastAuthUserIdRef.current = null;
           syncLinkedAccounts(null);
           return;
