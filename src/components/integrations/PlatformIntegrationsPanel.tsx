@@ -875,13 +875,21 @@ export default function PlatformIntegrationsPanel() {
                   <Key className="h-3.5 w-3.5" />
                   {setupConfig.secretLabel}
                 </Label>
+                {getIntegration(setupType!)?.secret_ref && (
+                  <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span className="text-xs text-emerald-400 font-medium">
+                      {isRu ? 'Токен сохранён и зашифрован в Vault' : 'Token saved and encrypted in Vault'}
+                    </span>
+                  </div>
+                )}
                 <div className="relative">
                   <Input
                     type={showSecret ? 'text' : 'password'}
                     value={secretValue}
                     onChange={e => setSecretValue(e.target.value)}
                     placeholder={getIntegration(setupType!)?.secret_ref
-                      ? (isRu ? '••••••••• (уже настроен)' : '••••••••• (already set)')
+                      ? (isRu ? 'Введите новый токен для замены' : 'Enter new token to replace')
                       : (isRu ? 'Введите API ключ' : 'Enter API key')}
                   />
                   <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
@@ -889,6 +897,11 @@ export default function PlatformIntegrationsPanel() {
                     {showSecret ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
+                {getIntegration(setupType!)?.secret_ref && !secretValue && (
+                  <p className="text-[10px] text-muted-foreground">
+                    {isRu ? 'Оставьте пустым, чтобы сохранить текущий токен. Введите новый, чтобы заменить.' : 'Leave empty to keep current token. Enter new one to replace.'}
+                  </p>
+                )}
               </div>
 
               {/* Extra fields */}
