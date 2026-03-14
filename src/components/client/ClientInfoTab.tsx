@@ -166,6 +166,58 @@ export default function ClientInfoTab({ clientId, isAdmin }: { clientId: string;
 
   const u = (key: keyof ClientInfo, value: string | number) => setInfo(prev => ({ ...prev, [key]: value }));
 
+  // AI Brief parsing state
+  const [briefDialogOpen, setBriefDialogOpen] = useState(false);
+  const [briefText, setBriefText] = useState('');
+  const [briefParsing, setBriefParsing] = useState(false);
+
+  const handleParseBrief = async () => {
+    if (briefText.trim().length < 20) {
+      toast.error(isRu ? 'Введите текст брифа (минимум 20 символов)' : 'Enter brief text (min 20 characters)');
+      return;
+    }
+    setBriefParsing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-brief', {
+        body: { brief_text: briefText },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      
+      const ex = data.extracted;
+      if (!ex) throw new Error('No data extracted');
+
+      // Merge extracted data into info state (only non-null values, only if current field is empty)
+      setInfo(prev => {
+        const updated = { ...prev };
+        const fields: (keyof ClientInfo)[] = [
+          'business_niche', 'target_audience', 'geo_targeting', 'key_competitors',
+          'website_url', 'instagram_url', 'facebook_url', 'tiktok_url', 'linkedin_url',
+          'youtube_url', 'twitter_url', 'telegram_url', 'landing_pages', 'contact_person',
+          'contact_phone', 'contact_email', 'crm_system', 'brand_guidelines_url',
+          'payment_terms', 'additional_notes',
+        ];
+        for (const f of fields) {
+          if (ex[f] && (!prev[f] || prev[f] === '' || prev[f] === 0)) {
+            (updated as any)[f] = ex[f];
+          }
+        }
+        if (ex.monthly_budget && (!prev.monthly_budget || prev.monthly_budget === 0)) {
+          updated.monthly_budget = Number(ex.monthly_budget) || 0;
+        }
+        return updated;
+      });
+
+      toast.success(isRu ? 'Данные из брифа извлечены и заполнены!' : 'Brief data extracted and filled!');
+      setBriefDialogOpen(false);
+      setBriefText('');
+    } catch (e: any) {
+      toast.error(e.message || 'Error parsing brief');
+    } finally {
+      setBriefParsing(false);
+    }
+  };
+
   const isFieldEditable = (_key: keyof ClientInfo) => true;
 
   const renderField = (key: keyof ClientInfo, label: string, opts?: { type?: string; placeholder?: string; icon?: any; textarea?: boolean }) => {
