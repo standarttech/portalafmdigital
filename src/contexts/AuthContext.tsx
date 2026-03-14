@@ -132,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const [agencyRole, setAgencyRole] = useState<AgencyRole>(() => getCachedRole());
+  const [roleLoaded, setRoleLoaded] = useState(() => !!getCachedRole());
   const [adminExists, setAdminExists] = useState<boolean | null>(() => {
     const cached = localStorage.getItem('afm_admin_exists');
     return cached !== null ? cached === 'true' : null;
