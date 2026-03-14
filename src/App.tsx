@@ -104,6 +104,7 @@ const AiAdsRecommendationsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsRe
 const AiAdsIntelligencePage = React.lazy(() => import("@/pages/ai-ads/AiAdsIntelligencePage"));
 const AiAdsOptimizationPage = React.lazy(() => import("@/pages/ai-ads/AiAdsOptimizationPage"));
 const AiAdsCreativesPage = React.lazy(() => import("@/pages/ai-ads/AiAdsCreativesPage"));
+const AiAdsCreativeStudioPage = React.lazy(() => import("@/pages/ai-ads/AiAdsCreativeStudioPage"));
 const AiAdsPresetsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsPresetsPage"));
 const AiAdsClientReportPage = React.lazy(() => import("@/pages/ai-ads/AiAdsClientReportPage"));
 const AiAdsIntegrationsPage = React.lazy(() => import("@/pages/ai-ads/AiAdsIntegrationsPage"));
@@ -592,6 +593,7 @@ function AppRoutes() {
         <Route path="/ai-ads/intelligence" element={<AiAdsIntelligencePage />} />
         <Route path="/ai-ads/optimization" element={<AiAdsOptimizationPage />} />
         <Route path="/ai-ads/creatives" element={<AiAdsCreativesPage />} />
+        <Route path="/ai-ads/creative-studio" element={<AiAdsCreativeStudioPage />} />
         <Route path="/ai-ads/presets" element={<AiAdsPresetsPage />} />
         <Route path="/ai-ads/client-report" element={<AiAdsClientReportPage />} />
         <Route path="/ai-ads/integrations" element={<AiAdsIntegrationsPage />} />

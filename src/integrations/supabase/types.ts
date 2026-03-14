@@ -2354,6 +2354,140 @@ export type Database = {
           },
         ]
       }
+      creative_content_plans: {
+        Row: {
+          ai_model: string | null
+          ai_prompt: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          period_end: string | null
+          period_start: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          ai_model?: string | null
+          ai_prompt?: string | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_model?: string | null
+          ai_prompt?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_content_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_plan_items: {
+        Row: {
+          ai_notes: string | null
+          copy_body: string | null
+          copy_cta: string | null
+          copy_headline: string | null
+          created_at: string
+          creative_asset_id: string | null
+          description: string | null
+          format: string
+          generated_url: string | null
+          id: string
+          metadata: Json | null
+          plan_id: string
+          prompt: string | null
+          scheduled_date: string | null
+          sort_order: number
+          status: string
+          storage_path: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          ai_notes?: string | null
+          copy_body?: string | null
+          copy_cta?: string | null
+          copy_headline?: string | null
+          created_at?: string
+          creative_asset_id?: string | null
+          description?: string | null
+          format?: string
+          generated_url?: string | null
+          id?: string
+          metadata?: Json | null
+          plan_id: string
+          prompt?: string | null
+          scheduled_date?: string | null
+          sort_order?: number
+          status?: string
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_notes?: string | null
+          copy_body?: string | null
+          copy_cta?: string | null
+          copy_headline?: string | null
+          created_at?: string
+          creative_asset_id?: string | null
+          description?: string | null
+          format?: string
+          generated_url?: string | null
+          id?: string
+          metadata?: Json | null
+          plan_id?: string
+          prompt?: string | null
+          scheduled_date?: string | null
+          sort_order?: number
+          status?: string
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_plan_items_creative_asset_id_fkey"
+            columns: ["creative_asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_plan_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "creative_content_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_bot_profiles: {
         Row: {
           bot_name: string
