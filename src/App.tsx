@@ -135,7 +135,7 @@ const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
   ]);
 
 function AppRoutes() {
-  const { user, loading, adminExists, signOut, agencyRole, effectiveRole } = useAuth();
+  const { user, loading, adminExists, signOut, agencyRole, effectiveRole, roleLoaded } = useAuth();
   const [forcePasswordChange, setForcePasswordChange] = useState<boolean | null>(() => {
     return sessionStorage.getItem('afm_fpc_checked') === '1' ? false : null;
   });
@@ -429,6 +429,17 @@ function AppRoutes() {
   }
 
   if (!agencyRole) {
+    // Still loading role — show spinner, not access denied
+    if (!roleLoaded) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-muted-foreground text-sm">Loading...</p>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">

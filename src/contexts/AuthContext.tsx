@@ -40,6 +40,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   agencyRole: AgencyRole;
+  roleLoaded: boolean;
   effectiveRole: AgencyRole;
   viewAsRole: AgencyRole;
   setViewAsRole: (role: AgencyRole) => void;
@@ -131,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const [agencyRole, setAgencyRole] = useState<AgencyRole>(() => getCachedRole());
+  const [roleLoaded, setRoleLoaded] = useState(() => !!getCachedRole());
   const [adminExists, setAdminExists] = useState<boolean | null>(() => {
     const cached = localStorage.getItem('afm_admin_exists');
     return cached !== null ? cached === 'true' : null;
@@ -207,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const role = data ? (data.agency_role as AgencyRole) : null;
       setAgencyRole(role);
       setCachedRole(role);
+      setRoleLoaded(true);
 
       if (activeSession?.user) {
         upsertLinkedAccount({
@@ -233,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setAgencyRole(null);
       setCachedRole(null);
+      setRoleLoaded(true);
     }
   }, [upsertLinkedAccount]);
 
@@ -267,6 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setAgencyRole(null);
           setCachedRole(null);
+          setRoleLoaded(true);
         }
 
         // Clear MFA/FPC checks only on real sign-in transitions (different user)
@@ -278,6 +283,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'SIGNED_OUT') {
           setAgencyRole(null);
           setViewAsRole(null);
+          setSimulatedUser(null);
+          setCachedRole(null);
+          setRoleLoaded(false);
           setSimulatedUser(null);
           setCachedRole(null);
           lastAuthUserIdRef.current = null;
@@ -302,6 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         localStorage.removeItem('afm_cached_role');
         setAgencyRole(null);
+        setRoleLoaded(true);
       }
       syncLinkedAccounts(session?.user?.id ?? null);
       setLoading(false);
@@ -459,7 +468,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, session, agencyRole, effectiveRole, viewAsRole, setViewAsRole,
+      user, session, agencyRole, roleLoaded, effectiveRole, viewAsRole, setViewAsRole,
       simulatedUser, setSimulatedUser,
       linkedAccounts,
       loading, adminExists, signIn, addAccount, switchAccount, removeLinkedAccount, signOut, setupAdmin, refreshRole,
