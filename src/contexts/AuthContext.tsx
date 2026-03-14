@@ -310,6 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         localStorage.removeItem('afm_cached_role');
         setAgencyRole(null);
+        setRoleLoaded(true);
       }
       syncLinkedAccounts(session?.user?.id ?? null);
       setLoading(false);
