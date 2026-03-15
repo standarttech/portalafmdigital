@@ -200,9 +200,9 @@ export default function AutomationEditorPage() {
   });
 
   const { data: bots = [] } = useQuery({
-    queryKey: ['telegram-bots'],
+    queryKey: ['crm-bot-profiles'],
     queryFn: async () => {
-      const { data } = await supabase.from('telegram_bot_profiles' as any).select('id, bot_name, is_default, client_id').eq('is_active', true);
+      const { data } = await supabase.from('crm_bot_profiles' as any).select('id, bot_name, is_active, client_id').eq('is_active', true);
       return data || [];
     },
   });
