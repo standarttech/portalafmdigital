@@ -459,6 +459,11 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
     }
   }, [isConfigured, isLive, phase]);
 
+  // Resolve display names robustly
+  const integrationLabel = selectedConn?.label || metaConns.find(c => c.id === (config.meta_connection_id as string))?.label || 'Meta Ads';
+  const pageLabel = (config.page_name as string) || (config.page_id as string) || '—';
+  const formLabel = (config.form_name as string) || (config.form_id as string) || '—';
+
   // ── LIVE STATE ──
   if (isLive && phase === 'idle') {
     return (
@@ -480,15 +485,15 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="p-2 rounded-md bg-muted/20 border border-border/20">
               <span className="text-muted-foreground">Integration</span>
-              <p className="font-medium text-foreground truncate">{selectedConn?.label || config.meta_connection_id || '—'}</p>
+              <p className="font-medium text-foreground truncate">{integrationLabel}</p>
             </div>
             <div className="p-2 rounded-md bg-muted/20 border border-border/20">
               <span className="text-muted-foreground">Page</span>
-              <p className="font-medium text-foreground truncate">{config.page_name || config.page_id}</p>
+              <p className="font-medium text-foreground truncate">{pageLabel}</p>
             </div>
             <div className="p-2 rounded-md bg-muted/20 border border-border/20">
               <span className="text-muted-foreground">Form</span>
-              <p className="font-medium text-foreground truncate">{config.form_name || config.form_id}</p>
+              <p className="font-medium text-foreground truncate">{formLabel}</p>
             </div>
           </div>
 
@@ -525,13 +530,16 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
             {config.webhook_verified && <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 gap-1"><CheckCircle2 className="h-2.5 w-2.5" />Webhook verified</Badge>}
           </div>
 
-          <div className="pt-1 border-t border-border/20">
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={sendTestLead} disabled={testLoading}>
-              {testLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-              Send Test Lead
-            </Button>
+          {/* Actions: Test Lead + Fetch Historical */}
+          <div className="pt-1 border-t border-border/20 space-y-2">
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={sendTestLead} disabled={testLoading}>
+                {testLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                Send Test Lead
+              </Button>
+            </div>
             {testResult && (
-              <div className={cn('mt-2 p-2 rounded-md text-xs border', testResult.success ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-destructive/5 border-destructive/15 text-destructive')}>
+              <div className={cn('p-2 rounded-md text-xs border', testResult.success ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-destructive/5 border-destructive/15 text-destructive')}>
                 {testResult.success ? (
                   <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3" /> Test lead processed — Run ID: {String(testResult.run_id).slice(0, 8)}…</span>
                 ) : (
@@ -539,6 +547,47 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
                 )}
               </div>
             )}
+
+            {/* Fetch Historical Leads */}
+            <div className="pt-1 border-t border-border/20">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                  <Download className="h-3 w-3" /> Fetch historical leads:
+                </span>
+                {[1, 2, 3, 4, 5, 6, 7].map(d => (
+                  <Button
+                    key={d}
+                    size="sm"
+                    variant={historicalDays === d ? 'default' : 'outline'}
+                    className="h-6 text-[10px] px-2 min-w-0"
+                    disabled={historicalLoading}
+                    onClick={() => {
+                      setHistoricalDays(d);
+                      fetchHistoricalLeads(d);
+                    }}
+                  >
+                    {d}d
+                  </Button>
+                ))}
+              </div>
+              {historicalLoading && (
+                <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Fetching leads for the last {historicalDays} day{historicalDays !== 1 ? 's' : ''}…
+                </div>
+              )}
+              {historicalResult && (
+                <div className={cn('mt-1.5 p-2 rounded-md text-xs border', historicalResult.success ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-destructive/5 border-destructive/15 text-destructive')}>
+                  {historicalResult.success ? (
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Fetched {historicalResult.leads_fetched} leads, processed {historicalResult.leads_processed} through automation
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5"><XCircle className="h-3 w-3" /> {historicalResult.error}</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
