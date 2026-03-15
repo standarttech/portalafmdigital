@@ -1,27 +1,31 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { usePlatformResources, type PlatformResource, type ResourceType } from '@/hooks/usePlatformResources';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import {
   Link2, Search, Send, Database, Globe, FileSpreadsheet, Zap, Bot, ShieldCheck,
   ExternalLink, CheckCircle2, XCircle, AlertTriangle, Power, Settings, Eye,
+  ToggleLeft, ToggleRight, ArrowRight, RefreshCw, Workflow,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const TYPE_CONFIG: Record<ResourceType, { label: string; icon: typeof Bot; color: string; managePath: string }> = {
-  telegram_bot: { label: 'Telegram Bots', icon: Send, color: 'hsl(200,80%,50%)', managePath: '/crm/integrations' },
-  external_crm: { label: 'External CRM', icon: Database, color: 'hsl(25,60%,50%)', managePath: '/crm/integrations' },
-  platform_ad: { label: 'Ad Platforms', icon: Globe, color: 'hsl(220,70%,50%)', managePath: '/clients' },
-  platform_api: { label: 'API Integrations', icon: Zap, color: 'hsl(270,60%,50%)', managePath: '/ai-ads/integrations' },
-  sheet_url: { label: 'Sheets / Data', icon: FileSpreadsheet, color: 'hsl(120,60%,40%)', managePath: '/clients' },
-  gos_integration: { label: 'Growth OS', icon: Bot, color: 'hsl(160,70%,40%)', managePath: '/growth-os/integrations' },
+const TYPE_CONFIG: Record<ResourceType, { label: string; icon: typeof Bot; color: string; managePath: string; manageLabel: string }> = {
+  telegram_bot: { label: 'Telegram Bots', icon: Send, color: 'hsl(200,80%,50%)', managePath: '/crm/integrations', manageLabel: 'CRM → Integrations' },
+  external_crm: { label: 'External CRM', icon: Database, color: 'hsl(25,60%,50%)', managePath: '/crm/integrations', manageLabel: 'CRM → Integrations' },
+  platform_ad: { label: 'Ad Platforms', icon: Globe, color: 'hsl(220,70%,50%)', managePath: '/clients', manageLabel: 'Clients' },
+  platform_api: { label: 'API Integrations', icon: Zap, color: 'hsl(270,60%,50%)', managePath: '/ai-ads/integrations', manageLabel: 'AI Ads → Integrations' },
+  sheet_url: { label: 'Sheets / Data', icon: FileSpreadsheet, color: 'hsl(120,60%,40%)', managePath: '/clients', manageLabel: 'Client Settings' },
+  gos_integration: { label: 'Growth OS', icon: Bot, color: 'hsl(160,70%,40%)', managePath: '/growth-os/integrations', manageLabel: 'Growth OS → Integrations' },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: typeof CheckCircle2 }> = {
@@ -31,22 +35,70 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; icon: ty
   unconfigured: { label: 'Missing Auth', className: 'text-amber-400 border-amber-400/30 bg-amber-400/10', icon: AlertTriangle },
 };
 
-// Which modules commonly use each type
-const USAGE_HINTS: Record<ResourceType, string[]> = {
-  telegram_bot: ['CRM Notifications', 'Automations', 'Broadcasts'],
-  external_crm: ['CRM Sync', 'Analytics'],
-  platform_ad: ['Dashboard', 'Reports', 'AI Ads', 'Automations'],
-  platform_api: ['AI Ads Creative Studio', 'Content Plans'],
-  sheet_url: ['Dashboard Sync', 'Automations', 'Reports'],
-  gos_integration: ['Growth OS Sync'],
-};
+/** Build real usage map from automation steps + other module data */
+function useResourceUsageMap() {
+  const { data: automationSteps = [] } = useQuery({
+    queryKey: ['resource-usage-automation-steps'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('automation_steps')
+        .select('id, automation_id, action_type, config, field_mapping');
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: automations = [] } = useQuery({
+    queryKey: ['resource-usage-automations'],
+    queryFn: async () => {
+      const { data } = await supabase.from('automations').select('id, name');
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return useMemo(() => {
+    const usageMap = new Map<string, { module: string; label: string; link: string }[]>();
+    const autoNameMap = new Map<string, string>();
+    automations.forEach(a => autoNameMap.set(a.id, a.name));
+
+    const addUsage = (resourceId: string, module: string, label: string, link: string) => {
+      const existing = usageMap.get(resourceId) || [];
+      if (!existing.find(e => e.label === label && e.module === module)) {
+        existing.push({ module, label, link });
+        usageMap.set(resourceId, existing);
+      }
+    };
+
+    // Scan automation steps for bot_profile_id and sheet connection references
+    automationSteps.forEach(step => {
+      const config = step.config as Record<string, any> | null;
+      const autoName = autoNameMap.get(step.automation_id) || 'Automation';
+      const autoLink = `/automations/${step.automation_id}`;
+
+      if (step.action_type === 'send_telegram' && config?.bot_profile_id) {
+        addUsage(config.bot_profile_id, 'Automations', autoName, autoLink);
+      }
+      // Sheet usage: connection_id may be a URL stored from sheet resource
+      if (step.action_type === 'add_sheets_row' && config?.connection_id) {
+        // For sheet resources, ID is composite `sheet_{clientId}_{field}`
+        // Try matching by URL in meta
+        addUsage(`sheet_url:${config.connection_id}`, 'Automations', autoName, autoLink);
+      }
+    });
+
+    return usageMap;
+  }, [automationSteps, automations]);
+}
 
 export default function ConnectionsCenterPage() {
   const navigate = useNavigate();
-  const { data: resources = [], isLoading } = usePlatformResources();
+  const { data: resources = [], isLoading, refetch } = usePlatformResources();
+  const usageMap = useResourceUsageMap();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [detailResource, setDetailResource] = useState<PlatformResource | null>(null);
 
   const filtered = useMemo(() => {
     return resources.filter(r => {
@@ -66,15 +118,31 @@ export default function ConnectionsCenterPage() {
     return c;
   }, [resources]);
 
+  // Get usage for a resource
+  const getUsages = (r: PlatformResource) => {
+    const directUsages = usageMap.get(r.id) || [];
+    // For sheet resources, also check by URL
+    if (r.type === 'sheet_url' && r.meta?.url) {
+      const urlUsages = usageMap.get(`sheet_url:${r.meta.url}`) || [];
+      return [...directUsages, ...urlUsages];
+    }
+    return directUsages;
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-          <Link2 className="h-6 w-6 text-primary" /> Connections Center
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Unified view of all platform connections, integrations, and reusable resources.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+            <Link2 className="h-6 w-6 text-primary" /> Connections Center
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage all platform connections, integrations, and reusable resources.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => refetch()}>
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
       </div>
 
       {/* Summary Stats */}
@@ -123,24 +191,38 @@ export default function ConnectionsCenterPage() {
           <CardContent className="py-16 text-center text-muted-foreground">
             <Link2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">{search || filterType !== 'all' || filterStatus !== 'all' ? 'No matching resources found' : 'No connections configured yet'}</p>
-            <p className="text-xs mt-1">Connect services from their respective module pages (CRM, AI Ads, Growth OS).</p>
+            <p className="text-xs mt-1">Connect services from their respective module pages.</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map(r => <ResourceRow key={r.id} resource={r} onNavigate={navigate} />)}
+          {filtered.map(r => (
+            <ResourceRow key={r.id} resource={r} usages={getUsages(r)} onNavigate={navigate} onDetail={setDetailResource} />
+          ))}
         </div>
+      )}
+
+      {/* Detail Dialog */}
+      {detailResource && (
+        <ResourceDetailDialog
+          resource={detailResource}
+          usages={getUsages(detailResource)}
+          onClose={() => setDetailResource(null)}
+          onNavigate={navigate}
+        />
       )}
     </div>
   );
 }
 
-function ResourceRow({ resource: r, onNavigate }: { resource: PlatformResource; onNavigate: (p: string) => void }) {
+function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
+  resource: PlatformResource; usages: { module: string; label: string; link: string }[];
+  onNavigate: (p: string) => void; onDetail: (r: PlatformResource) => void;
+}) {
   const cfg = TYPE_CONFIG[r.type];
   const stCfg = STATUS_CONFIG[r.status];
   const Icon = cfg.icon;
   const StIcon = stCfg.icon;
-  const usages = USAGE_HINTS[r.type] || [];
 
   return (
     <Card className="hover:border-border transition-colors">
@@ -178,11 +260,26 @@ function ResourceRow({ resource: r, onNavigate }: { resource: PlatformResource; 
           </div>
         </div>
 
-        {/* Usages */}
+        {/* Real Usages */}
         <div className="hidden md:flex items-center gap-1 flex-shrink-0">
-          {usages.slice(0, 3).map(u => (
-            <Badge key={u} variant="outline" className="text-[9px] h-4 px-1 border-border/30 text-muted-foreground/70">{u}</Badge>
-          ))}
+          {usages.length > 0 ? (
+            usages.slice(0, 3).map((u, i) => (
+              <Tooltip key={i}>
+                <TooltipTrigger>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1 border-primary/20 text-primary/70 cursor-pointer hover:bg-primary/5"
+                    onClick={(e) => { e.stopPropagation(); onNavigate(u.link); }}>
+                    <Workflow className="h-2.5 w-2.5 mr-0.5" />{u.module}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">Used in: {u.label}</TooltipContent>
+              </Tooltip>
+            ))
+          ) : (
+            <span className="text-[9px] text-muted-foreground/50">No usages detected</span>
+          )}
+          {usages.length > 3 && (
+            <Badge variant="outline" className="text-[9px] h-4 px-1 text-muted-foreground">+{usages.length - 3}</Badge>
+          )}
         </div>
 
         {/* Status */}
@@ -191,15 +288,135 @@ function ResourceRow({ resource: r, onNavigate }: { resource: PlatformResource; 
         </Badge>
 
         {/* Actions */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => onNavigate(cfg.managePath)}>
-              <Settings className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="text-xs">Manage in {cfg.label}</TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onDetail(r); }}>
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="text-xs">Details</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
+                e.stopPropagation();
+                // Navigate to manage with context
+                if (r.clientId && r.type !== 'platform_api') {
+                  onNavigate(`/clients/${r.clientId}`);
+                } else {
+                  onNavigate(cfg.managePath);
+                }
+              }}>
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="text-xs">Manage in {cfg.manageLabel}</TooltipContent>
+          </Tooltip>
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
+  resource: PlatformResource;
+  usages: { module: string; label: string; link: string }[];
+  onClose: () => void;
+  onNavigate: (p: string) => void;
+}) {
+  const cfg = TYPE_CONFIG[r.type];
+  const stCfg = STATUS_CONFIG[r.status];
+  const StIcon = stCfg.icon;
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <cfg.icon className="h-5 w-5" style={{ color: cfg.color }} />
+            {r.label}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 text-sm">
+          {/* Status */}
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={cn('gap-1', stCfg.className)}>
+              <StIcon className="h-3 w-3" /> {stCfg.label}
+            </Badge>
+            {r.hasSecret && (
+              <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1 text-xs">
+                <ShieldCheck className="h-3 w-3" /> Vault
+              </Badge>
+            )}
+            {r.isGlobal && <Badge variant="outline" className="text-xs">Global</Badge>}
+          </div>
+
+          {/* Info Grid */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{cfg.label}</span></div>
+            <div><span className="text-muted-foreground">Provider:</span> <span className="text-foreground">{r.provider}</span></div>
+            {r.clientName && <div><span className="text-muted-foreground">Client:</span> <span className="text-foreground">{r.clientName}</span></div>}
+            <div><span className="text-muted-foreground">Source:</span> <span className="text-foreground font-mono">{r.sourceTable}</span></div>
+            {r.lastSyncAt && <div className="col-span-2"><span className="text-muted-foreground">Last Sync:</span> <span className="text-foreground">{new Date(r.lastSyncAt).toLocaleString()}</span></div>}
+            {r.lastError && <div className="col-span-2"><span className="text-muted-foreground">Last Error:</span> <span className="text-red-400">{r.lastError}</span></div>}
+          </div>
+
+          {/* Usage */}
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Used In</div>
+            {usages.length > 0 ? (
+              <div className="space-y-1.5">
+                {usages.map((u, i) => (
+                  <button key={i} onClick={() => { onClose(); onNavigate(u.link); }}
+                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-muted/20 border border-border/30 hover:border-primary/30 transition-colors text-left">
+                    <Workflow className="h-3.5 w-3.5 text-primary/70 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-medium text-foreground">{u.label}</span>
+                      <span className="text-[10px] text-muted-foreground ml-2">{u.module}</span>
+                    </div>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground/60">No active usages detected across platform modules.</p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2 border-t border-border/30">
+            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => {
+              onClose();
+              if (r.clientId && r.type !== 'platform_api') {
+                onNavigate(`/clients/${r.clientId}`);
+              } else {
+                onNavigate(cfg.managePath);
+              }
+            }}>
+              <Settings className="h-3.5 w-3.5" /> Manage
+            </Button>
+            {r.type === 'telegram_bot' && (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+                toast.info('Bot test: use CRM → Integrations → Test bot');
+                onClose();
+                onNavigate('/crm/integrations');
+              }}>
+                <RefreshCw className="h-3.5 w-3.5" /> Test
+              </Button>
+            )}
+            {r.type === 'external_crm' && (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+                toast.info('Connection test: use CRM → Integrations');
+                onClose();
+                onNavigate('/crm/integrations');
+              }}>
+                <RefreshCw className="h-3.5 w-3.5" /> Test
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
