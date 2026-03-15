@@ -701,27 +701,13 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
                       <div className="space-y-1.5 mt-0.5">
                         {/* Auto-generate template button */}
                         {f.key === 'message' && formFields && formFields.length > 0 && (
-                          <button type="button"
+                          <button
+                            type="button"
                             className="text-[10px] px-2 py-1 rounded border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors flex items-center gap-1"
-                            onClick={() => {
-                              const lines: string[] = ['📋 Новый лид с Facebook', ''];
-                              lines.push('👤 {{trigger.full_name}}');
-                              lines.push('📧 {{trigger.email}}');
-                              lines.push('📱 {{trigger.phone}}');
-                              if (formFields.length > 0) {
-                                lines.push('');
-                                lines.push('📝 Ответы из формы:');
-                                for (const ff of formFields) {
-                                  lines.push(`${ff.label}: {{trigger.fields.${ff.slug}}}`);
-                                }
-                              }
-                              lines.push('');
-                              lines.push('📄 Форма: {{trigger.form_name}}');
-                              lines.push('📊 Кампания: {{trigger.campaign_name}}');
-                              updateMapping(f.key, lines.join('\n'));
-                            }}>
+                            onClick={() => updateMapping(f.key, buildTelegramLeadTemplate(formFields))}
+                          >
                             <Zap className="h-3 w-3" />
-                            Сгенерировать шаблон из формы ({formFields.length} вопросов)
+                            Generate template from form ({formFields.length} questions)
                           </button>
                         )}
                         <Textarea
