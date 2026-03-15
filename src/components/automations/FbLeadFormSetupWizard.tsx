@@ -666,23 +666,16 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
               {forms.length > 0 ? (
                 <Select value={selectedFormId} onValueChange={async (val) => {
                   setSelectedFormId(val);
-                  // Auto-fetch form fields when form is selected
+
                   if (val && selectedConnectionId) {
                     setFormFieldsLoading(true);
                     setFormFieldsPreview([]);
                     try {
-                      const { data: session } = await supabase.auth.getSession();
-                      if (session.session) {
-                        const resp = await fetch(
-                          `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?action=get-form-fields&connection_id=${selectedConnectionId}&form_id=${val}`,
-                          { headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
-                        );
-                        const result = await resp.json();
-                        if (result.questions?.length > 0) {
-                          setFormFieldsPreview(result.questions);
-                        }
-                      }
-                    } catch { /* silent */ }
+                      const questions = await getFormQuestions(selectedConnectionId, val, selectedPageId);
+                      setFormFieldsPreview(questions);
+                    } catch {
+                      // keep silent here to avoid noisy UX during picker exploration
+                    }
                     setFormFieldsLoading(false);
                   }
                 }}>
