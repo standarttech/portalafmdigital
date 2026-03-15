@@ -275,7 +275,11 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="p-2 rounded-md bg-muted/20 border border-border/20">
+              <span className="text-muted-foreground">Connection</span>
+              <p className="font-medium text-foreground truncate">{selectedConn?.label || config.meta_connection_id || '—'}</p>
+            </div>
             <div className="p-2 rounded-md bg-muted/20 border border-border/20">
               <span className="text-muted-foreground">Page</span>
               <p className="font-medium text-foreground truncate">{config.page_name || config.page_id}</p>
