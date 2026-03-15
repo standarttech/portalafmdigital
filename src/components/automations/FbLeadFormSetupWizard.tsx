@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import {
   CheckCircle2, Circle, AlertTriangle, XCircle, ExternalLink,
   Facebook, Link2, FileText, Globe, Webhook, Radio, Info, Save, Copy,
-  RefreshCw, Loader2,
+  RefreshCw, Loader2, Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
