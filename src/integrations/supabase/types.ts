@@ -3450,6 +3450,71 @@ export type Database = {
           },
         ]
       }
+      fb_leadgen_events: {
+        Row: {
+          ad_id: string | null
+          created_at: string
+          created_time: string | null
+          error: string | null
+          execution_run_id: string | null
+          form_id: string | null
+          id: string
+          lead_data: Json | null
+          leadgen_id: string
+          matched_automation_id: string | null
+          normalized_payload: Json | null
+          page_id: string | null
+          processed_at: string | null
+          raw_payload: Json | null
+          received_at: string
+          status: string
+        }
+        Insert: {
+          ad_id?: string | null
+          created_at?: string
+          created_time?: string | null
+          error?: string | null
+          execution_run_id?: string | null
+          form_id?: string | null
+          id?: string
+          lead_data?: Json | null
+          leadgen_id: string
+          matched_automation_id?: string | null
+          normalized_payload?: Json | null
+          page_id?: string | null
+          processed_at?: string | null
+          raw_payload?: Json | null
+          received_at?: string
+          status?: string
+        }
+        Update: {
+          ad_id?: string | null
+          created_at?: string
+          created_time?: string | null
+          error?: string | null
+          execution_run_id?: string | null
+          form_id?: string | null
+          id?: string
+          lead_data?: Json | null
+          leadgen_id?: string
+          matched_automation_id?: string | null
+          normalized_payload?: Json | null
+          page_id?: string | null
+          processed_at?: string | null
+          raw_payload?: Json | null
+          received_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_leadgen_events_matched_automation_id_fkey"
+            columns: ["matched_automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gos_analytics_events: {
         Row: {
           client_id: string | null
