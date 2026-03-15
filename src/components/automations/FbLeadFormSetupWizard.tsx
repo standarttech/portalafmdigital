@@ -93,6 +93,56 @@ async function loadIntegrationConfig(connectionId: string): Promise<{ callback_u
   }
 }
 
+type FormField = { key: string; label: string; type: string; slug: string };
+
+function buildTelegramLeadTemplate(formFields: FormField[]): string {
+  const lines: string[] = ['📋 New Facebook lead', ''];
+  lines.push('👤 Name: {{trigger.full_name}}');
+  lines.push('📧 Email: {{trigger.email}}');
+  lines.push('📱 Phone: {{trigger.phone}}');
+
+  if (formFields.length > 0) {
+    lines.push('');
+    lines.push('📝 Form answers (by field):');
+    for (const f of formFields) {
+      lines.push(`${f.label}: {{trigger.fields.${f.slug}}}`);
+    }
+  }
+
+  lines.push('');
+  lines.push('🧾 All answers block:');
+  lines.push('{{trigger.form_answers_text}}');
+  lines.push('');
+  lines.push('🔎 Raw answers JSON: {{trigger.form_answers_json}}');
+  lines.push('📄 Form: {{trigger.form_name}}');
+  lines.push('📣 Page: {{trigger.page_name}}');
+
+  return lines.join('\n');
+}
+
+async function getFormQuestions(connectionId: string, formId: string, pageId?: string): Promise<FormField[]> {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) throw new Error('Not authenticated');
+
+  const params = new URLSearchParams({
+    action: 'get-form-fields',
+    connection_id: connectionId,
+    form_id: formId,
+  });
+  if (pageId) params.set('page_id', pageId);
+
+  const resp = await fetch(
+    `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?${params.toString()}`,
+    { headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
+  );
+
+  const result = await resp.json();
+  if (!resp.ok) throw new Error(result?.error || 'Failed to load form questions');
+  if (result?.error) throw new Error(result.error);
+
+  return Array.isArray(result?.questions) ? result.questions : [];
+}
+
 export default function FbLeadFormSetupWizard({ automationId, metaConns, triggerConfig }: Props) {
   const qc = useQueryClient();
   const config = triggerConfig || {};
