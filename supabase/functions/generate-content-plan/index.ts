@@ -235,17 +235,17 @@ async function generateWithFreepik(supabase: any, item: any, freepikKey: string)
       logo_product: "square_1_1",
     };
 
-    const endpoint = "https://api.freepik.com/v1/ai/text-to-image/flux-kontext-pro";
-
+    // Use Mystic endpoint (recommended by Freepik)
     const payload: any = {
       prompt: item.prompt || `Professional ad creative: ${item.title}. ${item.description}`,
       aspect_ratio: aspectMap[item.format] || "square_1_1",
-      guidance: 3,
-      steps: 50,
+      model: "realism",
+      resolution: "2k",
+      creative_detailing: 33,
       webhook_url: webhookUrl,
     };
 
-    const response = await fetch(endpoint, {
+    const response = await fetch("https://api.freepik.com/v1/ai/mystic", {
       method: "POST",
       headers: {
         "x-freepik-api-key": freepikKey,
@@ -257,6 +257,8 @@ async function generateWithFreepik(supabase: any, item: any, freepikKey: string)
     if (!response.ok) {
       await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
       const status = response.status;
+      const errBody = await response.text().catch(() => "");
+      console.error("Freepik Mystic error:", status, errBody);
       if (status === 429) throw new Error("Freepik rate limit. Try again later.");
       if (status === 402) throw new Error("Freepik credits exhausted.");
       throw new Error("Freepik generation failed: " + status);
@@ -267,16 +269,16 @@ async function generateWithFreepik(supabase: any, item: any, freepikKey: string)
 
     // Store task_id in metadata for webhook matching
     await supabase.from("creative_plan_items").update({
-      metadata: { freepik_task_id: taskId, model: "flux-kontext-pro" },
+      metadata: { freepik_task_id: taskId, model: "mystic-realism" },
     }).eq("id", item.id);
 
-    // Poll for result (Freepik tasks complete in 10-60s)
+    // Poll for result (Mystic tasks complete in 10-60s)
     let result = null;
     for (let i = 0; i < 30; i++) {
       await new Promise(r => setTimeout(r, 3000));
 
       const checkRes = await fetch(
-        `https://api.freepik.com/v1/ai/text-to-image/flux-kontext-pro/${taskId}`,
+        `https://api.freepik.com/v1/ai/mystic/${taskId}`,
         { headers: { "x-freepik-api-key": freepikKey } }
       );
 
@@ -294,7 +296,6 @@ async function generateWithFreepik(supabase: any, item: any, freepikKey: string)
     }
 
     if (!result) {
-      // Task is still processing, webhook will handle it
       return new Response(
         JSON.stringify({ success: true, status: "processing", task_id: taskId, message: "Generation in progress. Will update automatically." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -302,7 +303,7 @@ async function generateWithFreepik(supabase: any, item: any, freepikKey: string)
     }
 
     // Get the generated image URL
-    const images = result.data?.generated || result.data?.result?.images || [];
+    const images = result.data?.generated || [];
     const imageUrl = images[0]?.url || images[0];
 
     if (!imageUrl) {
@@ -331,7 +332,7 @@ async function generateWithFreepik(supabase: any, item: any, freepikKey: string)
       status: "review",
       generated_url: urlData.publicUrl,
       storage_path: storagePath,
-      metadata: { freepik_task_id: taskId, model: "flux-kontext-pro", completed_at: new Date().toISOString() },
+      metadata: { freepik_task_id: taskId, model: "mystic-realism", completed_at: new Date().toISOString() },
     }).eq("id", item.id);
 
     return new Response(
