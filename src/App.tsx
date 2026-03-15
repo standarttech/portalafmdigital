@@ -129,7 +129,7 @@ const AiInfraGuidePage = React.lazy(() => import("@/pages/ai-infra/AiInfraGuideP
 const AiAdsGuidePage = React.lazy(() => import("@/pages/ai-ads/AiAdsGuidePage"));
 const AutomationsPage = React.lazy(() => import("@/pages/automations/AutomationsPage"));
 const AutomationEditorPage = React.lazy(() => import("@/pages/automations/AutomationEditorPage"));
-
+const ConnectionsCenterPage = React.lazy(() => import("@/pages/ConnectionsCenterPage"));
 
 const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
   Promise.race([
@@ -537,6 +537,7 @@ function AppRoutes() {
         <Route path="/branding" element={<BrandingPage />} />
         <Route path="/automations" element={<AutomationsPage />} />
         <Route path="/automations/:id" element={<AutomationEditorPage />} />
+        <Route path="/connections" element={<ConnectionsCenterPage />} />
       </Route>
       {/* Client Portal — admin can preview with isolated layout */}
       <Route element={<PortalLayout />}>

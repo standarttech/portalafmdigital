@@ -27,7 +27,9 @@ import { cn } from '@/lib/utils';
 
 /* ── Trigger definitions with readiness status ── */
 const TRIGGER_TYPES = [
-  { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false, note: 'Requires Meta webhook ingestion (coming soon)',
+  { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false,
+    note: 'Requires Meta webhook ingestion. Connect Meta in CRM or AI Ads → Integrations first. Current status: webhook endpoint not yet verified. Use Manual trigger for testing.',
+    configHint: 'To activate: 1) Connect Meta account in platform integrations, 2) Configure page & form, 3) Verify webhook endpoint.',
     fields: ['full_name', 'email', 'phone', 'campaign_name', 'form_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
   { id: 'internal_form', label: 'Internal Form', icon: FileSpreadsheet, color: 'hsl(160,70%,40%)', live: true,
     fields: ['full_name', 'email', 'phone', 'message', 'form_id', 'page_url', 'utm_source'] },
@@ -75,7 +77,7 @@ const ACTION_TYPES = [
   { id: 'add_sheets_row', label: 'Add Google Sheets Row', icon: FileSpreadsheet, color: 'hsl(120,60%,40%)',
     outputFields: ['appended'],
     fields: [
-      { key: 'connection_id', label: 'Sheet Connection', type: 'connection_select' },
+      { key: 'connection_id', label: 'Sheet Connection', type: 'sheet_select' },
       { key: 'row_data', label: 'Row Data (JSON)', type: 'json' },
     ] },
   { id: 'send_webhook', label: 'Send Webhook', icon: Webhook, color: 'hsl(340,70%,50%)',
@@ -200,9 +202,9 @@ export default function AutomationEditorPage() {
   });
 
   const { data: bots = [] } = useQuery({
-    queryKey: ['telegram-bots'],
+    queryKey: ['crm-bot-profiles'],
     queryFn: async () => {
-      const { data } = await supabase.from('telegram_bot_profiles' as any).select('id, bot_name, is_default, client_id').eq('is_active', true);
+      const { data } = await supabase.from('crm_bot_profiles' as any).select('id, bot_name, is_active, client_id').eq('is_active', true);
       return data || [];
     },
   });
@@ -210,7 +212,7 @@ export default function AutomationEditorPage() {
   const { data: clients = [] } = useQuery({
     queryKey: ['clients-auto-editor'],
     queryFn: async () => {
-      const { data } = await supabase.from('clients').select('id, name');
+      const { data } = await supabase.from('clients').select('id, name, google_sheet_url');
       return data || [];
     },
   });
@@ -362,33 +364,49 @@ export default function AutomationEditorPage() {
             <div className="flex-1 space-y-0">
               {/* Trigger Card */}
               <Card className="border-border bg-card">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${triggerDef.color}20` }}>
-                    <TriggerIcon className="h-5 w-5" style={{ color: triggerDef.color }} />
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${triggerDef.color}20` }}>
+                      <TriggerIcon className="h-5 w-5" style={{ color: triggerDef.color }} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Trigger</div>
+                      <div className="font-medium text-foreground">{triggerDef.label}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!triggerDef.live && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 bg-amber-400/10 gap-1">
+                              <AlertTriangle className="h-3 w-3" /> Not Live
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source. Use Manual/Test trigger for now.'}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {triggerDef.live && (
+                        <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10">Live</Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Trigger</div>
-                    <div className="font-medium text-foreground">{triggerDef.label}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!triggerDef.live && (
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 bg-amber-400/10 gap-1">
-                            <AlertTriangle className="h-3 w-3" /> Not Live
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs text-xs">
-                          {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source. Use Manual/Test trigger for now.'}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {triggerDef.live && (
-                      <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10">Live</Badge>
-                    )}
-                    <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
-                  </div>
+                  {/* FB Lead Form detailed config hint */}
+                  {automation.trigger_type === 'fb_lead_form' && (
+                    <div className="mt-3 p-2.5 rounded-lg bg-amber-400/5 border border-amber-400/15 text-xs space-y-1.5">
+                      <div className="font-medium text-amber-400 flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5" /> Facebook Lead Form — Setup Required
+                      </div>
+                      <ol className="text-muted-foreground space-y-0.5 pl-4 list-decimal">
+                        <li>Connect Meta account in <a href="/ai-ads/integrations" className="text-primary underline">AI Ads → Integrations</a></li>
+                        <li>Configure Facebook Page & Lead Form</li>
+                        <li>Verify webhook endpoint for real-time lead ingestion</li>
+                      </ol>
+                      <p className="text-muted-foreground/70">Currently: webhook endpoint not verified. Use <strong>Manual / Test</strong> trigger to test this flow.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -447,6 +465,7 @@ export default function AutomationEditorPage() {
                 bots={bots}
                 agencyUsers={agencyUsers}
                 automationClientId={automation.client_id}
+                clients={clients}
                 onUpdate={(updated: any) => updateStepMutation.mutate(updated)}
                 onDelete={() => deleteStepMutation.mutate(editingStep.id)}
                 onClose={() => setEditingStep(null)}
@@ -524,9 +543,9 @@ export default function AutomationEditorPage() {
 }
 
 /* ── Step Config Panel ── */
-function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, automationClientId, onUpdate, onDelete, onClose }: {
+function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, automationClientId, clients, onUpdate, onDelete, onClose }: {
   step: any; triggerFields: readonly string[]; allSteps: any[]; bots: any[]; agencyUsers: any[];
-  automationClientId?: string;
+  automationClientId?: string; clients?: any[];
   onUpdate: (s: any) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [localStep, setLocalStep] = useState(step);
@@ -664,19 +683,48 @@ function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, aut
                         </div>
                       </div>
                     ) : f.type === 'bot_select' ? (
-                      <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
-                        <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select bot" /></SelectTrigger>
-                        <SelectContent>
-                          {filteredBots.map((b: any) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.bot_name} {b.is_default && '⭐'} {b.client_id && '(client-scoped)'}
-                            </SelectItem>
-                          ))}
-                          {filteredBots.length === 0 && (
-                            <div className="p-2 text-xs text-muted-foreground text-center">No bots configured</div>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-1">
+                        <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
+                          <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select bot" /></SelectTrigger>
+                          <SelectContent>
+                            {filteredBots.map((b: any) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.bot_name} {b.client_id ? `(${b.client_id.slice(0,8)}…)` : '(global)'}
+                              </SelectItem>
+                            ))}
+                            {filteredBots.length === 0 && (
+                              <div className="p-3 text-xs text-muted-foreground text-center space-y-2">
+                                <p>No Telegram bots available for this client scope.</p>
+                                <p className="text-[10px]">Add bots in CRM → Integrations → Bot Management</p>
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {filteredBots.length === 0 && (
+                          <div className="flex items-center gap-2 p-2 rounded-md bg-amber-400/5 border border-amber-400/20">
+                            <AlertTriangle className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                            <span className="text-[10px] text-amber-400">No bots found. <a href="/crm/integrations" className="underline hover:text-amber-300">Connect a bot</a> or <a href="/connections" className="underline hover:text-amber-300">open Connections Center</a>.</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : f.type === 'sheet_select' ? (
+                      <div className="space-y-1">
+                        <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
+                          <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select sheet" /></SelectTrigger>
+                          <SelectContent>
+                            {(clients || []).filter((c: any) => c.google_sheet_url && (!automationClientId || c.id === automationClientId)).map((c: any) => (
+                              <SelectItem key={c.id} value={c.google_sheet_url}>
+                                {c.name} — Google Sheet
+                              </SelectItem>
+                            ))}
+                            {(clients || []).filter((c: any) => c.google_sheet_url && (!automationClientId || c.id === automationClientId)).length === 0 && (
+                              <div className="p-2 text-xs text-muted-foreground text-center">
+                                No Google Sheets configured. Add sheet URLs in Client settings.
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     ) : f.type === 'user_select' ? (
                       <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
                         <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select user" /></SelectTrigger>

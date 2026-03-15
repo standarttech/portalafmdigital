@@ -9,7 +9,7 @@ import logoAfm from '@/assets/logo-afm-new.png';
 import {
   LayoutDashboard, Users, Building2, RefreshCw, FileText, Shield,
   ChevronLeft, ChevronRight, LogOut, Menu, BookOpen, Calculator, DollarSign, Calendar, MessageSquare, ClipboardList,
-  ChevronDown, Megaphone, Zap, Palette, ContactIcon, UserCircle, Activity, Bot, Cpu, Workflow,
+  ChevronDown, Megaphone, Zap, Palette, ContactIcon, UserCircle, Activity, Bot, Cpu, Workflow, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -107,6 +107,7 @@ const navSections: NavSection[] = [
       { key: 'nav.calendar', icon: Calendar, path: '/calendar' },
       { key: 'nav.tasks' as TranslationKey, icon: ClipboardList, path: '/tasks' },
       { key: 'nav.automations' as TranslationKey, icon: Workflow, path: '/automations' },
+      { key: 'nav.connections' as TranslationKey, icon: Link2, path: '/connections' },
       { key: 'nav.chat', icon: MessageSquare, path: '/chat', badgeKey: 'unreadChats' },
     ],
   },
