@@ -364,33 +364,49 @@ export default function AutomationEditorPage() {
             <div className="flex-1 space-y-0">
               {/* Trigger Card */}
               <Card className="border-border bg-card">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${triggerDef.color}20` }}>
-                    <TriggerIcon className="h-5 w-5" style={{ color: triggerDef.color }} />
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${triggerDef.color}20` }}>
+                      <TriggerIcon className="h-5 w-5" style={{ color: triggerDef.color }} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Trigger</div>
+                      <div className="font-medium text-foreground">{triggerDef.label}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!triggerDef.live && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 bg-amber-400/10 gap-1">
+                              <AlertTriangle className="h-3 w-3" /> Not Live
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source. Use Manual/Test trigger for now.'}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      {triggerDef.live && (
+                        <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10">Live</Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Trigger</div>
-                    <div className="font-medium text-foreground">{triggerDef.label}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!triggerDef.live && (
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 bg-amber-400/10 gap-1">
-                            <AlertTriangle className="h-3 w-3" /> Not Live
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs text-xs">
-                          {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source. Use Manual/Test trigger for now.'}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {triggerDef.live && (
-                      <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10">Live</Badge>
-                    )}
-                    <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
-                  </div>
+                  {/* FB Lead Form detailed config hint */}
+                  {automation.trigger_type === 'fb_lead_form' && (
+                    <div className="mt-3 p-2.5 rounded-lg bg-amber-400/5 border border-amber-400/15 text-xs space-y-1.5">
+                      <div className="font-medium text-amber-400 flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5" /> Facebook Lead Form — Setup Required
+                      </div>
+                      <ol className="text-muted-foreground space-y-0.5 pl-4 list-decimal">
+                        <li>Connect Meta account in <a href="/ai-ads/integrations" className="text-primary underline">AI Ads → Integrations</a></li>
+                        <li>Configure Facebook Page & Lead Form</li>
+                        <li>Verify webhook endpoint for real-time lead ingestion</li>
+                      </ol>
+                      <p className="text-muted-foreground/70">Currently: webhook endpoint not verified. Use <strong>Manual / Test</strong> trigger to test this flow.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
