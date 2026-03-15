@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTelegramBots, useSheetResources, usePlatformAdConnections } from '@/hooks/usePlatformResources';
+import type { PlatformResource } from '@/hooks/usePlatformResources';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,17 +20,17 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, Save, Play, Plus, Trash2, Settings, ChevronDown,
+  ArrowLeft, Save, Play, Plus, Trash2, ChevronDown,
   CheckCircle2, XCircle, AlertTriangle, Clock, Facebook, MessageSquare,
   FileSpreadsheet, Globe, Bell, Users, Webhook, Database, GitBranch,
-  Filter, Zap, Send, ToggleLeft, ToggleRight, ChevronRight, Eye, X, Info, Link2,
+  Filter, Zap, Send, X, Info, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/* ── Trigger definitions with readiness status ── */
+/* ── Trigger definitions ── */
 const TRIGGER_TYPES = [
   { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false,
-    note: 'Requires Meta webhook ingestion. Connect Meta in CRM or AI Ads → Integrations first.',
+    note: 'Requires Meta webhook ingestion. Connect Meta → configure Page & Form → verify webhook.',
     fields: ['full_name', 'email', 'phone', 'campaign_name', 'form_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
   { id: 'internal_form', label: 'Internal Form', icon: FileSpreadsheet, color: 'hsl(160,70%,40%)', live: true,
     fields: ['full_name', 'email', 'phone', 'message', 'form_id', 'page_url', 'utm_source'] },
@@ -77,7 +78,8 @@ const ACTION_TYPES = [
   { id: 'add_sheets_row', label: 'Add Google Sheets Row', icon: FileSpreadsheet, color: 'hsl(120,60%,40%)',
     outputFields: ['appended'],
     fields: [
-      { key: 'connection_id', label: 'Sheet Connection', type: 'sheet_select' },
+      // FIXED: canonical field is sheet_url (executor accepts both sheet_url and connection_id)
+      { key: 'sheet_url', label: 'Sheet', type: 'sheet_select' },
       { key: 'row_data', label: 'Row Data (JSON)', type: 'json' },
     ] },
   { id: 'send_webhook', label: 'Send Webhook', icon: Webhook, color: 'hsl(340,70%,50%)',
@@ -127,13 +129,12 @@ const statusIcon = (status: string) => {
     case 'completed': return <CheckCircle2 className="h-4 w-4 text-green-400" />;
     case 'failed': return <XCircle className="h-4 w-4 text-red-400" />;
     case 'partial': return <AlertTriangle className="h-4 w-4 text-amber-400" />;
-    case 'skipped': return <ChevronRight className="h-4 w-4 text-muted-foreground" />;
+    case 'skipped': return <div className="h-4 w-4 text-muted-foreground">—</div>;
     case 'running': return <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />;
     default: return <Clock className="h-4 w-4 text-muted-foreground" />;
   }
 };
 
-/* ── Build available variables from trigger + preceding steps ── */
 function buildAvailableVars(triggerFields: readonly string[], steps: any[], currentStepOrder: number) {
   const vars: { label: string; value: string; group: string }[] = [];
   triggerFields.forEach(f => vars.push({ label: f, value: `trigger.${f}`, group: 'Trigger' }));
@@ -144,14 +145,12 @@ function buildAvailableVars(triggerFields: readonly string[], steps: any[], curr
     const stepKey = `step_${s.step_order}`;
     outputs.forEach(o => vars.push({ label: `${s.name || act?.label}.${o}`, value: `${stepKey}.${o}`, group: `Step #${s.step_order}` }));
   }
-  if (steps.length > 0) {
-    const prevStep = steps.filter(s => s.step_order < currentStepOrder).pop();
-    if (prevStep) {
-      const prevAct = actionInfo(prevStep.action_type);
-      (prevAct?.outputFields || []).forEach(o =>
-        vars.push({ label: `last.${o}`, value: `last.${o}`, group: 'Previous Step (last)' })
-      );
-    }
+  const prevStep = steps.filter((s: any) => s.step_order < currentStepOrder).pop();
+  if (prevStep) {
+    const prevAct = actionInfo(prevStep.action_type);
+    (prevAct?.outputFields || []).forEach(o =>
+      vars.push({ label: `last.${o}`, value: `last.${o}`, group: 'Previous Step (last)' })
+    );
   }
   return vars;
 }
@@ -200,7 +199,7 @@ export default function AutomationEditorPage() {
     enabled: !!id && activeTab === 'runs',
   });
 
-  // Use shared resource hooks instead of local queries
+  // Shared resource hooks — single source of truth
   const clientId = automation?.client_id ?? undefined;
   const { data: botResources = [] } = useTelegramBots(clientId);
   const { data: sheetResources = [] } = useSheetResources(clientId);
@@ -302,8 +301,6 @@ export default function AutomationEditorPage() {
   const triggerDef = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
   const TriggerIcon = triggerDef.icon;
   const triggerFields = triggerDef.fields || [];
-
-  // Meta connections for FB trigger config
   const metaConns = metaConnections.filter(r => r.provider === 'meta' || r.provider === 'facebook');
 
   if (isLoading) {
@@ -375,7 +372,7 @@ export default function AutomationEditorPage() {
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs text-xs">
-                            {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source.'}
+                            {'note' in triggerDef ? triggerDef.note : 'This trigger is not yet connected to a live data source.'}
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -385,46 +382,15 @@ export default function AutomationEditorPage() {
                       <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
                     </div>
                   </div>
-                  {/* FB Lead Form detailed config */}
+
+                  {/* FB Lead Form structured config */}
                   {automation.trigger_type === 'fb_lead_form' && (
-                    <div className="mt-3 p-3 rounded-lg bg-amber-400/5 border border-amber-400/15 text-xs space-y-2">
-                      <div className="font-medium text-amber-400 flex items-center gap-1.5">
-                        <Info className="h-3.5 w-3.5" /> Facebook Lead Form — Configuration
-                      </div>
-                      {metaConns.length > 0 ? (
-                        <div className="space-y-1.5">
-                          <div className="text-muted-foreground">
-                            <CheckCircle2 className="h-3 w-3 text-green-400 inline mr-1" />
-                            {metaConns.length} Meta connection{metaConns.length > 1 ? 's' : ''} found: {metaConns.map(c => c.label).join(', ')}
-                          </div>
-                          <ol className="text-muted-foreground space-y-0.5 pl-4 list-decimal">
-                            <li className="text-green-400/80">Meta account connected ✓</li>
-                            <li>Select Page & Lead Form (pending webhook setup)</li>
-                            <li>Verify webhook endpoint for real-time ingestion</li>
-                          </ol>
-                          <p className="text-muted-foreground/70">Webhook verification pending. Use <strong>Manual / Test</strong> trigger to test this flow now.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-1.5">
-                          <div className="text-muted-foreground flex items-center gap-1">
-                            <XCircle className="h-3 w-3 text-red-400" />
-                            No Meta connections found in platform
-                          </div>
-                          <ol className="text-muted-foreground space-y-0.5 pl-4 list-decimal">
-                            <li>Connect Meta account in <a href="/ai-ads/integrations" className="text-primary underline">AI Ads → Integrations</a></li>
-                            <li>Configure Facebook Page & Lead Form</li>
-                            <li>Verify webhook endpoint</li>
-                          </ol>
-                        </div>
-                      )}
-                    </div>
+                    <FbLeadFormTriggerConfig metaConns={metaConns} triggerConfig={automation.trigger_config as Record<string, any> | null} />
                   )}
                 </CardContent>
               </Card>
 
-              <div className="flex justify-center py-1">
-                <div className="w-0.5 h-6 bg-border" />
-              </div>
+              <div className="flex justify-center py-1"><div className="w-0.5 h-6 bg-border" /></div>
 
               {/* Steps */}
               {steps.map((step: any, idx: number) => {
@@ -455,9 +421,7 @@ export default function AutomationEditorPage() {
                         </div>
                       </CardContent>
                     </Card>
-                    <div className="flex justify-center py-1">
-                      <div className="w-0.5 h-6 bg-border" />
-                    </div>
+                    <div className="flex justify-center py-1"><div className="w-0.5 h-6 bg-border" /></div>
                   </div>
                 );
               })}
@@ -554,9 +518,78 @@ export default function AutomationEditorPage() {
   );
 }
 
-/* ── Step Config Panel ── */
-import type { PlatformResource } from '@/hooks/usePlatformResources';
+/* ── Facebook Lead Form Trigger — Structured Config ── */
+function FbLeadFormTriggerConfig({ metaConns, triggerConfig }: {
+  metaConns: PlatformResource[];
+  triggerConfig: Record<string, any> | null;
+}) {
+  const selectedConnectionId = triggerConfig?.meta_connection_id;
+  const selectedPageId = triggerConfig?.page_id;
+  const selectedFormId = triggerConfig?.form_id;
+  const selectedConn = metaConns.find(c => c.id === selectedConnectionId);
 
+  // Build checklist
+  const checks = [
+    { label: 'Meta account connected', done: metaConns.length > 0, detail: metaConns.length > 0 ? `${metaConns.length} connection(s): ${metaConns.map(c => c.label).join(', ')}` : null },
+    { label: 'Meta connection selected', done: !!selectedConn, detail: selectedConn ? selectedConn.label : null },
+    { label: 'Page selected', done: !!selectedPageId, detail: selectedPageId || null },
+    { label: 'Lead Form selected', done: !!selectedFormId, detail: selectedFormId || null },
+    { label: 'Webhook endpoint verified', done: false, detail: null },
+    { label: 'Live ingestion active', done: false, detail: null },
+  ];
+
+  const completedCount = checks.filter(c => c.done).length;
+
+  return (
+    <div className="mt-3 p-3 rounded-lg bg-amber-400/5 border border-amber-400/15 text-xs space-y-3">
+      <div className="font-medium text-amber-400 flex items-center justify-between">
+        <span className="flex items-center gap-1.5">
+          <Info className="h-3.5 w-3.5" /> Facebook Lead Form — Setup
+        </span>
+        <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30">
+          {completedCount}/{checks.length} steps
+        </Badge>
+      </div>
+
+      <div className="space-y-1.5">
+        {checks.map((c, i) => (
+          <div key={i} className="flex items-start gap-2">
+            {c.done ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-400 mt-0.5 flex-shrink-0" />
+            ) : (
+              <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 mt-0.5 flex-shrink-0" />
+            )}
+            <div>
+              <span className={cn('text-muted-foreground', c.done && 'text-green-400/80')}>
+                {i + 1}. {c.label}
+              </span>
+              {c.detail && <span className="text-muted-foreground/60 ml-1">— {c.detail}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {metaConns.length === 0 && (
+        <div className="flex items-center gap-2 p-2 rounded-md bg-red-400/5 border border-red-400/20">
+          <XCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />
+          <span className="text-muted-foreground">
+            No Meta connections found.{' '}
+            <a href="/ai-ads/integrations" className="text-primary underline">Connect Meta</a>
+            {' or '}
+            <a href="/connections" className="text-primary underline">Connections Center</a>.
+          </span>
+        </div>
+      )}
+
+      <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-muted-foreground/70">
+        <strong>Current status:</strong> Webhook ingestion not yet active. Use <strong>Manual / Test</strong> trigger to test this automation flow now.
+        Real-time Facebook lead ingestion requires Meta webhook verification, which is pending platform-level implementation.
+      </div>
+    </div>
+  );
+}
+
+/* ── Step Config Panel ── */
 function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetResources, agencyUsers, automationClientId, onUpdate, onDelete, onClose }: {
   step: any; triggerFields: readonly string[]; allSteps: any[];
   botResources: PlatformResource[]; sheetResources: PlatformResource[];
@@ -586,7 +619,6 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
   const updateCondition = (key: string, value: any) => {
     setLocalStep((s: any) => ({ ...s, condition_config: { ...(s.condition_config || {}), [key]: value } }));
   };
-  const handleSave = () => onUpdate(localStep);
 
   return (
     <Card className="w-[380px] flex-shrink-0 border-border bg-card sticky top-4">
@@ -599,25 +631,22 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
       <CardContent className="p-4 pt-0 space-y-4">
         <ScrollArea className="max-h-[calc(100vh-280px)]">
           <div className="space-y-4 pr-2">
-            {/* Name */}
             <div>
               <Label className="text-xs">Step Name</Label>
               <Input value={localStep.name || ''} onChange={e => updateField('name', e.target.value)}
                 className="mt-1 text-sm" placeholder={act?.label} />
             </div>
 
-            {/* Active toggle */}
             <div className="flex items-center justify-between">
               <Label className="text-xs">Active</Label>
               <Switch checked={localStep.is_active} onCheckedChange={v => updateField('is_active', v)} />
             </div>
 
-            {/* Condition config */}
             {isCondition && (
               <div className="space-y-2 p-3 rounded-lg bg-muted/30 border border-border/50">
                 <Label className="text-xs font-semibold">Condition</Label>
                 <div>
-                  <Label className="text-[10px] text-muted-foreground">Field (e.g. trigger.phone)</Label>
+                  <Label className="text-[10px] text-muted-foreground">Field</Label>
                   <Select value={localStep.condition_config?.field || ''} onValueChange={v => updateCondition('field', v)}>
                     <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select field" /></SelectTrigger>
                     <SelectContent>
@@ -675,7 +704,7 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
                           value={localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || ''}
                           onChange={e => updateMapping(f.key, e.target.value)}
                           className="text-xs font-mono" rows={3}
-                          placeholder={`Use {{trigger.field_name}} or {{step_0.lead_id}}\ne.g. New lead: {{trigger.full_name}} | {{trigger.phone}}`}
+                          placeholder={`Use {{trigger.field_name}} or {{step_0.lead_id}}`}
                         />
                         <div className="flex flex-wrap gap-1">
                           {availableVars.slice(0, 8).map(v => (
@@ -699,7 +728,6 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
                               <SelectItem key={b.id} value={b.id}>
                                 <div className="flex items-center gap-2">
                                   <span>{b.label}</span>
-                                  {b.isGlobal && <span className="text-[9px] text-primary/70">(global)</span>}
                                   {b.clientName && <span className="text-[9px] text-muted-foreground">({b.clientName})</span>}
                                   {b.status !== 'healthy' && (
                                     <Badge variant="outline" className="text-[8px] h-3.5 px-1">{b.status}</Badge>
@@ -727,7 +755,7 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
                           <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select sheet" /></SelectTrigger>
                           <SelectContent>
                             {sheetResources.map(s => (
-                              <SelectItem key={s.id} value={s.meta?.url || s.id}>
+                              <SelectItem key={s.id} value={String(s.meta?.url || '')}>
                                 <div className="flex items-center gap-2">
                                   <span>{s.label}</span>
                                   <Badge variant="outline" className="text-[8px] h-3.5 px-1">{s.provider}</Badge>
@@ -802,7 +830,7 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
               </div>
             )}
 
-            {/* Available Variables Reference */}
+            {/* Available Variables */}
             <Collapsible>
               <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                 <ChevronDown className="h-3 w-3" />
@@ -822,12 +850,11 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
           </div>
         </ScrollArea>
 
-        {/* Actions */}
         <div className="flex justify-between pt-2 border-t border-border/30">
           <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={onDelete}>
             <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
           </Button>
-          <Button size="sm" onClick={handleSave} className="gap-1.5">
+          <Button size="sm" onClick={() => onUpdate(localStep)} className="gap-1.5">
             <Save className="h-3.5 w-3.5" /> Apply
           </Button>
         </div>
@@ -878,16 +905,6 @@ function RunCard({ run }: { run: any }) {
                   <span className="text-red-400 ml-auto truncate max-w-[200px]" title={rs.error_message}>
                     {rs.error_message}
                   </span>
-                )}
-                {rs.status === 'completed' && rs.output_payload && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Eye className="h-3 w-3 text-muted-foreground ml-auto cursor-pointer" />
-                    </TooltipTrigger>
-                    <TooltipContent side="left" className="max-w-xs">
-                      <pre className="text-[10px] whitespace-pre-wrap">{JSON.stringify(rs.output_payload, null, 2)}</pre>
-                    </TooltipContent>
-                  </Tooltip>
                 )}
               </div>
             ))}

@@ -14,18 +14,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import {
   Link2, Search, Send, Database, Globe, FileSpreadsheet, Zap, Bot, ShieldCheck,
-  ExternalLink, CheckCircle2, XCircle, AlertTriangle, Power, Settings, Eye,
-  ToggleLeft, ToggleRight, ArrowRight, RefreshCw, Workflow,
+  CheckCircle2, XCircle, AlertTriangle, Power, Settings, Eye,
+  ArrowRight, RefreshCw, Workflow, ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const TYPE_CONFIG: Record<ResourceType, { label: string; icon: typeof Bot; color: string; managePath: string; manageLabel: string }> = {
-  telegram_bot: { label: 'Telegram Bots', icon: Send, color: 'hsl(200,80%,50%)', managePath: '/crm/integrations', manageLabel: 'CRM → Integrations' },
-  external_crm: { label: 'External CRM', icon: Database, color: 'hsl(25,60%,50%)', managePath: '/crm/integrations', manageLabel: 'CRM → Integrations' },
-  platform_ad: { label: 'Ad Platforms', icon: Globe, color: 'hsl(220,70%,50%)', managePath: '/clients', manageLabel: 'Clients' },
-  platform_api: { label: 'API Integrations', icon: Zap, color: 'hsl(270,60%,50%)', managePath: '/ai-ads/integrations', manageLabel: 'AI Ads → Integrations' },
-  sheet_url: { label: 'Sheets / Data', icon: FileSpreadsheet, color: 'hsl(120,60%,40%)', managePath: '/clients', manageLabel: 'Client Settings' },
-  gos_integration: { label: 'Growth OS', icon: Bot, color: 'hsl(160,70%,40%)', managePath: '/growth-os/integrations', manageLabel: 'Growth OS → Integrations' },
+const TYPE_CONFIG: Record<ResourceType, { label: string; icon: typeof Bot; color: string }> = {
+  telegram_bot: { label: 'Telegram Bots', icon: Send, color: 'hsl(200,80%,50%)' },
+  external_crm: { label: 'External CRM', icon: Database, color: 'hsl(25,60%,50%)' },
+  platform_ad: { label: 'Ad Platforms', icon: Globe, color: 'hsl(220,70%,50%)' },
+  platform_api: { label: 'API Integrations', icon: Zap, color: 'hsl(270,60%,50%)' },
+  sheet_url: { label: 'Sheets / Data', icon: FileSpreadsheet, color: 'hsl(120,60%,40%)' },
+  gos_integration: { label: 'Growth OS', icon: Bot, color: 'hsl(160,70%,40%)' },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: typeof CheckCircle2 }> = {
@@ -35,14 +35,21 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; icon: ty
   unconfigured: { label: 'Missing Auth', className: 'text-amber-400 border-amber-400/30 bg-amber-400/10', icon: AlertTriangle },
 };
 
-/** Build real usage map from automation steps + other module data */
+interface UsageRef { module: string; label: string; link: string }
+
+/**
+ * Build real usage map from multiple DB sources:
+ * 1. automation_steps (bot_profile_id, sheet_url/connection_id references)
+ * 2. notification_broadcasts (bot_profile_id)
+ * 3. client_report_schedules (telegram_bot_profile_id)
+ */
 function useResourceUsageMap() {
   const { data: automationSteps = [] } = useQuery({
-    queryKey: ['resource-usage-automation-steps'],
+    queryKey: ['resource-usage-auto-steps'],
     queryFn: async () => {
       const { data } = await supabase
         .from('automation_steps')
-        .select('id, automation_id, action_type, config, field_mapping');
+        .select('id, automation_id, action_type, config');
       return data || [];
     },
     staleTime: 5 * 60 * 1000,
@@ -57,8 +64,32 @@ function useResourceUsageMap() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: broadcasts = [] } = useQuery({
+    queryKey: ['resource-usage-broadcasts'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('notification_broadcasts')
+        .select('id, subject, bot_profile_id')
+        .not('bot_profile_id', 'is', null);
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: reportSchedules = [] } = useQuery({
+    queryKey: ['resource-usage-report-schedules'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('client_report_schedules')
+        .select('id, client_id, report_type, telegram_bot_profile_id')
+        .not('telegram_bot_profile_id', 'is', null);
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   return useMemo(() => {
-    const usageMap = new Map<string, { module: string; label: string; link: string }[]>();
+    const usageMap = new Map<string, UsageRef[]>();
     const autoNameMap = new Map<string, string>();
     automations.forEach(a => autoNameMap.set(a.id, a.name));
 
@@ -70,25 +101,44 @@ function useResourceUsageMap() {
       }
     };
 
-    // Scan automation steps for bot_profile_id and sheet connection references
+    // 1. Automation steps
     automationSteps.forEach(step => {
-      const config = step.config as Record<string, any> | null;
+      const config = step.config as Record<string, unknown> | null;
       const autoName = autoNameMap.get(step.automation_id) || 'Automation';
       const autoLink = `/automations/${step.automation_id}`;
 
       if (step.action_type === 'send_telegram' && config?.bot_profile_id) {
-        addUsage(config.bot_profile_id, 'Automations', autoName, autoLink);
+        addUsage(String(config.bot_profile_id), 'Automations', autoName, autoLink);
       }
-      // Sheet usage: connection_id may be a URL stored from sheet resource
-      if (step.action_type === 'add_sheets_row' && config?.connection_id) {
-        // For sheet resources, ID is composite `sheet_{clientId}_{field}`
-        // Try matching by URL in meta
-        addUsage(`sheet_url:${config.connection_id}`, 'Automations', autoName, autoLink);
+      if (step.action_type === 'add_sheets_row') {
+        const sheetVal = config?.sheet_url || config?.connection_id;
+        if (sheetVal) {
+          addUsage(`sheet_url:${String(sheetVal)}`, 'Automations', autoName, autoLink);
+        }
+      }
+    });
+
+    // 2. Notification broadcasts
+    broadcasts.forEach(b => {
+      if (b.bot_profile_id) {
+        addUsage(b.bot_profile_id, 'Broadcasts', b.subject || 'Broadcast', '/broadcasts');
+      }
+    });
+
+    // 3. Report schedules
+    reportSchedules.forEach(rs => {
+      if (rs.telegram_bot_profile_id) {
+        addUsage(
+          rs.telegram_bot_profile_id,
+          'Reports',
+          `${rs.report_type} report`,
+          rs.client_id ? `/clients/${rs.client_id}` : '/reports',
+        );
       }
     });
 
     return usageMap;
-  }, [automationSteps, automations]);
+  }, [automationSteps, automations, broadcasts, reportSchedules]);
 }
 
 export default function ConnectionsCenterPage() {
@@ -118,12 +168,10 @@ export default function ConnectionsCenterPage() {
     return c;
   }, [resources]);
 
-  // Get usage for a resource
-  const getUsages = (r: PlatformResource) => {
+  const getUsages = (r: PlatformResource): UsageRef[] => {
     const directUsages = usageMap.get(r.id) || [];
-    // For sheet resources, also check by URL
     if (r.type === 'sheet_url' && r.meta?.url) {
-      const urlUsages = usageMap.get(`sheet_url:${r.meta.url}`) || [];
+      const urlUsages = usageMap.get(`sheet_url:${String(r.meta.url)}`) || [];
       return [...directUsages, ...urlUsages];
     }
     return directUsages;
@@ -137,7 +185,7 @@ export default function ConnectionsCenterPage() {
             <Link2 className="h-6 w-6 text-primary" /> Connections Center
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage all platform connections, integrations, and reusable resources.
+            Unified view of all platform connections, integrations, and reusable resources.
           </p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => refetch()}>
@@ -216,7 +264,7 @@ export default function ConnectionsCenterPage() {
 }
 
 function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
-  resource: PlatformResource; usages: { module: string; label: string; link: string }[];
+  resource: PlatformResource; usages: UsageRef[];
   onNavigate: (p: string) => void; onDetail: (r: PlatformResource) => void;
 }) {
   const cfg = TYPE_CONFIG[r.type];
@@ -228,7 +276,7 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
     <Card className="hover:border-border transition-colors">
       <CardContent className="p-3 flex items-center gap-3">
         <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${cfg.color}15` }}>
-          <Icon className="h-4.5 w-4.5" style={{ color: cfg.color }} />
+          <Icon className="h-4 w-4" style={{ color: cfg.color }} />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -295,23 +343,18 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
                 <Eye className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="text-xs">Details</TooltipContent>
+            <TooltipContent className="text-xs">Details & Usage</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
                 e.stopPropagation();
-                // Navigate to manage with context
-                if (r.clientId && r.type !== 'platform_api') {
-                  onNavigate(`/clients/${r.clientId}`);
-                } else {
-                  onNavigate(cfg.managePath);
-                }
+                onNavigate(r.managePath);
               }}>
                 <Settings className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="text-xs">Manage in {cfg.manageLabel}</TooltipContent>
+            <TooltipContent className="text-xs">Manage in source module</TooltipContent>
           </Tooltip>
         </div>
       </CardContent>
@@ -321,7 +364,7 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
 
 function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
   resource: PlatformResource;
-  usages: { module: string; label: string; link: string }[];
+  usages: UsageRef[];
   onClose: () => void;
   onNavigate: (p: string) => void;
 }) {
@@ -339,8 +382,8 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 text-sm">
-          {/* Status */}
-          <div className="flex items-center gap-2">
+          {/* Status Row */}
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className={cn('gap-1', stCfg.className)}>
               <StIcon className="h-3 w-3" /> {stCfg.label}
             </Badge>
@@ -350,6 +393,9 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
               </Badge>
             )}
             {r.isGlobal && <Badge variant="outline" className="text-xs">Global</Badge>}
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+              Managed in source module
+            </Badge>
           </div>
 
           {/* Info Grid */}
@@ -357,7 +403,7 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
             <div><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{cfg.label}</span></div>
             <div><span className="text-muted-foreground">Provider:</span> <span className="text-foreground">{r.provider}</span></div>
             {r.clientName && <div><span className="text-muted-foreground">Client:</span> <span className="text-foreground">{r.clientName}</span></div>}
-            <div><span className="text-muted-foreground">Source:</span> <span className="text-foreground font-mono">{r.sourceTable}</span></div>
+            <div><span className="text-muted-foreground">Source:</span> <span className="text-foreground font-mono text-[10px]">{r.sourceTable}</span></div>
             {r.lastSyncAt && <div className="col-span-2"><span className="text-muted-foreground">Last Sync:</span> <span className="text-foreground">{new Date(r.lastSyncAt).toLocaleString()}</span></div>}
             {r.lastError && <div className="col-span-2"><span className="text-muted-foreground">Last Error:</span> <span className="text-red-400">{r.lastError}</span></div>}
           </div>
@@ -388,28 +434,15 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
           <div className="flex gap-2 pt-2 border-t border-border/30">
             <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => {
               onClose();
-              if (r.clientId && r.type !== 'platform_api') {
-                onNavigate(`/clients/${r.clientId}`);
-              } else {
-                onNavigate(cfg.managePath);
-              }
+              onNavigate(r.managePath);
             }}>
-              <Settings className="h-3.5 w-3.5" /> Manage
+              <ExternalLink className="h-3.5 w-3.5" /> Manage
             </Button>
-            {r.type === 'telegram_bot' && (
+            {(r.type === 'telegram_bot' || r.type === 'external_crm') && (
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
-                toast.info('Bot test: use CRM → Integrations → Test bot');
+                toast.info('Opening module settings for testing...');
                 onClose();
-                onNavigate('/crm/integrations');
-              }}>
-                <RefreshCw className="h-3.5 w-3.5" /> Test
-              </Button>
-            )}
-            {r.type === 'external_crm' && (
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
-                toast.info('Connection test: use CRM → Integrations');
-                onClose();
-                onNavigate('/crm/integrations');
+                onNavigate(r.managePath);
               }}>
                 <RefreshCw className="h-3.5 w-3.5" /> Test
               </Button>

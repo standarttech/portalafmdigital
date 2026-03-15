@@ -13,10 +13,10 @@ const BLOCKED_HOST_PATTERNS = [
   /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
   /^192\.168\.\d+\.\d+$/,
   /^0\.0\.0\.0$/,
-  /^169\.254\.\d+\.\d+$/,       // link-local / cloud metadata
-  /^fd[0-9a-f]{2}:/i,            // IPv6 ULA
-  /^fe80:/i,                      // IPv6 link-local
-  /^::1$/,                        // IPv6 loopback
+  /^169\.254\.\d+\.\d+$/,
+  /^fd[0-9a-f]{2}:/i,
+  /^fe80:/i,
+  /^::1$/,
   /\.local$/i,
   /\.internal$/i,
   /\.metadata\.google\.internal$/i,
@@ -27,8 +27,7 @@ function isUrlSafe(rawUrl: string): boolean {
   try {
     const u = new URL(rawUrl);
     if (!['http:', 'https:'].includes(u.protocol)) return false;
-    const host = u.hostname;
-    return !BLOCKED_HOST_PATTERNS.some(p => p.test(host));
+    return !BLOCKED_HOST_PATTERNS.some(p => p.test(u.hostname));
   } catch { return false; }
 }
 
@@ -51,14 +50,13 @@ Deno.serve(async (req) => {
     const userSupabase = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claims, error: claimsErr } = await userSupabase.auth.getClaims(token);
-    if (claimsErr || !claims?.claims?.sub) {
+    const { data: { user }, error: userErr } = await userSupabase.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const callerId: string = claims.claims.sub as string;
+    const callerId = user.id;
 
     // Service-role client for execution
     const supabase = createClient(supabaseUrl, serviceKey);
@@ -117,7 +115,6 @@ Deno.serve(async (req) => {
 
     let stepsCompleted = 0;
     let stepsFailed = 0;
-    /* Step outputs keyed as: trigger, step_0, step_1, ... and "last" alias */
     const stepOutputs: Record<string, any> = { trigger: trigger_payload };
 
     for (const step of steps) {
@@ -138,15 +135,12 @@ Deno.serve(async (req) => {
         }).select().single();
 
       try {
-        // Filter/condition
         if (step.step_type === 'condition' || step.action_type === 'filter') {
           const passes = evaluateCondition(step.condition_config, stepOutputs);
           if (!passes) {
             await supabase.from('automation_run_steps').update({
-              status: 'skipped',
-              output_payload: { reason: 'Condition not met' },
-              completed_at: new Date().toISOString(),
-              duration_ms: Date.now() - stepStart,
+              status: 'skipped', output_payload: { reason: 'Condition not met' },
+              completed_at: new Date().toISOString(), duration_ms: Date.now() - stepStart,
             }).eq('id', runStep!.id);
             continue;
           }
@@ -161,22 +155,18 @@ Deno.serve(async (req) => {
         const result = await executeAction(step.action_type, fullInput, supabase, automation);
         const stepKey = `step_${step.step_order}`;
         stepOutputs[stepKey] = result;
-        stepOutputs['last'] = result;   // alias for convenience
+        stepOutputs['last'] = result;
         stepsCompleted++;
 
         await supabase.from('automation_run_steps').update({
-          status: 'completed',
-          output_payload: sanitizePayload(result || {}),
-          completed_at: new Date().toISOString(),
-          duration_ms: Date.now() - stepStart,
+          status: 'completed', output_payload: sanitizePayload(result || {}),
+          completed_at: new Date().toISOString(), duration_ms: Date.now() - stepStart,
         }).eq('id', runStep!.id);
       } catch (stepError: any) {
         stepsFailed++;
         await supabase.from('automation_run_steps').update({
-          status: 'failed',
-          error_message: stepError.message?.substring(0, 500),
-          completed_at: new Date().toISOString(),
-          duration_ms: Date.now() - stepStart,
+          status: 'failed', error_message: stepError.message?.substring(0, 500),
+          completed_at: new Date().toISOString(), duration_ms: Date.now() - stepStart,
         }).eq('id', runStep!.id);
       }
     }
@@ -207,9 +197,7 @@ Deno.serve(async (req) => {
 });
 
 /* ══════════════════════════════════════════════
-   Variable resolution — unified context object
-   stepOutputs = { trigger: {...}, step_0: {...}, step_1: {...}, last: {...} }
-   Templates: {{trigger.full_name}}, {{step_0.lead_id}}, {{last.lead_id}}
+   Variable resolution
    ══════════════════════════════════════════════ */
 
 function resolveFieldMapping(mapping: Record<string, any>, ctx: Record<string, any>): Record<string, any> {
@@ -225,9 +213,8 @@ function resolveFieldMapping(mapping: Record<string, any>, ctx: Record<string, a
 }
 
 function resolveTemplate(template: string, ctx: Record<string, any>): string {
-  return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
-    const trimmed = path.trim();
-    const val = getNestedValue(ctx, trimmed);
+  return template.replace(/\{\{([^}]+)\}\}/g, (_match, path) => {
+    const val = getNestedValue(ctx, path.trim());
     return val !== undefined && val !== null ? String(val) : '';
   });
 }
@@ -239,10 +226,8 @@ function getNestedValue(obj: any, path: string): any {
 function evaluateCondition(config: any, ctx: Record<string, any>): boolean {
   if (!config) return true;
   const { field, operator, value } = config;
-  // Support dotted paths like trigger.phone or step_0.lead_id
   const fieldPath = field?.includes('.') ? field : `trigger.${field}`;
   const actual = getNestedValue(ctx, fieldPath);
-
   switch (operator) {
     case 'exists': return actual !== undefined && actual !== null && actual !== '';
     case 'not_exists': return actual === undefined || actual === null || actual === '';
@@ -279,10 +264,13 @@ async function executeTelegram(input: any, supabase: any): Promise<any> {
   let botToken: string | null = null;
 
   if (bot_profile_id) {
+    // FIXED: use correct table crm_bot_profiles with column bot_token_ref
     const { data: profile } = await supabase
-      .from('telegram_bot_profiles').select('token_reference').eq('id', bot_profile_id).single();
-    if (profile?.token_reference) {
-      const { data: tokenData } = await supabase.rpc('get_social_token', { _token_reference: profile.token_reference });
+      .from('crm_bot_profiles').select('bot_token_ref').eq('id', bot_profile_id).single();
+    if (profile?.bot_token_ref) {
+      const { data: tokenData } = await supabase.rpc('get_crm_connection_secret', {
+        _secret_ref: profile.bot_token_ref,
+      });
       botToken = tokenData;
     }
   }
@@ -320,7 +308,6 @@ async function executeCreateCrmLead(input: any, supabase: any, automation: any):
   if (input.stage_id) leadData.stage_id = input.stage_id;
   if (input.assigned_to) leadData.assigned_to = input.assigned_to;
 
-  // Dedupe
   if (input.dedupe_strategy !== 'create_new' && (leadData.email || leadData.phone)) {
     let query = supabase.from('crm_leads').select('id').eq('client_id', clientId);
     if (leadData.email) query = query.eq('email', leadData.email);
@@ -354,14 +341,16 @@ async function executeUpdateCrmLead(input: any, supabase: any): Promise<any> {
 }
 
 async function executeAddSheetsRow(input: any, supabase: any): Promise<any> {
-  const { connection_id, row_data } = input;
-  if (!connection_id) throw new Error('connection_id required');
+  // FIXED: accept both sheet_url (canonical) and connection_id (legacy compat)
+  const sheetUrl = input.sheet_url || input.connection_id;
+  if (!sheetUrl) throw new Error('sheet_url required for Google Sheets action');
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const svcKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const resp = await fetch(`${supabaseUrl}/functions/v1/sync-google-sheet`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
-    body: JSON.stringify({ connection_id, mode: 'append', rows: [row_data || input] }),
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${svcKey}` },
+    body: JSON.stringify({ sheet_url: sheetUrl, mode: 'append', rows: [input.row_data || input] }),
   });
   const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || 'Failed to add sheets row');
@@ -371,11 +360,7 @@ async function executeAddSheetsRow(input: any, supabase: any): Promise<any> {
 async function executeSendWebhook(input: any): Promise<any> {
   const { url, method = 'POST', headers: customHeaders = {}, body } = input;
   if (!url) throw new Error('url required');
-
-  // SSRF protection
-  if (!isUrlSafe(url)) {
-    throw new Error('Webhook URL is blocked: private/internal addresses are not allowed');
-  }
+  if (!isUrlSafe(url)) throw new Error('Webhook URL is blocked: private/internal addresses are not allowed');
 
   const resp = await fetch(url, {
     method,
