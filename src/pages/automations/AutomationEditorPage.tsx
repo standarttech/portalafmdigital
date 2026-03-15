@@ -32,7 +32,7 @@ import FbLeadFormSetupWizard from '@/components/automations/FbLeadFormSetupWizar
 const TRIGGER_TYPES = [
   { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false,
     note: 'Requires Meta webhook ingestion. Connect Meta → configure Page & Form → verify webhook.',
-    fields: ['full_name', 'email', 'phone', 'campaign_name', 'form_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
+    fields: ['full_name', 'email', 'phone', 'form_name', 'page_name', 'form_answers_text', 'form_answers_json', 'campaign_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
   { id: 'internal_form', label: 'Internal Form', icon: FileSpreadsheet, color: 'hsl(160,70%,40%)', live: true,
     fields: ['full_name', 'email', 'phone', 'message', 'form_id', 'page_url', 'utm_source'] },
   { id: 'gos_form', label: 'GOS Form', icon: Globe, color: 'hsl(270,60%,50%)', live: true,
