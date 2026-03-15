@@ -367,6 +367,14 @@ export default function AfmSettings() {
         </motion.div>
       )}
 
+      {/* Meta Webhook Settings — Admin Only */}
+      {agencyRole === 'AgencyAdmin' && (
+        <motion.div variants={item}>
+          <MetaWebhookSettings />
+        </motion.div>
+      )}
+
+
       {/* Notifications */}
       <motion.div variants={item}>
         <Card className="glass-card">
