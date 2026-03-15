@@ -1,15 +1,9 @@
 /**
  * Facebook Lead Form — One-Click Setup Wizard (Production)
  *
- * Single "Setup Facebook Lead Intake" button that orchestrates:
- * 1. Check Meta connection
- * 2. Generate verify token (if missing)
- * 3. Load Pages → user selects page
- * 4. Load Forms → user selects form
- * 5. Subscribe page to leadgen
- * 6. Check webhook endpoint
- * 7. Show final manual Meta step (webhook config)
- * 8. Activate live intake
+ * Verify token is per-integration (not per-automation).
+ * trigger_config stores only: meta_connection_id, page_id, form_id, page_subscribed,
+ * webhook_verified, live_ingestion_active.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,7 +17,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   CheckCircle2, AlertTriangle, XCircle, ExternalLink, Facebook,
-  Copy, Loader2, Zap, Radio, Play, RotateCcw, ChevronDown, ChevronUp,
+  Copy, Loader2, Zap, Radio, Play, RotateCcw, ChevronDown, ChevronUp, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,14 +28,8 @@ interface TriggerConfig {
   form_id?: string;
   form_name?: string;
   page_subscribed?: boolean;
-  page_subscribed_at?: string;
-  page_subscription_error?: string;
-  webhook_endpoint_live?: boolean;
   webhook_verified?: boolean;
   live_ingestion_active?: boolean;
-  callback_url?: string;
-  verify_token_secret_name?: string;
-  manual_meta_step_required?: boolean;
   [key: string]: unknown;
 }
 
@@ -62,7 +50,7 @@ interface Props {
 
 const STEP_LABELS: Record<string, string> = {
   check_meta_connection: 'Checking Meta connection',
-  ensure_verify_token: 'Generating verify token',
+  ensure_verify_token: 'Loading integration token',
   load_pages: 'Loading Facebook Pages',
   load_forms: 'Loading Lead Forms',
   subscribe_page: 'Subscribing page to leadgen',
@@ -89,6 +77,21 @@ async function callSetup(body: Record<string, unknown>) {
   return resp.json();
 }
 
+async function loadIntegrationConfig(connectionId: string): Promise<{ callback_url: string; verify_token: string } | null> {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) return null;
+  try {
+    const resp = await fetch(
+      `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?action=get-integration-config&connection_id=${connectionId}`,
+      { headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
+    );
+    if (!resp.ok) return null;
+    return resp.json();
+  } catch {
+    return null;
+  }
+}
+
 export default function FbLeadFormSetupWizard({ automationId, metaConns, triggerConfig }: Props) {
   const qc = useQueryClient();
   const config = triggerConfig || {};
@@ -101,7 +104,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   const [selectedPageId, setSelectedPageId] = useState('');
   const [selectedFormId, setSelectedFormId] = useState('');
   const [selectedConnectionId, setSelectedConnectionId] = useState(
-    (triggerConfig?.meta_connection_id as string) || (metaConns.length === 1 ? metaConns[0]?.id : '') || ''
+    (config.meta_connection_id as string) || (metaConns.length === 1 ? metaConns[0]?.id : '') || ''
   );
   const [callbackUrl, setCallbackUrl] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
@@ -113,12 +116,22 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   const isLive = config.live_ingestion_active === true;
   const isConfigured = config.page_id && config.form_id && config.page_subscribed;
 
-  // Derive progress
   const totalSteps = 7;
   const completedSteps = steps.filter(s => s.status === 'success').length;
   const progressPct = phase === 'done' ? 100 : phase === 'idle' ? 0 : Math.round((completedSteps / totalSteps) * 100);
 
   const selectedConn = metaConns.find(c => c.id === selectedConnectionId);
+
+  // Load integration config (verify token) when connection changes
+  useEffect(() => {
+    if (!selectedConnectionId) return;
+    loadIntegrationConfig(selectedConnectionId).then(cfg => {
+      if (cfg) {
+        setCallbackUrl(cfg.callback_url);
+        setVerifyToken(cfg.verify_token);
+      }
+    });
+  }, [selectedConnectionId]);
 
   const runSetup = useCallback(async (pageId?: string, formId?: string) => {
     setPhase('running');
@@ -131,7 +144,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
 
     for (const s of stepsProgress) {
       setCurrentStep(s);
-      await new Promise(r => setTimeout(r, 200)); // brief visual pause
+      await new Promise(r => setTimeout(r, 200));
     }
 
     try {
@@ -185,9 +198,13 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   };
 
   const confirmMetaStep = async () => {
-    // Save webhook_verified and live_ingestion_active
-    const newConfig = {
-      ...config,
+    const newConfig: TriggerConfig = {
+      meta_connection_id: config.meta_connection_id,
+      page_id: config.page_id,
+      page_name: config.page_name,
+      form_id: config.form_id,
+      form_name: config.form_name,
+      page_subscribed: config.page_subscribed,
       webhook_verified: true,
       live_ingestion_active: true,
     };
@@ -256,6 +273,13 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
     toast.success(`${label} copied`);
   };
 
+  // ── CONFIGURED BUT NOT LIVE ──
+  useEffect(() => {
+    if (isConfigured && !isLive && phase === 'idle') {
+      setPhase('meta_step');
+    }
+  }, [isConfigured, isLive, phase]);
+
   // ── LIVE STATE ──
   if (isLive && phase === 'idle') {
     return (
@@ -269,15 +293,14 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
                 <Radio className="h-2.5 w-2.5 animate-pulse" /> Live
               </Badge>
             </div>
-            <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground gap-1"
-              onClick={resetSetup}>
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground gap-1" onClick={resetSetup}>
               <RotateCcw className="h-3 w-3" /> Reset
             </Button>
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="p-2 rounded-md bg-muted/20 border border-border/20">
-              <span className="text-muted-foreground">Connection</span>
+              <span className="text-muted-foreground">Integration</span>
               <p className="font-medium text-foreground truncate">{selectedConn?.label || config.meta_connection_id || '—'}</p>
             </div>
             <div className="p-2 rounded-md bg-muted/20 border border-border/20">
@@ -295,7 +318,6 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
             {config.webhook_verified && <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 gap-1"><CheckCircle2 className="h-2.5 w-2.5" />Webhook verified</Badge>}
           </div>
 
-          {/* Test lead button */}
           <div className="pt-1 border-t border-border/20">
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={sendTestLead} disabled={testLoading}>
               {testLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
@@ -315,28 +337,6 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
       </Card>
     );
   }
-
-  // ── CONFIGURED BUT NOT LIVE (needs manual Meta step) ──
-  useEffect(() => {
-    if (isConfigured && !isLive && phase === 'idle') {
-      setPhase('meta_step');
-      (async () => {
-        try {
-          const { data: session } = await supabase.auth.getSession();
-          if (!session.session) return;
-          const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/fb-leadgen-config`, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${session.session.access_token}` },
-          });
-          if (resp.ok) {
-            const r = await resp.json();
-            if (r.callback_url) setCallbackUrl(r.callback_url);
-            if (r.verify_token) setVerifyToken(r.verify_token);
-          }
-        } catch {}
-      })();
-    }
-  }, [isConfigured, isLive, phase]);
 
   return (
     <Card className={cn(
@@ -359,14 +359,14 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
           )}
         </div>
 
-        {/* ── IDLE: Big setup button ── */}
+        {/* ── IDLE ── */}
         {phase === 'idle' && (
           <div className="space-y-3">
             {metaConns.length === 0 && (
               <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-400/5 border border-amber-400/20 text-xs">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-medium text-foreground">No Meta connection found</p>
+                  <p className="font-medium text-foreground">No Meta integration found</p>
                   <p className="text-muted-foreground mt-0.5">
                     Connect a Meta account in <a href="/ai-ads/integrations" className="text-primary underline">AI Ads Integrations</a> first.
                   </p>
@@ -374,60 +374,81 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
               </div>
             )}
 
-            {/* Connection selector — shown when 2+ connections */}
-            {metaConns.length >= 2 && (
+            {/* Meta Integration selector */}
+            {metaConns.length >= 1 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-foreground">Meta Connection</p>
-                <Select value={selectedConnectionId} onValueChange={setSelectedConnectionId}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Select Meta connection..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {metaConns.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        <div className="flex items-center gap-2">
-                          <span>{c.label}</span>
-                          {c.clientName && <span className="text-[10px] text-muted-foreground">({c.clientName})</span>}
-                          <Badge variant="outline" className={cn('text-[8px] h-3.5 px-1',
-                            c.status === 'healthy' ? 'text-emerald-400 border-emerald-400/30' : 'text-amber-400 border-amber-400/30'
-                          )}>{c.type}</Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedConn && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Using: <strong className="text-foreground">{selectedConn.label}</strong>
-                    {selectedConn.clientName && <> · {selectedConn.clientName}</>}
-                  </p>
+                <p className="text-xs font-medium text-foreground">Meta Integration</p>
+                {metaConns.length === 1 ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground p-2 rounded-md bg-muted/20 border border-border/20">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>Using: <strong className="text-foreground">{metaConns[0].label}</strong></span>
+                  </div>
+                ) : (
+                  <Select value={selectedConnectionId} onValueChange={setSelectedConnectionId}>
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder="Select Meta integration..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {metaConns.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{c.label}</span>
+                            {c.clientName && <span className="text-[10px] text-muted-foreground">({c.clientName})</span>}
+                            <Badge variant="outline" className={cn('text-[8px] h-3.5 px-1',
+                              c.status === 'healthy' ? 'text-emerald-400 border-emerald-400/30' : 'text-amber-400 border-amber-400/30'
+                            )}>{c.type}</Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
-              </div>
-            )}
 
-            {/* Single connection — show which one */}
-            {metaConns.length === 1 && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground p-2 rounded-md bg-muted/20 border border-border/20">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Using: <strong className="text-foreground">{metaConns[0].label}</strong></span>
+                {/* Show integration's verify token & callback URL */}
+                {selectedConnectionId && verifyToken && (
+                  <div className="p-2.5 rounded-md bg-muted/10 border border-border/20 space-y-2">
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <Info className="h-3 w-3" />
+                      <span>This token belongs to the selected Meta app and does not change per automation.</span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-muted-foreground">Callback URL</span>
+                        <button onClick={() => copyText(callbackUrl, 'Callback URL')} className="text-[9px] text-primary hover:underline flex items-center gap-0.5">
+                          <Copy className="h-2.5 w-2.5" /> Copy
+                        </button>
+                      </div>
+                      <code className="block text-[9px] font-mono bg-muted/20 rounded px-1.5 py-1 truncate text-foreground">{callbackUrl}</code>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-muted-foreground">Verify Token</span>
+                        <button onClick={() => copyText(verifyToken, 'Verify Token')} className="text-[9px] text-primary hover:underline flex items-center gap-0.5">
+                          <Copy className="h-2.5 w-2.5" /> Copy
+                        </button>
+                      </div>
+                      <code className="block text-[9px] font-mono bg-muted/20 rounded px-1.5 py-1 truncate text-foreground">{verifyToken}</code>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             <Button
               className="w-full h-11 gap-2 bg-[hsl(220,70%,50%)] hover:bg-[hsl(220,70%,45%)] text-white font-medium"
               onClick={() => runSetup()}
-              disabled={metaConns.length === 0 || (metaConns.length >= 2 && !selectedConnectionId)}
+              disabled={metaConns.length === 0 || !selectedConnectionId}
             >
               <Zap className="h-4 w-4" />
               Setup Facebook Lead Intake
             </Button>
             <p className="text-[10px] text-muted-foreground text-center">
-              One-click setup: token generation → page selection → form selection → subscription → webhook config
+              Page selection → form selection → subscription → webhook config
             </p>
           </div>
         )}
 
-        {/* ── RUNNING: Progress ── */}
+        {/* ── RUNNING ── */}
         {phase === 'running' && (
           <div className="space-y-3">
             <Progress value={progressPct} className="h-1.5" />
@@ -528,6 +549,11 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
                     </Button>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/10 rounded p-1.5">
+                  <Info className="h-3 w-3 flex-shrink-0" />
+                  <span>This token is tied to the selected Meta integration. It stays the same across all automations using this integration.</span>
+                </div>
               </div>
 
               <div className="flex gap-2">
@@ -552,7 +578,6 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
               <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
               <span className="font-medium">Setup complete — live intake activated. Facebook leads will be processed automatically.</span>
             </div>
-
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={sendTestLead} disabled={testLoading}>
               {testLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
               Send Test Lead
@@ -590,7 +615,6 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   );
 }
 
-/** Collapsible steps log */
 function StepsLog({ steps, show, onToggle }: { steps: StepResult[]; show: boolean; onToggle: () => void }) {
   if (steps.length === 0) return null;
   return (
