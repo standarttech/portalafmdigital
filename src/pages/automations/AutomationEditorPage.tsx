@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTelegramBots, useSheetResources, usePlatformAdConnections } from '@/hooks/usePlatformResources';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,15 +22,14 @@ import {
   ArrowLeft, Save, Play, Plus, Trash2, Settings, ChevronDown,
   CheckCircle2, XCircle, AlertTriangle, Clock, Facebook, MessageSquare,
   FileSpreadsheet, Globe, Bell, Users, Webhook, Database, GitBranch,
-  Filter, Zap, Send, ToggleLeft, ToggleRight, ChevronRight, Eye, X, Info,
+  Filter, Zap, Send, ToggleLeft, ToggleRight, ChevronRight, Eye, X, Info, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /* ── Trigger definitions with readiness status ── */
 const TRIGGER_TYPES = [
   { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false,
-    note: 'Requires Meta webhook ingestion. Connect Meta in CRM or AI Ads → Integrations first. Current status: webhook endpoint not yet verified. Use Manual trigger for testing.',
-    configHint: 'To activate: 1) Connect Meta account in platform integrations, 2) Configure page & form, 3) Verify webhook endpoint.',
+    note: 'Requires Meta webhook ingestion. Connect Meta in CRM or AI Ads → Integrations first.',
     fields: ['full_name', 'email', 'phone', 'campaign_name', 'form_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
   { id: 'internal_form', label: 'Internal Form', icon: FileSpreadsheet, color: 'hsl(160,70%,40%)', live: true,
     fields: ['full_name', 'email', 'phone', 'message', 'form_id', 'page_url', 'utm_source'] },
@@ -144,7 +144,6 @@ function buildAvailableVars(triggerFields: readonly string[], steps: any[], curr
     const stepKey = `step_${s.step_order}`;
     outputs.forEach(o => vars.push({ label: `${s.name || act?.label}.${o}`, value: `${stepKey}.${o}`, group: `Step #${s.step_order}` }));
   }
-  // Also add "last" alias for the immediately preceding step
   if (steps.length > 0) {
     const prevStep = steps.filter(s => s.step_order < currentStepOrder).pop();
     if (prevStep) {
@@ -175,9 +174,9 @@ export default function AutomationEditorPage() {
   const { data: automation, isLoading } = useQuery({
     queryKey: ['automation', id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('automations' as any).select('*').eq('id', id).single();
+      const { data, error } = await supabase.from('automations').select('*').eq('id', id!).single();
       if (error) throw error;
-      return data as any;
+      return data;
     },
     enabled: !!id,
   });
@@ -185,9 +184,9 @@ export default function AutomationEditorPage() {
   const { data: steps = [] } = useQuery({
     queryKey: ['automation-steps', id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('automation_steps' as any).select('*').eq('automation_id', id).order('step_order');
+      const { data, error } = await supabase.from('automation_steps').select('*').eq('automation_id', id!).order('step_order');
       if (error) throw error;
-      return data as any[];
+      return data || [];
     },
     enabled: !!id,
   });
@@ -195,27 +194,17 @@ export default function AutomationEditorPage() {
   const { data: runs = [] } = useQuery({
     queryKey: ['automation-runs', id],
     queryFn: async () => {
-      const { data } = await supabase.from('automation_runs' as any).select('*').eq('automation_id', id).order('created_at', { ascending: false }).limit(50);
-      return data as any[] || [];
+      const { data } = await supabase.from('automation_runs').select('*').eq('automation_id', id!).order('created_at', { ascending: false }).limit(50);
+      return data || [];
     },
     enabled: !!id && activeTab === 'runs',
   });
 
-  const { data: bots = [] } = useQuery({
-    queryKey: ['crm-bot-profiles'],
-    queryFn: async () => {
-      const { data } = await supabase.from('crm_bot_profiles' as any).select('id, bot_name, is_active, client_id').eq('is_active', true);
-      return data || [];
-    },
-  });
-
-  const { data: clients = [] } = useQuery({
-    queryKey: ['clients-auto-editor'],
-    queryFn: async () => {
-      const { data } = await supabase.from('clients').select('id, name, google_sheet_url');
-      return data || [];
-    },
-  });
+  // Use shared resource hooks instead of local queries
+  const clientId = automation?.client_id ?? undefined;
+  const { data: botResources = [] } = useTelegramBots(clientId);
+  const { data: sheetResources = [] } = useSheetResources(clientId);
+  const { data: metaConnections = [] } = usePlatformAdConnections(clientId);
 
   const { data: agencyUsers = [] } = useQuery({
     queryKey: ['agency-users-auto'],
@@ -229,15 +218,15 @@ export default function AutomationEditorPage() {
     if (automation) {
       setAutoName(automation.name);
       setAutoDesc(automation.description || '');
-      setAutoActive(automation.is_active);
+      setAutoActive(automation.is_active ?? false);
     }
   }, [automation]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('automations' as any).update({
+      const { error } = await supabase.from('automations').update({
         name: autoName, description: autoDesc, is_active: autoActive,
-      }).eq('id', id);
+      }).eq('id', id!);
       if (error) throw error;
     },
     onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['automation', id] }); },
@@ -248,8 +237,8 @@ export default function AutomationEditorPage() {
     mutationFn: async (actionType: string) => {
       const act = actionInfo(actionType);
       const isCondition = actionType === 'filter';
-      const { error } = await supabase.from('automation_steps' as any).insert({
-        automation_id: id,
+      const { error } = await supabase.from('automation_steps').insert({
+        automation_id: id!,
         step_order: steps.length,
         step_type: isCondition ? 'condition' : 'action',
         action_type: actionType,
@@ -270,7 +259,7 @@ export default function AutomationEditorPage() {
   const updateStepMutation = useMutation({
     mutationFn: async (step: any) => {
       const { id: stepId, created_at, updated_at, ...rest } = step;
-      const { error } = await supabase.from('automation_steps' as any).update(rest).eq('id', stepId);
+      const { error } = await supabase.from('automation_steps').update(rest).eq('id', stepId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -281,7 +270,7 @@ export default function AutomationEditorPage() {
 
   const deleteStepMutation = useMutation({
     mutationFn: async (stepId: string) => {
-      const { error } = await supabase.from('automation_steps' as any).delete().eq('id', stepId);
+      const { error } = await supabase.from('automation_steps').delete().eq('id', stepId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -313,6 +302,9 @@ export default function AutomationEditorPage() {
   const triggerDef = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
   const TriggerIcon = triggerDef.icon;
   const triggerFields = triggerDef.fields || [];
+
+  // Meta connections for FB trigger config
+  const metaConns = metaConnections.filter(r => r.provider === 'meta' || r.provider === 'facebook');
 
   if (isLoading) {
     return (
@@ -383,7 +375,7 @@ export default function AutomationEditorPage() {
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs text-xs">
-                            {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source. Use Manual/Test trigger for now.'}
+                            {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source.'}
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -393,18 +385,38 @@ export default function AutomationEditorPage() {
                       <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
                     </div>
                   </div>
-                  {/* FB Lead Form detailed config hint */}
+                  {/* FB Lead Form detailed config */}
                   {automation.trigger_type === 'fb_lead_form' && (
-                    <div className="mt-3 p-2.5 rounded-lg bg-amber-400/5 border border-amber-400/15 text-xs space-y-1.5">
+                    <div className="mt-3 p-3 rounded-lg bg-amber-400/5 border border-amber-400/15 text-xs space-y-2">
                       <div className="font-medium text-amber-400 flex items-center gap-1.5">
-                        <Info className="h-3.5 w-3.5" /> Facebook Lead Form — Setup Required
+                        <Info className="h-3.5 w-3.5" /> Facebook Lead Form — Configuration
                       </div>
-                      <ol className="text-muted-foreground space-y-0.5 pl-4 list-decimal">
-                        <li>Connect Meta account in <a href="/ai-ads/integrations" className="text-primary underline">AI Ads → Integrations</a></li>
-                        <li>Configure Facebook Page & Lead Form</li>
-                        <li>Verify webhook endpoint for real-time lead ingestion</li>
-                      </ol>
-                      <p className="text-muted-foreground/70">Currently: webhook endpoint not verified. Use <strong>Manual / Test</strong> trigger to test this flow.</p>
+                      {metaConns.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="text-muted-foreground">
+                            <CheckCircle2 className="h-3 w-3 text-green-400 inline mr-1" />
+                            {metaConns.length} Meta connection{metaConns.length > 1 ? 's' : ''} found: {metaConns.map(c => c.label).join(', ')}
+                          </div>
+                          <ol className="text-muted-foreground space-y-0.5 pl-4 list-decimal">
+                            <li className="text-green-400/80">Meta account connected ✓</li>
+                            <li>Select Page & Lead Form (pending webhook setup)</li>
+                            <li>Verify webhook endpoint for real-time ingestion</li>
+                          </ol>
+                          <p className="text-muted-foreground/70">Webhook verification pending. Use <strong>Manual / Test</strong> trigger to test this flow now.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <div className="text-muted-foreground flex items-center gap-1">
+                            <XCircle className="h-3 w-3 text-red-400" />
+                            No Meta connections found in platform
+                          </div>
+                          <ol className="text-muted-foreground space-y-0.5 pl-4 list-decimal">
+                            <li>Connect Meta account in <a href="/ai-ads/integrations" className="text-primary underline">AI Ads → Integrations</a></li>
+                            <li>Configure Facebook Page & Lead Form</li>
+                            <li>Verify webhook endpoint</li>
+                          </ol>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -462,10 +474,10 @@ export default function AutomationEditorPage() {
                 step={editingStep}
                 triggerFields={triggerFields}
                 allSteps={steps}
-                bots={bots}
+                botResources={botResources}
+                sheetResources={sheetResources}
                 agencyUsers={agencyUsers}
                 automationClientId={automation.client_id}
-                clients={clients}
                 onUpdate={(updated: any) => updateStepMutation.mutate(updated)}
                 onDelete={() => deleteStepMutation.mutate(editingStep.id)}
                 onClose={() => setEditingStep(null)}
@@ -543,26 +555,22 @@ export default function AutomationEditorPage() {
 }
 
 /* ── Step Config Panel ── */
-function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, automationClientId, clients, onUpdate, onDelete, onClose }: {
-  step: any; triggerFields: readonly string[]; allSteps: any[]; bots: any[]; agencyUsers: any[];
-  automationClientId?: string; clients?: any[];
+import type { PlatformResource } from '@/hooks/usePlatformResources';
+
+function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetResources, agencyUsers, automationClientId, onUpdate, onDelete, onClose }: {
+  step: any; triggerFields: readonly string[]; allSteps: any[];
+  botResources: PlatformResource[]; sheetResources: PlatformResource[];
+  agencyUsers: any[]; automationClientId?: string | null;
   onUpdate: (s: any) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [localStep, setLocalStep] = useState(step);
   const act = actionInfo(step.action_type);
   const isCondition = step.action_type === 'filter';
 
-  // Available variables from trigger + previous steps
   const availableVars = useMemo(
     () => buildAvailableVars(triggerFields, allSteps, step.step_order),
     [triggerFields, allSteps, step.step_order]
   );
-
-  // Filter bots by client scope
-  const filteredBots = useMemo(() => {
-    if (!automationClientId) return bots;
-    return bots.filter((b: any) => !b.client_id || b.client_id === automationClientId);
-  }, [bots, automationClientId]);
 
   useEffect(() => { setLocalStep(step); }, [step]);
 
@@ -687,23 +695,29 @@ function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, aut
                         <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
                           <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select bot" /></SelectTrigger>
                           <SelectContent>
-                            {filteredBots.map((b: any) => (
+                            {botResources.map(b => (
                               <SelectItem key={b.id} value={b.id}>
-                                {b.bot_name} {b.client_id ? `(${b.client_id.slice(0,8)}…)` : '(global)'}
+                                <div className="flex items-center gap-2">
+                                  <span>{b.label}</span>
+                                  {b.isGlobal && <span className="text-[9px] text-primary/70">(global)</span>}
+                                  {b.clientName && <span className="text-[9px] text-muted-foreground">({b.clientName})</span>}
+                                  {b.status !== 'healthy' && (
+                                    <Badge variant="outline" className="text-[8px] h-3.5 px-1">{b.status}</Badge>
+                                  )}
+                                </div>
                               </SelectItem>
                             ))}
-                            {filteredBots.length === 0 && (
-                              <div className="p-3 text-xs text-muted-foreground text-center space-y-2">
-                                <p>No Telegram bots available for this client scope.</p>
-                                <p className="text-[10px]">Add bots in CRM → Integrations → Bot Management</p>
-                              </div>
-                            )}
                           </SelectContent>
                         </Select>
-                        {filteredBots.length === 0 && (
+                        {botResources.length === 0 && (
                           <div className="flex items-center gap-2 p-2 rounded-md bg-amber-400/5 border border-amber-400/20">
                             <AlertTriangle className="h-3 w-3 text-amber-400 flex-shrink-0" />
-                            <span className="text-[10px] text-amber-400">No bots found. <a href="/crm/integrations" className="underline hover:text-amber-300">Connect a bot</a> or <a href="/connections" className="underline hover:text-amber-300">open Connections Center</a>.</span>
+                            <span className="text-[10px] text-amber-400">
+                              No bots available.{' '}
+                              <a href="/crm/integrations" className="underline hover:text-amber-300">Connect a bot</a>
+                              {' or '}
+                              <a href="/connections" className="underline hover:text-amber-300">Connections Center</a>.
+                            </span>
                           </div>
                         )}
                       </div>
@@ -712,18 +726,25 @@ function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, aut
                         <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
                           <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select sheet" /></SelectTrigger>
                           <SelectContent>
-                            {(clients || []).filter((c: any) => c.google_sheet_url && (!automationClientId || c.id === automationClientId)).map((c: any) => (
-                              <SelectItem key={c.id} value={c.google_sheet_url}>
-                                {c.name} — Google Sheet
+                            {sheetResources.map(s => (
+                              <SelectItem key={s.id} value={s.meta?.url || s.id}>
+                                <div className="flex items-center gap-2">
+                                  <span>{s.label}</span>
+                                  <Badge variant="outline" className="text-[8px] h-3.5 px-1">{s.provider}</Badge>
+                                </div>
                               </SelectItem>
                             ))}
-                            {(clients || []).filter((c: any) => c.google_sheet_url && (!automationClientId || c.id === automationClientId)).length === 0 && (
-                              <div className="p-2 text-xs text-muted-foreground text-center">
-                                No Google Sheets configured. Add sheet URLs in Client settings.
-                              </div>
-                            )}
                           </SelectContent>
                         </Select>
+                        {sheetResources.length === 0 && (
+                          <div className="flex items-center gap-2 p-2 rounded-md bg-amber-400/5 border border-amber-400/20">
+                            <AlertTriangle className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                            <span className="text-[10px] text-amber-400">
+                              No sheets configured.{' '}
+                              <a href="/clients" className="underline hover:text-amber-300">Add sheet URLs in Client settings</a>.
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ) : f.type === 'user_select' ? (
                       <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
@@ -821,8 +842,8 @@ function RunCard({ run }: { run: any }) {
   const { data: runSteps = [] } = useQuery({
     queryKey: ['run-steps', run.id],
     queryFn: async () => {
-      const { data } = await supabase.from('automation_run_steps' as any).select('*').eq('run_id', run.id).order('step_order');
-      return data as any[] || [];
+      const { data } = await supabase.from('automation_run_steps').select('*').eq('run_id', run.id).order('step_order');
+      return data || [];
     },
     enabled: expanded,
   });
