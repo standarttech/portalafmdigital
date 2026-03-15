@@ -94,7 +94,7 @@ export default function AiAdsCreativeStudioPage() {
       .select('is_active')
       .eq('integration_type', 'freepik')
       .maybeSingle();
-    setFreepikConnected(!!integrations?.is_active);
+    setFreepikConnected(!!(integrations as any)?.is_active);
     
     setLoading(false);
   }, []);
