@@ -386,7 +386,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
                           {c.clientName && <span className="text-[10px] text-muted-foreground">({c.clientName})</span>}
                           <Badge variant="outline" className={cn('text-[8px] h-3.5 px-1',
                             c.status === 'healthy' ? 'text-emerald-400 border-emerald-400/30' : 'text-amber-400 border-amber-400/30'
-                          )}>{c.subType || c.type}</Badge>
+                          )}>{c.type}</Badge>
                         </div>
                       </SelectItem>
                     ))}
