@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import {
   CheckCircle2, Circle, AlertTriangle, XCircle, ExternalLink,
   Facebook, Link2, FileText, Globe, Webhook, Radio, Info, Save, Copy,
-  RefreshCw, Loader2,
+  RefreshCw, Loader2, Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -499,23 +499,43 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
   status: StepStatus; config: TriggerConfig; webhookUrl: string;
   onSave: (p: Partial<TriggerConfig>) => void; automationId: string;
 }) {
-  const [checking, setChecking] = useState(false);
+  const [verifyToken, setVerifyToken] = useState<string | null>(null);
+  const [tokenConfigured, setTokenConfigured] = useState(false);
+  const [loadingToken, setLoadingToken] = useState(false);
+
+  // Fetch real verify token from admin endpoint
+  useEffect(() => {
+    if (status === 'upcoming') return;
+    const fetchToken = async () => {
+      setLoadingToken(true);
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session) { setLoadingToken(false); return; }
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
+        const resp = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/fb-leadgen-config`,
+          { method: 'GET', headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
+        );
+        if (resp.ok) {
+          const result = await resp.json();
+          setVerifyToken(result.verify_token || null);
+          setTokenConfigured(result.configured || false);
+        }
+      } catch { /* silent */ }
+      finally { setLoadingToken(false); }
+    };
+    fetchToken();
+  }, [status]);
 
   const copyUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
-    toast.success('Webhook URL copied');
+    toast.success('Callback URL copied');
   };
 
-  const checkVerification = async () => {
-    setChecking(true);
-    try {
-      // We cannot verify webhook from the browser (Meta does the verify challenge server-side).
-      // Instead, we check if the edge function is deployed and responding.
-      // The user must complete verification in Meta Developer Console manually.
-      // We mark webhook_verified only as a manual confirmation by the user.
-      toast.info('Webhook verification must be done in Meta Developer Console. Once verified there, click "I\'ve verified" below.');
-    } finally {
-      setChecking(false);
+  const copyToken = () => {
+    if (verifyToken) {
+      navigator.clipboard.writeText(verifyToken);
+      toast.success('Verify Token copied');
     }
   };
 
@@ -541,34 +561,69 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
     );
   }
 
+  // Token not configured — show warning with link to admin settings
+  if (!loadingToken && !tokenConfigured) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-400/5 border border-amber-400/20 text-xs">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium text-foreground">FB_LEADGEN_VERIFY_TOKEN is missing</p>
+            <p className="text-muted-foreground mt-0.5">An admin must generate a verify token before webhook verification can proceed.</p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
+          <a href="/afm/settings"><Settings className="h-3 w-3" /> Open Admin Settings</a>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
+      {loadingToken && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Loading token...
+        </div>
+      )}
+
       <div className="text-[10px] text-muted-foreground flex items-start gap-1.5 p-1.5 rounded bg-muted/20">
         <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
         <div>
-          <p className="mb-1">Configure this webhook URL in your Meta App:</p>
+          <p className="mb-1">В Meta вставьте <strong>Callback URL</strong> и <strong>Verify Token</strong>, затем нажмите <strong>Verify and save</strong>.</p>
           <ol className="list-decimal list-inside space-y-0.5 ml-1">
             <li>Go to <strong>Meta Developers → Your App → Webhooks</strong></li>
             <li>Add <strong>Page</strong> subscription</li>
-            <li>Callback URL: paste the URL below</li>
-            <li>Verify Token: use the value you set in <code className="bg-muted/40 px-1 rounded text-[9px]">FB_LEADGEN_VERIFY_TOKEN</code> secret</li>
+            <li>Paste the Callback URL and Verify Token below</li>
             <li>Subscribe to <strong>leadgen</strong> field</li>
           </ol>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
-          {webhookUrl}
-        </code>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={copyUrl}>
-              <Copy className="h-3 w-3" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="text-xs">Copy URL</TooltipContent>
-        </Tooltip>
+      {/* Callback URL */}
+      <div className="space-y-0.5">
+        <Label className="text-[10px] text-muted-foreground">Callback URL</Label>
+        <div className="flex items-center gap-1.5">
+          <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
+            {webhookUrl}
+          </code>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 px-2" onClick={copyUrl}>
+            <Copy className="h-3 w-3" /> Copy
+          </Button>
+        </div>
+      </div>
+
+      {/* Verify Token */}
+      <div className="space-y-0.5">
+        <Label className="text-[10px] text-muted-foreground">Verify Token</Label>
+        <div className="flex items-center gap-1.5">
+          <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
+            {verifyToken || '—'}
+          </code>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 px-2" onClick={copyToken} disabled={!verifyToken}>
+            <Copy className="h-3 w-3" /> Copy
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -583,8 +638,8 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
       </div>
 
       {config.verification_error && (
-        <div className="flex items-center gap-2 p-2 rounded-md bg-red-400/5 border border-red-400/15 text-xs">
-          <XCircle className="h-3 w-3 text-red-400 flex-shrink-0" />
+        <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/5 border border-destructive/15 text-xs">
+          <XCircle className="h-3 w-3 text-destructive flex-shrink-0" />
           <span className="text-muted-foreground">{config.verification_error}</span>
         </div>
       )}

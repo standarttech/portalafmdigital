@@ -20,8 +20,21 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  // Verify token from env — NOT hardcoded
-  const VERIFY_TOKEN = Deno.env.get('FB_LEADGEN_VERIFY_TOKEN') || '';
+  // Verify token: check env first, then fall back to platform_settings DB
+  let VERIFY_TOKEN = Deno.env.get('FB_LEADGEN_VERIFY_TOKEN') || '';
+  if (!VERIFY_TOKEN) {
+    try {
+      const { data: setting } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'fb_leadgen_verify_token')
+        .single();
+      if (setting?.value) {
+        const parsed = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
+        VERIFY_TOKEN = parsed.token || '';
+      }
+    } catch { /* no token configured */ }
+  }
 
   // ── GET: Meta Webhook Verification Challenge ──
   if (req.method === 'GET') {

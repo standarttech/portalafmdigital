@@ -90,3 +90,6 @@ verify_jwt = false
 [functions.fb-leadgen-webhook]
 verify_jwt = false
 
+[functions.fb-leadgen-config]
+verify_jwt = false
+
