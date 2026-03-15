@@ -594,7 +594,7 @@ function ItemDetailDialog({ item, isRu, onClose, isGenerating, isVideoGenerating
 
   const handleGetCopies = async () => {
     setLoadingCopies(true);
-    const data = await onGenerateCopies();
+    const data: any = await onGenerateCopies();
     if (data?.variations) setCopyVariations(data.variations);
     setLoadingCopies(false);
   };
