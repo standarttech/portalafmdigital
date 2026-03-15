@@ -93,6 +93,57 @@ async function loadIntegrationConfig(connectionId: string): Promise<{ callback_u
   }
 }
 
+type FormField = { key: string; label: string; type: string; slug: string };
+
+function buildTelegramLeadTemplate(formFields: FormField[]): string {
+  const lines: string[] = ['📋 New Facebook lead', ''];
+  lines.push('👤 Name: {{trigger.full_name}}');
+  lines.push('📧 Email: {{trigger.email}}');
+  lines.push('📱 Phone: {{trigger.phone}}');
+
+  if (formFields.length > 0) {
+    lines.push('');
+    lines.push('📝 Form answers (by field):');
+    for (const f of formFields) {
+      lines.push(`${f.label}: {{trigger.fields.${f.slug}}}`);
+    }
+  }
+
+  lines.push('');
+  lines.push('🧾 All answers block:');
+  lines.push('{{trigger.form_answers_text}}');
+  lines.push('');
+  lines.push('🔎 Raw answers JSON: {{trigger.form_answers_json}}');
+  lines.push('📄 Form: {{trigger.form_name}}');
+  lines.push('📣 Page: {{trigger.page_name}}');
+  lines.push('🎯 Campaign: {{trigger.campaign_name}}');
+
+  return lines.join('\n');
+}
+
+async function getFormQuestions(connectionId: string, formId: string, pageId?: string): Promise<FormField[]> {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) throw new Error('Not authenticated');
+
+  const params = new URLSearchParams({
+    action: 'get-form-fields',
+    connection_id: connectionId,
+    form_id: formId,
+  });
+  if (pageId) params.set('page_id', pageId);
+
+  const resp = await fetch(
+    `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?${params.toString()}`,
+    { headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
+  );
+
+  const result = await resp.json();
+  if (!resp.ok) throw new Error(result?.error || 'Failed to load form questions');
+  if (result?.error) throw new Error(result.error);
+
+  return Array.isArray(result?.questions) ? result.questions : [];
+}
+
 export default function FbLeadFormSetupWizard({ automationId, metaConns, triggerConfig }: Props) {
   const qc = useQueryClient();
   const config = triggerConfig || {};
@@ -136,6 +187,49 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
     });
   }, [selectedConnectionId]);
 
+  const syncTelegramTemplates = useCallback(async (fields: FormField[]) => {
+    const { data: telegramSteps, error: stepsError } = await supabase
+      .from('automation_steps')
+      .select('id, field_mapping, config')
+      .eq('automation_id', automationId)
+      .eq('action_type', 'send_telegram');
+
+    if (stepsError || !telegramSteps?.length) return;
+
+    const template = buildTelegramLeadTemplate(fields);
+    const updates = telegramSteps
+      .map((step) => {
+        const fieldMapping = (step.field_mapping as Record<string, unknown> | null) || {};
+        const configMap = (step.config as Record<string, unknown> | null) || {};
+        const currentMessage = String(fieldMapping.message ?? configMap.message ?? '').trim();
+        const hasFormVariables =
+          currentMessage.includes('{{trigger.fields.') ||
+          currentMessage.includes('{{trigger.form_answers_text}}') ||
+          currentMessage.includes('{{trigger.form_answers_json}}');
+
+        if (currentMessage && hasFormVariables) return null;
+
+        return {
+          id: step.id,
+          field_mapping: { ...fieldMapping, message: template },
+        };
+      })
+      .filter(Boolean) as Array<{ id: string; field_mapping: Record<string, unknown> }>;
+
+    if (!updates.length) return;
+
+    await Promise.all(
+      updates.map((u) =>
+        supabase
+          .from('automation_steps')
+          .update({ field_mapping: u.field_mapping as unknown as Record<string, never> })
+          .eq('id', u.id)
+      )
+    );
+
+    qc.invalidateQueries({ queryKey: ['automation-steps', automationId] });
+  }, [automationId, qc]);
+
   const runSetup = useCallback(async (pageId?: string, formId?: string) => {
     setPhase('running');
     setError('');
@@ -168,6 +262,12 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
       if (result.callback_url) setCallbackUrl(result.callback_url);
       if (result.verify_token) setVerifyToken(result.verify_token);
 
+      const loadedFormFields: FormField[] = Array.isArray(result.form_fields) ? result.form_fields : [];
+      if (loadedFormFields.length > 0) {
+        setFormFieldsPreview(loadedFormFields);
+        await syncTelegramTemplates(loadedFormFields);
+      }
+
       if (result.needs_selection === 'page') {
         setPages(result.pages || []);
         setPhase('select_page');
@@ -188,7 +288,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
       setError(err instanceof Error ? err.message : 'Setup failed');
       setPhase('error');
     }
-  }, [automationId, selectedConnectionId, config.webhook_verified, qc]);
+  }, [automationId, selectedConnectionId, config.webhook_verified, qc, syncTelegramTemplates]);
 
   const handlePageSelected = () => {
     if (!selectedPageId) return;
@@ -254,31 +354,42 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   };
 
   const reloadFormFields = async () => {
-    const connId = config.meta_connection_id || selectedConnectionId;
-    const fId = config.form_id;
-    if (!connId || !fId) return;
+    const connId = (config.meta_connection_id as string) || selectedConnectionId;
+    const fId = (config.form_id as string) || selectedFormId;
+    const pId = (config.page_id as string) || selectedPageId;
+
+    if (!connId) {
+      toast.error('Select a Meta integration first');
+      return;
+    }
+    if (!fId) {
+      toast.error('Select a lead form first');
+      return;
+    }
+
     setFormFieldsLoading(true);
     try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) return;
-      const resp = await fetch(
-        `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?action=get-form-fields&connection_id=${connId}&form_id=${fId}`,
-        { headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
-      );
-      const result = await resp.json();
-      if (result.questions?.length > 0) {
-        const newConfig = { ...config, form_fields: result.questions };
-        await supabase
-          .from('automations')
-          .update({ trigger_config: newConfig as unknown as Record<string, never> })
-          .eq('id', automationId);
-        qc.invalidateQueries({ queryKey: ['automation', automationId] });
-        toast.success(`Loaded ${result.questions.length} form questions`);
+      const questions = await getFormQuestions(connId, fId, pId);
+      setFormFieldsPreview(questions);
+
+      const newConfig = { ...config, form_fields: questions };
+      const { error: updateError } = await supabase
+        .from('automations')
+        .update({ trigger_config: newConfig as unknown as Record<string, never> })
+        .eq('id', automationId);
+
+      if (updateError) throw updateError;
+
+      await syncTelegramTemplates(questions);
+      qc.invalidateQueries({ queryKey: ['automation', automationId] });
+
+      if (questions.length > 0) {
+        toast.success(`Loaded ${questions.length} form question${questions.length === 1 ? '' : 's'}`);
       } else {
-        toast.info('No custom questions found on this form');
+        toast.info('No questions returned for this form');
       }
-    } catch {
-      toast.error('Failed to load form fields');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load form questions');
     } finally {
       setFormFieldsLoading(false);
     }
@@ -556,23 +667,16 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
               {forms.length > 0 ? (
                 <Select value={selectedFormId} onValueChange={async (val) => {
                   setSelectedFormId(val);
-                  // Auto-fetch form fields when form is selected
+
                   if (val && selectedConnectionId) {
                     setFormFieldsLoading(true);
                     setFormFieldsPreview([]);
                     try {
-                      const { data: session } = await supabase.auth.getSession();
-                      if (session.session) {
-                        const resp = await fetch(
-                          `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?action=get-form-fields&connection_id=${selectedConnectionId}&form_id=${val}`,
-                          { headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
-                        );
-                        const result = await resp.json();
-                        if (result.questions?.length > 0) {
-                          setFormFieldsPreview(result.questions);
-                        }
-                      }
-                    } catch { /* silent */ }
+                      const questions = await getFormQuestions(selectedConnectionId, val, selectedPageId);
+                      setFormFieldsPreview(questions);
+                    } catch {
+                      // keep silent here to avoid noisy UX during picker exploration
+                    }
                     setFormFieldsLoading(false);
                   }
                 }}>
@@ -637,7 +741,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
               <p className="text-xs font-semibold text-foreground">Final Step: Configure Webhook in Meta</p>
               <p className="text-[11px] text-muted-foreground">
-                В Meta Developer Console вставьте Callback URL и Verify Token, затем нажмите <strong>Verify and save</strong>.
+                In Meta Developer Console, paste the Callback URL and Verify Token, then click <strong>Verify and save</strong>.
               </p>
 
               <div className="space-y-2">

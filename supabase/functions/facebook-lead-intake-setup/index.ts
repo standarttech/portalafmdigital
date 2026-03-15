@@ -134,15 +134,39 @@ async function fetchFormFields(token: string, formId: string): Promise<{
     if (data.error) {
       return { questions: [], error: data.error.message };
     }
-    const questions = (data.questions || []).map((q: any) => ({
-      key: q.key || q.id || '',
-      label: q.label || q.key || '',
-      type: q.type || 'CUSTOM',
-      slug: toSlug(q.label || q.key || ''),
-    }));
+
+    const usedSlugs = new Map<string, number>();
+    const questions = (data.questions || []).map((q: any, idx: number) => {
+      const label = q.label || q.key || `Field ${idx + 1}`;
+      const baseSlug = toSlug(label) || `field_${idx + 1}`;
+      const seen = usedSlugs.get(baseSlug) || 0;
+      usedSlugs.set(baseSlug, seen + 1);
+      const slug = seen === 0 ? baseSlug : `${baseSlug}_${seen + 1}`;
+
+      return {
+        key: q.key || q.id || slug,
+        label,
+        type: q.type || 'CUSTOM',
+        slug,
+      };
+    });
+
     return { questions };
   } catch (err) {
     return { questions: [], error: String(err) };
+  }
+}
+
+async function fetchPageAccessToken(userToken: string, pageId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${pageId}?fields=access_token&access_token=${userToken}`
+    );
+    const data = await res.json();
+    if (data?.error || !data?.access_token) return null;
+    return data.access_token as string;
+  } catch {
+    return null;
   }
 }
 
@@ -202,19 +226,44 @@ Deno.serve(async (req) => {
   if (req.method === 'GET' && action === 'get-form-fields') {
     const connectionId = url.searchParams.get('connection_id');
     const formId = url.searchParams.get('form_id');
+    const pageId = url.searchParams.get('page_id');
     if (!connectionId || !formId) {
       return new Response(JSON.stringify({ error: 'connection_id and form_id required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
     const tokenResult = await resolveMetaToken(admin, connectionId);
     if (!tokenResult) {
       return new Response(JSON.stringify({ error: 'No Meta token available' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const { questions, error: fieldsError } = await fetchFormFields(tokenResult.token, formId);
-    return new Response(JSON.stringify({ questions, error: fieldsError }), {
+
+    const tokensToTry: Array<{ token: string; source: string }> = [{ token: tokenResult.token, source: tokenResult.source }];
+    if (pageId) {
+      const pageToken = await fetchPageAccessToken(tokenResult.token, pageId);
+      if (pageToken && pageToken !== tokenResult.token) {
+        tokensToTry.unshift({ token: pageToken, source: 'page_access_token' });
+      }
+    }
+
+    let questions: Array<{ key: string; label: string; type: string; slug: string }> = [];
+    let fieldsError: string | undefined;
+    let tokenSource = tokensToTry[0]?.source || 'unknown';
+
+    for (const entry of tokensToTry) {
+      const result = await fetchFormFields(entry.token, formId);
+      if (result.questions.length > 0 || !result.error) {
+        questions = result.questions;
+        fieldsError = result.error;
+        tokenSource = entry.source;
+        break;
+      }
+      fieldsError = result.error;
+    }
+
+    return new Response(JSON.stringify({ questions, error: fieldsError, token_source: tokenSource }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

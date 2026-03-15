@@ -167,6 +167,32 @@ function buildAvailableVars(
   return vars;
 }
 
+function buildTelegramLeadTemplate(formFields: Array<{ key: string; label: string; slug: string }> = []): string {
+  const lines: string[] = ['📋 New Facebook lead', ''];
+  lines.push('👤 Name: {{trigger.full_name}}');
+  lines.push('📧 Email: {{trigger.email}}');
+  lines.push('📱 Phone: {{trigger.phone}}');
+
+  if (formFields.length > 0) {
+    lines.push('');
+    lines.push('📝 Form answers (by field):');
+    for (const f of formFields) {
+      lines.push(`${f.label}: {{trigger.fields.${f.slug}}}`);
+    }
+  }
+
+  lines.push('');
+  lines.push('🧾 All answers block:');
+  lines.push('{{trigger.form_answers_text}}');
+  lines.push('');
+  lines.push('🔎 Raw answers JSON: {{trigger.form_answers_json}}');
+  lines.push('📄 Form: {{trigger.form_name}}');
+  lines.push('📣 Page: {{trigger.page_name}}');
+  lines.push('🎯 Campaign: {{trigger.campaign_name}}');
+
+  return lines.join('\n');
+}
+
 export default function AutomationEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -254,21 +280,7 @@ export default function AutomationEditorPage() {
 
   const buildDefaultTelegramMessage = useCallback(() => {
     if (automation?.trigger_type !== 'fb_lead_form') return '';
-    const lines: string[] = ['📋 Новый лид с Facebook', ''];
-    lines.push('👤 {{trigger.full_name}}');
-    lines.push('📧 {{trigger.email}}');
-    lines.push('📱 {{trigger.phone}}');
-    if (formFields.length > 0) {
-      lines.push('');
-      lines.push('📝 Ответы из формы:');
-      for (const f of formFields) {
-        lines.push(`${f.label}: {{trigger.fields.${f.slug}}}`);
-      }
-    }
-    lines.push('');
-    lines.push('📄 Форма: {{trigger.form_name}}');
-    lines.push('📊 Кампания: {{trigger.campaign_name}}');
-    return lines.join('\n');
+    return buildTelegramLeadTemplate(formFields);
   }, [automation?.trigger_type, formFields]);
 
   const addStepMutation = useMutation({
@@ -595,6 +607,27 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
 
   useEffect(() => { setLocalStep(step); }, [step]);
 
+  useEffect(() => {
+    if (step.action_type !== 'send_telegram') return;
+    if (!formFields || formFields.length === 0) return;
+
+    const currentMessage = String(step.field_mapping?.message ?? step.config?.message ?? '').trim();
+    const hasFormVariables =
+      currentMessage.includes('{{trigger.fields.') ||
+      currentMessage.includes('{{trigger.form_answers_text}}') ||
+      currentMessage.includes('{{trigger.form_answers_json}}');
+
+    if (hasFormVariables) return;
+
+    setLocalStep((prev: any) => ({
+      ...prev,
+      field_mapping: {
+        ...(prev.field_mapping || {}),
+        message: buildTelegramLeadTemplate(formFields),
+      },
+    }));
+  }, [step, formFields]);
+
   const updateField = (key: string, value: any) => {
     setLocalStep((s: any) => ({ ...s, [key]: value }));
   };
@@ -690,27 +723,13 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
                       <div className="space-y-1.5 mt-0.5">
                         {/* Auto-generate template button */}
                         {f.key === 'message' && formFields && formFields.length > 0 && (
-                          <button type="button"
+                          <button
+                            type="button"
                             className="text-[10px] px-2 py-1 rounded border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors flex items-center gap-1"
-                            onClick={() => {
-                              const lines: string[] = ['📋 Новый лид с Facebook', ''];
-                              lines.push('👤 {{trigger.full_name}}');
-                              lines.push('📧 {{trigger.email}}');
-                              lines.push('📱 {{trigger.phone}}');
-                              if (formFields.length > 0) {
-                                lines.push('');
-                                lines.push('📝 Ответы из формы:');
-                                for (const ff of formFields) {
-                                  lines.push(`${ff.label}: {{trigger.fields.${ff.slug}}}`);
-                                }
-                              }
-                              lines.push('');
-                              lines.push('📄 Форма: {{trigger.form_name}}');
-                              lines.push('📊 Кампания: {{trigger.campaign_name}}');
-                              updateMapping(f.key, lines.join('\n'));
-                            }}>
+                            onClick={() => updateMapping(f.key, buildTelegramLeadTemplate(formFields))}
+                          >
                             <Zap className="h-3 w-3" />
-                            Сгенерировать шаблон из формы ({formFields.length} вопросов)
+                            Generate template from form ({formFields.length} questions)
                           </button>
                         )}
                         <Textarea
