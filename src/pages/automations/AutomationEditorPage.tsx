@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -246,10 +246,40 @@ export default function AutomationEditorPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Extract form fields from trigger config (needed before buildDefaultTelegramMessage)
+  const formFields: Array<{ key: string; label: string; slug: string }> = 
+    (automation?.trigger_type === 'fb_lead_form' && automation?.trigger_config)
+      ? ((automation.trigger_config as any).form_fields || [])
+      : [];
+
+  const buildDefaultTelegramMessage = useCallback(() => {
+    if (automation?.trigger_type !== 'fb_lead_form') return '';
+    const lines: string[] = ['📋 Новый лид с Facebook', ''];
+    lines.push('👤 {{trigger.full_name}}');
+    lines.push('📧 {{trigger.email}}');
+    lines.push('📱 {{trigger.phone}}');
+    if (formFields.length > 0) {
+      lines.push('');
+      lines.push('📝 Ответы из формы:');
+      for (const f of formFields) {
+        lines.push(`${f.label}: {{trigger.fields.${f.slug}}}`);
+      }
+    }
+    lines.push('');
+    lines.push('📄 Форма: {{trigger.form_name}}');
+    lines.push('📊 Кампания: {{trigger.campaign_name}}');
+    return lines.join('\n');
+  }, [automation?.trigger_type, formFields]);
+
   const addStepMutation = useMutation({
     mutationFn: async (actionType: string) => {
       const act = actionInfo(actionType);
       const isCondition = actionType === 'filter';
+      // Auto-generate message template for Telegram steps with FB Lead Form trigger
+      const fieldMapping: Record<string, string> = {};
+      if (actionType === 'send_telegram' && automation?.trigger_type === 'fb_lead_form') {
+        fieldMapping.message = buildDefaultTelegramMessage();
+      }
       const { error } = await supabase.from('automation_steps').insert({
         automation_id: id!,
         step_order: steps.length,
@@ -257,7 +287,7 @@ export default function AutomationEditorPage() {
         action_type: actionType,
         name: act?.label || actionType,
         config: {},
-        field_mapping: {},
+        field_mapping: fieldMapping,
         condition_config: isCondition ? { field: '', operator: 'exists', value: '' } : null,
       });
       if (error) throw error;
@@ -315,11 +345,6 @@ export default function AutomationEditorPage() {
   const triggerDef = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
   const TriggerIcon = triggerDef.icon;
   const triggerFields = triggerDef.fields || [];
-  // Extract form fields from trigger config
-  const formFields: Array<{ key: string; label: string; slug: string }> = 
-    (automation?.trigger_type === 'fb_lead_form' && automation?.trigger_config)
-      ? ((automation.trigger_config as any).form_fields || [])
-      : [];
   // Merge client-scoped ad connections + global meta_ads_management API key (has page/form access)
   const metaConns = [
     ...platformApiResources.filter(r => r.provider === 'meta_ads_management' && r.isActive && r.hasSecret),
@@ -663,6 +688,31 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
                       </div>
                     ) : f.type === 'template' ? (
                       <div className="space-y-1.5 mt-0.5">
+                        {/* Auto-generate template button */}
+                        {f.key === 'message' && formFields && formFields.length > 0 && (
+                          <button type="button"
+                            className="text-[10px] px-2 py-1 rounded border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors flex items-center gap-1"
+                            onClick={() => {
+                              const lines: string[] = ['📋 Новый лид с Facebook', ''];
+                              lines.push('👤 {{trigger.full_name}}');
+                              lines.push('📧 {{trigger.email}}');
+                              lines.push('📱 {{trigger.phone}}');
+                              if (formFields.length > 0) {
+                                lines.push('');
+                                lines.push('📝 Ответы из формы:');
+                                for (const ff of formFields) {
+                                  lines.push(`${ff.label}: {{trigger.fields.${ff.slug}}}`);
+                                }
+                              }
+                              lines.push('');
+                              lines.push('📄 Форма: {{trigger.form_name}}');
+                              lines.push('📊 Кампания: {{trigger.campaign_name}}');
+                              updateMapping(f.key, lines.join('\n'));
+                            }}>
+                            <Zap className="h-3 w-3" />
+                            Сгенерировать шаблон из формы ({formFields.length} вопросов)
+                          </button>
+                        )}
                         <Textarea
                           value={localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || ''}
                           onChange={e => updateMapping(f.key, e.target.value)}
