@@ -26,6 +26,7 @@ import {
   Filter, Zap, Send, X, Info, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import FbLeadFormSetupWizard from '@/components/automations/FbLeadFormSetupWizard';
 
 /* ── Trigger definitions ── */
 const TRIGGER_TYPES = [
