@@ -127,6 +127,8 @@ const AiInfraLogsPage = React.lazy(() => import("@/pages/ai-infra/AiInfraLogsPag
 const AiInfraHealthPage = React.lazy(() => import("@/pages/ai-infra/AiInfraHealthPage"));
 const AiInfraGuidePage = React.lazy(() => import("@/pages/ai-infra/AiInfraGuidePage"));
 const AiAdsGuidePage = React.lazy(() => import("@/pages/ai-ads/AiAdsGuidePage"));
+const AutomationsPage = React.lazy(() => import("@/pages/automations/AutomationsPage"));
+const AutomationEditorPage = React.lazy(() => import("@/pages/automations/AutomationEditorPage"));
 
 
 const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
@@ -533,6 +535,8 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/glossary" element={<GlossaryPage />} />
         <Route path="/branding" element={<BrandingPage />} />
+        <Route path="/automations" element={<AutomationsPage />} />
+        <Route path="/automations/:id" element={<AutomationEditorPage />} />
       </Route>
       {/* Client Portal — admin can preview with isolated layout */}
       <Route element={<PortalLayout />}>

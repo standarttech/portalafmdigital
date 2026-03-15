@@ -84,3 +84,6 @@ verify_jwt = false
 [functions.freepik-webhook]
 verify_jwt = false
 
+[functions.automation-execute]
+verify_jwt = false
+
