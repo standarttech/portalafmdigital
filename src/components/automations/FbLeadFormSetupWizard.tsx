@@ -213,7 +213,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
           field_mapping: { ...fieldMapping, message: template },
         };
       })
-      .filter((u): u is { id: string; field_mapping: Record<string, unknown> } => !!u);
+      .filter(Boolean) as Array<{ id: string; field_mapping: Record<string, unknown> }>;
 
     if (!updates.length) return;
 
