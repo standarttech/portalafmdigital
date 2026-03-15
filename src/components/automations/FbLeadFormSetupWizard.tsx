@@ -411,6 +411,7 @@ function StepSelectForm({ status, config, onSave }: {
           body: JSON.stringify({
             page_id: config.page_id,
             connection_id: config.meta_connection_id,
+            use_management_token: true,
           }),
         }
       );
