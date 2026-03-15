@@ -1,8 +1,8 @@
 /**
- * Facebook Lead Gen Webhook — Handles Meta webhook verification + lead ingestion + automation trigger.
+ * Facebook Lead Gen Webhook — Production
  *
- * GET  — Meta verification challenge (hub.mode=subscribe, hub.verify_token, hub.challenge)
- * POST — Leadgen event payload from Meta, dedupes by fb_lead_id, matches active automations, executes them.
+ * GET  — Meta verification challenge (hub.verify_token from env)
+ * POST — Leadgen event: dedupes via fb_leadgen_events table, matches active automations, executes.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -10,8 +10,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const VERIFY_TOKEN = 'afm_fb_leadgen_verify_2024';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,6 +20,9 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
+  // Verify token from env — NOT hardcoded
+  const VERIFY_TOKEN = Deno.env.get('FB_LEADGEN_VERIFY_TOKEN') || '';
+
   // ── GET: Meta Webhook Verification Challenge ──
   if (req.method === 'GET') {
     const url = new URL(req.url);
@@ -29,28 +30,11 @@ Deno.serve(async (req) => {
     const token = url.searchParams.get('hub.verify_token');
     const challenge = url.searchParams.get('hub.challenge');
 
-    if (mode === 'subscribe' && token === VERIFY_TOKEN && challenge) {
+    if (mode === 'subscribe' && token && token === VERIFY_TOKEN && challenge) {
       console.log('[fb-leadgen-webhook] Verification challenge accepted');
-
-      // Mark all fb_lead_form automations as webhook_verified
-      const { data: automations } = await supabase
-        .from('automations')
-        .select('id, trigger_config')
-        .eq('trigger_type', 'fb_lead_form');
-
-      for (const auto of automations || []) {
-        const tc = (auto.trigger_config as Record<string, unknown>) || {};
-        if (!tc.webhook_verified) {
-          await supabase.from('automations').update({
-            trigger_config: { ...tc, webhook_verified: true, last_verified_at: new Date().toISOString() },
-          }).eq('id', auto.id);
-        }
-      }
-
-      return new Response(challenge, {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain' },
-      });
+      // NOTE: We do NOT mass-update all automations here.
+      // Webhook verification is platform-level, not per-automation.
+      return new Response(challenge, { status: 200, headers: { 'Content-Type': 'text/plain' } });
     }
 
     return new Response('Verification failed', { status: 403 });
@@ -60,14 +44,6 @@ Deno.serve(async (req) => {
   if (req.method === 'POST') {
     try {
       const body = await req.json();
-
-      // Log raw ingestion
-      await supabase.from('audit_log').insert({
-        action: 'fb_leadgen_webhook_received',
-        entity_type: 'fb_leadgen',
-        details: { raw_payload: body, received_at: new Date().toISOString() },
-      });
-
       const entries = body?.entry || [];
       let leadsProcessed = 0;
       let automationsTriggered = 0;
@@ -89,18 +65,33 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // ── Idempotency: check if we already processed this lead ──
-          const { data: existing } = await supabase
-            .from('audit_log')
+          // ── Idempotency: insert into fb_leadgen_events, skip on conflict ──
+          const { data: inserted, error: insertErr } = await supabase
+            .from('fb_leadgen_events')
+            .insert({
+              leadgen_id: leadgenId,
+              page_id: pageId,
+              form_id: formId,
+              ad_id: adId,
+              created_time: createdTime ? new Date(createdTime * 1000).toISOString() : null,
+              raw_payload: change.value,
+              status: 'received',
+            })
             .select('id')
-            .eq('action', 'fb_leadgen_processed')
-            .eq('entity_id', leadgenId)
-            .maybeSingle();
+            .single();
 
-          if (existing) {
-            console.log(`[fb-leadgen-webhook] Duplicate leadgen_id ${leadgenId}, skipping`);
+          if (insertErr) {
+            // Unique constraint violation = duplicate
+            if (insertErr.code === '23505') {
+              console.log(`[fb-leadgen-webhook] Duplicate leadgen_id ${leadgenId}, skipping`);
+              continue;
+            }
+            console.error(`[fb-leadgen-webhook] Insert error:`, insertErr.message);
+            errors.push(`Insert error for ${leadgenId}: ${insertErr.message}`);
             continue;
           }
+
+          const eventId = inserted?.id;
 
           // ── Fetch real lead data from Meta Graph API ──
           let leadData: Record<string, unknown> = {
@@ -111,7 +102,6 @@ Deno.serve(async (req) => {
             created_time: createdTime,
           };
 
-          // Try to fetch actual lead data from Meta using stored token
           const metaToken = Deno.env.get('META_SYSTEM_USER_TOKEN');
           if (metaToken) {
             try {
@@ -137,43 +127,61 @@ Deno.serve(async (req) => {
                   platform: 'facebook',
                   source: 'fb_lead_form',
                 };
+
+                // Update event with fetched data
+                await supabase.from('fb_leadgen_events').update({
+                  status: 'fetched',
+                  lead_data: leadData,
+                  normalized_payload: fieldData,
+                }).eq('id', eventId);
               } else {
-                console.error(`[fb-leadgen-webhook] Failed to fetch lead ${leadgenId}: ${leadResp.status}`);
-                leadData.fetch_error = `Meta API ${leadResp.status}`;
+                const errText = await leadResp.text();
+                console.error(`[fb-leadgen-webhook] Meta API ${leadResp.status}: ${errText}`);
+                await supabase.from('fb_leadgen_events').update({
+                  status: 'fetched',
+                  error: `Meta API ${leadResp.status}`,
+                  lead_data: leadData,
+                }).eq('id', eventId);
               }
             } catch (fetchErr) {
-              console.error(`[fb-leadgen-webhook] Fetch error for lead ${leadgenId}:`, fetchErr);
-              leadData.fetch_error = String(fetchErr);
+              console.error(`[fb-leadgen-webhook] Fetch error for ${leadgenId}:`, fetchErr);
+              await supabase.from('fb_leadgen_events').update({
+                error: String(fetchErr),
+                lead_data: leadData,
+              }).eq('id', eventId);
             }
           }
 
-          // Mark as processed for idempotency
-          await supabase.from('audit_log').insert({
-            action: 'fb_leadgen_processed',
-            entity_type: 'fb_leadgen',
-            entity_id: leadgenId,
-            details: { page_id: pageId, form_id: formId, ad_id: adId },
-          });
-
           leadsProcessed++;
 
-          // ── Match active automations ──
+          // ── Match active automations by page_id + form_id ──
           const { data: matchingAutos } = await supabase
             .from('automations')
-            .select('id, trigger_config, client_id, is_active')
+            .select('id, trigger_config, client_id')
             .eq('trigger_type', 'fb_lead_form')
             .eq('is_active', true);
 
+          let matched = false;
           for (const auto of matchingAutos || []) {
             const tc = (auto.trigger_config as Record<string, unknown>) || {};
-            // Match by page_id and optionally form_id
             const configPageId = String(tc.page_id || '');
             const configFormId = String(tc.form_id || '');
 
-            if (configPageId && configPageId !== pageId) continue;
+            // Must match page_id. If form_id configured, must also match.
+            if (!configPageId || configPageId !== pageId) continue;
             if (configFormId && configFormId !== formId) continue;
+            // Must have live_ingestion_active
+            if (!tc.live_ingestion_active) continue;
 
-            // Execute the automation
+            matched = true;
+
+            // Update event status
+            await supabase.from('fb_leadgen_events').update({
+              status: 'matched',
+              matched_automation_id: auto.id,
+            }).eq('id', eventId);
+
+            // Execute
             try {
               const execResp = await fetch(`${supabaseUrl}/functions/v1/automation-execute`, {
                 method: 'POST',
@@ -189,12 +197,31 @@ Deno.serve(async (req) => {
                 }),
               });
               const execResult = await execResp.json();
-              console.log(`[fb-leadgen-webhook] Automation ${auto.id} result:`, execResult);
+
+              await supabase.from('fb_leadgen_events').update({
+                status: execResult.status === 'completed' ? 'executed' : 'failed',
+                error: execResult.status !== 'completed' ? JSON.stringify(execResult) : null,
+                processed_at: new Date().toISOString(),
+              }).eq('id', eventId);
+
+              console.log(`[fb-leadgen-webhook] Automation ${auto.id} → ${execResult.status}`);
               automationsTriggered++;
             } catch (execErr) {
-              console.error(`[fb-leadgen-webhook] Failed to execute automation ${auto.id}:`, execErr);
+              console.error(`[fb-leadgen-webhook] Exec error ${auto.id}:`, execErr);
+              await supabase.from('fb_leadgen_events').update({
+                status: 'failed',
+                error: String(execErr),
+                processed_at: new Date().toISOString(),
+              }).eq('id', eventId);
               errors.push(`Automation ${auto.id}: ${String(execErr)}`);
             }
+          }
+
+          if (!matched) {
+            await supabase.from('fb_leadgen_events').update({
+              status: 'received',
+              error: 'No matching active automation found',
+            }).eq('id', eventId);
           }
         }
       }
