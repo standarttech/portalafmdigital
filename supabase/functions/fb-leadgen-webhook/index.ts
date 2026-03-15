@@ -2,8 +2,7 @@
  * Facebook Lead Gen Webhook — Production
  *
  * GET  — Meta verification challenge
- *        Checks verify tokens from: env, global platform_settings, and per-integration platform_settings
- * POST — Leadgen event: dedupes via fb_leadgen_events table, matches active automations, executes.
+ * POST — Leadgen event: dedupes, fetches lead data, builds form_answers_text/json/fields.*, matches automations.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -11,6 +10,25 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+/** Convert label to safe slug (same logic as intake-setup) */
+function toSlug(label: string): string {
+  const map: Record<string, string> = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+    'з': 'z', 'и': 'i', 'й': 'j', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+    'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts',
+    'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
+    'я': 'ya',
+  };
+  return label
+    .toLowerCase()
+    .split('')
+    .map(ch => map[ch] ?? ch)
+    .join('')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .substring(0, 60) || 'field';
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,14 +39,10 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  // ── Collect ALL valid verify tokens (env + global + per-integration) ──
+  // ── Collect ALL valid verify tokens ──
   const validTokens = new Set<string>();
-
-  // 1. From env
   const envToken = Deno.env.get('FB_LEADGEN_VERIFY_TOKEN') || '';
   if (envToken) validTokens.add(envToken);
-
-  // 2. From platform_settings (global + per-integration)
   try {
     const { data: settings } = await supabase
       .from('platform_settings')
@@ -38,7 +52,7 @@ Deno.serve(async (req) => {
       try {
         const parsed = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
         if (parsed?.token) validTokens.add(parsed.token);
-      } catch { /* skip malformed */ }
+      } catch { /* skip */ }
     }
   } catch { /* no settings table? */ }
 
@@ -100,6 +114,29 @@ Deno.serve(async (req) => {
           let leadData: Record<string, unknown> = {
             leadgen_id: leadgenId, form_id: formId, page_id: pageId, ad_id: adId, created_time: createdTime,
           };
+
+          // Find matching automation to get form_fields definitions
+          const { data: matchingAutos } = await supabase
+            .from('automations')
+            .select('id, trigger_config, client_id')
+            .eq('trigger_type', 'fb_lead_form')
+            .eq('is_active', true);
+
+          // Get form_fields from first matching automation
+          let formFieldDefs: Array<{ key: string; label: string; slug: string }> = [];
+          let pageName = '';
+          let formName = '';
+          for (const auto of matchingAutos || []) {
+            const tc = (auto.trigger_config as Record<string, unknown>) || {};
+            if (!tc.live_ingestion_active) continue;
+            if (String(tc.page_id || '') !== pageId) continue;
+            if (String(tc.form_id || '') !== formId) continue;
+            formFieldDefs = (tc.form_fields as any[]) || [];
+            pageName = String(tc.page_name || '');
+            formName = String(tc.form_name || '');
+            break;
+          }
+
           const metaToken = Deno.env.get('META_SYSTEM_USER_TOKEN');
           if (metaToken) {
             try {
@@ -110,11 +147,37 @@ Deno.serve(async (req) => {
                 for (const fd of ld.field_data || []) {
                   fieldData[fd.name] = Array.isArray(fd.values) ? fd.values[0] : fd.values;
                 }
+
+                // Build fields object with slug keys
+                const fieldsObj: Record<string, string> = {};
+                const answersLines: string[] = [];
+                
+                // Map known form field defs
+                for (const def of formFieldDefs) {
+                  const val = fieldData[def.key] || '';
+                  fieldsObj[def.slug] = val;
+                  if (val) answersLines.push(`${def.label}: ${val}`);
+                }
+                
+                // Also add any field_data keys not in form_fields (fallback)
+                for (const [key, val] of Object.entries(fieldData)) {
+                  const slug = toSlug(key);
+                  if (!fieldsObj[slug]) {
+                    fieldsObj[slug] = val;
+                    answersLines.push(`${key}: ${val}`);
+                  }
+                }
+
                 leadData = {
                   ...leadData,
                   full_name: fieldData.full_name || fieldData.name || '',
                   email: fieldData.email || '',
                   phone: fieldData.phone_number || fieldData.phone || '',
+                  form_name: formName,
+                  page_name: pageName,
+                  fields: fieldsObj,
+                  form_answers_text: answersLines.join('\n'),
+                  form_answers_json: JSON.stringify(fieldsObj),
                   ...fieldData,
                   fb_lead_id: leadgenId, fb_form_id: formId, fb_page_id: pageId, fb_ad_id: adId,
                   platform: 'facebook', source: 'fb_lead_form',
@@ -137,13 +200,7 @@ Deno.serve(async (req) => {
 
           leadsProcessed++;
 
-          // Match automations
-          const { data: matchingAutos } = await supabase
-            .from('automations')
-            .select('id, trigger_config, client_id')
-            .eq('trigger_type', 'fb_lead_form')
-            .eq('is_active', true);
-
+          // Match automations and execute
           let matched = false;
           for (const auto of matchingAutos || []) {
             const tc = (auto.trigger_config as Record<string, unknown>) || {};
