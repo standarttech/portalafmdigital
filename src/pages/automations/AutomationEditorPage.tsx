@@ -403,6 +403,11 @@ export default function AutomationEditorPage() {
                         <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10">Live</Badge>
                       )}
                       <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
+                      {formFields.length > 0 && (
+                        <Badge variant="outline" className="text-xs text-[hsl(220,70%,50%)] border-[hsl(220,70%,50%)]/30 bg-[hsl(220,70%,50%)]/5">
+                          +{formFields.length} form questions
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
