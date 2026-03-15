@@ -611,7 +611,12 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
     if (!formFields || formFields.length === 0) return;
 
     const currentMessage = String(step.field_mapping?.message ?? step.config?.message ?? '').trim();
-    if (currentMessage.length > 0) return;
+    const hasFormVariables =
+      currentMessage.includes('{{trigger.fields.') ||
+      currentMessage.includes('{{trigger.form_answers_text}}') ||
+      currentMessage.includes('{{trigger.form_answers_json}}');
+
+    if (hasFormVariables) return;
 
     setLocalStep((prev: any) => ({
       ...prev,
