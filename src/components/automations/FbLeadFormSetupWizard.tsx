@@ -282,9 +282,6 @@ function StepSelectPage({ status, config, onSave }: {
 
       // Call meta-oauth?action=list-pages with the selected connection_id
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
-      const isManagementToken = config.meta_connection_id && metaConns?.find(
-        (c: any) => c.id === config.meta_connection_id && c.provider === 'meta_ads_management'
-      );
       const resp = await fetch(
         `https://${projectId}.supabase.co/functions/v1/meta-oauth?action=list-pages`,
         {
@@ -295,7 +292,7 @@ function StepSelectPage({ status, config, onSave }: {
           },
           body: JSON.stringify({
             connection_id: config.meta_connection_id,
-            use_management_token: !!isManagementToken,
+            use_management_token: true,
           }),
         }
       );
