@@ -78,6 +78,176 @@ interface UserRow {
   agency_role: string;
 }
 
+/* ── Meta Webhook Settings Component ── */
+function MetaWebhookSettings() {
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [tokenData, setTokenData] = useState<{ callback_url: string; verify_token: string | null; configured: boolean } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchConfig = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) { setError('Not authenticated'); setLoading(false); return; }
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
+      const resp = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/fb-leadgen-config`,
+        {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${session.session.access_token}` },
+        }
+      );
+      const result = await resp.json();
+      if (resp.ok) {
+        setTokenData(result);
+      } else {
+        setError(result.error || 'Failed to load config');
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateToken = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) { setError('Not authenticated'); setGenerating(false); return; }
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
+      const resp = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/fb-leadgen-config`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        }
+      );
+      const result = await resp.json();
+      if (resp.ok && result.success) {
+        setTokenData(result);
+        toast.success('Verify token generated and saved');
+      } else {
+        setError(result.error || 'Failed to generate token');
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  useEffect(() => { fetchConfig(); }, []);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied`);
+  };
+
+  return (
+    <Card className="glass-card">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Webhook className="h-4 w-4 text-primary" /> Meta Webhook Settings
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Configure the verify token for Facebook Lead Gen webhook integration
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading configuration...
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/5 border border-destructive/20 text-xs">
+            <AlertTriangle className="h-3.5 w-3.5 text-destructive mt-0.5 flex-shrink-0" />
+            <span className="text-muted-foreground">{error}</span>
+          </div>
+        )}
+
+        {tokenData && (
+          <>
+            {/* Status */}
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground min-w-[60px]">Status</Label>
+              <Badge variant="outline" className={`text-[10px] gap-1 ${
+                tokenData.configured
+                  ? 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10'
+                  : 'text-amber-500 border-amber-500/30 bg-amber-500/10'
+              }`}>
+                {tokenData.configured ? (
+                  <><CheckCircle2 className="h-2.5 w-2.5" /> Configured</>
+                ) : (
+                  <><AlertTriangle className="h-2.5 w-2.5" /> Missing</>
+                )}
+              </Badge>
+            </div>
+
+            {/* Callback URL */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Callback URL</Label>
+              <div className="flex items-center gap-1.5">
+                <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
+                  {tokenData.callback_url}
+                </code>
+                <Button variant="outline" size="sm" className="h-7 w-7 p-0 flex-shrink-0"
+                  onClick={() => copyToClipboard(tokenData.callback_url, 'Callback URL')}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Verify Token */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Verify Token</Label>
+              {tokenData.verify_token ? (
+                <div className="flex items-center gap-1.5">
+                  <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
+                    {tokenData.verify_token}
+                  </code>
+                  <Button variant="outline" size="sm" className="h-7 w-7 p-0 flex-shrink-0"
+                    onClick={() => copyToClipboard(tokenData.verify_token!, 'Verify Token')}>
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-500">Not configured. Generate a token below.</p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" className="h-8 text-xs gap-1.5" onClick={generateToken} disabled={generating}>
+                {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                {tokenData.configured ? 'Regenerate Token' : 'Generate Secure Token'}
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={fetchConfig} disabled={loading}>
+                <RefreshCw className="h-3 w-3" /> Refresh
+              </Button>
+            </div>
+          </>
+        )}
+
+        {!loading && !tokenData && !error && (
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={fetchConfig}>
+            <RefreshCw className="h-3 w-3" /> Load Configuration
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AfmSettings() {
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme, fxEnabled, setFxEnabled } = useTheme();
