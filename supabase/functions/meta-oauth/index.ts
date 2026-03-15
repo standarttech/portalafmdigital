@@ -13,13 +13,13 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 async function getAuthUser(req: Request) {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.replace('Bearer ', '');
   const supabase = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: authHeader } },
   });
-  const token = authHeader.replace('Bearer ', '');
-  const { data, error } = await supabase.auth.getClaims(token);
-  if (error || !data?.claims) return null;
-  return data.claims;
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return null;
+  return { sub: user.id, email: user.email };
 }
 
 async function storeTokenInVault(supabaseAdmin: ReturnType<typeof createClient>, token: string, name: string): Promise<string | null> {
@@ -195,67 +195,78 @@ Deno.serve(async (req) => {
 
       const body = await req.json();
       const connectionId = body.connection_id;
+      const useManagement = body.use_management_token === true;
 
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-      // Try platform_connections first (ad connections)
+      // Helper to fetch pages from a token
+      const fetchPages = async (token: string, source: string) => {
+        const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token&access_token=${token}`);
+        const pagesData = await pagesRes.json();
+        if (pagesData.data && pagesData.data.length > 0) {
+          return { pages: pagesData.data.map((p: any) => ({ id: p.id, name: p.name })), source };
+        }
+        return { pages: [], error: pagesData.error?.message || 'No pages accessible with this token.', source };
+      };
+
+      // 1. If use_management_token, try platform_integrations meta_ads_management first
+      if (useManagement || !connectionId) {
+        const { data: mgmt } = await supabaseAdmin
+          .from('platform_integrations')
+          .select('secret_ref')
+          .eq('integration_type', 'meta_ads_management')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (mgmt?.secret_ref) {
+          const token = await getTokenFromVault(supabaseAdmin, mgmt.secret_ref);
+          if (token) {
+            try {
+              const result = await fetchPages(token, 'meta_ads_management');
+              if (result.pages.length > 0) {
+                return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+              }
+            } catch { /* fall through */ }
+          }
+        }
+      }
+
+      // 2. Try platform_connections (client-scoped ad token)
       if (connectionId) {
         const { data: conn } = await supabaseAdmin
           .from('platform_connections')
           .select('token_reference, platform')
           .eq('id', connectionId)
           .maybeSingle();
-
         if (conn?.token_reference) {
           const token = await getTokenFromVault(supabaseAdmin, conn.token_reference);
           if (token) {
             try {
-              const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token&access_token=${token}`);
-              const pagesData = await pagesRes.json();
-              if (pagesData.data) {
-                return new Response(JSON.stringify({
-                  pages: pagesData.data.map((p: any) => ({ id: p.id, name: p.name })),
-                  source: 'platform_connection',
-                }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+              const result = await fetchPages(token, 'platform_connection');
+              if (result.pages.length > 0) {
+                return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
               }
-              // Token might be ad-account scoped, not page-scoped
-              return new Response(JSON.stringify({
-                pages: [],
-                error: pagesData.error?.message || 'No pages accessible with this token. This connection may be an ad-account token without page permissions.',
-                source: 'platform_connection',
-              }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-            } catch (err) {
-              return new Response(JSON.stringify({ pages: [], error: String(err) }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
+            } catch { /* fall through */ }
           }
         }
       }
 
-      // Fallback: try social_media_connections
+      // 3. Fallback: social_media_connections
       const { data: socialConn } = await supabaseAdmin
         .from('social_media_connections')
         .select('page_id, page_name, token_reference')
         .eq('platform', 'facebook')
         .eq('is_active', true)
         .maybeSingle();
-
       if (socialConn?.token_reference) {
         const token = await getTokenFromVault(supabaseAdmin, socialConn.token_reference);
         if (token) {
           try {
-            const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name&access_token=${token}`);
-            const pagesData = await pagesRes.json();
-            if (pagesData.data) {
-              return new Response(JSON.stringify({
-                pages: pagesData.data.map((p: any) => ({ id: p.id, name: p.name })),
-                source: 'social_media_connection',
-              }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            const result = await fetchPages(token, 'social_media_connection');
+            if (result.pages.length > 0) {
+              return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
             }
           } catch { /* fall through */ }
         }
-        // At minimum return the stored page
         if (socialConn.page_id) {
           return new Response(JSON.stringify({
             pages: [{ id: socialConn.page_id, name: socialConn.page_name || 'Facebook Page' }],
@@ -264,24 +275,20 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Also try META_SYSTEM_USER_TOKEN
+      // 4. System token
       const systemToken = Deno.env.get('META_SYSTEM_USER_TOKEN');
       if (systemToken) {
         try {
-          const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name&access_token=${systemToken}`);
-          const pagesData = await pagesRes.json();
-          if (pagesData.data && pagesData.data.length > 0) {
-            return new Response(JSON.stringify({
-              pages: pagesData.data.map((p: any) => ({ id: p.id, name: p.name })),
-              source: 'system_token',
-            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          const result = await fetchPages(systemToken, 'system_token');
+          if (result.pages.length > 0) {
+            return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           }
         } catch { /* fall through */ }
       }
 
       return new Response(JSON.stringify({
         pages: [],
-        error: 'No pages found. The token may be ad-account scoped (no page access). Enter Page ID manually from Meta Business Suite.',
+        error: 'No pages found. The token may lack page permissions (ads_management or pages_read_engagement scope). Enter Page ID manually.',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -291,19 +298,30 @@ Deno.serve(async (req) => {
       if (!claims) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
       const body = await req.json();
-      const { page_id, connection_id } = body;
+      const { page_id, connection_id, use_management_token } = body;
 
       if (!page_id) {
         return new Response(JSON.stringify({ error: 'page_id required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-      // Try to get a usable token
       let token: string | null = null;
 
-      // 1. From platform_connection
-      if (connection_id) {
+      // 1. Management token (highest priority for page/form access)
+      if (use_management_token !== false) {
+        const { data: mgmt } = await supabaseAdmin
+          .from('platform_integrations')
+          .select('secret_ref')
+          .eq('integration_type', 'meta_ads_management')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (mgmt?.secret_ref) {
+          token = await getTokenFromVault(supabaseAdmin, mgmt.secret_ref);
+        }
+      }
+
+      // 2. From platform_connection
+      if (!token && connection_id) {
         const { data: conn } = await supabaseAdmin
           .from('platform_connections')
           .select('token_reference')
@@ -314,7 +332,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 2. From social_media_connections
+      // 3. From social_media_connections
       if (!token) {
         const { data: sc } = await supabaseAdmin
           .from('social_media_connections')
@@ -327,7 +345,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 3. System token
+      // 4. System token
       if (!token) {
         token = Deno.env.get('META_SYSTEM_USER_TOKEN') || null;
       }
@@ -340,8 +358,20 @@ Deno.serve(async (req) => {
       }
 
       try {
+        // Lead forms require a Page Access Token, not a user token.
+        // First, get the page access token via /me/accounts
+        let pageToken = token;
+        try {
+          const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,access_token&access_token=${token}`);
+          const pagesData = await pagesRes.json();
+          const matchedPage = (pagesData.data || []).find((p: any) => String(p.id) === String(page_id));
+          if (matchedPage?.access_token) {
+            pageToken = matchedPage.access_token;
+          }
+        } catch { /* use the original token as fallback */ }
+
         const formsRes = await fetch(
-          `https://graph.facebook.com/v21.0/${page_id}/leadgen_forms?fields=id,name,status&access_token=${token}`
+          `https://graph.facebook.com/v21.0/${page_id}/leadgen_forms?fields=id,name,status&access_token=${pageToken}`
         );
         const formsData = await formsRes.json();
 

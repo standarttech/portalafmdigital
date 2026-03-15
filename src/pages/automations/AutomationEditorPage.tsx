@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTelegramBots, useSheetResources, usePlatformAdConnections } from '@/hooks/usePlatformResources';
+import { useTelegramBots, useSheetResources, usePlatformAdConnections, usePlatformResources } from '@/hooks/usePlatformResources';
 import type { PlatformResource } from '@/hooks/usePlatformResources';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -205,6 +205,8 @@ export default function AutomationEditorPage() {
   const { data: botResources = [] } = useTelegramBots(clientId);
   const { data: sheetResources = [] } = useSheetResources(clientId);
   const { data: metaConnections = [] } = usePlatformAdConnections(clientId);
+  // Also load platform_api resources (meta_ads_management has more permissions for pages/forms)
+  const { data: platformApiResources = [] } = usePlatformResources({ type: 'platform_api' });
 
   const { data: agencyUsers = [] } = useQuery({
     queryKey: ['agency-users-auto'],
@@ -302,7 +304,11 @@ export default function AutomationEditorPage() {
   const triggerDef = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
   const TriggerIcon = triggerDef.icon;
   const triggerFields = triggerDef.fields || [];
-  const metaConns = metaConnections.filter(r => r.provider === 'meta' || r.provider === 'facebook');
+  // Merge client-scoped ad connections + global meta_ads_management API key (has page/form access)
+  const metaConns = [
+    ...platformApiResources.filter(r => r.provider === 'meta_ads_management' && r.isActive && r.hasSecret),
+    ...metaConnections.filter(r => r.provider === 'meta' || r.provider === 'facebook'),
+  ];
 
   if (isLoading) {
     return (
