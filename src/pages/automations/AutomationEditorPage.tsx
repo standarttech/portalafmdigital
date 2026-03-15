@@ -664,19 +664,30 @@ function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, aut
                         </div>
                       </div>
                     ) : f.type === 'bot_select' ? (
-                      <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
-                        <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select bot" /></SelectTrigger>
-                        <SelectContent>
-                          {filteredBots.map((b: any) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.bot_name} {b.is_default && '⭐'} {b.client_id && '(client-scoped)'}
-                            </SelectItem>
-                          ))}
-                          {filteredBots.length === 0 && (
-                            <div className="p-2 text-xs text-muted-foreground text-center">No bots configured</div>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-1">
+                        <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
+                          <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select bot" /></SelectTrigger>
+                          <SelectContent>
+                            {filteredBots.map((b: any) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.bot_name} {b.client_id ? `(${b.client_id.slice(0,8)}…)` : '(global)'}
+                              </SelectItem>
+                            ))}
+                            {filteredBots.length === 0 && (
+                              <div className="p-3 text-xs text-muted-foreground text-center space-y-2">
+                                <p>No Telegram bots available for this client scope.</p>
+                                <p className="text-[10px]">Add bots in CRM → Integrations → Bot Management</p>
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {filteredBots.length === 0 && (
+                          <div className="flex items-center gap-2 p-2 rounded-md bg-amber-400/5 border border-amber-400/20">
+                            <AlertTriangle className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                            <span className="text-[10px] text-amber-400">No bots found. <a href="/crm/integrations" className="underline hover:text-amber-300">Connect a bot</a> or <a href="/connections" className="underline hover:text-amber-300">open Connections Center</a>.</span>
+                          </div>
+                        )}
+                      </div>
                     ) : f.type === 'user_select' ? (
                       <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
                         <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select user" /></SelectTrigger>
