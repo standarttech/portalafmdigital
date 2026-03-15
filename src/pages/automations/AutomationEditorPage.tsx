@@ -167,6 +167,31 @@ function buildAvailableVars(
   return vars;
 }
 
+function buildTelegramLeadTemplate(formFields: Array<{ key: string; label: string; slug: string }> = []): string {
+  const lines: string[] = ['📋 New Facebook lead', ''];
+  lines.push('👤 Name: {{trigger.full_name}}');
+  lines.push('📧 Email: {{trigger.email}}');
+  lines.push('📱 Phone: {{trigger.phone}}');
+
+  if (formFields.length > 0) {
+    lines.push('');
+    lines.push('📝 Form answers (by field):');
+    for (const f of formFields) {
+      lines.push(`${f.label}: {{trigger.fields.${f.slug}}}`);
+    }
+  }
+
+  lines.push('');
+  lines.push('🧾 All answers block:');
+  lines.push('{{trigger.form_answers_text}}');
+  lines.push('');
+  lines.push('🔎 Raw answers JSON: {{trigger.form_answers_json}}');
+  lines.push('📄 Form: {{trigger.form_name}}');
+  lines.push('📣 Page: {{trigger.page_name}}');
+
+  return lines.join('\n');
+}
+
 export default function AutomationEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
