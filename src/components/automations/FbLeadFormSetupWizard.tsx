@@ -740,7 +740,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
               <p className="text-xs font-semibold text-foreground">Final Step: Configure Webhook in Meta</p>
               <p className="text-[11px] text-muted-foreground">
-                В Meta Developer Console вставьте Callback URL и Verify Token, затем нажмите <strong>Verify and save</strong>.
+                In Meta Developer Console, paste the Callback URL and Verify Token, then click <strong>Verify and save</strong>.
               </p>
 
               <div className="space-y-2">
