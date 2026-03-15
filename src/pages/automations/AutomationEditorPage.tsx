@@ -544,10 +544,11 @@ export default function AutomationEditorPage() {
 }
 
 /* ── Step Config Panel ── */
-function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetResources, agencyUsers, automationClientId, onUpdate, onDelete, onClose }: {
+function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetResources, agencyUsers, automationClientId, formFields, onUpdate, onDelete, onClose }: {
   step: any; triggerFields: readonly string[]; allSteps: any[];
   botResources: PlatformResource[]; sheetResources: PlatformResource[];
   agencyUsers: any[]; automationClientId?: string | null;
+  formFields?: Array<{ key: string; label: string; slug: string }>;
   onUpdate: (s: any) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [localStep, setLocalStep] = useState(step);
@@ -555,8 +556,8 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
   const isCondition = step.action_type === 'filter';
 
   const availableVars = useMemo(
-    () => buildAvailableVars(triggerFields, allSteps, step.step_order),
-    [triggerFields, allSteps, step.step_order]
+    () => buildAvailableVars(triggerFields, allSteps, step.step_order, formFields),
+    [triggerFields, allSteps, step.step_order, formFields]
   );
 
   useEffect(() => { setLocalStep(step); }, [step]);
