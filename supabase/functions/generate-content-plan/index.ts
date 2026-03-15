@@ -200,7 +200,6 @@ async function handleGenerateCreative(supabase: any, userId: string, body: any, 
   const { item_id } = body;
   if (!item_id) throw new Error("item_id is required");
 
-  // Get item with plan context
   const { data: item, error: itemErr } = await supabase
     .from("creative_plan_items")
     .select("*, plan:creative_content_plans(*)")
@@ -208,11 +207,147 @@ async function handleGenerateCreative(supabase: any, userId: string, body: any, 
     .single();
   if (itemErr || !item) throw new Error("Item not found");
 
-  // Update status to generating
-  await supabase.from("creative_plan_items").update({ status: "generating" }).eq("id", item_id);
+  // Get Freepik API key
+  const { data: freepikKey } = await supabase.rpc("get_platform_integration_secret", {
+    _integration_type: "freepik",
+  });
+
+  if (freepikKey) {
+    // Use Freepik API for image generation
+    return await generateWithFreepik(supabase, item, freepikKey);
+  }
+
+  // Fallback: use Gemini image generation
+  return await generateWithGemini(supabase, item, apiKey);
+}
+
+async function generateWithFreepik(supabase: any, item: any, freepikKey: string) {
+  await supabase.from("creative_plan_items").update({ status: "generating" }).eq("id", item.id);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const webhookUrl = `${supabaseUrl}/functions/v1/freepik-webhook`;
 
   try {
-    // Use Gemini image generation
+    const aspectMap: Record<string, string> = {
+      story: "social_story_9_16",
+      carousel: "square_1_1",
+      image: "widescreen_16_9",
+      logo_product: "square_1_1",
+    };
+
+    const endpoint = "https://api.freepik.com/v1/ai/text-to-image/flux-kontext-pro";
+
+    const payload: any = {
+      prompt: item.prompt || `Professional ad creative: ${item.title}. ${item.description}`,
+      aspect_ratio: aspectMap[item.format] || "square_1_1",
+      guidance: 3,
+      steps: 50,
+      webhook_url: webhookUrl,
+    };
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "x-freepik-api-key": freepikKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
+      const status = response.status;
+      if (status === 429) throw new Error("Freepik rate limit. Try again later.");
+      if (status === 402) throw new Error("Freepik credits exhausted.");
+      throw new Error("Freepik generation failed: " + status);
+    }
+
+    const data = await response.json();
+    const taskId = data.data?.task_id;
+
+    // Store task_id in metadata for webhook matching
+    await supabase.from("creative_plan_items").update({
+      metadata: { freepik_task_id: taskId, model: "flux-kontext-pro" },
+    }).eq("id", item.id);
+
+    // Poll for result (Freepik tasks complete in 10-60s)
+    let result = null;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+
+      const checkRes = await fetch(
+        `https://api.freepik.com/v1/ai/text-to-image/flux-kontext-pro/${taskId}`,
+        { headers: { "x-freepik-api-key": freepikKey } }
+      );
+
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        const taskStatus = checkData.data?.status;
+
+        if (taskStatus === "COMPLETED") {
+          result = checkData;
+          break;
+        } else if (taskStatus === "FAILED") {
+          throw new Error("Freepik generation failed: " + (checkData.data?.error || "Unknown"));
+        }
+      }
+    }
+
+    if (!result) {
+      // Task is still processing, webhook will handle it
+      return new Response(
+        JSON.stringify({ success: true, status: "processing", task_id: taskId, message: "Generation in progress. Will update automatically." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get the generated image URL
+    const images = result.data?.generated || result.data?.result?.images || [];
+    const imageUrl = images[0]?.url || images[0];
+
+    if (!imageUrl) {
+      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
+      throw new Error("No image returned from Freepik");
+    }
+
+    // Download and upload to storage
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) throw new Error("Failed to download generated image");
+    const imgBlob = await imgRes.arrayBuffer();
+    const storagePath = `freepik/${item.plan.client_id}/${item.id}_${Date.now()}.png`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from("creative-assets")
+      .upload(storagePath, new Uint8Array(imgBlob), { contentType: "image/png" });
+
+    if (uploadErr) {
+      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
+      throw new Error("Upload failed: " + uploadErr.message);
+    }
+
+    const { data: urlData } = supabase.storage.from("creative-assets").getPublicUrl(storagePath);
+
+    await supabase.from("creative_plan_items").update({
+      status: "review",
+      generated_url: urlData.publicUrl,
+      storage_path: storagePath,
+      metadata: { freepik_task_id: taskId, model: "flux-kontext-pro", completed_at: new Date().toISOString() },
+    }).eq("id", item.id);
+
+    return new Response(
+      JSON.stringify({ success: true, url: urlData.publicUrl }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
+    throw e;
+  }
+}
+
+async function generateWithGemini(supabase: any, item: any, apiKey: string) {
+  await supabase.from("creative_plan_items").update({ status: "generating" }).eq("id", item.id);
+
+  try {
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -232,9 +367,9 @@ async function handleGenerateCreative(supabase: any, userId: string, body: any, 
     });
 
     if (!aiResponse.ok) {
+      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
       const status = aiResponse.status;
-      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item_id);
-      if (status === 429) throw new Error("Rate limit exceeded. Try again later.");
+      if (status === 429) throw new Error("Rate limit exceeded.");
       if (status === 402) throw new Error("AI credits exhausted.");
       throw new Error("Image generation failed: " + status);
     }
@@ -243,39 +378,37 @@ async function handleGenerateCreative(supabase: any, userId: string, body: any, 
     const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (!imageUrl) {
-      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item_id);
+      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
       throw new Error("No image returned from AI");
     }
 
-    // Upload to storage
     const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
     const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
-    const storagePath = `${item.plan.client_id}/${item_id}_${Date.now()}.png`;
+    const storagePath = `${item.plan.client_id}/${item.id}_${Date.now()}.png`;
 
     const { error: uploadErr } = await supabase.storage
       .from("creative-assets")
       .upload(storagePath, binaryData, { contentType: "image/png" });
 
     if (uploadErr) {
-      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item_id);
+      await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
       throw new Error("Upload failed: " + uploadErr.message);
     }
 
     const { data: urlData } = supabase.storage.from("creative-assets").getPublicUrl(storagePath);
 
-    // Update item
     await supabase.from("creative_plan_items").update({
       status: "review",
       generated_url: urlData.publicUrl,
       storage_path: storagePath,
-    }).eq("id", item_id);
+    }).eq("id", item.id);
 
     return new Response(
       JSON.stringify({ success: true, url: urlData.publicUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
-    await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item_id);
+    await supabase.from("creative_plan_items").update({ status: "pending" }).eq("id", item.id);
     throw e;
   }
 }
