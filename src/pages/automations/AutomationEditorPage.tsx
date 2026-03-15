@@ -304,7 +304,11 @@ export default function AutomationEditorPage() {
   const triggerDef = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
   const TriggerIcon = triggerDef.icon;
   const triggerFields = triggerDef.fields || [];
-  const metaConns = metaConnections.filter(r => r.provider === 'meta' || r.provider === 'facebook');
+  // Merge client-scoped ad connections + global meta_ads_management API key (has page/form access)
+  const metaConns = [
+    ...platformApiResources.filter(r => r.provider === 'meta_ads_management' && r.isActive && r.hasSecret),
+    ...metaConnections.filter(r => r.provider === 'meta' || r.provider === 'facebook'),
+  ];
 
   if (isLoading) {
     return (
