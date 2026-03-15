@@ -107,7 +107,7 @@ const navSections: NavSection[] = [
       { key: 'nav.calendar', icon: Calendar, path: '/calendar' },
       { key: 'nav.tasks' as TranslationKey, icon: ClipboardList, path: '/tasks' },
       { key: 'nav.automations' as TranslationKey, icon: Workflow, path: '/automations' },
-      { key: 'nav.connections' as TranslationKey, icon: Activity, path: '/connections' },
+      { key: 'nav.connections' as TranslationKey, icon: Link2, path: '/connections' },
       { key: 'nav.chat', icon: MessageSquare, path: '/chat', badgeKey: 'unreadChats' },
     ],
   },
