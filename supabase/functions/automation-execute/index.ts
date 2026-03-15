@@ -95,9 +95,9 @@ Deno.serve(async (req) => {
     if (autoErr || !automation) throw new Error('Automation not found');
     if (!automation.is_active && !test_mode) throw new Error('Automation is inactive');
 
-    // Verify client scope access
-    if (automation.client_id) {
-      const isAdmin = agencyUser.agency_role === 'AgencyAdmin';
+    // Verify client scope access (skip for system triggers)
+    if (automation.client_id && !_system_trigger) {
+      const isAdmin = agencyRole === 'AgencyAdmin';
       if (!isAdmin) {
         const { data: access } = await supabase
           .from('client_users').select('id').eq('user_id', callerId).eq('client_id', automation.client_id).maybeSingle();
