@@ -606,6 +606,22 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
 
   useEffect(() => { setLocalStep(step); }, [step]);
 
+  useEffect(() => {
+    if (step.action_type !== 'send_telegram') return;
+    if (!formFields || formFields.length === 0) return;
+
+    const currentMessage = String(step.field_mapping?.message ?? step.config?.message ?? '').trim();
+    if (currentMessage.length > 0) return;
+
+    setLocalStep((prev: any) => ({
+      ...prev,
+      field_mapping: {
+        ...(prev.field_mapping || {}),
+        message: buildTelegramLeadTemplate(formFields),
+      },
+    }));
+  }, [step, formFields]);
+
   const updateField = (key: string, value: any) => {
     setLocalStep((s: any) => ({ ...s, [key]: value }));
   };
