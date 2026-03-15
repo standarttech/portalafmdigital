@@ -93,3 +93,6 @@ verify_jwt = false
 [functions.fb-leadgen-config]
 verify_jwt = false
 
+[functions.facebook-lead-intake-setup]
+verify_jwt = false
+
