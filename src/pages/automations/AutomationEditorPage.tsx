@@ -380,7 +380,7 @@ export default function AutomationEditorPage() {
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs text-xs">
-                          {triggerDef.note || 'This trigger is not yet connected to a live data source. Use Manual/Test trigger for now.'}
+                          {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source. Use Manual/Test trigger for now.'}
                         </TooltipContent>
                       </Tooltip>
                     )}
