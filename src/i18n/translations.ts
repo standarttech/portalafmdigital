@@ -501,6 +501,7 @@ export const translations = {
   'nav.budget': t('Budget Planner', 'Бюджетирование', 'Pianificatore budget', 'Planificador de presupuesto', 'مخطط الميزانية', 'Planificateur de budget'),
   'nav.calendar': t('Calendar', 'Календарь', 'Calendario', 'Calendario', 'التقويم', 'Calendrier'),
   'nav.tasks': t('Tasks', 'Задачи', 'Attività', 'Tareas', 'المهام', 'Tâches'),
+  'nav.automations': t('Automations', 'Автоматизации', 'Automazioni', 'Automatizaciones', 'الأتمتة', 'Automatisations'),
 
   // Funnel
   'funnel.title': t('Conversion Funnel', 'Воронка конверсий', 'Funnel di conversione', 'Embudo de conversión', 'قمع التحويل', 'Entonnoir de conversion'),
