@@ -178,8 +178,6 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
 
   const handleFormSelected = () => {
     if (!selectedFormId || !selectedPageId) return;
-    const pg = pages.find(p => p.id === selectedPageId);
-    // Find page from last response — use selectedPageId carried forward
     runSetup(selectedPageId, selectedFormId);
   };
 
