@@ -186,6 +186,49 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
     });
   }, [selectedConnectionId]);
 
+  const syncTelegramTemplates = useCallback(async (fields: FormField[]) => {
+    const { data: telegramSteps, error: stepsError } = await supabase
+      .from('automation_steps')
+      .select('id, field_mapping, config')
+      .eq('automation_id', automationId)
+      .eq('action_type', 'send_telegram');
+
+    if (stepsError || !telegramSteps?.length) return;
+
+    const template = buildTelegramLeadTemplate(fields);
+    const updates = telegramSteps
+      .map((step) => {
+        const fieldMapping = (step.field_mapping as Record<string, unknown> | null) || {};
+        const configMap = (step.config as Record<string, unknown> | null) || {};
+        const currentMessage = String(fieldMapping.message ?? configMap.message ?? '').trim();
+        const hasFormVariables =
+          currentMessage.includes('{{trigger.fields.') ||
+          currentMessage.includes('{{trigger.form_answers_text}}') ||
+          currentMessage.includes('{{trigger.form_answers_json}}');
+
+        if (currentMessage && hasFormVariables) return null;
+
+        return {
+          id: step.id,
+          field_mapping: { ...fieldMapping, message: template },
+        };
+      })
+      .filter((u): u is { id: string; field_mapping: Record<string, unknown> } => !!u);
+
+    if (!updates.length) return;
+
+    await Promise.all(
+      updates.map((u) =>
+        supabase
+          .from('automation_steps')
+          .update({ field_mapping: u.field_mapping as unknown as Record<string, never> })
+          .eq('id', u.id)
+      )
+    );
+
+    qc.invalidateQueries({ queryKey: ['automation-steps', automationId] });
+  }, [automationId, qc]);
+
   const runSetup = useCallback(async (pageId?: string, formId?: string) => {
     setPhase('running');
     setError('');
