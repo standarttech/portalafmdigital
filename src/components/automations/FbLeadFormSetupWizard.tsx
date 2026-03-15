@@ -397,7 +397,38 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
     }
   };
 
-  const resetSetup = async () => {
+  const fetchHistoricalLeads = async (days: number) => {
+    setHistoricalLoading(true);
+    setHistoricalResult(null);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) throw new Error('Not authenticated');
+      const resp = await fetch(
+        `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?action=fetch-historical-leads`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.session.access_token}`,
+          },
+          body: JSON.stringify({ automation_id: automationId, days }),
+        }
+      );
+      const result = await resp.json();
+      setHistoricalResult(result);
+      if (result.success) {
+        toast.success(`Fetched ${result.leads_fetched || 0} leads, processed ${result.leads_processed || 0}`);
+      } else {
+        toast.error(result.error || 'Failed to fetch historical leads');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setHistoricalLoading(false);
+    }
+  };
+
+
     const { error: err } = await supabase
       .from('automations')
       .update({ trigger_config: {} as unknown as Record<string, never> })
