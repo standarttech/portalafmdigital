@@ -1,3 +1,9 @@
+/**
+ * Connections Center — Unified Platform Control Tower
+ *
+ * Real operational hub for all platform connections, integrations, and reusable resources.
+ * Shows honest status, real usage from DB, client scoping, and actionable management.
+ */
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -11,11 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   Link2, Search, Send, Database, Globe, FileSpreadsheet, Zap, Bot, ShieldCheck,
   CheckCircle2, XCircle, AlertTriangle, Power, Settings, Eye,
-  ArrowRight, RefreshCw, Workflow, ExternalLink,
+  ArrowRight, RefreshCw, Workflow, ExternalLink, Users, Copy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,18 +46,13 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; icon: ty
 interface UsageRef { module: string; label: string; link: string }
 
 /**
- * Build real usage map from multiple DB sources:
- * 1. automation_steps (bot_profile_id, sheet_url/connection_id references)
- * 2. notification_broadcasts (bot_profile_id)
- * 3. client_report_schedules (telegram_bot_profile_id)
+ * Real usage detection from multiple DB sources.
  */
 function useResourceUsageMap() {
   const { data: automationSteps = [] } = useQuery({
     queryKey: ['resource-usage-auto-steps'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('automation_steps')
-        .select('id, automation_id, action_type, config');
+      const { data } = await supabase.from('automation_steps').select('id, automation_id, action_type, config');
       return data || [];
     },
     staleTime: 5 * 60 * 1000,
@@ -58,7 +61,7 @@ function useResourceUsageMap() {
   const { data: automations = [] } = useQuery({
     queryKey: ['resource-usage-automations'],
     queryFn: async () => {
-      const { data } = await supabase.from('automations').select('id, name');
+      const { data } = await supabase.from('automations').select('id, name, trigger_type, trigger_config');
       return data || [];
     },
     staleTime: 5 * 60 * 1000,
@@ -101,7 +104,7 @@ function useResourceUsageMap() {
       }
     };
 
-    // 1. Automation steps
+    // 1. Automation steps — bot & sheet references
     automationSteps.forEach(step => {
       const config = step.config as Record<string, unknown> | null;
       const autoName = autoNameMap.get(step.automation_id) || 'Automation';
@@ -118,14 +121,24 @@ function useResourceUsageMap() {
       }
     });
 
-    // 2. Notification broadcasts
+    // 2. Automation triggers — meta connection references
+    automations.forEach(a => {
+      if (a.trigger_type === 'fb_lead_form') {
+        const tc = a.trigger_config as Record<string, unknown> | null;
+        if (tc?.meta_connection_id) {
+          addUsage(String(tc.meta_connection_id), 'Automations', a.name + ' (trigger)', `/automations/${a.id}`);
+        }
+      }
+    });
+
+    // 3. Broadcasts
     broadcasts.forEach(b => {
       if (b.bot_profile_id) {
         addUsage(b.bot_profile_id, 'Broadcasts', b.subject || 'Broadcast', '/broadcasts');
       }
     });
 
-    // 3. Report schedules
+    // 4. Report schedules
     reportSchedules.forEach(rs => {
       if (rs.telegram_bot_profile_id) {
         addUsage(
@@ -148,19 +161,36 @@ export default function ConnectionsCenterPage() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterClient, setFilterClient] = useState<string>('all');
   const [detailResource, setDetailResource] = useState<PlatformResource | null>(null);
+
+  // Unique clients from resources
+  const clients = useMemo(() => {
+    const map = new Map<string, string>();
+    resources.forEach(r => {
+      if (r.clientId && r.clientName) map.set(r.clientId, r.clientName);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [resources]);
 
   const filtered = useMemo(() => {
     return resources.filter(r => {
       if (filterType !== 'all' && r.type !== filterType) return false;
       if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+      if (filterClient !== 'all') {
+        if (filterClient === 'global') {
+          if (!r.isGlobal) return false;
+        } else {
+          if (r.clientId !== filterClient && !r.isGlobal) return false;
+        }
+      }
       if (search) {
         const q = search.toLowerCase();
         return r.label.toLowerCase().includes(q) || r.provider.toLowerCase().includes(q) || (r.clientName || '').toLowerCase().includes(q);
       }
       return true;
     });
-  }, [resources, search, filterType, filterStatus]);
+  }, [resources, search, filterType, filterStatus, filterClient]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: resources.length };
@@ -179,16 +209,17 @@ export default function ConnectionsCenterPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
             <Link2 className="h-6 w-6 text-primary" /> Connections Center
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Unified view of all platform connections, integrations, and reusable resources.
+            Platform-wide view of all connections, integrations, and reusable resources.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => refetch()}>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { refetch(); toast.success('Refreshed'); }}>
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </Button>
       </div>
@@ -229,6 +260,16 @@ export default function ConnectionsCenterPage() {
             <SelectItem value="unconfigured">Missing Auth ({counts.unconfigured || 0})</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={filterClient} onValueChange={setFilterClient}>
+          <SelectTrigger className="w-[180px] h-9"><SelectValue placeholder="Client" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All clients</SelectItem>
+            <SelectItem value="global">Global only</SelectItem>
+            {clients.map(([id, name]) => (
+              <SelectItem key={id} value={id}>{name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Resources List */}
@@ -239,7 +280,18 @@ export default function ConnectionsCenterPage() {
           <CardContent className="py-16 text-center text-muted-foreground">
             <Link2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">{search || filterType !== 'all' || filterStatus !== 'all' ? 'No matching resources found' : 'No connections configured yet'}</p>
-            <p className="text-xs mt-1">Connect services from their respective module pages.</p>
+            <p className="text-xs mt-2">Connect services from their respective module pages:</p>
+            <div className="flex flex-wrap justify-center gap-2 mt-3">
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => navigate('/crm/integrations')}>
+                <Send className="h-3 w-3" /> CRM Bots
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => navigate('/ai-ads/integrations')}>
+                <Globe className="h-3 w-3" /> Ad Platforms
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => navigate('/growth-os/integrations')}>
+                <Zap className="h-3 w-3" /> Growth OS
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -273,7 +325,7 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
   const StIcon = stCfg.icon;
 
   return (
-    <Card className="hover:border-border transition-colors">
+    <Card className="hover:border-border transition-colors cursor-pointer" onClick={() => onDetail(r)}>
       <CardContent className="p-3 flex items-center gap-3">
         <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${cfg.color}15` }}>
           <Icon className="h-4 w-4" style={{ color: cfg.color }} />
@@ -308,7 +360,7 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
           </div>
         </div>
 
-        {/* Real Usages */}
+        {/* Usages */}
         <div className="hidden md:flex items-center gap-1 flex-shrink-0">
           {usages.length > 0 ? (
             usages.slice(0, 3).map((u, i) => (
@@ -323,7 +375,7 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
               </Tooltip>
             ))
           ) : (
-            <span className="text-[9px] text-muted-foreground/50">No usages detected</span>
+            <span className="text-[9px] text-muted-foreground/50">Unused</span>
           )}
           {usages.length > 3 && (
             <Badge variant="outline" className="text-[9px] h-4 px-1 text-muted-foreground">+{usages.length - 3}</Badge>
@@ -335,28 +387,18 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
           <StIcon className="h-3 w-3" /> {stCfg.label}
         </Badge>
 
-        {/* Actions */}
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onDetail(r); }}>
-                <Eye className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="text-xs">Details & Usage</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
-                e.stopPropagation();
-                onNavigate(r.managePath);
-              }}>
-                <Settings className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="text-xs">Manage in source module</TooltipContent>
-          </Tooltip>
-        </div>
+        {/* Quick Action */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => {
+              e.stopPropagation();
+              onNavigate(r.managePath);
+            }}>
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="text-xs">Manage</TooltipContent>
+        </Tooltip>
       </CardContent>
     </Card>
   );
@@ -381,74 +423,140 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
             {r.label}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 text-sm">
-          {/* Status Row */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={cn('gap-1', stCfg.className)}>
-              <StIcon className="h-3 w-3" /> {stCfg.label}
-            </Badge>
-            {r.hasSecret && (
-              <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1 text-xs">
-                <ShieldCheck className="h-3 w-3" /> Vault
+        <ScrollArea className="max-h-[60vh]">
+          <div className="space-y-4 text-sm pr-2">
+            {/* Status */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={cn('gap-1', stCfg.className)}>
+                <StIcon className="h-3 w-3" /> {stCfg.label}
               </Badge>
-            )}
-            {r.isGlobal && <Badge variant="outline" className="text-xs">Global</Badge>}
-            <Badge variant="outline" className="text-[10px] text-muted-foreground">
-              Managed in source module
-            </Badge>
-          </div>
+              {r.hasSecret && (
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1 text-xs">
+                  <ShieldCheck className="h-3 w-3" /> Vault
+                </Badge>
+              )}
+              {r.isGlobal && <Badge variant="outline" className="text-xs">Global</Badge>}
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                Managed in source module
+              </Badge>
+            </div>
 
-          {/* Info Grid */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{cfg.label}</span></div>
-            <div><span className="text-muted-foreground">Provider:</span> <span className="text-foreground">{r.provider}</span></div>
-            {r.clientName && <div><span className="text-muted-foreground">Client:</span> <span className="text-foreground">{r.clientName}</span></div>}
-            <div><span className="text-muted-foreground">Source:</span> <span className="text-foreground font-mono text-[10px]">{r.sourceTable}</span></div>
-            {r.lastSyncAt && <div className="col-span-2"><span className="text-muted-foreground">Last Sync:</span> <span className="text-foreground">{new Date(r.lastSyncAt).toLocaleString()}</span></div>}
-            {r.lastError && <div className="col-span-2"><span className="text-muted-foreground">Last Error:</span> <span className="text-red-400">{r.lastError}</span></div>}
-          </div>
+            {/* Info Grid */}
+            <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+              <div><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{cfg.label}</span></div>
+              <div><span className="text-muted-foreground">Provider:</span> <span className="text-foreground">{r.provider}</span></div>
+              {r.clientName && <div><span className="text-muted-foreground">Client:</span> <span className="text-foreground">{r.clientName}</span></div>}
+              <div><span className="text-muted-foreground">Source:</span> <span className="text-foreground font-mono text-[10px]">{r.sourceTable}</span></div>
+              {r.lastSyncAt && <div className="col-span-2"><span className="text-muted-foreground">Last Sync:</span> <span className="text-foreground">{new Date(r.lastSyncAt).toLocaleString()}</span></div>}
+            </div>
 
-          {/* Usage */}
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Used In</div>
-            {usages.length > 0 ? (
-              <div className="space-y-1.5">
-                {usages.map((u, i) => (
-                  <button key={i} onClick={() => { onClose(); onNavigate(u.link); }}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-muted/20 border border-border/30 hover:border-primary/30 transition-colors text-left">
-                    <Workflow className="h-3.5 w-3.5 text-primary/70 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium text-foreground">{u.label}</span>
-                      <span className="text-[10px] text-muted-foreground ml-2">{u.module}</span>
-                    </div>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                  </button>
-                ))}
+            {/* Error */}
+            {r.lastError && (
+              <div className="p-2 rounded-lg bg-red-400/5 border border-red-400/20 text-xs">
+                <span className="text-red-400 font-medium">Error: </span>
+                <span className="text-muted-foreground">{r.lastError}</span>
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground/60">No active usages detected across platform modules.</p>
             )}
-          </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-2 border-t border-border/30">
-            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => {
-              onClose();
-              onNavigate(r.managePath);
-            }}>
-              <ExternalLink className="h-3.5 w-3.5" /> Manage
-            </Button>
-            {(r.type === 'telegram_bot' || r.type === 'external_crm') && (
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
-                toast.info('Opening module settings for testing...');
-                onClose();
-                onNavigate(r.managePath);
-              }}>
-                <RefreshCw className="h-3.5 w-3.5" /> Test
-              </Button>
+            {/* Meta info */}
+            {r.type === 'sheet_url' && r.meta?.url && (
+              <div className="p-2 rounded-lg bg-muted/20 border border-border/30 text-xs">
+                <span className="text-muted-foreground">URL: </span>
+                <code className="text-foreground text-[10px] font-mono break-all">{String(r.meta.url)}</code>
+                <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-1 inline-flex" onClick={() => {
+                  navigator.clipboard.writeText(String(r.meta.url));
+                  toast.success('Copied');
+                }}>
+                  <Copy className="h-2.5 w-2.5" />
+                </Button>
+              </div>
             )}
+
+            <Separator />
+
+            {/* Usage */}
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Used In ({usages.length})
+              </div>
+              {usages.length > 0 ? (
+                <div className="space-y-1.5">
+                  {usages.map((u, i) => (
+                    <button key={i} onClick={() => { onClose(); onNavigate(u.link); }}
+                      className="w-full flex items-center gap-2 p-2 rounded-lg bg-muted/20 border border-border/30 hover:border-primary/30 transition-colors text-left">
+                      <Workflow className="h-3.5 w-3.5 text-primary/70 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-foreground">{u.label}</span>
+                        <span className="text-[10px] text-muted-foreground ml-2">{u.module}</span>
+                      </div>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground/60 p-2 rounded-lg bg-muted/10 border border-border/20">
+                  No active usages detected. This resource is available for use in Automations, Broadcasts, Reports, and other modules.
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
+                  onClose();
+                  onNavigate(r.managePath);
+                }}>
+                  <ExternalLink className="h-3.5 w-3.5" /> Manage in Source
+                </Button>
+                {r.type === 'telegram_bot' && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
+                    onClose();
+                    onNavigate('/crm/integrations');
+                  }}>
+                    <Settings className="h-3.5 w-3.5" /> Bot Settings
+                  </Button>
+                )}
+                {r.type === 'platform_ad' && r.status === 'unconfigured' && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs text-amber-400 border-amber-400/30" onClick={() => {
+                    onClose();
+                    onNavigate(r.managePath);
+                  }}>
+                    <AlertTriangle className="h-3.5 w-3.5" /> Configure Auth
+                  </Button>
+                )}
+                {r.type === 'platform_ad' && r.status === 'error' && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs text-red-400 border-red-400/30" onClick={() => {
+                    onClose();
+                    onNavigate(r.managePath);
+                  }}>
+                    <RefreshCw className="h-3.5 w-3.5" /> Reconnect
+                  </Button>
+                )}
+                {r.type === 'external_crm' && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
+                    toast.info('Opening CRM sync settings...');
+                    onClose();
+                    onNavigate('/crm/integrations');
+                  }}>
+                    <RefreshCw className="h-3.5 w-3.5" /> Test Sync
+                  </Button>
+                )}
+                {r.type === 'sheet_url' && r.clientId && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
+                    onClose();
+                    onNavigate(`/clients/${r.clientId}`);
+                  }}>
+                    <Users className="h-3.5 w-3.5" /> Client Settings
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

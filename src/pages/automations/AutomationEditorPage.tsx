@@ -26,6 +26,7 @@ import {
   Filter, Zap, Send, X, Info, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import FbLeadFormSetupWizard from '@/components/automations/FbLeadFormSetupWizard';
 
 /* ── Trigger definitions ── */
 const TRIGGER_TYPES = [
@@ -383,9 +384,13 @@ export default function AutomationEditorPage() {
                     </div>
                   </div>
 
-                  {/* FB Lead Form structured config */}
+                  {/* FB Lead Form — Guided Setup Wizard */}
                   {automation.trigger_type === 'fb_lead_form' && (
-                    <FbLeadFormTriggerConfig metaConns={metaConns} triggerConfig={automation.trigger_config as Record<string, any> | null} />
+                    <FbLeadFormSetupWizard
+                      automationId={automation.id}
+                      metaConns={metaConns}
+                      triggerConfig={automation.trigger_config as Record<string, any> | null}
+                    />
                   )}
                 </CardContent>
               </Card>
@@ -514,77 +519,6 @@ export default function AutomationEditorPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-/* ── Facebook Lead Form Trigger — Structured Config ── */
-function FbLeadFormTriggerConfig({ metaConns, triggerConfig }: {
-  metaConns: PlatformResource[];
-  triggerConfig: Record<string, any> | null;
-}) {
-  const selectedConnectionId = triggerConfig?.meta_connection_id;
-  const selectedPageId = triggerConfig?.page_id;
-  const selectedFormId = triggerConfig?.form_id;
-  const selectedConn = metaConns.find(c => c.id === selectedConnectionId);
-
-  // Build checklist
-  const checks = [
-    { label: 'Meta account connected', done: metaConns.length > 0, detail: metaConns.length > 0 ? `${metaConns.length} connection(s): ${metaConns.map(c => c.label).join(', ')}` : null },
-    { label: 'Meta connection selected', done: !!selectedConn, detail: selectedConn ? selectedConn.label : null },
-    { label: 'Page selected', done: !!selectedPageId, detail: selectedPageId || null },
-    { label: 'Lead Form selected', done: !!selectedFormId, detail: selectedFormId || null },
-    { label: 'Webhook endpoint verified', done: false, detail: null },
-    { label: 'Live ingestion active', done: false, detail: null },
-  ];
-
-  const completedCount = checks.filter(c => c.done).length;
-
-  return (
-    <div className="mt-3 p-3 rounded-lg bg-amber-400/5 border border-amber-400/15 text-xs space-y-3">
-      <div className="font-medium text-amber-400 flex items-center justify-between">
-        <span className="flex items-center gap-1.5">
-          <Info className="h-3.5 w-3.5" /> Facebook Lead Form — Setup
-        </span>
-        <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30">
-          {completedCount}/{checks.length} steps
-        </Badge>
-      </div>
-
-      <div className="space-y-1.5">
-        {checks.map((c, i) => (
-          <div key={i} className="flex items-start gap-2">
-            {c.done ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-400 mt-0.5 flex-shrink-0" />
-            ) : (
-              <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 mt-0.5 flex-shrink-0" />
-            )}
-            <div>
-              <span className={cn('text-muted-foreground', c.done && 'text-green-400/80')}>
-                {i + 1}. {c.label}
-              </span>
-              {c.detail && <span className="text-muted-foreground/60 ml-1">— {c.detail}</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {metaConns.length === 0 && (
-        <div className="flex items-center gap-2 p-2 rounded-md bg-red-400/5 border border-red-400/20">
-          <XCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />
-          <span className="text-muted-foreground">
-            No Meta connections found.{' '}
-            <a href="/ai-ads/integrations" className="text-primary underline">Connect Meta</a>
-            {' or '}
-            <a href="/connections" className="text-primary underline">Connections Center</a>.
-          </span>
-        </div>
-      )}
-
-      <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-muted-foreground/70">
-        <strong>Current status:</strong> Webhook ingestion not yet active. Use <strong>Manual / Test</strong> trigger to test this automation flow now.
-        Real-time Facebook lead ingestion requires Meta webhook verification, which is pending platform-level implementation.
-      </div>
     </div>
   );
 }
