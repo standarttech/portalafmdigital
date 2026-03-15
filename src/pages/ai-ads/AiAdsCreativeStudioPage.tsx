@@ -8,10 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import {
   Sparkles, Calendar, ImageIcon, Loader2, Play, CheckCircle2, XCircle,
   Eye, RefreshCw, Copy, Wand2, LayoutGrid, List, Plus, FileText,
-  Video, Layers, MessageSquare, Type, Package, ChevronRight
+  Video, Layers, MessageSquare, Type, Package, ChevronRight, Film,
+  Zap, ArrowRight, Download
 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,6 +66,7 @@ export default function AiAdsCreativeStudioPage() {
   const [generatingItemId, setGeneratingItemId] = useState<string | null>(null);
   const [tab, setTab] = useState('plans');
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+  const [freepikConnected, setFreepikConnected] = useState(false);
 
   // Generate plan form
   const [genOpen, setGenOpen] = useState(false);
@@ -73,6 +76,9 @@ export default function AiAdsCreativeStudioPage() {
 
   // Detail dialog
   const [detailItem, setDetailItem] = useState<PlanItem | null>(null);
+  
+  // Video generation
+  const [videoGenItemId, setVideoGenItemId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const [cRes, pRes] = await Promise.all([
@@ -81,6 +87,15 @@ export default function AiAdsCreativeStudioPage() {
     ]);
     setClients(cRes.data || []);
     setPlans((pRes.data as unknown as ContentPlan[]) || []);
+    
+    // Check Freepik connection
+    const { data: integrations } = await supabase
+      .from('platform_integrations' as any)
+      .select('is_active')
+      .eq('integration_type', 'freepik')
+      .maybeSingle();
+    setFreepikConnected(!!integrations?.is_active);
+    
     setLoading(false);
   }, []);
 
@@ -121,7 +136,6 @@ export default function AiAdsCreativeStudioPage() {
       setGenOpen(false);
       setGenBrief('');
       await loadData();
-      // Auto-select the new plan
       const { data: newPlan } = await supabase
         .from('creative_content_plans' as any)
         .select('*')
@@ -143,7 +157,12 @@ export default function AiAdsCreativeStudioPage() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(isRu ? 'Креатив сгенерирован!' : 'Creative generated!');
+      
+      if (data?.status === 'processing') {
+        toast.info(isRu ? 'Генерация запущена через Freepik. Обновится автоматически.' : 'Generation started via Freepik. Will update automatically.');
+      } else {
+        toast.success(isRu ? 'Креатив сгенерирован!' : 'Creative generated!');
+      }
       if (selectedPlan) loadItems(selectedPlan.id);
     } catch (e: any) {
       toast.error(e.message || 'Generation failed');
@@ -152,10 +171,47 @@ export default function AiAdsCreativeStudioPage() {
     }
   };
 
+  const handleGenerateVideo = async (itemId: string, imageUrl: string) => {
+    setVideoGenItemId(itemId);
+    try {
+      const { data, error } = await supabase.functions.invoke('freepik-generate', {
+        body: {
+          action: 'generate_video',
+          image_url: imageUrl,
+          prompt: items.find(i => i.id === itemId)?.prompt || '',
+          item_id: itemId,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.info(isRu ? 'Видео генерируется через Freepik (Kling v2)...' : 'Video generating via Freepik (Kling v2)...');
+      if (selectedPlan) setTimeout(() => loadItems(selectedPlan.id), 5000);
+    } catch (e: any) {
+      toast.error(e.message || 'Video generation failed');
+    } finally {
+      setVideoGenItemId(null);
+    }
+  };
+
   const updateItemStatus = async (itemId: string, status: string) => {
     await supabase.from('creative_plan_items' as any).update({ status }).eq('id', itemId);
     if (selectedPlan) loadItems(selectedPlan.id);
     toast.success(isRu ? 'Статус обновлён' : 'Status updated');
+  };
+
+  const handleGenerateCopies = async (itemId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-content-plan', {
+        body: { action: 'generate_copies', item_id: itemId, language },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(isRu ? 'Копирайт сгенерирован!' : 'Ad copy generated!');
+      return data;
+    } catch (e: any) {
+      toast.error(e.message || 'Copy generation failed');
+      return null;
+    }
   };
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || '—';
@@ -176,17 +232,44 @@ export default function AiAdsCreativeStudioPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-[hsl(270,70%,60%)]" />
+            <Sparkles className="h-6 w-6 text-primary" />
             {isRu ? 'Креативная студия' : 'Creative Studio'}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
             {isRu ? 'ИИ-контент-планы, генерация и управление креативами' : 'AI content plans, generation & creative management'}
+            {freepikConnected && (
+              <Badge variant="outline" className="text-[9px] gap-1 text-emerald-400 border-emerald-400/30">
+                <Zap className="h-2.5 w-2.5" /> Freepik
+              </Badge>
+            )}
           </p>
         </div>
-        <Button className="gap-2 bg-gradient-to-r from-[hsl(270,70%,50%)] to-[hsl(320,80%,50%)]" onClick={() => setGenOpen(true)}>
+        <Button className="gap-2 bg-gradient-to-r from-primary to-accent" onClick={() => setGenOpen(true)}>
           <Wand2 className="h-4 w-4" /> {isRu ? 'Создать контент-план' : 'Generate Content Plan'}
         </Button>
       </div>
+
+      {/* Freepik Status Banner */}
+      {!freepikConnected && (
+        <Card className="border-amber-500/20 bg-amber-500/5">
+          <CardContent className="p-3 flex items-center gap-3">
+            <Zap className="h-5 w-5 text-amber-400 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">
+                {isRu ? 'Freepik API не подключён' : 'Freepik API not connected'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isRu
+                  ? 'Подключите Freepik в разделе Integrations для генерации через Flux Kontext Pro и видео через Kling v2. Без него используется Gemini.'
+                  : 'Connect Freepik in Integrations for Flux Kontext Pro images & Kling v2 video. Falls back to Gemini without it.'}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="shrink-0" onClick={() => window.location.href = '/ai-ads/integrations'}>
+              {isRu ? 'Настроить' : 'Configure'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-muted/30">
@@ -214,11 +297,11 @@ export default function AiAdsCreativeStudioPage() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {plans.map(plan => (
-                <Card key={plan.id} className="hover:border-[hsl(270,70%,50%)]/30 transition-colors cursor-pointer group" onClick={() => selectPlan(plan)}>
+                <Card key={plan.id} className="hover:border-primary/30 transition-colors cursor-pointer group" onClick={() => selectPlan(plan)}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-foreground truncate group-hover:text-[hsl(270,70%,60%)] transition-colors">{plan.title}</p>
+                        <p className="font-semibold text-sm text-foreground truncate group-hover:text-primary transition-colors">{plan.title}</p>
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{clientName(plan.client_id)}</p>
                       </div>
                       <Badge variant="outline" className="text-[9px] shrink-0">{plan.status}</Badge>
@@ -228,7 +311,7 @@ export default function AiAdsCreativeStudioPage() {
                     )}
                     <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
                       {plan.period_start && <span>{plan.period_start} — {plan.period_end}</span>}
-                      <ChevronRight className="h-3 w-3 ml-auto text-muted-foreground/50 group-hover:text-[hsl(270,70%,60%)] transition-colors" />
+                      <ChevronRight className="h-3 w-3 ml-auto text-muted-foreground/50 group-hover:text-primary transition-colors" />
                     </div>
                   </CardContent>
                 </Card>
@@ -270,7 +353,10 @@ export default function AiAdsCreativeStudioPage() {
                           {(groupedByStatus[status] || []).map(item => (
                             <ItemCard key={item.id} item={item} isRu={isRu}
                               isGenerating={generatingItemId === item.id}
+                              isVideoGenerating={videoGenItemId === item.id}
+                              freepikConnected={freepikConnected}
                               onGenerate={() => handleGenerateCreative(item.id)}
+                              onGenerateVideo={() => item.generated_url && handleGenerateVideo(item.id, item.generated_url)}
                               onApprove={() => updateItemStatus(item.id, 'approved')}
                               onReject={() => updateItemStatus(item.id, 'rejected')}
                               onDetail={() => setDetailItem(item)}
@@ -304,7 +390,7 @@ export default function AiAdsCreativeStudioPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Wand2 className="h-5 w-5 text-[hsl(270,70%,60%)]" />
+              <Wand2 className="h-5 w-5 text-primary" />
               {isRu ? 'Создать контент-план' : 'Generate Content Plan'}
             </DialogTitle>
             <DialogDescription>
@@ -337,10 +423,18 @@ export default function AiAdsCreativeStudioPage() {
               <label className="text-xs font-medium text-foreground">{isRu ? 'Период (дни)' : 'Period (days)'}</label>
               <Input type="number" value={genDays} onChange={e => setGenDays(e.target.value)} min={3} max={60} />
             </div>
+            {freepikConnected && (
+              <div className="flex items-center gap-2 p-2 rounded-md bg-emerald-500/5 border border-emerald-500/20">
+                <Zap className="h-4 w-4 text-emerald-400" />
+                <span className="text-xs text-emerald-400">
+                  {isRu ? 'Генерация через Freepik Flux Kontext Pro' : 'Generation via Freepik Flux Kontext Pro'}
+                </span>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setGenOpen(false)}>{isRu ? 'Отмена' : 'Cancel'}</Button>
-            <Button onClick={handleGeneratePlan} disabled={generating} className="gap-2 bg-gradient-to-r from-[hsl(270,70%,50%)] to-[hsl(320,80%,50%)]">
+            <Button onClick={handleGeneratePlan} disabled={generating} className="gap-2 bg-gradient-to-r from-primary to-accent">
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {generating ? (isRu ? 'Генерация...' : 'Generating...') : (isRu ? 'Создать план' : 'Generate')}
             </Button>
@@ -352,7 +446,11 @@ export default function AiAdsCreativeStudioPage() {
       {detailItem && (
         <ItemDetailDialog item={detailItem} isRu={isRu} onClose={() => setDetailItem(null)}
           isGenerating={generatingItemId === detailItem.id}
+          isVideoGenerating={videoGenItemId === detailItem.id}
+          freepikConnected={freepikConnected}
           onGenerate={() => handleGenerateCreative(detailItem.id)}
+          onGenerateVideo={() => detailItem.generated_url && handleGenerateVideo(detailItem.id, detailItem.generated_url)}
+          onGenerateCopies={() => handleGenerateCopies(detailItem.id)}
           onApprove={() => { updateItemStatus(detailItem.id, 'approved'); setDetailItem(null); }}
           onReject={() => { updateItemStatus(detailItem.id, 'rejected'); setDetailItem(null); }}
         />
@@ -361,20 +459,32 @@ export default function AiAdsCreativeStudioPage() {
   );
 }
 
-function ItemCard({ item, isRu, isGenerating, onGenerate, onApprove, onReject, onDetail }: {
-  item: PlanItem; isRu: boolean; isGenerating: boolean;
-  onGenerate: () => void; onApprove: () => void; onReject: () => void; onDetail: () => void;
+// ── Item Card (Board View) ──
+function ItemCard({ item, isRu, isGenerating, isVideoGenerating, freepikConnected, onGenerate, onGenerateVideo, onApprove, onReject, onDetail }: {
+  item: PlanItem; isRu: boolean; isGenerating: boolean; isVideoGenerating: boolean;
+  freepikConnected: boolean;
+  onGenerate: () => void; onGenerateVideo: () => void;
+  onApprove: () => void; onReject: () => void; onDetail: () => void;
 }) {
   return (
-    <Card className="hover:border-[hsl(270,70%,50%)]/20 transition-colors cursor-pointer" onClick={onDetail}>
+    <Card className="hover:border-primary/20 transition-colors cursor-pointer" onClick={onDetail}>
       <CardContent className="p-3">
         {item.generated_url && (
-          <div className="rounded-md overflow-hidden bg-muted/20 mb-2 aspect-video">
-            <img src={item.generated_url} alt={item.title} className="w-full h-full object-cover" />
+          <div className="rounded-md overflow-hidden bg-muted/20 mb-2 aspect-video relative group/img">
+            {item.format === 'video' && item.generated_url.endsWith('.mp4') ? (
+              <video src={item.generated_url} className="w-full h-full object-cover" muted />
+            ) : (
+              <img src={item.generated_url} alt={item.title} className="w-full h-full object-cover" />
+            )}
+            {item.metadata?.model && (
+              <span className="absolute bottom-1 right-1 text-[8px] bg-background/80 text-foreground px-1.5 py-0.5 rounded">
+                {item.metadata.model}
+              </span>
+            )}
           </div>
         )}
         <div className="flex items-start gap-2">
-          <span className="mt-0.5 text-[hsl(270,70%,60%)]">{formatIcons[item.format]}</span>
+          <span className="mt-0.5 text-primary">{formatIcons[item.format]}</span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
             {item.scheduled_date && (
@@ -387,12 +497,18 @@ function ItemCard({ item, isRu, isGenerating, onGenerate, onApprove, onReject, o
         {item.copy_headline && (
           <p className="text-[10px] text-muted-foreground mt-2 line-clamp-1">📝 {item.copy_headline}</p>
         )}
-        <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
+        <div className="flex gap-1 mt-2 flex-wrap" onClick={e => e.stopPropagation()}>
           {item.status === 'pending' && (
             <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 flex-1" onClick={onGenerate} disabled={isGenerating}>
               {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
               {isRu ? 'Генерировать' : 'Generate'}
             </Button>
+          )}
+          {item.status === 'generating' && (
+            <div className="flex items-center gap-1.5 text-[10px] text-amber-400 w-full">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {isRu ? 'Генерация через Freepik...' : 'Generating via Freepik...'}
+            </div>
           )}
           {item.status === 'review' && (
             <>
@@ -403,6 +519,12 @@ function ItemCard({ item, isRu, isGenerating, onGenerate, onApprove, onReject, o
                 <XCircle className="h-3 w-3" /> {isRu ? 'Нет' : 'Reject'}
               </Button>
             </>
+          )}
+          {item.status === 'approved' && item.generated_url && freepikConnected && item.format !== 'video' && (
+            <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 flex-1" onClick={onGenerateVideo} disabled={isVideoGenerating}>
+              {isVideoGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Film className="h-3 w-3" />}
+              {isRu ? 'Видео' : 'Video'}
+            </Button>
           )}
           {item.status === 'rejected' && (
             <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 flex-1" onClick={onGenerate} disabled={isGenerating}>
@@ -415,19 +537,20 @@ function ItemCard({ item, isRu, isGenerating, onGenerate, onApprove, onReject, o
   );
 }
 
+// ── Item Row (List View) ──
 function ItemRow({ item, isRu, isGenerating, onGenerate, onApprove, onReject, onDetail }: {
   item: PlanItem; isRu: boolean; isGenerating: boolean;
   onGenerate: () => void; onApprove: () => void; onReject: () => void; onDetail: () => void;
 }) {
   return (
-    <Card className="hover:border-[hsl(270,70%,50%)]/20 transition-colors cursor-pointer" onClick={onDetail}>
+    <Card className="hover:border-primary/20 transition-colors cursor-pointer" onClick={onDetail}>
       <CardContent className="p-3 flex items-center gap-3">
         {item.generated_url ? (
           <div className="h-12 w-12 rounded-md overflow-hidden bg-muted/20 shrink-0">
             <img src={item.generated_url} alt="" className="h-full w-full object-cover" />
           </div>
         ) : (
-          <div className="h-12 w-12 rounded-md bg-muted/20 flex items-center justify-center shrink-0 text-[hsl(270,70%,60%)]">
+          <div className="h-12 w-12 rounded-md bg-muted/20 flex items-center justify-center shrink-0 text-primary">
             {formatIcons[item.format]}
           </div>
         )}
@@ -437,6 +560,7 @@ function ItemRow({ item, isRu, isGenerating, onGenerate, onApprove, onReject, on
             <Badge className={`text-[9px] ${statusColors[item.status]}`}>{item.status}</Badge>
             <span className="text-[10px] text-muted-foreground">{item.format}</span>
             {item.scheduled_date && <span className="text-[10px] text-muted-foreground">{item.scheduled_date}</span>}
+            {item.metadata?.model && <span className="text-[10px] text-muted-foreground/60">{item.metadata.model}</span>}
           </div>
         </div>
         <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
@@ -458,24 +582,50 @@ function ItemRow({ item, isRu, isGenerating, onGenerate, onApprove, onReject, on
   );
 }
 
-function ItemDetailDialog({ item, isRu, onClose, isGenerating, onGenerate, onApprove, onReject }: {
+// ── Item Detail Dialog ──
+function ItemDetailDialog({ item, isRu, onClose, isGenerating, isVideoGenerating, freepikConnected, onGenerate, onGenerateVideo, onGenerateCopies, onApprove, onReject }: {
   item: PlanItem; isRu: boolean; onClose: () => void; isGenerating: boolean;
-  onGenerate: () => void; onApprove: () => void; onReject: () => void;
+  isVideoGenerating: boolean; freepikConnected: boolean;
+  onGenerate: () => void; onGenerateVideo: () => void;
+  onGenerateCopies: () => void; onApprove: () => void; onReject: () => void;
 }) {
+  const [copyVariations, setCopyVariations] = useState<any[] | null>(null);
+  const [loadingCopies, setLoadingCopies] = useState(false);
+
+  const handleGetCopies = async () => {
+    setLoadingCopies(true);
+    const data = await onGenerateCopies();
+    if (data?.variations) setCopyVariations(data.variations);
+    setLoadingCopies(false);
+  };
+
   return (
     <Dialog open onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span className="text-[hsl(270,70%,60%)]">{formatIcons[item.format]}</span>
+            <span className="text-primary">{formatIcons[item.format]}</span>
             {item.title}
           </DialogTitle>
-          <DialogDescription>{item.format} · {item.scheduled_date || '—'}</DialogDescription>
+          <DialogDescription className="flex items-center gap-2">
+            {item.format} · {item.scheduled_date || '—'}
+            {item.metadata?.model && (
+              <Badge variant="outline" className="text-[9px]">{item.metadata.model}</Badge>
+            )}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           {item.generated_url && (
-            <div className="rounded-lg overflow-hidden bg-muted/20">
-              <img src={item.generated_url} alt={item.title} className="w-full max-h-64 object-contain" />
+            <div className="rounded-lg overflow-hidden bg-muted/20 relative">
+              {item.format === 'video' && item.generated_url.endsWith('.mp4') ? (
+                <video src={item.generated_url} controls className="w-full max-h-64" />
+              ) : (
+                <img src={item.generated_url} alt={item.title} className="w-full max-h-64 object-contain" />
+              )}
+              <a href={item.generated_url} target="_blank" rel="noopener noreferrer"
+                className="absolute top-2 right-2 p-1.5 rounded bg-background/80 hover:bg-background text-foreground">
+                <Download className="h-3.5 w-3.5" />
+              </a>
             </div>
           )}
           <Badge className={`text-xs ${statusColors[item.status]}`}>{item.status}</Badge>
@@ -490,7 +640,7 @@ function ItemDetailDialog({ item, isRu, onClose, isGenerating, onGenerate, onApp
           {item.prompt && (
             <div>
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">{isRu ? 'Промпт для генерации' : 'Generation Prompt'}</p>
-              <p className="text-xs text-foreground bg-muted/20 p-2 rounded-md">{item.prompt}</p>
+              <p className="text-xs text-foreground bg-muted/20 p-2 rounded-md font-mono">{item.prompt}</p>
             </div>
           )}
 
@@ -503,6 +653,21 @@ function ItemDetailDialog({ item, isRu, onClose, isGenerating, onGenerate, onApp
             </div>
           )}
 
+          {/* Copy Variations */}
+          {copyVariations && (
+            <div className="border border-border/50 rounded-lg p-3 space-y-3">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{isRu ? 'Вариации копирайта' : 'Copy Variations'}</p>
+              {copyVariations.map((v: any, i: number) => (
+                <div key={i} className="bg-muted/10 rounded-md p-2 space-y-1">
+                  <p className="text-[10px] text-muted-foreground">#{i + 1}</p>
+                  <p className="text-sm font-medium text-foreground">{v.headline}</p>
+                  <p className="text-xs text-foreground">{v.body}</p>
+                  <Badge variant="outline" className="text-[10px]">{v.cta}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+
           {item.ai_notes && (
             <div>
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">{isRu ? 'Заметки ИИ' : 'AI Notes'}</p>
@@ -512,7 +677,7 @@ function ItemDetailDialog({ item, isRu, onClose, isGenerating, onGenerate, onApp
         </div>
         <DialogFooter className="flex-wrap gap-2">
           {(item.status === 'pending' || item.status === 'rejected') && (
-            <Button onClick={onGenerate} disabled={isGenerating} className="gap-2 bg-gradient-to-r from-[hsl(270,70%,50%)] to-[hsl(320,80%,50%)]">
+            <Button onClick={onGenerate} disabled={isGenerating} className="gap-2 bg-gradient-to-r from-primary to-accent">
               {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               {isRu ? 'Генерировать' : 'Generate'}
             </Button>
@@ -527,6 +692,16 @@ function ItemDetailDialog({ item, isRu, onClose, isGenerating, onGenerate, onApp
               </Button>
             </>
           )}
+          {item.generated_url && freepikConnected && item.format !== 'video' && (
+            <Button variant="outline" className="gap-2" onClick={onGenerateVideo} disabled={isVideoGenerating}>
+              {isVideoGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Film className="h-4 w-4" />}
+              {isRu ? 'Создать видео' : 'Create Video'}
+            </Button>
+          )}
+          <Button variant="outline" className="gap-2" onClick={handleGetCopies} disabled={loadingCopies}>
+            {loadingCopies ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            {isRu ? 'Генерировать копирайт' : 'Generate Copy'}
+          </Button>
           <Button variant="outline" onClick={onClose}>{isRu ? 'Закрыть' : 'Close'}</Button>
         </DialogFooter>
       </DialogContent>
