@@ -298,19 +298,30 @@ Deno.serve(async (req) => {
       if (!claims) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
       const body = await req.json();
-      const { page_id, connection_id } = body;
+      const { page_id, connection_id, use_management_token } = body;
 
       if (!page_id) {
         return new Response(JSON.stringify({ error: 'page_id required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-      // Try to get a usable token
       let token: string | null = null;
 
-      // 1. From platform_connection
-      if (connection_id) {
+      // 1. Management token (highest priority for page/form access)
+      if (use_management_token !== false) {
+        const { data: mgmt } = await supabaseAdmin
+          .from('platform_integrations')
+          .select('secret_ref')
+          .eq('integration_type', 'meta_ads_management')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (mgmt?.secret_ref) {
+          token = await getTokenFromVault(supabaseAdmin, mgmt.secret_ref);
+        }
+      }
+
+      // 2. From platform_connection
+      if (!token && connection_id) {
         const { data: conn } = await supabaseAdmin
           .from('platform_connections')
           .select('token_reference')
@@ -321,7 +332,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 2. From social_media_connections
+      // 3. From social_media_connections
       if (!token) {
         const { data: sc } = await supabaseAdmin
           .from('social_media_connections')
@@ -334,7 +345,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 3. System token
+      // 4. System token
       if (!token) {
         token = Deno.env.get('META_SYSTEM_USER_TOKEN') || null;
       }
