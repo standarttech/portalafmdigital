@@ -895,19 +895,85 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
               <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
               <span className="font-medium">Setup complete — live intake activated. Facebook leads will be processed automatically.</span>
             </div>
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={sendTestLead} disabled={testLoading}>
-              {testLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-              Send Test Lead
-            </Button>
-            {testResult && (
-              <div className={cn('p-2 rounded-md text-xs border', testResult.success ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-destructive/5 border-destructive/15 text-destructive')}>
-                {testResult.success ? (
-                  <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3" /> Test lead processed — Run: {String(testResult.run_id).slice(0, 8)}…</span>
-                ) : (
-                  <span className="flex items-center gap-1.5"><XCircle className="h-3 w-3" /> {String(testResult.error || 'Test failed')}</span>
+
+            <div className="p-2 rounded-md bg-muted/20 border border-border/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-foreground">
+                  Form Questions ({formFieldsPreview.length > 0 ? formFieldsPreview.length : ((config.form_fields as any[])?.length || 0)})
+                </span>
+                <Button variant="ghost" size="sm" className="h-5 text-[8px] text-muted-foreground gap-0.5 px-1.5" onClick={reloadFormFields} disabled={formFieldsLoading}>
+                  {formFieldsLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <RotateCcw className="h-2.5 w-2.5" />}
+                  Reload
+                </Button>
+              </div>
+              {(formFieldsPreview.length > 0 || ((config.form_fields as any[])?.length || 0) > 0) ? (
+                <div className="flex flex-wrap gap-1">
+                  {(formFieldsPreview.length > 0 ? formFieldsPreview : (config.form_fields as Array<{ label: string; slug: string }> || [])).map((f, i) => (
+                    <span key={i} className="text-[8px] px-1.5 py-0.5 rounded border font-mono bg-[hsl(220,70%,50%)]/10 border-[hsl(220,70%,50%)]/20 text-[hsl(220,70%,50%)]">
+                      {f.label}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[10px] text-muted-foreground">Questions are not loaded yet — click Reload.</div>
+              )}
+            </div>
+
+            <div className="pt-1 border-t border-border/20 space-y-2">
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={sendTestLead} disabled={testLoading}>
+                {testLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                Send Test Lead
+              </Button>
+              {testResult && (
+                <div className={cn('p-2 rounded-md text-xs border', testResult.success ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-destructive/5 border-destructive/15 text-destructive')}>
+                  {testResult.success ? (
+                    <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3" /> Test lead processed — Run: {String(testResult.run_id).slice(0, 8)}…</span>
+                  ) : (
+                    <span className="flex items-center gap-1.5"><XCircle className="h-3 w-3" /> {String(testResult.error || 'Test failed')}</span>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-1 border-t border-border/20">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Backfill leads:
+                  </span>
+                  {[1, 2, 3, 4, 5, 6, 7].map(d => (
+                    <Button
+                      key={d}
+                      size="sm"
+                      variant={historicalDays === d ? 'default' : 'outline'}
+                      className="h-6 text-[10px] px-2 min-w-0"
+                      disabled={historicalLoading}
+                      onClick={() => {
+                        setHistoricalDays(d);
+                        fetchHistoricalLeads(d);
+                      }}
+                    >
+                      {d === 1 ? '24h' : `${d}d`}
+                    </Button>
+                  ))}
+                </div>
+                {historicalLoading && (
+                  <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Fetching leads for last {historicalDays === 1 ? '24h' : `${historicalDays} days`}…
+                  </div>
+                )}
+                {historicalResult && (
+                  <div className={cn('mt-1.5 p-2 rounded-md text-xs border', historicalResult.success ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-destructive/5 border-destructive/15 text-destructive')}>
+                    {historicalResult.success ? (
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Fetched {historicalResult.leads_fetched} leads, processed {historicalResult.leads_processed}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5"><XCircle className="h-3 w-3" /> {historicalResult.error}</span>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
         )}
 
