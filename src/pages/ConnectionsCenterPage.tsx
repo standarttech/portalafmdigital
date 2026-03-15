@@ -1,13 +1,12 @@
 /**
- * Connections Center — Unified Platform Control Tower
+ * Connections Center — Unified Platform Control Tower (Production)
  *
- * Real operational hub for all platform connections, integrations, and reusable resources.
- * Shows honest status, real usage from DB, client scoping, and actionable management.
+ * Real operational hub: filters, search, usage detection, warnings, deep-link management.
  */
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { usePlatformResources, type PlatformResource, type ResourceType } from '@/hooks/usePlatformResources';
+import { usePlatformResources, type PlatformResource, type ResourceType, type ResourceStatus } from '@/hooks/usePlatformResources';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +21,8 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   Link2, Search, Send, Database, Globe, FileSpreadsheet, Zap, Bot, ShieldCheck,
-  CheckCircle2, XCircle, AlertTriangle, Power, Settings, Eye,
-  ArrowRight, RefreshCw, Workflow, ExternalLink, Users, Copy,
+  CheckCircle2, XCircle, AlertTriangle, Power, Settings, ExternalLink,
+  ArrowRight, RefreshCw, Workflow, Users, Copy, TriangleAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -45,9 +44,6 @@ const STATUS_CONFIG: Record<string, { label: string; className: string; icon: ty
 
 interface UsageRef { module: string; label: string; link: string }
 
-/**
- * Real usage detection from multiple DB sources.
- */
 function useResourceUsageMap() {
   const { data: automationSteps = [] } = useQuery({
     queryKey: ['resource-usage-auto-steps'],
@@ -70,10 +66,7 @@ function useResourceUsageMap() {
   const { data: broadcasts = [] } = useQuery({
     queryKey: ['resource-usage-broadcasts'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('notification_broadcasts')
-        .select('id, subject, bot_profile_id')
-        .not('bot_profile_id', 'is', null);
+      const { data } = await supabase.from('notification_broadcasts').select('id, subject, bot_profile_id').not('bot_profile_id', 'is', null);
       return data || [];
     },
     staleTime: 5 * 60 * 1000,
@@ -82,10 +75,7 @@ function useResourceUsageMap() {
   const { data: reportSchedules = [] } = useQuery({
     queryKey: ['resource-usage-report-schedules'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('client_report_schedules')
-        .select('id, client_id, report_type, telegram_bot_profile_id')
-        .not('telegram_bot_profile_id', 'is', null);
+      const { data } = await supabase.from('client_report_schedules').select('id, client_id, report_type, telegram_bot_profile_id').not('telegram_bot_profile_id', 'is', null);
       return data || [];
     },
     staleTime: 5 * 60 * 1000,
@@ -104,24 +94,19 @@ function useResourceUsageMap() {
       }
     };
 
-    // 1. Automation steps — bot & sheet references
     automationSteps.forEach(step => {
       const config = step.config as Record<string, unknown> | null;
       const autoName = autoNameMap.get(step.automation_id) || 'Automation';
       const autoLink = `/automations/${step.automation_id}`;
-
       if (step.action_type === 'send_telegram' && config?.bot_profile_id) {
         addUsage(String(config.bot_profile_id), 'Automations', autoName, autoLink);
       }
       if (step.action_type === 'add_sheets_row') {
         const sheetVal = config?.sheet_url || config?.connection_id;
-        if (sheetVal) {
-          addUsage(`sheet_url:${String(sheetVal)}`, 'Automations', autoName, autoLink);
-        }
+        if (sheetVal) addUsage(`sheet_url:${String(sheetVal)}`, 'Automations', autoName, autoLink);
       }
     });
 
-    // 2. Automation triggers — meta connection references
     automations.forEach(a => {
       if (a.trigger_type === 'fb_lead_form') {
         const tc = a.trigger_config as Record<string, unknown> | null;
@@ -131,22 +116,13 @@ function useResourceUsageMap() {
       }
     });
 
-    // 3. Broadcasts
     broadcasts.forEach(b => {
-      if (b.bot_profile_id) {
-        addUsage(b.bot_profile_id, 'Broadcasts', b.subject || 'Broadcast', '/broadcasts');
-      }
+      if (b.bot_profile_id) addUsage(b.bot_profile_id, 'Broadcasts', b.subject || 'Broadcast', '/broadcasts');
     });
 
-    // 4. Report schedules
     reportSchedules.forEach(rs => {
       if (rs.telegram_bot_profile_id) {
-        addUsage(
-          rs.telegram_bot_profile_id,
-          'Reports',
-          `${rs.report_type} report`,
-          rs.client_id ? `/clients/${rs.client_id}` : '/reports',
-        );
+        addUsage(rs.telegram_bot_profile_id, 'Reports', `${rs.report_type} report`, rs.client_id ? `/clients/${rs.client_id}` : '/reports');
       }
     });
 
@@ -164,12 +140,9 @@ export default function ConnectionsCenterPage() {
   const [filterClient, setFilterClient] = useState<string>('all');
   const [detailResource, setDetailResource] = useState<PlatformResource | null>(null);
 
-  // Unique clients from resources
   const clients = useMemo(() => {
     const map = new Map<string, string>();
-    resources.forEach(r => {
-      if (r.clientId && r.clientName) map.set(r.clientId, r.clientName);
-    });
+    resources.forEach(r => { if (r.clientId && r.clientName) map.set(r.clientId, r.clientName); });
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [resources]);
 
@@ -178,11 +151,8 @@ export default function ConnectionsCenterPage() {
       if (filterType !== 'all' && r.type !== filterType) return false;
       if (filterStatus !== 'all' && r.status !== filterStatus) return false;
       if (filterClient !== 'all') {
-        if (filterClient === 'global') {
-          if (!r.isGlobal) return false;
-        } else {
-          if (r.clientId !== filterClient && !r.isGlobal) return false;
-        }
+        if (filterClient === 'global') { if (!r.isGlobal) return false; }
+        else { if (r.clientId !== filterClient && !r.isGlobal) return false; }
       }
       if (search) {
         const q = search.toLowerCase();
@@ -207,21 +177,33 @@ export default function ConnectionsCenterPage() {
     return directUsages;
   };
 
+  // Count warnings: broken/inactive resources that have active usages
+  const warningCount = useMemo(() => {
+    return resources.filter(r => (r.status === 'error' || r.status === 'inactive' || r.status === 'unconfigured') && getUsages(r).length > 0).length;
+  }, [resources, usageMap]);
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
             <Link2 className="h-6 w-6 text-primary" /> Connections Center
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Platform-wide view of all connections, integrations, and reusable resources.
+            Platform-wide control tower for all connections, integrations, and reusable resources.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { refetch(); toast.success('Refreshed'); }}>
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {warningCount > 0 && (
+            <Badge variant="outline" className="text-amber-400 border-amber-400/30 bg-amber-400/10 gap-1 cursor-pointer"
+              onClick={() => setFilterStatus('error')}>
+              <TriangleAlert className="h-3 w-3" /> {warningCount} broken but used
+            </Badge>
+          )}
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { refetch(); toast.success('Refreshed'); }}>
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -265,9 +247,7 @@ export default function ConnectionsCenterPage() {
           <SelectContent>
             <SelectItem value="all">All clients</SelectItem>
             <SelectItem value="global">Global only</SelectItem>
-            {clients.map(([id, name]) => (
-              <SelectItem key={id} value={id}>{name}</SelectItem>
-            ))}
+            {clients.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -280,10 +260,10 @@ export default function ConnectionsCenterPage() {
           <CardContent className="py-16 text-center text-muted-foreground">
             <Link2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">{search || filterType !== 'all' || filterStatus !== 'all' ? 'No matching resources found' : 'No connections configured yet'}</p>
-            <p className="text-xs mt-2">Connect services from their respective module pages:</p>
+            <p className="text-xs mt-2">Connect services from their module pages:</p>
             <div className="flex flex-wrap justify-center gap-2 mt-3">
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => navigate('/crm/integrations')}>
-                <Send className="h-3 w-3" /> CRM Bots
+                <Send className="h-3 w-3" /> CRM / Bots
               </Button>
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => navigate('/ai-ads/integrations')}>
                 <Globe className="h-3 w-3" /> Ad Platforms
@@ -296,27 +276,23 @@ export default function ConnectionsCenterPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map(r => (
-            <ResourceRow key={r.id} resource={r} usages={getUsages(r)} onNavigate={navigate} onDetail={setDetailResource} />
-          ))}
+          {filtered.map(r => {
+            const usages = getUsages(r);
+            const isBrokenButUsed = (r.status === 'error' || r.status === 'inactive' || r.status === 'unconfigured') && usages.length > 0;
+            return <ResourceRow key={r.id} resource={r} usages={usages} isBrokenButUsed={isBrokenButUsed} onNavigate={navigate} onDetail={setDetailResource} />;
+          })}
         </div>
       )}
 
-      {/* Detail Dialog */}
       {detailResource && (
-        <ResourceDetailDialog
-          resource={detailResource}
-          usages={getUsages(detailResource)}
-          onClose={() => setDetailResource(null)}
-          onNavigate={navigate}
-        />
+        <ResourceDetailDialog resource={detailResource} usages={getUsages(detailResource)} onClose={() => setDetailResource(null)} onNavigate={navigate} />
       )}
     </div>
   );
 }
 
-function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
-  resource: PlatformResource; usages: UsageRef[];
+function ResourceRow({ resource: r, usages, isBrokenButUsed, onNavigate, onDetail }: {
+  resource: PlatformResource; usages: UsageRef[]; isBrokenButUsed: boolean;
   onNavigate: (p: string) => void; onDetail: (r: PlatformResource) => void;
 }) {
   const cfg = TYPE_CONFIG[r.type];
@@ -325,7 +301,10 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
   const StIcon = stCfg.icon;
 
   return (
-    <Card className="hover:border-border transition-colors cursor-pointer" onClick={() => onDetail(r)}>
+    <Card className={cn(
+      'hover:border-border transition-colors cursor-pointer',
+      isBrokenButUsed && 'border-amber-400/30 bg-amber-400/5'
+    )} onClick={() => onDetail(r)}>
       <CardContent className="p-3 flex items-center gap-3">
         <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${cfg.color}15` }}>
           <Icon className="h-4 w-4" style={{ color: cfg.color }} />
@@ -335,28 +314,20 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
           <div className="flex items-center gap-2 mb-0.5">
             <span className="font-medium text-foreground text-sm truncate">{r.label}</span>
             {r.hasSecret && (
-              <Tooltip>
-                <TooltipTrigger><ShieldCheck className="h-3 w-3 text-emerald-400 flex-shrink-0" /></TooltipTrigger>
-                <TooltipContent className="text-xs">Secret stored in Vault</TooltipContent>
-              </Tooltip>
+              <Tooltip><TooltipTrigger><ShieldCheck className="h-3 w-3 text-emerald-400 flex-shrink-0" /></TooltipTrigger>
+                <TooltipContent className="text-xs">Secret in Vault</TooltipContent></Tooltip>
+            )}
+            {isBrokenButUsed && (
+              <Tooltip><TooltipTrigger><TriangleAlert className="h-3 w-3 text-amber-400 flex-shrink-0" /></TooltipTrigger>
+                <TooltipContent className="text-xs">⚠️ Broken/inactive but used in {usages.length} place(s). Fix required.</TooltipContent></Tooltip>
             )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
             <span>{r.provider}</span>
             <span className="opacity-30">•</span>
             <Badge variant="outline" className="text-[10px] h-4 px-1.5">{cfg.label}</Badge>
-            {r.clientName && (
-              <>
-                <span className="opacity-30">•</span>
-                <span className="truncate max-w-[120px]">{r.clientName}</span>
-              </>
-            )}
-            {r.isGlobal && (
-              <>
-                <span className="opacity-30">•</span>
-                <span className="text-primary/70">Global</span>
-              </>
-            )}
+            {r.clientName && (<><span className="opacity-30">•</span><span className="truncate max-w-[120px]">{r.clientName}</span></>)}
+            {r.isGlobal && (<><span className="opacity-30">•</span><span className="text-primary/70">Global</span></>)}
           </div>
         </div>
 
@@ -377,27 +348,20 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
           ) : (
             <span className="text-[9px] text-muted-foreground/50">Unused</span>
           )}
-          {usages.length > 3 && (
-            <Badge variant="outline" className="text-[9px] h-4 px-1 text-muted-foreground">+{usages.length - 3}</Badge>
-          )}
+          {usages.length > 3 && <Badge variant="outline" className="text-[9px] h-4 px-1 text-muted-foreground">+{usages.length - 3}</Badge>}
         </div>
 
-        {/* Status */}
         <Badge variant="outline" className={cn('text-[10px] gap-1 flex-shrink-0', stCfg.className)}>
           <StIcon className="h-3 w-3" /> {stCfg.label}
         </Badge>
 
-        {/* Quick Action */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => {
-              e.stopPropagation();
-              onNavigate(r.managePath);
-            }}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onNavigate(r.managePath); }}>
               <Settings className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent className="text-xs">Manage</TooltipContent>
+          <TooltipContent className="text-xs">Manage in source module</TooltipContent>
         </Tooltip>
       </CardContent>
     </Card>
@@ -405,14 +369,12 @@ function ResourceRow({ resource: r, usages, onNavigate, onDetail }: {
 }
 
 function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
-  resource: PlatformResource;
-  usages: UsageRef[];
-  onClose: () => void;
-  onNavigate: (p: string) => void;
+  resource: PlatformResource; usages: UsageRef[]; onClose: () => void; onNavigate: (p: string) => void;
 }) {
   const cfg = TYPE_CONFIG[r.type];
   const stCfg = STATUS_CONFIG[r.status];
   const StIcon = stCfg.icon;
+  const isBrokenButUsed = (r.status === 'error' || r.status === 'inactive' || r.status === 'unconfigured') && usages.length > 0;
 
   return (
     <Dialog open onOpenChange={() => onClose()}>
@@ -425,23 +387,26 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
         </DialogHeader>
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-4 text-sm pr-2">
+            {/* Warning banner */}
+            {isBrokenButUsed && (
+              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-400/10 border border-amber-400/20 text-xs">
+                <TriangleAlert className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-400">This resource is broken but actively used in {usages.length} place(s).</p>
+                  <p className="text-muted-foreground mt-0.5">Fix the connection to restore functionality.</p>
+                </div>
+              </div>
+            )}
+
             {/* Status */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className={cn('gap-1', stCfg.className)}>
-                <StIcon className="h-3 w-3" /> {stCfg.label}
-              </Badge>
-              {r.hasSecret && (
-                <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1 text-xs">
-                  <ShieldCheck className="h-3 w-3" /> Vault
-                </Badge>
-              )}
+              <Badge variant="outline" className={cn('gap-1', stCfg.className)}><StIcon className="h-3 w-3" /> {stCfg.label}</Badge>
+              {r.hasSecret && <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1 text-xs"><ShieldCheck className="h-3 w-3" /> Vault</Badge>}
               {r.isGlobal && <Badge variant="outline" className="text-xs">Global</Badge>}
-              <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                Managed in source module
-              </Badge>
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">Managed in source module</Badge>
             </div>
 
-            {/* Info Grid */}
+            {/* Info */}
             <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
               <div><span className="text-muted-foreground">Type:</span> <span className="text-foreground">{cfg.label}</span></div>
               <div><span className="text-muted-foreground">Provider:</span> <span className="text-foreground">{r.provider}</span></div>
@@ -450,7 +415,6 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
               {r.lastSyncAt && <div className="col-span-2"><span className="text-muted-foreground">Last Sync:</span> <span className="text-foreground">{new Date(r.lastSyncAt).toLocaleString()}</span></div>}
             </div>
 
-            {/* Error */}
             {r.lastError && (
               <div className="p-2 rounded-lg bg-red-400/5 border border-red-400/20 text-xs">
                 <span className="text-red-400 font-medium">Error: </span>
@@ -458,17 +422,13 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
               </div>
             )}
 
-            {/* Meta info */}
             {r.type === 'sheet_url' && r.meta?.url && (
               <div className="p-2 rounded-lg bg-muted/20 border border-border/30 text-xs">
                 <span className="text-muted-foreground">URL: </span>
                 <code className="text-foreground text-[10px] font-mono break-all">{String(r.meta.url)}</code>
                 <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-1 inline-flex" onClick={() => {
-                  navigator.clipboard.writeText(String(r.meta.url));
-                  toast.success('Copied');
-                }}>
-                  <Copy className="h-2.5 w-2.5" />
-                </Button>
+                  navigator.clipboard.writeText(String(r.meta.url)); toast.success('Copied');
+                }}><Copy className="h-2.5 w-2.5" /></Button>
               </div>
             )}
 
@@ -476,9 +436,7 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
 
             {/* Usage */}
             <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Used In ({usages.length})
-              </div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Used In ({usages.length})</div>
               {usages.length > 0 ? (
                 <div className="space-y-1.5">
                   {usages.map((u, i) => (
@@ -495,62 +453,73 @@ function ResourceDetailDialog({ resource: r, usages, onClose, onNavigate }: {
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground/60 p-2 rounded-lg bg-muted/10 border border-border/20">
-                  No active usages detected. This resource is available for use in Automations, Broadcasts, Reports, and other modules.
+                  No active usages detected. Available for Automations, Broadcasts, Reports.
                 </div>
               )}
             </div>
 
             <Separator />
 
-            {/* Actions */}
+            {/* Actions — type-specific */}
             <div className="space-y-2">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
-                  onClose();
-                  onNavigate(r.managePath);
-                }}>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => { onClose(); onNavigate(r.managePath); }}>
                   <ExternalLink className="h-3.5 w-3.5" /> Manage in Source
                 </Button>
+
                 {r.type === 'telegram_bot' && (
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
-                    onClose();
-                    onNavigate('/crm/integrations');
-                  }}>
-                    <Settings className="h-3.5 w-3.5" /> Bot Settings
+                  <>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => { onClose(); onNavigate('/crm/integrations'); }}>
+                      <Settings className="h-3.5 w-3.5" /> Bot Settings
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => { onClose(); onNavigate('/automations'); }}>
+                      <Workflow className="h-3.5 w-3.5" /> Use in Automation
+                    </Button>
+                  </>
+                )}
+
+                {r.type === 'external_crm' && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => { onClose(); onNavigate('/crm/integrations'); }}>
+                    <RefreshCw className="h-3.5 w-3.5" /> Sync Settings
                   </Button>
                 )}
+
                 {r.type === 'platform_ad' && r.status === 'unconfigured' && (
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs text-amber-400 border-amber-400/30" onClick={() => {
-                    onClose();
-                    onNavigate(r.managePath);
-                  }}>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs text-amber-400 border-amber-400/30" onClick={() => { onClose(); onNavigate(r.managePath); }}>
                     <AlertTriangle className="h-3.5 w-3.5" /> Configure Auth
                   </Button>
                 )}
                 {r.type === 'platform_ad' && r.status === 'error' && (
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs text-red-400 border-red-400/30" onClick={() => {
-                    onClose();
-                    onNavigate(r.managePath);
-                  }}>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs text-red-400 border-red-400/30" onClick={() => { onClose(); onNavigate(r.managePath); }}>
                     <RefreshCw className="h-3.5 w-3.5" /> Reconnect
                   </Button>
                 )}
-                {r.type === 'external_crm' && (
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
-                    toast.info('Opening CRM sync settings...');
-                    onClose();
-                    onNavigate('/crm/integrations');
-                  }}>
-                    <RefreshCw className="h-3.5 w-3.5" /> Test Sync
+
+                {r.type === 'sheet_url' && r.meta?.url && (
+                  <>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
+                      navigator.clipboard.writeText(String(r.meta.url)); toast.success('URL copied');
+                    }}>
+                      <Copy className="h-3.5 w-3.5" /> Copy URL
+                    </Button>
+                    {r.clientId && (
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => { onClose(); onNavigate(`/clients/${r.clientId}`); }}>
+                        <Users className="h-3.5 w-3.5" /> Client Settings
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {r.type === 'gos_integration' && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => { onClose(); onNavigate('/growth-os/integrations'); }}>
+                    <Settings className="h-3.5 w-3.5" /> Integration Settings
                   </Button>
                 )}
-                {r.type === 'sheet_url' && r.clientId && (
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
-                    onClose();
-                    onNavigate(`/clients/${r.clientId}`);
-                  }}>
-                    <Users className="h-3.5 w-3.5" /> Client Settings
+
+                {r.type === 'platform_api' && (
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => { onClose(); onNavigate('/ai-ads/integrations'); }}>
+                    <Settings className="h-3.5 w-3.5" /> API Settings
                   </Button>
                 )}
               </div>

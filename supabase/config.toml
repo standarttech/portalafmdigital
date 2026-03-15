@@ -87,3 +87,6 @@ verify_jwt = false
 [functions.automation-execute]
 verify_jwt = false
 
+[functions.fb-leadgen-webhook]
+verify_jwt = false
+

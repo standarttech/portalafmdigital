@@ -40,37 +40,53 @@ Deno.serve(async (req) => {
 
   try {
     /* ── 1. AUTH: verify caller ── */
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const userSupabase = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: userErr } = await userSupabase.auth.getUser();
-    if (userErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const callerId = user.id;
+    const body = await req.json();
+    const { automation_id, trigger_payload = {}, test_mode = false, _system_trigger = false } = body;
 
     // Service-role client for execution
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Verify caller is agency member
-    const { data: agencyUser } = await supabase
-      .from('agency_users').select('agency_role').eq('user_id', callerId).maybeSingle();
-    if (!agencyUser) {
-      return new Response(JSON.stringify({ error: 'Forbidden: not an agency member' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    let callerId = 'system';
+    let agencyRole = 'AgencyAdmin';
 
-    const { automation_id, trigger_payload = {}, test_mode = false } = await req.json();
+    if (_system_trigger) {
+      // System-triggered (from fb-leadgen-webhook or other internal services)
+      // Verify the caller is using service role key
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader !== `Bearer ${serviceKey}`) {
+        return new Response(JSON.stringify({ error: 'Unauthorized system trigger' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      // User-triggered
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const userSupabase = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user }, error: userErr } = await userSupabase.auth.getUser();
+      if (userErr || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      callerId = user.id;
+
+      const { data: agencyUser } = await supabase
+        .from('agency_users').select('agency_role').eq('user_id', callerId).maybeSingle();
+      if (!agencyUser) {
+        return new Response(JSON.stringify({ error: 'Forbidden: not an agency member' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      agencyRole = agencyUser.agency_role;
+    }
     if (!automation_id) throw new Error('automation_id required');
 
     // Load automation
@@ -79,9 +95,9 @@ Deno.serve(async (req) => {
     if (autoErr || !automation) throw new Error('Automation not found');
     if (!automation.is_active && !test_mode) throw new Error('Automation is inactive');
 
-    // Verify client scope access
-    if (automation.client_id) {
-      const isAdmin = agencyUser.agency_role === 'AgencyAdmin';
+    // Verify client scope access (skip for system triggers)
+    if (automation.client_id && !_system_trigger) {
+      const isAdmin = agencyRole === 'AgencyAdmin';
       if (!isAdmin) {
         const { data: access } = await supabase
           .from('client_users').select('id').eq('user_id', callerId).eq('client_id', automation.client_id).maybeSingle();
