@@ -205,6 +205,8 @@ export default function AutomationEditorPage() {
   const { data: botResources = [] } = useTelegramBots(clientId);
   const { data: sheetResources = [] } = useSheetResources(clientId);
   const { data: metaConnections = [] } = usePlatformAdConnections(clientId);
+  // Also load platform_api resources (meta_ads_management has more permissions for pages/forms)
+  const { data: platformApiResources = [] } = usePlatformResources({ type: 'platform_api' });
 
   const { data: agencyUsers = [] } = useQuery({
     queryKey: ['agency-users-auto'],
