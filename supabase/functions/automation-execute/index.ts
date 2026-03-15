@@ -136,7 +136,8 @@ Deno.serve(async (req) => {
     for (const step of steps) {
       const stepStart = Date.now();
       const resolvedMapping = resolveFieldMapping(step.field_mapping || {}, stepOutputs);
-      const fullInput = { ...resolvedMapping, ...(step.config || {}) };
+      // Keep backward compatibility (config-only automations), but let explicit field_mapping win.
+      const fullInput = { ...(step.config || {}), ...resolvedMapping };
 
       const { data: runStep } = await supabase
         .from('automation_run_steps').insert({
