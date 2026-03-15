@@ -352,7 +352,16 @@ export default function AutomationEditorPage() {
     onError: (e: any) => toast.error(`Test failed: ${e.message}`),
   });
 
-  const triggerDef = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
+  const triggerDefBase = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
+  // For fb_lead_form, determine "live" dynamically from trigger_config
+  const triggerDef = useMemo(() => {
+    if (automation?.trigger_type === 'fb_lead_form') {
+      const tc = automation.trigger_config as Record<string, any> | null;
+      const isLive = tc?.live_ingestion_active === true && tc?.webhook_verified === true;
+      return { ...triggerDefBase, live: isLive };
+    }
+    return triggerDefBase;
+  }, [triggerDefBase, automation]);
   const TriggerIcon = triggerDef.icon;
   const triggerFields = triggerDef.fields || [];
   // Merge client-scoped ad connections + global meta_ads_management API key (has page/form access)
