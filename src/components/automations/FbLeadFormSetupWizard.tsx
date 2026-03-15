@@ -261,6 +261,12 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
       if (result.callback_url) setCallbackUrl(result.callback_url);
       if (result.verify_token) setVerifyToken(result.verify_token);
 
+      const loadedFormFields: FormField[] = Array.isArray(result.form_fields) ? result.form_fields : [];
+      if (loadedFormFields.length > 0) {
+        setFormFieldsPreview(loadedFormFields);
+        await syncTelegramTemplates(loadedFormFields);
+      }
+
       if (result.needs_selection === 'page') {
         setPages(result.pages || []);
         setPhase('select_page');
@@ -281,7 +287,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
       setError(err instanceof Error ? err.message : 'Setup failed');
       setPhase('error');
     }
-  }, [automationId, selectedConnectionId, config.webhook_verified, qc]);
+  }, [automationId, selectedConnectionId, config.webhook_verified, qc, syncTelegramTemplates]);
 
   const handlePageSelected = () => {
     if (!selectedPageId) return;
