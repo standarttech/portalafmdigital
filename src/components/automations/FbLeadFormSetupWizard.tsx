@@ -353,31 +353,42 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   };
 
   const reloadFormFields = async () => {
-    const connId = config.meta_connection_id || selectedConnectionId;
-    const fId = config.form_id;
-    if (!connId || !fId) return;
+    const connId = (config.meta_connection_id as string) || selectedConnectionId;
+    const fId = (config.form_id as string) || selectedFormId;
+    const pId = (config.page_id as string) || selectedPageId;
+
+    if (!connId) {
+      toast.error('Select a Meta integration first');
+      return;
+    }
+    if (!fId) {
+      toast.error('Select a lead form first');
+      return;
+    }
+
     setFormFieldsLoading(true);
     try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) return;
-      const resp = await fetch(
-        `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?action=get-form-fields&connection_id=${connId}&form_id=${fId}`,
-        { headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
-      );
-      const result = await resp.json();
-      if (result.questions?.length > 0) {
-        const newConfig = { ...config, form_fields: result.questions };
-        await supabase
-          .from('automations')
-          .update({ trigger_config: newConfig as unknown as Record<string, never> })
-          .eq('id', automationId);
-        qc.invalidateQueries({ queryKey: ['automation', automationId] });
-        toast.success(`Loaded ${result.questions.length} form questions`);
+      const questions = await getFormQuestions(connId, fId, pId);
+      setFormFieldsPreview(questions);
+
+      const newConfig = { ...config, form_fields: questions };
+      const { error: updateError } = await supabase
+        .from('automations')
+        .update({ trigger_config: newConfig as unknown as Record<string, never> })
+        .eq('id', automationId);
+
+      if (updateError) throw updateError;
+
+      await syncTelegramTemplates(questions);
+      qc.invalidateQueries({ queryKey: ['automation', automationId] });
+
+      if (questions.length > 0) {
+        toast.success(`Loaded ${questions.length} form question${questions.length === 1 ? '' : 's'}`);
       } else {
-        toast.info('No custom questions found on this form');
+        toast.info('No questions returned for this form');
       }
-    } catch {
-      toast.error('Failed to load form fields');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load form questions');
     } finally {
       setFormFieldsLoading(false);
     }
