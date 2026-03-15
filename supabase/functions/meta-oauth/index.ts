@@ -495,6 +495,172 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ connections: data || [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // ── SUBSCRIBE PAGE TO LEADGEN ────────────────────────────
+    if (req.method === 'POST' && action === 'subscribe-page') {
+      const claims = await getAuthUser(req);
+      if (!claims) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      const body = await req.json();
+      const { page_id, connection_id, use_management_token } = body;
+
+      if (!page_id) {
+        return new Response(JSON.stringify({ error: 'page_id is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      let token: string | null = null;
+      let tokenSource = 'none';
+
+      // Priority 1: meta_ads_management
+      if (use_management_token !== false) {
+        const { data: mgmt } = await supabaseAdmin
+          .from('platform_integrations')
+          .select('secret_ref')
+          .eq('integration_type', 'meta_ads_management')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (mgmt?.secret_ref) {
+          token = await getTokenFromVault(supabaseAdmin, mgmt.secret_ref);
+          if (token) tokenSource = 'meta_ads_management';
+        }
+      }
+
+      // Priority 2: platform_connections
+      if (!token && connection_id) {
+        const { data: conn } = await supabaseAdmin
+          .from('platform_connections')
+          .select('token_reference')
+          .eq('id', connection_id)
+          .maybeSingle();
+        if (conn?.token_reference) {
+          token = await getTokenFromVault(supabaseAdmin, conn.token_reference);
+          if (token) tokenSource = 'platform_connection';
+        }
+      }
+
+      // Priority 3: social_media_connections
+      if (!token) {
+        const { data: sc } = await supabaseAdmin
+          .from('social_media_connections')
+          .select('token_reference')
+          .eq('platform', 'facebook')
+          .eq('is_active', true)
+          .maybeSingle();
+        if (sc?.token_reference) {
+          token = await getTokenFromVault(supabaseAdmin, sc.token_reference);
+          if (token) tokenSource = 'social_media_connection';
+        }
+      }
+
+      // Priority 4: system token
+      if (!token) {
+        token = Deno.env.get('META_SYSTEM_USER_TOKEN') || null;
+        if (token) tokenSource = 'system_token';
+      }
+
+      if (!token) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'No Meta token available. Connect a Meta account with page management permissions.',
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      console.log(`[subscribe-page] Using token source: ${tokenSource} for page ${page_id}`);
+
+      try {
+        // Step 1: GET /me/accounts to find the page and its access_token
+        const accountsUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token&access_token=${token}`;
+        console.log(`[subscribe-page] Fetching /me/accounts...`);
+        const accountsRes = await fetch(accountsUrl);
+        const accountsData = await accountsRes.json();
+
+        if (accountsData.error) {
+          console.error(`[subscribe-page] /me/accounts error:`, accountsData.error);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Meta API error: ${accountsData.error.message}`,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        const pages = accountsData.data || [];
+        console.log(`[subscribe-page] Found ${pages.length} pages`);
+
+        const matchedPage = pages.find((p: any) => String(p.id) === String(page_id));
+        if (!matchedPage) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Page ${page_id} not found in accessible pages. The token may lack manage_pages or pages_manage_metadata permission. Available pages: ${pages.map((p: any) => `${p.name} (${p.id})`).join(', ') || 'none'}`,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        const pageAccessToken = matchedPage.access_token;
+        if (!pageAccessToken) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `No access_token returned for page ${matchedPage.name}. The app may lack pages_manage_metadata permission.`,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        console.log(`[subscribe-page] Got page access token for: ${matchedPage.name}`);
+
+        // Step 2: POST /{page-id}/subscribed_apps with subscribed_fields=leadgen
+        const subscribeUrl = `https://graph.facebook.com/v21.0/${page_id}/subscribed_apps`;
+        console.log(`[subscribe-page] Subscribing page ${page_id} to leadgen...`);
+
+        const subscribeRes = await fetch(subscribeUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            access_token: pageAccessToken,
+            subscribed_fields: 'leadgen',
+          }).toString(),
+        });
+        const subscribeData = await subscribeRes.json();
+
+        console.log(`[subscribe-page] Subscribe response:`, JSON.stringify(subscribeData));
+
+        if (subscribeData.error) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Meta API error: ${subscribeData.error.message}${subscribeData.error.error_user_msg ? ' — ' + subscribeData.error.error_user_msg : ''}`,
+            error_code: subscribeData.error.code,
+            error_subcode: subscribeData.error.error_subcode,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        if (subscribeData.success === true) {
+          // Audit log
+          await supabaseAdmin.from('audit_log').insert({
+            action: 'meta_page_subscribed_leadgen',
+            entity_type: 'facebook_page',
+            entity_id: page_id,
+            user_id: claims.sub,
+            details: { page_name: matchedPage.name, token_source: tokenSource },
+          });
+
+          return new Response(JSON.stringify({
+            success: true,
+            page_id,
+            page_name: matchedPage.name,
+            subscribed_at: new Date().toISOString(),
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Unexpected response from Meta API',
+          raw: subscribeData,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+      } catch (err) {
+        console.error(`[subscribe-page] Error:`, err);
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Server error: ${String(err)}`,
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     console.error(e);

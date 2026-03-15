@@ -14,12 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import {
   CheckCircle2, Circle, AlertTriangle, XCircle, ExternalLink,
   Facebook, Link2, FileText, Globe, Webhook, Radio, Info, Save, Copy,
-  RefreshCw, Loader2, Settings,
+  RefreshCw, Loader2, Settings, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +29,9 @@ interface TriggerConfig {
   page_name?: string;
   form_id?: string;
   form_name?: string;
+  page_subscribed?: boolean;
+  page_subscribed_at?: string;
+  page_subscription_error?: string;
   webhook_verified?: boolean;
   live_ingestion_active?: boolean;
   last_verified_at?: string;
@@ -57,9 +59,13 @@ function getStepStatus(stepIdx: number, config: TriggerConfig | null): StepStatu
   }
   if (stepIdx === 3) {
     if (!c.form_id) return 'upcoming';
-    return c.webhook_verified ? 'completed' : 'active';
+    return c.page_subscribed ? 'completed' : 'active';
   }
   if (stepIdx === 4) {
+    if (!c.page_subscribed) return 'upcoming';
+    return c.webhook_verified ? 'completed' : 'active';
+  }
+  if (stepIdx === 5) {
     if (!c.webhook_verified) return 'upcoming';
     return c.live_ingestion_active ? 'completed' : 'active';
   }
@@ -70,6 +76,7 @@ const STEPS = [
   { label: 'Select Meta Connection', icon: Link2 },
   { label: 'Select Facebook Page', icon: Globe },
   { label: 'Select Lead Form', icon: FileText },
+  { label: 'Subscribe Page to Leadgen', icon: Zap },
   { label: 'Verify Webhook', icon: Webhook },
   { label: 'Activate Live Intake', icon: Radio },
 ];
@@ -136,8 +143,9 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
                 {idx === 0 && <StepMetaConnection status={status} metaConns={metaConns} selectedConn={selectedConn} config={config} onSave={updateAndSave} />}
                 {idx === 1 && <StepSelectPage status={status} config={config} onSave={updateAndSave} />}
                 {idx === 2 && <StepSelectForm status={status} config={config} onSave={updateAndSave} />}
-                {idx === 3 && <StepWebhook status={status} config={config} webhookUrl={webhookUrl} onSave={updateAndSave} automationId={automationId} />}
-                {idx === 4 && <StepLiveIntake status={status} config={config} onSave={updateAndSave} />}
+                {idx === 3 && <StepSubscribePage status={status} config={config} onSave={updateAndSave} />}
+                {idx === 4 && <StepWebhook status={status} config={config} webhookUrl={webhookUrl} onSave={updateAndSave} automationId={automationId} />}
+                {idx === 5 && <StepLiveIntake status={status} config={config} onSave={updateAndSave} />}
               </StepBlock>
             );
           })}
@@ -212,7 +220,7 @@ function StepMetaConnection({ status, metaConns, selectedConn, config, onSave }:
           {selectedConn.clientName && <span className="text-muted-foreground">({selectedConn.clientName})</span>}
         </div>
         <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
-          onClick={() => onSave({ meta_connection_id: undefined, meta_connection_label: undefined, page_id: undefined, page_name: undefined, form_id: undefined, form_name: undefined, webhook_verified: undefined, live_ingestion_active: undefined })}>
+          onClick={() => onSave({ meta_connection_id: undefined, meta_connection_label: undefined, page_id: undefined, page_name: undefined, form_id: undefined, form_name: undefined, page_subscribed: undefined, page_subscribed_at: undefined, page_subscription_error: undefined, webhook_verified: undefined, live_ingestion_active: undefined })}>
           Change
         </Button>
       </div>
@@ -280,7 +288,6 @@ function StepSelectPage({ status, config, onSave }: {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) { setFetchError('Not authenticated'); setLoading(false); return; }
 
-      // Call meta-oauth?action=list-pages with the selected connection_id
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
       const resp = await fetch(
         `https://${projectId}.supabase.co/functions/v1/meta-oauth?action=list-pages`,
@@ -319,7 +326,7 @@ function StepSelectPage({ status, config, onSave }: {
           <CheckCircle2 className="h-2.5 w-2.5" /> {config.page_name || config.page_id}
         </Badge>
         <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
-          onClick={() => onSave({ page_id: undefined, page_name: undefined, form_id: undefined, form_name: undefined })}>
+          onClick={() => onSave({ page_id: undefined, page_name: undefined, form_id: undefined, form_name: undefined, page_subscribed: undefined, page_subscribed_at: undefined, page_subscription_error: undefined })}>
           Change
         </Button>
       </div>
@@ -494,7 +501,111 @@ function StepSelectForm({ status, config, onSave }: {
   );
 }
 
-/* ── Step 4: Webhook Verification ── */
+/* ── Step 4: Subscribe Page to Leadgen ── */
+function StepSubscribePage({ status, config, onSave }: {
+  status: StepStatus; config: TriggerConfig; onSave: (p: Partial<TriggerConfig>) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(config.page_subscription_error || null);
+
+  const subscribePage = async () => {
+    if (!config.page_id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) { setError('Not authenticated'); setLoading(false); return; }
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
+      const resp = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/meta-oauth?action=subscribe-page`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.session.access_token}`,
+          },
+          body: JSON.stringify({
+            page_id: config.page_id,
+            connection_id: config.meta_connection_id,
+            use_management_token: true,
+          }),
+        }
+      );
+      const result = await resp.json();
+
+      if (result.success) {
+        onSave({
+          page_subscribed: true,
+          page_subscribed_at: result.subscribed_at || new Date().toISOString(),
+          page_subscription_error: undefined,
+        });
+        toast.success(`Page "${result.page_name || config.page_name}" subscribed to leadgen`);
+      } else {
+        const errMsg = result.error || 'Subscription failed';
+        setError(errMsg);
+        onSave({
+          page_subscribed: false,
+          page_subscription_error: errMsg,
+        });
+        toast.error(errMsg);
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Request failed';
+      setError(errMsg);
+      onSave({ page_subscribed: false, page_subscription_error: errMsg });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (status === 'completed') {
+    return (
+      <div className="flex items-center justify-between">
+        <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1">
+          <CheckCircle2 className="h-2.5 w-2.5" /> Page subscribed
+          {config.page_subscribed_at && <span className="text-[9px] text-emerald-400/60 ml-1">
+            ({new Date(config.page_subscribed_at).toLocaleDateString()})
+          </span>}
+        </Badge>
+        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
+          onClick={() => onSave({ page_subscribed: false, page_subscribed_at: undefined, page_subscription_error: undefined })}>
+          Re-subscribe
+        </Button>
+      </div>
+    );
+  }
+
+  if (status === 'upcoming') return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="text-[10px] text-muted-foreground flex items-start gap-1.5 p-1.5 rounded bg-muted/20">
+        <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+        <span>Subscribe your Facebook Page to receive leadgen events via the app. This calls <code className="bg-muted/40 px-0.5 rounded">POST /{'{page-id}'}/subscribed_apps</code> with <code className="bg-muted/40 px-0.5 rounded">subscribed_fields=leadgen</code>.</span>
+      </div>
+
+      <Button
+        size="sm"
+        className="h-8 text-xs gap-1.5 bg-[hsl(220,70%,50%)] hover:bg-[hsl(220,70%,45%)] text-white"
+        onClick={subscribePage}
+        disabled={loading}
+      >
+        {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+        Subscribe Page to Leadgen
+      </Button>
+
+      {error && (
+        <div className="flex items-start gap-2 p-2 rounded-md bg-destructive/5 border border-destructive/15 text-xs">
+          <XCircle className="h-3 w-3 text-destructive flex-shrink-0 mt-0.5" />
+          <span className="text-muted-foreground break-all">{error}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Step 5: Webhook Verification ── */
 function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
   status: StepStatus; config: TriggerConfig; webhookUrl: string;
   onSave: (p: Partial<TriggerConfig>) => void; automationId: string;
@@ -503,7 +614,6 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
   const [tokenConfigured, setTokenConfigured] = useState(false);
   const [loadingToken, setLoadingToken] = useState(false);
 
-  // Fetch real verify token from admin endpoint
   useEffect(() => {
     if (status === 'upcoming') return;
     const fetchToken = async () => {
@@ -561,7 +671,6 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
     );
   }
 
-  // Token not configured — show warning with link to admin settings
   if (!loadingToken && !tokenConfigured) {
     return (
       <div className="space-y-2">
@@ -600,7 +709,6 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
         </div>
       </div>
 
-      {/* Callback URL */}
       <div className="space-y-0.5">
         <Label className="text-[10px] text-muted-foreground">Callback URL</Label>
         <div className="flex items-center gap-1.5">
@@ -613,7 +721,6 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
         </div>
       </div>
 
-      {/* Verify Token */}
       <div className="space-y-0.5">
         <Label className="text-[10px] text-muted-foreground">Verify Token</Label>
         <div className="flex items-center gap-1.5">
@@ -647,7 +754,7 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
   );
 }
 
-/* ── Step 5: Live Intake ── */
+/* ── Step 6: Live Intake ── */
 function StepLiveIntake({ status, config, onSave }: {
   status: StepStatus; config: TriggerConfig; onSave: (p: Partial<TriggerConfig>) => void;
 }) {
