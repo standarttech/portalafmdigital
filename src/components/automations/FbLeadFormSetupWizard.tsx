@@ -312,25 +312,26 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   }
 
   // ── CONFIGURED BUT NOT LIVE (needs manual Meta step) ──
-  if (isConfigured && !isLive && phase === 'idle') {
-    setPhase('meta_step');
-    // Fetch verify token
-    (async () => {
-      try {
-        const { data: session } = await supabase.auth.getSession();
-        if (!session.session) return;
-        const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/fb-leadgen-config`, {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${session.session.access_token}` },
-        });
-        if (resp.ok) {
-          const r = await resp.json();
-          if (r.callback_url) setCallbackUrl(r.callback_url);
-          if (r.verify_token) setVerifyToken(r.verify_token);
-        }
-      } catch {}
-    })();
-  }
+  useEffect(() => {
+    if (isConfigured && !isLive && phase === 'idle') {
+      setPhase('meta_step');
+      (async () => {
+        try {
+          const { data: session } = await supabase.auth.getSession();
+          if (!session.session) return;
+          const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/fb-leadgen-config`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${session.session.access_token}` },
+          });
+          if (resp.ok) {
+            const r = await resp.json();
+            if (r.callback_url) setCallbackUrl(r.callback_url);
+            if (r.verify_token) setVerifyToken(r.verify_token);
+          }
+        } catch {}
+      })();
+    }
+  }, [isConfigured, isLive, phase]);
 
   return (
     <Card className={cn(
