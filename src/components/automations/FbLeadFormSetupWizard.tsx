@@ -273,6 +273,13 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
     toast.success(`${label} copied`);
   };
 
+  // ── CONFIGURED BUT NOT LIVE ──
+  useEffect(() => {
+    if (isConfigured && !isLive && phase === 'idle') {
+      setPhase('meta_step');
+    }
+  }, [isConfigured, isLive, phase]);
+
   // ── LIVE STATE ──
   if (isLive && phase === 'idle') {
     return (
@@ -330,13 +337,6 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
       </Card>
     );
   }
-
-  // ── CONFIGURED BUT NOT LIVE ──
-  useEffect(() => {
-    if (isConfigured && !isLive && phase === 'idle') {
-      setPhase('meta_step');
-    }
-  }, [isConfigured, isLive, phase]);
 
   return (
     <Card className={cn(
