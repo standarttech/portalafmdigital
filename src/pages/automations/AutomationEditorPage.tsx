@@ -212,7 +212,7 @@ export default function AutomationEditorPage() {
   const { data: clients = [] } = useQuery({
     queryKey: ['clients-auto-editor'],
     queryFn: async () => {
-      const { data } = await supabase.from('clients').select('id, name');
+      const { data } = await supabase.from('clients').select('id, name, google_sheet_url');
       return data || [];
     },
   });
