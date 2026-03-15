@@ -1,30 +1,34 @@
 /**
- * Facebook Lead Form Trigger — Guided Setup Wizard (Production)
+ * Facebook Lead Form — One-Click Setup Wizard (Production)
  *
- * Uses meta-oauth?action=list-pages and list-forms to load real data.
- * Falls back to manual entry. Saves config to automations.trigger_config.
+ * Single "Setup Facebook Lead Intake" button that orchestrates:
+ * 1. Check Meta connection
+ * 2. Generate verify token (if missing)
+ * 3. Load Pages → user selects page
+ * 4. Load Forms → user selects form
+ * 5. Subscribe page to leadgen
+ * 6. Check webhook endpoint
+ * 7. Show final manual Meta step (webhook config)
+ * 8. Activate live intake
  */
-import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { PlatformResource } from '@/hooks/usePlatformResources';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
-  CheckCircle2, Circle, AlertTriangle, XCircle, ExternalLink,
-  Facebook, Link2, FileText, Globe, Webhook, Radio, Info, Save, Copy,
-  RefreshCw, Loader2, Settings, Zap,
+  CheckCircle2, AlertTriangle, XCircle, ExternalLink, Facebook,
+  Copy, Loader2, Zap, Radio, Play, RotateCcw, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TriggerConfig {
   meta_connection_id?: string;
-  meta_connection_label?: string;
   page_id?: string;
   page_name?: string;
   form_id?: string;
@@ -32,11 +36,23 @@ interface TriggerConfig {
   page_subscribed?: boolean;
   page_subscribed_at?: string;
   page_subscription_error?: string;
+  webhook_endpoint_live?: boolean;
   webhook_verified?: boolean;
   live_ingestion_active?: boolean;
-  last_verified_at?: string;
-  verification_error?: string;
+  callback_url?: string;
+  verify_token_secret_name?: string;
+  manual_meta_step_required?: boolean;
+  [key: string]: unknown;
 }
+
+interface StepResult {
+  step: string;
+  status: 'success' | 'error' | 'skipped';
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+type Phase = 'idle' | 'running' | 'select_page' | 'select_form' | 'meta_step' | 'done' | 'error';
 
 interface Props {
   automationId: string;
@@ -44,123 +60,482 @@ interface Props {
   triggerConfig: TriggerConfig | null;
 }
 
-type StepStatus = 'completed' | 'active' | 'blocked' | 'upcoming';
+const STEP_LABELS: Record<string, string> = {
+  check_meta_connection: 'Checking Meta connection',
+  ensure_verify_token: 'Generating verify token',
+  load_pages: 'Loading Facebook Pages',
+  load_forms: 'Loading Lead Forms',
+  subscribe_page: 'Subscribing page to leadgen',
+  check_webhook: 'Verifying webhook readiness',
+  save_config: 'Saving configuration',
+};
 
-function getStepStatus(stepIdx: number, config: TriggerConfig | null): StepStatus {
-  const c = config || {};
-  if (stepIdx === 0) return c.meta_connection_id ? 'completed' : 'active';
-  if (stepIdx === 1) {
-    if (!c.meta_connection_id) return 'upcoming';
-    return c.page_id ? 'completed' : 'active';
-  }
-  if (stepIdx === 2) {
-    if (!c.page_id) return 'upcoming';
-    return c.form_id ? 'completed' : 'active';
-  }
-  if (stepIdx === 3) {
-    if (!c.form_id) return 'upcoming';
-    return c.page_subscribed ? 'completed' : 'active';
-  }
-  if (stepIdx === 4) {
-    if (!c.page_subscribed) return 'upcoming';
-    return c.webhook_verified ? 'completed' : 'active';
-  }
-  if (stepIdx === 5) {
-    if (!c.webhook_verified) return 'upcoming';
-    return c.live_ingestion_active ? 'completed' : 'active';
-  }
-  return 'upcoming';
+const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
+
+async function callSetup(body: Record<string, unknown>) {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) throw new Error('Not authenticated');
+  const resp = await fetch(
+    `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.session.access_token}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  return resp.json();
 }
-
-const STEPS = [
-  { label: 'Select Meta Connection', icon: Link2 },
-  { label: 'Select Facebook Page', icon: Globe },
-  { label: 'Select Lead Form', icon: FileText },
-  { label: 'Subscribe Page to Leadgen', icon: Zap },
-  { label: 'Verify Webhook', icon: Webhook },
-  { label: 'Activate Live Intake', icon: Radio },
-];
 
 export default function FbLeadFormSetupWizard({ automationId, metaConns, triggerConfig }: Props) {
   const qc = useQueryClient();
-  const [config, setConfig] = useState<TriggerConfig>(triggerConfig || {});
+  const config = triggerConfig || {};
 
-  useEffect(() => { setConfig(triggerConfig || {}); }, [triggerConfig]);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [steps, setSteps] = useState<StepResult[]>([]);
+  const [currentStep, setCurrentStep] = useState('');
+  const [pages, setPages] = useState<{ id: string; name: string }[]>([]);
+  const [forms, setForms] = useState<{ id: string; name: string; status?: string }[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState('');
+  const [selectedFormId, setSelectedFormId] = useState('');
+  const [callbackUrl, setCallbackUrl] = useState('');
+  const [verifyToken, setVerifyToken] = useState('');
+  const [error, setError] = useState('');
+  const [testResult, setTestResult] = useState<Record<string, unknown> | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
 
-  const saveMutation = useMutation({
-    mutationFn: async (newConfig: TriggerConfig) => {
-      const { error } = await supabase
-        .from('automations')
-        .update({ trigger_config: newConfig as unknown as Record<string, never> })
-        .eq('id', automationId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success('Trigger config saved');
-      qc.invalidateQueries({ queryKey: ['automation', automationId] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const isLive = config.live_ingestion_active === true;
+  const isConfigured = config.page_id && config.form_id && config.page_subscribed;
 
-  const updateAndSave = (patch: Partial<TriggerConfig>) => {
-    const next = { ...config, ...patch };
-    setConfig(next);
-    saveMutation.mutate(next);
+  // Derive progress
+  const totalSteps = 7;
+  const completedSteps = steps.filter(s => s.status === 'success').length;
+  const progressPct = phase === 'done' ? 100 : phase === 'idle' ? 0 : Math.round((completedSteps / totalSteps) * 100);
+
+  const selectedConnectionId = metaConns.length > 0 ? metaConns[0]?.id : undefined;
+
+  const runSetup = useCallback(async (pageId?: string, formId?: string) => {
+    setPhase('running');
+    setError('');
+    setSteps([]);
+
+    const stepsProgress = ['check_meta_connection', 'ensure_verify_token', 'load_pages'];
+    if (pageId) stepsProgress.push('load_forms');
+    if (formId) stepsProgress.push('subscribe_page', 'check_webhook', 'save_config');
+
+    for (const s of stepsProgress) {
+      setCurrentStep(s);
+      await new Promise(r => setTimeout(r, 200)); // brief visual pause
+    }
+
+    try {
+      const result = await callSetup({
+        automation_id: automationId,
+        meta_connection_id: selectedConnectionId,
+        page_id: pageId,
+        form_id: formId,
+      });
+
+      if (result.error && !result.steps) {
+        setError(result.error);
+        setPhase('error');
+        return;
+      }
+
+      setSteps(result.steps || []);
+      if (result.callback_url) setCallbackUrl(result.callback_url);
+      if (result.verify_token) setVerifyToken(result.verify_token);
+
+      if (result.needs_selection === 'page') {
+        setPages(result.pages || []);
+        setPhase('select_page');
+      } else if (result.needs_selection === 'form') {
+        setForms(result.forms || []);
+        setPages(result.pages || []);
+        setPhase('select_form');
+      } else if (result.manual_meta_step_required && !config.webhook_verified) {
+        setPhase('meta_step');
+      } else if (result.success) {
+        setPhase('done');
+        qc.invalidateQueries({ queryKey: ['automation', automationId] });
+      } else {
+        setError(result.steps?.find((s: StepResult) => s.status === 'error')?.message || 'Setup failed');
+        setPhase('error');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Setup failed');
+      setPhase('error');
+    }
+  }, [automationId, selectedConnectionId, config.webhook_verified, qc]);
+
+  const handlePageSelected = () => {
+    if (!selectedPageId) return;
+    runSetup(selectedPageId);
   };
 
-  const selectedConn = metaConns.find(c => c.id === config.meta_connection_id);
-  const completedCount = STEPS.filter((_, i) => getStepStatus(i, config) === 'completed').length;
-  const allDone = completedCount === STEPS.length;
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://bhwvnmyvebgnxiisloqu.supabase.co'}/functions/v1/fb-leadgen-webhook`;
+  const handleFormSelected = () => {
+    if (!selectedFormId || !selectedPageId) return;
+    runSetup(selectedPageId, selectedFormId);
+  };
+
+  const confirmMetaStep = async () => {
+    // Save webhook_verified and live_ingestion_active
+    const newConfig = {
+      ...config,
+      webhook_verified: true,
+      live_ingestion_active: true,
+    };
+    const { error: err } = await supabase
+      .from('automations')
+      .update({ trigger_config: newConfig as unknown as Record<string, never> })
+      .eq('id', automationId);
+    if (err) {
+      toast.error(err.message);
+    } else {
+      toast.success('Live intake activated');
+      setPhase('done');
+      qc.invalidateQueries({ queryKey: ['automation', automationId] });
+    }
+  };
+
+  const sendTestLead = async () => {
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) throw new Error('Not authenticated');
+      const resp = await fetch(
+        `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?action=test-lead`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.session.access_token}`,
+          },
+          body: JSON.stringify({ automation_id: automationId }),
+        }
+      );
+      const result = await resp.json();
+      setTestResult(result);
+      if (result.success) toast.success('Test lead processed successfully');
+      else toast.error(result.error || 'Test lead failed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Test failed');
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  const resetSetup = async () => {
+    const { error: err } = await supabase
+      .from('automations')
+      .update({ trigger_config: {} as unknown as Record<string, never> })
+      .eq('id', automationId);
+    if (!err) {
+      setPhase('idle');
+      setSteps([]);
+      setPages([]);
+      setForms([]);
+      setSelectedPageId('');
+      setSelectedFormId('');
+      setError('');
+      setTestResult(null);
+      qc.invalidateQueries({ queryKey: ['automation', automationId] });
+      toast.success('Configuration reset');
+    }
+  };
+
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied`);
+  };
+
+  // ── LIVE STATE ──
+  if (isLive && phase === 'idle') {
+    return (
+      <Card className="mt-3 border border-emerald-500/30 bg-emerald-500/5 overflow-hidden">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Facebook className="h-4 w-4 text-[hsl(220,70%,50%)]" />
+              <span className="text-sm font-semibold text-foreground">Facebook Lead Intake</span>
+              <Badge className="text-[10px] gap-1 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">
+                <Radio className="h-2.5 w-2.5 animate-pulse" /> Live
+              </Badge>
+            </div>
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground gap-1"
+              onClick={resetSetup}>
+              <RotateCcw className="h-3 w-3" /> Reset
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2 rounded-md bg-muted/20 border border-border/20">
+              <span className="text-muted-foreground">Page</span>
+              <p className="font-medium text-foreground truncate">{config.page_name || config.page_id}</p>
+            </div>
+            <div className="p-2 rounded-md bg-muted/20 border border-border/20">
+              <span className="text-muted-foreground">Form</span>
+              <p className="font-medium text-foreground truncate">{config.form_name || config.form_id}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-[10px]">
+            {config.page_subscribed && <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 gap-1"><CheckCircle2 className="h-2.5 w-2.5" />Page subscribed</Badge>}
+            {config.webhook_verified && <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 gap-1"><CheckCircle2 className="h-2.5 w-2.5" />Webhook verified</Badge>}
+          </div>
+
+          {/* Test lead button */}
+          <div className="pt-1 border-t border-border/20">
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={sendTestLead} disabled={testLoading}>
+              {testLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+              Send Test Lead
+            </Button>
+            {testResult && (
+              <div className={cn('mt-2 p-2 rounded-md text-xs border', testResult.success ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-destructive/5 border-destructive/15 text-destructive')}>
+                {testResult.success ? (
+                  <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3" /> Test lead processed — Run ID: {String(testResult.run_id).slice(0, 8)}…</span>
+                ) : (
+                  <span className="flex items-center gap-1.5"><XCircle className="h-3 w-3" /> {String(testResult.error || 'Test failed')}</span>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── CONFIGURED BUT NOT LIVE (needs manual Meta step) ──
+  useEffect(() => {
+    if (isConfigured && !isLive && phase === 'idle') {
+      setPhase('meta_step');
+      (async () => {
+        try {
+          const { data: session } = await supabase.auth.getSession();
+          if (!session.session) return;
+          const resp = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/fb-leadgen-config`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${session.session.access_token}` },
+          });
+          if (resp.ok) {
+            const r = await resp.json();
+            if (r.callback_url) setCallbackUrl(r.callback_url);
+            if (r.verify_token) setVerifyToken(r.verify_token);
+          }
+        } catch {}
+      })();
+    }
+  }, [isConfigured, isLive, phase]);
 
   return (
     <Card className={cn(
       'mt-3 border overflow-hidden',
-      allDone ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-400/20 bg-amber-400/5'
+      phase === 'done' ? 'border-emerald-500/30 bg-emerald-500/5' :
+      phase === 'error' ? 'border-destructive/30 bg-destructive/5' :
+      'border-amber-400/20 bg-amber-400/5'
     )}>
-      <CardContent className="p-4 space-y-4">
+      <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Facebook className="h-4 w-4 text-[hsl(220,70%,50%)]" />
             <span className="text-sm font-semibold text-foreground">Facebook Lead Form — Setup</span>
           </div>
-          <Badge variant="outline" className={cn(
-            'text-[10px] gap-1',
-            allDone ? 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10'
-              : 'text-amber-400 border-amber-400/30 bg-amber-400/10'
-          )}>
-            {allDone ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
-            {completedCount}/{STEPS.length} steps
-          </Badge>
+          {phase !== 'idle' && (
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground gap-1"
+              onClick={() => { setPhase('idle'); setSteps([]); setError(''); }}>
+              <RotateCcw className="h-3 w-3" /> Start over
+            </Button>
+          )}
         </div>
 
-        <div className="space-y-3">
-          {STEPS.map((step, idx) => {
-            const status = getStepStatus(idx, config);
-            const StepIcon = step.icon;
-            return (
-              <StepBlock key={idx} stepNum={idx + 1} label={step.label} icon={StepIcon} status={status}>
-                {idx === 0 && <StepMetaConnection status={status} metaConns={metaConns} selectedConn={selectedConn} config={config} onSave={updateAndSave} />}
-                {idx === 1 && <StepSelectPage status={status} config={config} onSave={updateAndSave} />}
-                {idx === 2 && <StepSelectForm status={status} config={config} onSave={updateAndSave} />}
-                {idx === 3 && <StepSubscribePage status={status} config={config} onSave={updateAndSave} />}
-                {idx === 4 && <StepWebhook status={status} config={config} webhookUrl={webhookUrl} onSave={updateAndSave} automationId={automationId} />}
-                {idx === 5 && <StepLiveIntake status={status} config={config} onSave={updateAndSave} />}
-              </StepBlock>
-            );
-          })}
-        </div>
-
-        {!allDone && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/30 border border-border/30 text-xs text-muted-foreground">
-            <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-            <span>Complete the steps above to enable automatic lead ingestion. Use <strong className="text-foreground">Manual / Test</strong> trigger to test the flow now.</span>
+        {/* ── IDLE: Big setup button ── */}
+        {phase === 'idle' && (
+          <div className="space-y-3">
+            {metaConns.length === 0 && (
+              <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-400/5 border border-amber-400/20 text-xs">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-foreground">No Meta connection found</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Connect a Meta account in <a href="/ai-ads/integrations" className="text-primary underline">AI Ads Integrations</a> first.
+                  </p>
+                </div>
+              </div>
+            )}
+            <Button
+              className="w-full h-11 gap-2 bg-[hsl(220,70%,50%)] hover:bg-[hsl(220,70%,45%)] text-white font-medium"
+              onClick={() => runSetup()}
+              disabled={metaConns.length === 0}
+            >
+              <Zap className="h-4 w-4" />
+              Setup Facebook Lead Intake
+            </Button>
+            <p className="text-[10px] text-muted-foreground text-center">
+              One-click setup: token generation → page selection → form selection → subscription → webhook config
+            </p>
           </div>
         )}
-        {allDone && (
-          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-            <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-            <span className="font-medium">Live — accepting Facebook leads in real-time.</span>
+
+        {/* ── RUNNING: Progress ── */}
+        {phase === 'running' && (
+          <div className="space-y-3">
+            <Progress value={progressPct} className="h-1.5" />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <span>{STEP_LABELS[currentStep] || currentStep}…</span>
+            </div>
+          </div>
+        )}
+
+        {/* ── SELECT PAGE ── */}
+        {phase === 'select_page' && (
+          <div className="space-y-3">
+            <StepsLog steps={steps} show={showSteps} onToggle={() => setShowSteps(!showSteps)} />
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-foreground">Select Facebook Page</p>
+              {pages.length > 0 ? (
+                <Select value={selectedPageId} onValueChange={setSelectedPageId}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a page..." /></SelectTrigger>
+                  <SelectContent>
+                    {pages.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name} <span className="text-muted-foreground">({p.id})</span></SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-xs text-muted-foreground">No pages found. Your Meta token may lack page permissions.</p>
+              )}
+              <Button size="sm" className="h-8 text-xs gap-1.5" disabled={!selectedPageId} onClick={handlePageSelected}>
+                Continue with selected page
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── SELECT FORM ── */}
+        {phase === 'select_form' && (
+          <div className="space-y-3">
+            <StepsLog steps={steps} show={showSteps} onToggle={() => setShowSteps(!showSteps)} />
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-foreground">Select Lead Form</p>
+              {forms.length > 0 ? (
+                <Select value={selectedFormId} onValueChange={setSelectedFormId}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a form..." /></SelectTrigger>
+                  <SelectContent>
+                    {forms.map(f => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.name} <span className="text-muted-foreground">({f.id})</span>
+                        {f.status && <Badge variant="outline" className="ml-1 text-[8px] h-3.5">{f.status}</Badge>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-xs text-muted-foreground">No forms found. The token may lack leads_retrieval scope.</p>
+              )}
+              <Button size="sm" className="h-8 text-xs gap-1.5" disabled={!selectedFormId} onClick={handleFormSelected}>
+                Continue — subscribe & configure
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── MANUAL META STEP ── */}
+        {phase === 'meta_step' && (
+          <div className="space-y-3">
+            <StepsLog steps={steps} show={showSteps} onToggle={() => setShowSteps(!showSteps)} />
+
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+              <p className="text-xs font-semibold text-foreground">Final Step: Configure Webhook in Meta</p>
+              <p className="text-[11px] text-muted-foreground">
+                В Meta Developer Console вставьте Callback URL и Verify Token, затем нажмите <strong>Verify and save</strong>.
+              </p>
+
+              <div className="space-y-2">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground">Callback URL</span>
+                  <div className="flex items-center gap-1.5">
+                    <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
+                      {callbackUrl || `https://${PROJECT_ID}.supabase.co/functions/v1/fb-leadgen-webhook`}
+                    </code>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1"
+                      onClick={() => copyText(callbackUrl || `https://${PROJECT_ID}.supabase.co/functions/v1/fb-leadgen-webhook`, 'Callback URL')}>
+                      <Copy className="h-3 w-3" /> Copy
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground">Verify Token</span>
+                  <div className="flex items-center gap-1.5">
+                    <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
+                      {verifyToken || '(loading…)'}
+                    </code>
+                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!verifyToken}
+                      onClick={() => copyText(verifyToken, 'Verify Token')}>
+                      <Copy className="h-3 w-3" /> Copy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" asChild>
+                  <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3 w-3" /> Open Meta Developer Console
+                  </a>
+                </Button>
+                <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmMetaStep}>
+                  <CheckCircle2 className="h-3 w-3" /> I completed Meta step
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── DONE ── */}
+        {phase === 'done' && (
+          <div className="space-y-3">
+            <StepsLog steps={steps} show={showSteps} onToggle={() => setShowSteps(!showSteps)} />
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+              <span className="font-medium">Setup complete — live intake activated. Facebook leads will be processed automatically.</span>
+            </div>
+
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={sendTestLead} disabled={testLoading}>
+              {testLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+              Send Test Lead
+            </Button>
+            {testResult && (
+              <div className={cn('p-2 rounded-md text-xs border', testResult.success ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-destructive/5 border-destructive/15 text-destructive')}>
+                {testResult.success ? (
+                  <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3" /> Test lead processed — Run: {String(testResult.run_id).slice(0, 8)}…</span>
+                ) : (
+                  <span className="flex items-center gap-1.5"><XCircle className="h-3 w-3" /> {String(testResult.error || 'Test failed')}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ERROR ── */}
+        {phase === 'error' && (
+          <div className="space-y-3">
+            <StepsLog steps={steps} show={showSteps} onToggle={() => setShowSteps(!showSteps)} />
+            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/5 border border-destructive/15 text-xs">
+              <XCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-foreground">Setup failed</p>
+                <p className="text-muted-foreground mt-0.5">{error}</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={() => runSetup()}>
+              <RotateCcw className="h-3 w-3" /> Retry
+            </Button>
           </div>
         )}
       </CardContent>
@@ -168,629 +543,35 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   );
 }
 
-function StepBlock({ stepNum, label, icon: Icon, status, children }: {
-  stepNum: number; label: string; icon: React.ElementType; status: StepStatus; children: React.ReactNode;
-}) {
-  const isOpen = status === 'active' || status === 'completed';
+/** Collapsible steps log */
+function StepsLog({ steps, show, onToggle }: { steps: StepResult[]; show: boolean; onToggle: () => void }) {
+  if (steps.length === 0) return null;
   return (
-    <div className={cn(
-      'rounded-lg border transition-all',
-      status === 'completed' && 'border-emerald-500/20 bg-emerald-500/5',
-      status === 'active' && 'border-primary/30 bg-primary/5',
-      status === 'blocked' && 'border-red-400/20 bg-red-400/5 opacity-60',
-      status === 'upcoming' && 'border-border/30 bg-muted/10 opacity-50',
-    )}>
-      <div className="flex items-center gap-2.5 p-2.5">
-        {status === 'completed' ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-        ) : status === 'active' ? (
-          <div className="h-4 w-4 rounded-full border-2 border-primary flex items-center justify-center flex-shrink-0">
-            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-          </div>
-        ) : (
-          <Circle className="h-4 w-4 text-muted-foreground/40 flex-shrink-0" />
-        )}
-        <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-        <span className={cn(
-          'text-xs font-medium flex-1',
-          status === 'completed' && 'text-emerald-400/80',
-          status === 'active' && 'text-foreground',
-          (status === 'blocked' || status === 'upcoming') && 'text-muted-foreground',
-        )}>
-          {stepNum}. {label}
-        </span>
-      </div>
-      {isOpen && <div className="px-2.5 pb-2.5 pt-0">{children}</div>}
-    </div>
-  );
-}
-
-/* ── Step 1: Meta Connection ── */
-function StepMetaConnection({ status, metaConns, selectedConn, config, onSave }: {
-  status: StepStatus; metaConns: PlatformResource[]; selectedConn?: PlatformResource;
-  config: TriggerConfig; onSave: (p: Partial<TriggerConfig>) => void;
-}) {
-  if (status === 'completed' && selectedConn) {
-    return (
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs">
-          <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1">
-            <CheckCircle2 className="h-2.5 w-2.5" /> {selectedConn.label}
-          </Badge>
-          {selectedConn.clientName && <span className="text-muted-foreground">({selectedConn.clientName})</span>}
-        </div>
-        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
-          onClick={() => onSave({ meta_connection_id: undefined, meta_connection_label: undefined, page_id: undefined, page_name: undefined, form_id: undefined, form_name: undefined, page_subscribed: undefined, page_subscribed_at: undefined, page_subscription_error: undefined, webhook_verified: undefined, live_ingestion_active: undefined })}>
-          Change
-        </Button>
-      </div>
-    );
-  }
-
-  if (metaConns.length === 0) {
-    return (
-      <div className="space-y-2">
-        <div className="flex items-start gap-2 p-2 rounded-md bg-red-400/5 border border-red-400/20 text-xs">
-          <XCircle className="h-3.5 w-3.5 text-red-400 mt-0.5 flex-shrink-0" />
-          <span className="text-muted-foreground">No Meta ad connections found. Connect a Meta account to proceed.</span>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-            <a href="/ai-ads/integrations"><ExternalLink className="h-3 w-3" /> Connect Meta Account</a>
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" asChild>
-            <a href="/connections"><Link2 className="h-3 w-3" /> Connections Center</a>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Select value={config.meta_connection_id || ''} onValueChange={v => {
-      const conn = metaConns.find(c => c.id === v);
-      onSave({ meta_connection_id: v, meta_connection_label: conn?.label || v });
-    }}>
-      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select Meta connection..." /></SelectTrigger>
-      <SelectContent>
-        {metaConns.map(c => (
-          <SelectItem key={c.id} value={c.id}>
-            <div className="flex items-center gap-2">
-              <span>{c.label}</span>
-              {c.clientName && <span className="text-[10px] text-muted-foreground">({c.clientName})</span>}
-              <Badge variant="outline" className={cn('text-[8px] h-3.5 px-1',
-                c.status === 'healthy' ? 'text-emerald-400 border-emerald-400/30' : 'text-amber-400 border-amber-400/30'
-              )}>{c.status}</Badge>
+    <div>
+      <button onClick={onToggle} className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+        {show ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        {steps.filter(s => s.status === 'success').length}/{steps.length} steps completed
+      </button>
+      {show && (
+        <div className="mt-1.5 space-y-0.5">
+          {steps.map((s, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-[10px]">
+              {s.status === 'success' ? (
+                <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+              ) : s.status === 'error' ? (
+                <XCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+              ) : (
+                <AlertTriangle className="h-3 w-3 text-amber-400 flex-shrink-0" />
+              )}
+              <span className={cn(
+                s.status === 'success' ? 'text-emerald-400/80' : s.status === 'error' ? 'text-destructive' : 'text-muted-foreground'
+              )}>
+                {STEP_LABELS[s.step] || s.step}: {s.message}
+              </span>
             </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-/* ── Step 2: Select Page ── */
-function StepSelectPage({ status, config, onSave }: {
-  status: StepStatus; config: TriggerConfig; onSave: (p: Partial<TriggerConfig>) => void;
-}) {
-  const [pageId, setPageId] = useState(config.page_id || '');
-  const [pageName, setPageName] = useState(config.page_name || '');
-  const [loading, setLoading] = useState(false);
-  const [metaPages, setMetaPages] = useState<{ id: string; name: string }[] | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  useEffect(() => { setPageId(config.page_id || ''); setPageName(config.page_name || ''); }, [config.page_id, config.page_name]);
-
-  const loadPages = async () => {
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) { setFetchError('Not authenticated'); setLoading(false); return; }
-
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
-      const resp = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/meta-oauth?action=list-pages`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.session.access_token}`,
-          },
-          body: JSON.stringify({
-            connection_id: config.meta_connection_id,
-            use_management_token: true,
-          }),
-        }
-      );
-      const result = await resp.json();
-
-      if (result.pages && result.pages.length > 0) {
-        setMetaPages(result.pages);
-        setFetchError(null);
-      } else {
-        setMetaPages(null);
-        setFetchError(result.error || 'No pages found. Enter Page ID manually from Meta Business Suite → Page Settings.');
-      }
-    } catch (err: unknown) {
-      setFetchError(err instanceof Error ? err.message : 'Failed to load pages');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (status === 'completed') {
-    return (
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1">
-          <CheckCircle2 className="h-2.5 w-2.5" /> {config.page_name || config.page_id}
-        </Badge>
-        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
-          onClick={() => onSave({ page_id: undefined, page_name: undefined, form_id: undefined, form_name: undefined, page_subscribed: undefined, page_subscribed_at: undefined, page_subscription_error: undefined })}>
-          Change
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={loadPages} disabled={loading}>
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          Load Pages from Meta
-        </Button>
-      </div>
-
-      {fetchError && (
-        <div className="flex items-start gap-2 p-2 rounded-md bg-amber-400/5 border border-amber-400/20 text-xs">
-          <AlertTriangle className="h-3 w-3 text-amber-400 mt-0.5 flex-shrink-0" />
-          <span className="text-muted-foreground">{fetchError}</span>
+          ))}
         </div>
       )}
-
-      {metaPages && metaPages.length > 0 && (
-        <Select value={pageId} onValueChange={v => {
-          const p = metaPages.find(pg => pg.id === v);
-          setPageId(v);
-          setPageName(p?.name || v);
-        }}>
-          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a page..." /></SelectTrigger>
-          <SelectContent>
-            {metaPages.map(p => (
-              <SelectItem key={p.id} value={p.id}>{p.name} ({p.id})</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-
-      <div className="text-[10px] text-muted-foreground flex items-start gap-1.5 p-1.5 rounded bg-muted/20">
-        <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-        <span>Or enter the Page ID manually from Meta Business Suite → Page Settings.</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Page ID</Label>
-          <Input value={pageId} onChange={e => setPageId(e.target.value)} placeholder="e.g. 123456789" className="h-7 text-xs mt-0.5" />
-        </div>
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Page Name</Label>
-          <Input value={pageName} onChange={e => setPageName(e.target.value)} placeholder="e.g. My Business Page" className="h-7 text-xs mt-0.5" />
-        </div>
-      </div>
-      <Button size="sm" className="h-7 text-xs gap-1" disabled={!pageId.trim()}
-        onClick={() => onSave({ page_id: pageId.trim(), page_name: pageName.trim() || pageId.trim() })}>
-        <Save className="h-3 w-3" /> Save Page
-      </Button>
-    </div>
-  );
-}
-
-/* ── Step 3: Select Form ── */
-function StepSelectForm({ status, config, onSave }: {
-  status: StepStatus; config: TriggerConfig; onSave: (p: Partial<TriggerConfig>) => void;
-}) {
-  const [formId, setFormId] = useState(config.form_id || '');
-  const [formName, setFormName] = useState(config.form_name || '');
-  const [loading, setLoading] = useState(false);
-  const [metaForms, setMetaForms] = useState<{ id: string; name: string }[] | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  useEffect(() => { setFormId(config.form_id || ''); setFormName(config.form_name || ''); }, [config.form_id, config.form_name]);
-
-  const loadForms = async () => {
-    if (!config.page_id) return;
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) { setFetchError('Not authenticated'); setLoading(false); return; }
-
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
-      const resp = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/meta-oauth?action=list-forms`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.session.access_token}`,
-          },
-          body: JSON.stringify({
-            page_id: config.page_id,
-            connection_id: config.meta_connection_id,
-            use_management_token: true,
-          }),
-        }
-      );
-      const result = await resp.json();
-
-      if (result.forms && result.forms.length > 0) {
-        setMetaForms(result.forms);
-        setFetchError(null);
-      } else {
-        setMetaForms(null);
-        setFetchError(result.error || 'No forms found. Enter Form ID manually from Facebook Page → Publishing Tools → Lead Ads Forms.');
-      }
-    } catch (err: unknown) {
-      setFetchError(err instanceof Error ? err.message : 'Failed to load forms');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (status === 'completed') {
-    return (
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1">
-          <CheckCircle2 className="h-2.5 w-2.5" /> {config.form_name || config.form_id}
-        </Badge>
-        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
-          onClick={() => onSave({ form_id: undefined, form_name: undefined })}>
-          Change
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={loadForms} disabled={loading}>
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          Load Forms
-        </Button>
-      </div>
-
-      {fetchError && (
-        <div className="flex items-start gap-2 p-2 rounded-md bg-amber-400/5 border border-amber-400/20 text-xs">
-          <Info className="h-3 w-3 text-amber-400 mt-0.5 flex-shrink-0" />
-          <span className="text-muted-foreground">{fetchError}</span>
-        </div>
-      )}
-
-      {metaForms && metaForms.length > 0 && (
-        <Select value={formId} onValueChange={v => {
-          const f = metaForms.find(fm => fm.id === v);
-          setFormId(v);
-          setFormName(f?.name || v);
-        }}>
-          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a form..." /></SelectTrigger>
-          <SelectContent>
-            {metaForms.map(f => (
-              <SelectItem key={f.id} value={f.id}>{f.name} ({f.id})</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Form ID</Label>
-          <Input value={formId} onChange={e => setFormId(e.target.value)} placeholder="e.g. 987654321" className="h-7 text-xs mt-0.5" />
-        </div>
-        <div>
-          <Label className="text-[10px] text-muted-foreground">Form Name</Label>
-          <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Contact Form v2" className="h-7 text-xs mt-0.5" />
-        </div>
-      </div>
-      <Button size="sm" className="h-7 text-xs gap-1" disabled={!formId.trim()}
-        onClick={() => onSave({ form_id: formId.trim(), form_name: formName.trim() || formId.trim() })}>
-        <Save className="h-3 w-3" /> Save Form
-      </Button>
-    </div>
-  );
-}
-
-/* ── Step 4: Subscribe Page to Leadgen ── */
-function StepSubscribePage({ status, config, onSave }: {
-  status: StepStatus; config: TriggerConfig; onSave: (p: Partial<TriggerConfig>) => void;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(config.page_subscription_error || null);
-
-  const subscribePage = async () => {
-    if (!config.page_id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) { setError('Not authenticated'); setLoading(false); return; }
-
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
-      const resp = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/meta-oauth?action=subscribe-page`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.session.access_token}`,
-          },
-          body: JSON.stringify({
-            page_id: config.page_id,
-            connection_id: config.meta_connection_id,
-            use_management_token: true,
-          }),
-        }
-      );
-      const result = await resp.json();
-
-      if (result.success) {
-        onSave({
-          page_subscribed: true,
-          page_subscribed_at: result.subscribed_at || new Date().toISOString(),
-          page_subscription_error: undefined,
-        });
-        toast.success(`Page "${result.page_name || config.page_name}" subscribed to leadgen`);
-      } else {
-        const errMsg = result.error || 'Subscription failed';
-        setError(errMsg);
-        onSave({
-          page_subscribed: false,
-          page_subscription_error: errMsg,
-        });
-        toast.error(errMsg);
-      }
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : 'Request failed';
-      setError(errMsg);
-      onSave({ page_subscribed: false, page_subscription_error: errMsg });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (status === 'completed') {
-    return (
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1">
-          <CheckCircle2 className="h-2.5 w-2.5" /> Page subscribed
-          {config.page_subscribed_at && <span className="text-[9px] text-emerald-400/60 ml-1">
-            ({new Date(config.page_subscribed_at).toLocaleDateString()})
-          </span>}
-        </Badge>
-        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
-          onClick={() => onSave({ page_subscribed: false, page_subscribed_at: undefined, page_subscription_error: undefined })}>
-          Re-subscribe
-        </Button>
-      </div>
-    );
-  }
-
-  if (status === 'upcoming') return null;
-
-  return (
-    <div className="space-y-2">
-      <div className="text-[10px] text-muted-foreground flex items-start gap-1.5 p-1.5 rounded bg-muted/20">
-        <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-        <span>Subscribe your Facebook Page to receive leadgen events via the app. This calls <code className="bg-muted/40 px-0.5 rounded">POST /{'{page-id}'}/subscribed_apps</code> with <code className="bg-muted/40 px-0.5 rounded">subscribed_fields=leadgen</code>.</span>
-      </div>
-
-      <Button
-        size="sm"
-        className="h-8 text-xs gap-1.5 bg-[hsl(220,70%,50%)] hover:bg-[hsl(220,70%,45%)] text-white"
-        onClick={subscribePage}
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-        Subscribe Page to Leadgen
-      </Button>
-
-      {error && (
-        <div className="flex items-start gap-2 p-2 rounded-md bg-destructive/5 border border-destructive/15 text-xs">
-          <XCircle className="h-3 w-3 text-destructive flex-shrink-0 mt-0.5" />
-          <span className="text-muted-foreground break-all">{error}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Step 5: Webhook Verification ── */
-function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
-  status: StepStatus; config: TriggerConfig; webhookUrl: string;
-  onSave: (p: Partial<TriggerConfig>) => void; automationId: string;
-}) {
-  const [verifyToken, setVerifyToken] = useState<string | null>(null);
-  const [tokenConfigured, setTokenConfigured] = useState(false);
-  const [loadingToken, setLoadingToken] = useState(false);
-
-  useEffect(() => {
-    if (status === 'upcoming') return;
-    const fetchToken = async () => {
-      setLoadingToken(true);
-      try {
-        const { data: session } = await supabase.auth.getSession();
-        if (!session.session) { setLoadingToken(false); return; }
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'bhwvnmyvebgnxiisloqu';
-        const resp = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/fb-leadgen-config`,
-          { method: 'GET', headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
-        );
-        if (resp.ok) {
-          const result = await resp.json();
-          setVerifyToken(result.verify_token || null);
-          setTokenConfigured(result.configured || false);
-        }
-      } catch { /* silent */ }
-      finally { setLoadingToken(false); }
-    };
-    fetchToken();
-  }, [status]);
-
-  const copyUrl = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    toast.success('Callback URL copied');
-  };
-
-  const copyToken = () => {
-    if (verifyToken) {
-      navigator.clipboard.writeText(verifyToken);
-      toast.success('Verify Token copied');
-    }
-  };
-
-  const confirmVerified = () => {
-    onSave({ webhook_verified: true, last_verified_at: new Date().toISOString(), verification_error: undefined });
-    toast.success('Webhook marked as verified');
-  };
-
-  if (status === 'completed') {
-    return (
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1">
-          <CheckCircle2 className="h-2.5 w-2.5" /> Webhook verified
-          {config.last_verified_at && <span className="text-[9px] text-emerald-400/60 ml-1">
-            ({new Date(config.last_verified_at).toLocaleDateString()})
-          </span>}
-        </Badge>
-        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
-          onClick={() => onSave({ webhook_verified: false })}>
-          Re-verify
-        </Button>
-      </div>
-    );
-  }
-
-  if (!loadingToken && !tokenConfigured) {
-    return (
-      <div className="space-y-2">
-        <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-400/5 border border-amber-400/20 text-xs">
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-foreground">FB_LEADGEN_VERIFY_TOKEN is missing</p>
-            <p className="text-muted-foreground mt-0.5">An admin must generate a verify token before webhook verification can proceed.</p>
-          </div>
-        </div>
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-          <a href="/afm/settings"><Settings className="h-3 w-3" /> Open Admin Settings</a>
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {loadingToken && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Loading token...
-        </div>
-      )}
-
-      <div className="text-[10px] text-muted-foreground flex items-start gap-1.5 p-1.5 rounded bg-muted/20">
-        <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="mb-1">В Meta вставьте <strong>Callback URL</strong> и <strong>Verify Token</strong>, затем нажмите <strong>Verify and save</strong>.</p>
-          <ol className="list-decimal list-inside space-y-0.5 ml-1">
-            <li>Go to <strong>Meta Developers → Your App → Webhooks</strong></li>
-            <li>Add <strong>Page</strong> subscription</li>
-            <li>Paste the Callback URL and Verify Token below</li>
-            <li>Subscribe to <strong>leadgen</strong> field</li>
-          </ol>
-        </div>
-      </div>
-
-      <div className="space-y-0.5">
-        <Label className="text-[10px] text-muted-foreground">Callback URL</Label>
-        <div className="flex items-center gap-1.5">
-          <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
-            {webhookUrl}
-          </code>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 px-2" onClick={copyUrl}>
-            <Copy className="h-3 w-3" /> Copy
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-0.5">
-        <Label className="text-[10px] text-muted-foreground">Verify Token</Label>
-        <div className="flex items-center gap-1.5">
-          <code className="flex-1 text-[10px] font-mono bg-muted/30 border border-border/30 rounded px-2 py-1.5 truncate text-foreground">
-            {verifyToken || '—'}
-          </code>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 px-2" onClick={copyToken} disabled={!verifyToken}>
-            <Copy className="h-3 w-3" /> Copy
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-          <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-3 w-3" /> Open Meta Developer Console
-          </a>
-        </Button>
-        <Button size="sm" className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmVerified}>
-          <CheckCircle2 className="h-3 w-3" /> I've verified in Meta
-        </Button>
-      </div>
-
-      {config.verification_error && (
-        <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/5 border border-destructive/15 text-xs">
-          <XCircle className="h-3 w-3 text-destructive flex-shrink-0" />
-          <span className="text-muted-foreground">{config.verification_error}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Step 6: Live Intake ── */
-function StepLiveIntake({ status, config, onSave }: {
-  status: StepStatus; config: TriggerConfig; onSave: (p: Partial<TriggerConfig>) => void;
-}) {
-  if (status === 'completed') {
-    return (
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30 bg-emerald-400/10 gap-1">
-          <CheckCircle2 className="h-2.5 w-2.5" /> Live — accepting leads
-        </Badge>
-        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground"
-          onClick={() => onSave({ live_ingestion_active: false })}>
-          Pause
-        </Button>
-      </div>
-    );
-  }
-
-  if (status === 'upcoming') {
-    return (
-      <div className="text-[10px] text-muted-foreground">Complete previous steps first.</div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="text-[10px] text-muted-foreground flex items-start gap-1.5 p-1.5 rounded bg-muted/20">
-        <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-        <span>
-          Webhook is verified. Activate live intake to start processing Facebook leads automatically.
-          Make sure the automation is <strong>Active</strong> (toggle at the top).
-        </span>
-      </div>
-      <Button size="sm" className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-        onClick={() => onSave({ live_ingestion_active: true })}>
-        <Radio className="h-3 w-3" /> Activate Live Intake
-      </Button>
     </div>
   );
 }
