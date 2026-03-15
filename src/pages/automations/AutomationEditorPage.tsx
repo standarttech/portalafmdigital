@@ -315,6 +315,11 @@ export default function AutomationEditorPage() {
   const triggerDef = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
   const TriggerIcon = triggerDef.icon;
   const triggerFields = triggerDef.fields || [];
+  // Extract form fields from trigger config
+  const formFields: Array<{ key: string; label: string; slug: string }> = 
+    (automation?.trigger_type === 'fb_lead_form' && automation?.trigger_config)
+      ? ((automation.trigger_config as any).form_fields || [])
+      : [];
   // Merge client-scoped ad connections + global meta_ads_management API key (has page/form access)
   const metaConns = [
     ...platformApiResources.filter(r => r.provider === 'meta_ads_management' && r.isActive && r.hasSecret),
@@ -398,6 +403,11 @@ export default function AutomationEditorPage() {
                         <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10">Live</Badge>
                       )}
                       <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
+                      {formFields.length > 0 && (
+                        <Badge variant="outline" className="text-xs text-[hsl(220,70%,50%)] border-[hsl(220,70%,50%)]/30 bg-[hsl(220,70%,50%)]/5">
+                          +{formFields.length} form questions
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
@@ -464,9 +474,7 @@ export default function AutomationEditorPage() {
                 sheetResources={sheetResources}
                 agencyUsers={agencyUsers}
                 automationClientId={automation.client_id}
-                formFields={(automation.trigger_type === 'fb_lead_form' && automation.trigger_config)
-                  ? ((automation.trigger_config as any).form_fields || [])
-                  : []}
+                formFields={formFields}
                 onUpdate={(updated: any) => updateStepMutation.mutate(updated)}
                 onDelete={() => deleteStepMutation.mutate(editingStep.id)}
                 onClose={() => setEditingStep(null)}
