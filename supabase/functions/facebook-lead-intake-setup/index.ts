@@ -268,6 +268,139 @@ Deno.serve(async (req) => {
     });
   }
 
+  // ── FETCH HISTORICAL LEADS ──
+  if (req.method === 'POST' && action === 'fetch-historical-leads') {
+    try {
+      const body = await req.json();
+      const { automation_id, days } = body;
+      if (!automation_id || !days) {
+        return new Response(JSON.stringify({ error: 'automation_id and days required' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: autoData } = await admin
+        .from('automations')
+        .select('trigger_config')
+        .eq('id', automation_id)
+        .single();
+      const tc = (autoData?.trigger_config as Record<string, any>) || {};
+      const connectionId = tc.meta_connection_id;
+      const formId = tc.form_id;
+      const pageId = tc.page_id;
+
+      if (!connectionId || !formId) {
+        return new Response(JSON.stringify({ error: 'Automation not fully configured (missing connection or form)' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const tokenResult = await resolveMetaToken(admin, connectionId);
+      if (!tokenResult) {
+        return new Response(JSON.stringify({ error: 'No Meta token available' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Try page access token first, fall back to user token
+      let apiToken = tokenResult.token;
+      if (pageId) {
+        const pageToken = await fetchPageAccessToken(tokenResult.token, pageId);
+        if (pageToken) apiToken = pageToken;
+      }
+
+      const sinceTimestamp = Math.floor((Date.now() - days * 86400000) / 1000);
+      const formFields = (tc.form_fields || []) as Array<{ key: string; label: string; slug: string }>;
+
+      // Fetch leads from Meta Graph API with pagination
+      let allLeads: any[] = [];
+      let nextUrl: string | null = `https://graph.facebook.com/v21.0/${formId}/leads?access_token=${apiToken}&filtering=[{"field":"time_created","operator":"GREATER_THAN","value":${sinceTimestamp}}]&limit=50`;
+
+      while (nextUrl && allLeads.length < 500) {
+        const res = await fetch(nextUrl);
+        const data = await res.json();
+        if (data.error) {
+          return new Response(JSON.stringify({ success: false, error: `Meta API: ${data.error.message}` }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        allLeads = allLeads.concat(data.data || []);
+        nextUrl = data.paging?.next || null;
+      }
+
+      // Process each lead through the automation
+      let leadsProcessed = 0;
+      for (const lead of allLeads) {
+        const fieldData: Record<string, string> = {};
+        for (const fd of lead.field_data || []) {
+          fieldData[fd.name] = Array.isArray(fd.values) ? fd.values[0] : fd.values;
+        }
+
+        // Build fields object using form field definitions
+        const fieldsObj: Record<string, string> = {};
+        const answersLines: string[] = [];
+        const standardSlugs = new Set(['full_name', 'email', 'phone_number', 'phone', 'first_name', 'last_name']);
+
+        for (const def of formFields) {
+          const val = fieldData[def.key] || '';
+          fieldsObj[def.slug] = val;
+          if (val && !standardSlugs.has(def.slug)) answersLines.push(`${def.label}: ${val}`);
+        }
+        // Fallback for unmapped fields
+        for (const [key, val] of Object.entries(fieldData)) {
+          const slug = toSlug(key);
+          if (!fieldsObj[slug]) {
+            fieldsObj[slug] = val;
+            if (val && !standardSlugs.has(slug)) answersLines.push(`${key}: ${val}`);
+          }
+        }
+
+        const triggerPayload: Record<string, any> = {
+          leadgen_id: lead.id,
+          full_name: fieldData.full_name || fieldData.name || '',
+          email: fieldData.email || '',
+          phone: fieldData.phone_number || fieldData.phone || '',
+          form_id: formId,
+          form_name: tc.form_name || '',
+          page_id: pageId || '',
+          page_name: tc.page_name || '',
+          platform: 'facebook',
+          source: 'fb_lead_form_historical',
+          created_at: lead.created_time || new Date().toISOString(),
+          fields: fieldsObj,
+          form_answers_text: answersLines.join('\n'),
+          form_answers_json: JSON.stringify(fieldsObj),
+          fb_lead_id: lead.id,
+          fb_form_id: formId,
+          fb_page_id: pageId || '',
+        };
+
+        try {
+          const execResp = await fetch(`${SUPABASE_URL}/functions/v1/automation-execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}` },
+            body: JSON.stringify({ automation_id, trigger_payload: triggerPayload, test_mode: false, _system_trigger: true }),
+          });
+          const execResult = await execResp.json();
+          if (execResult.status === 'completed') leadsProcessed++;
+        } catch (err) {
+          console.error(`[intake-setup] Historical lead exec error:`, err);
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        leads_fetched: allLeads.length,
+        leads_processed: leadsProcessed,
+        days,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (err) {
+      return new Response(JSON.stringify({ success: false, error: String(err) }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
