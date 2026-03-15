@@ -136,9 +136,20 @@ const statusIcon = (status: string) => {
   }
 };
 
-function buildAvailableVars(triggerFields: readonly string[], steps: any[], currentStepOrder: number) {
+function buildAvailableVars(
+  triggerFields: readonly string[],
+  steps: any[],
+  currentStepOrder: number,
+  formFields?: Array<{ key: string; label: string; slug: string }>
+) {
   const vars: { label: string; value: string; group: string }[] = [];
   triggerFields.forEach(f => vars.push({ label: f, value: `trigger.${f}`, group: 'Trigger' }));
+  // Add form-specific field variables
+  if (formFields && formFields.length > 0) {
+    for (const ff of formFields) {
+      vars.push({ label: ff.label, value: `trigger.fields.${ff.slug}`, group: 'Form Fields' });
+    }
+  }
   for (const s of steps) {
     if (s.step_order >= currentStepOrder) break;
     const act = actionInfo(s.action_type);
