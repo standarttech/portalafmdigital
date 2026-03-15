@@ -226,19 +226,44 @@ Deno.serve(async (req) => {
   if (req.method === 'GET' && action === 'get-form-fields') {
     const connectionId = url.searchParams.get('connection_id');
     const formId = url.searchParams.get('form_id');
+    const pageId = url.searchParams.get('page_id');
     if (!connectionId || !formId) {
       return new Response(JSON.stringify({ error: 'connection_id and form_id required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
     const tokenResult = await resolveMetaToken(admin, connectionId);
     if (!tokenResult) {
       return new Response(JSON.stringify({ error: 'No Meta token available' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const { questions, error: fieldsError } = await fetchFormFields(tokenResult.token, formId);
-    return new Response(JSON.stringify({ questions, error: fieldsError }), {
+
+    const tokensToTry: Array<{ token: string; source: string }> = [{ token: tokenResult.token, source: tokenResult.source }];
+    if (pageId) {
+      const pageToken = await fetchPageAccessToken(tokenResult.token, pageId);
+      if (pageToken && pageToken !== tokenResult.token) {
+        tokensToTry.unshift({ token: pageToken, source: 'page_access_token' });
+      }
+    }
+
+    let questions: Array<{ key: string; label: string; type: string; slug: string }> = [];
+    let fieldsError: string | undefined;
+    let tokenSource = tokensToTry[0]?.source || 'unknown';
+
+    for (const entry of tokensToTry) {
+      const result = await fetchFormFields(entry.token, formId);
+      if (result.questions.length > 0 || !result.error) {
+        questions = result.questions;
+        fieldsError = result.error;
+        tokenSource = entry.source;
+        break;
+      }
+      fieldsError = result.error;
+    }
+
+    return new Response(JSON.stringify({ questions, error: fieldsError, token_source: tokenSource }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
