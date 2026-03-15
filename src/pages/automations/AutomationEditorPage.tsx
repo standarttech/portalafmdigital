@@ -691,6 +691,24 @@ function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, aut
                           </div>
                         )}
                       </div>
+                    ) : f.type === 'sheet_select' ? (
+                      <div className="space-y-1">
+                        <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
+                          <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select sheet" /></SelectTrigger>
+                          <SelectContent>
+                            {(clients || []).filter((c: any) => c.google_sheet_url && (!automationClientId || c.id === automationClientId)).map((c: any) => (
+                              <SelectItem key={c.id} value={c.google_sheet_url}>
+                                {c.name} — Google Sheet
+                              </SelectItem>
+                            ))}
+                            {(clients || []).filter((c: any) => c.google_sheet_url && (!automationClientId || c.id === automationClientId)).length === 0 && (
+                              <div className="p-2 text-xs text-muted-foreground text-center">
+                                No Google Sheets configured. Add sheet URLs in Client settings.
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     ) : f.type === 'user_select' ? (
                       <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
                         <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select user" /></SelectTrigger>
