@@ -384,9 +384,13 @@ export default function AutomationEditorPage() {
                     </div>
                   </div>
 
-                  {/* FB Lead Form structured config */}
+                  {/* FB Lead Form — Guided Setup Wizard */}
                   {automation.trigger_type === 'fb_lead_form' && (
-                    <FbLeadFormTriggerConfig metaConns={metaConns} triggerConfig={automation.trigger_config as Record<string, any> | null} />
+                    <FbLeadFormSetupWizard
+                      automationId={automation.id}
+                      metaConns={metaConns}
+                      triggerConfig={automation.trigger_config as Record<string, any> | null}
+                    />
                   )}
                 </CardContent>
               </Card>
