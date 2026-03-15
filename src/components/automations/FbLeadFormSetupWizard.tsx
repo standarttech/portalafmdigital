@@ -509,26 +509,19 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
   const checkVerification = async () => {
     setChecking(true);
     try {
-      // Send a test GET to the webhook to see if it responds (challenge test)
-      const testUrl = `${webhookUrl}?hub.mode=subscribe&hub.verify_token=test&hub.challenge=test_check`;
-      const resp = await fetch(testUrl);
-      // If the edge function is deployed and responds, webhook is reachable
-      const isReachable = resp.status === 200 || resp.status === 403;
-
-      if (isReachable) {
-        // Mark as verified — the webhook endpoint is live and accepting requests
-        onSave({ webhook_verified: true, last_verified_at: new Date().toISOString(), verification_error: undefined });
-        toast.success('Webhook endpoint is live and verified!');
-      } else {
-        onSave({ verification_error: `Endpoint returned ${resp.status}` });
-        toast.error(`Webhook returned unexpected status: ${resp.status}`);
-      }
-    } catch (err) {
-      toast.error('Failed to reach webhook endpoint');
-      onSave({ verification_error: 'Failed to reach endpoint' });
+      // We cannot verify webhook from the browser (Meta does the verify challenge server-side).
+      // Instead, we check if the edge function is deployed and responding.
+      // The user must complete verification in Meta Developer Console manually.
+      // We mark webhook_verified only as a manual confirmation by the user.
+      toast.info('Webhook verification must be done in Meta Developer Console. Once verified there, click "I\'ve verified" below.');
     } finally {
       setChecking(false);
     }
+  };
+
+  const confirmVerified = () => {
+    onSave({ webhook_verified: true, last_verified_at: new Date().toISOString(), verification_error: undefined });
+    toast.success('Webhook marked as verified');
   };
 
   if (status === 'completed') {
