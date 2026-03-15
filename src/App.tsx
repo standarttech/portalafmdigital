@@ -129,7 +129,7 @@ const AiInfraGuidePage = React.lazy(() => import("@/pages/ai-infra/AiInfraGuideP
 const AiAdsGuidePage = React.lazy(() => import("@/pages/ai-ads/AiAdsGuidePage"));
 const AutomationsPage = React.lazy(() => import("@/pages/automations/AutomationsPage"));
 const AutomationEditorPage = React.lazy(() => import("@/pages/automations/AutomationEditorPage"));
-
+const ConnectionsCenterPage = React.lazy(() => import("@/pages/ConnectionsCenterPage"));
 
 const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
   Promise.race([
