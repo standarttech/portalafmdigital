@@ -32,7 +32,7 @@ import FbLeadFormSetupWizard from '@/components/automations/FbLeadFormSetupWizar
 const TRIGGER_TYPES = [
   { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false,
     note: 'Requires Meta webhook ingestion. Connect Meta → configure Page & Form → verify webhook.',
-    fields: ['full_name', 'email', 'phone', 'campaign_name', 'form_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
+    fields: ['full_name', 'email', 'phone', 'form_name', 'page_name', 'form_answers_text', 'form_answers_json', 'campaign_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
   { id: 'internal_form', label: 'Internal Form', icon: FileSpreadsheet, color: 'hsl(160,70%,40%)', live: true,
     fields: ['full_name', 'email', 'phone', 'message', 'form_id', 'page_url', 'utm_source'] },
   { id: 'gos_form', label: 'GOS Form', icon: Globe, color: 'hsl(270,60%,50%)', live: true,
@@ -136,9 +136,20 @@ const statusIcon = (status: string) => {
   }
 };
 
-function buildAvailableVars(triggerFields: readonly string[], steps: any[], currentStepOrder: number) {
+function buildAvailableVars(
+  triggerFields: readonly string[],
+  steps: any[],
+  currentStepOrder: number,
+  formFields?: Array<{ key: string; label: string; slug: string }>
+) {
   const vars: { label: string; value: string; group: string }[] = [];
   triggerFields.forEach(f => vars.push({ label: f, value: `trigger.${f}`, group: 'Trigger' }));
+  // Add form-specific field variables
+  if (formFields && formFields.length > 0) {
+    for (const ff of formFields) {
+      vars.push({ label: ff.label, value: `trigger.fields.${ff.slug}`, group: 'Form Fields' });
+    }
+  }
   for (const s of steps) {
     if (s.step_order >= currentStepOrder) break;
     const act = actionInfo(s.action_type);
@@ -453,6 +464,9 @@ export default function AutomationEditorPage() {
                 sheetResources={sheetResources}
                 agencyUsers={agencyUsers}
                 automationClientId={automation.client_id}
+                formFields={(automation.trigger_type === 'fb_lead_form' && automation.trigger_config)
+                  ? ((automation.trigger_config as any).form_fields || [])
+                  : []}
                 onUpdate={(updated: any) => updateStepMutation.mutate(updated)}
                 onDelete={() => deleteStepMutation.mutate(editingStep.id)}
                 onClose={() => setEditingStep(null)}
@@ -530,10 +544,11 @@ export default function AutomationEditorPage() {
 }
 
 /* ── Step Config Panel ── */
-function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetResources, agencyUsers, automationClientId, onUpdate, onDelete, onClose }: {
+function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetResources, agencyUsers, automationClientId, formFields, onUpdate, onDelete, onClose }: {
   step: any; triggerFields: readonly string[]; allSteps: any[];
   botResources: PlatformResource[]; sheetResources: PlatformResource[];
   agencyUsers: any[]; automationClientId?: string | null;
+  formFields?: Array<{ key: string; label: string; slug: string }>;
   onUpdate: (s: any) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [localStep, setLocalStep] = useState(step);
@@ -541,8 +556,8 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
   const isCondition = step.action_type === 'filter';
 
   const availableVars = useMemo(
-    () => buildAvailableVars(triggerFields, allSteps, step.step_order),
-    [triggerFields, allSteps, step.step_order]
+    () => buildAvailableVars(triggerFields, allSteps, step.step_order, formFields),
+    [triggerFields, allSteps, step.step_order, formFields]
   );
 
   useEffect(() => { setLocalStep(step); }, [step]);
@@ -639,25 +654,44 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
                           className="text-xs h-8 font-mono" placeholder="{{trigger.field}} or fixed value" />
                       </div>
                     ) : f.type === 'template' ? (
-                      <div className="space-y-1 mt-0.5">
+                      <div className="space-y-1.5 mt-0.5">
                         <Textarea
                           value={localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || ''}
                           onChange={e => updateMapping(f.key, e.target.value)}
-                          className="text-xs font-mono" rows={3}
-                          placeholder={`Use {{trigger.field_name}} or {{step_0.lead_id}}`}
+                          className="text-xs font-mono" rows={4}
+                          placeholder={`Use {{trigger.field_name}} or {{trigger.fields.slug}}`}
                         />
-                        <div className="flex flex-wrap gap-1">
-                          {availableVars.slice(0, 8).map(v => (
-                            <button key={v.value} type="button"
-                              className="text-[9px] px-1.5 py-0.5 rounded bg-muted/40 border border-border/30 text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors font-mono"
-                              onClick={() => {
-                                const current = localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || '';
-                                updateMapping(f.key, current + `{{${v.value}}}`);
-                              }}>
-                              {v.value}
-                            </button>
-                          ))}
-                        </div>
+                        {/* Variable chips grouped */}
+                        {(() => {
+                          const groups = new Map<string, typeof availableVars>();
+                          for (const v of availableVars) {
+                            if (!groups.has(v.group)) groups.set(v.group, []);
+                            groups.get(v.group)!.push(v);
+                          }
+                          return Array.from(groups.entries()).map(([group, vars]) => (
+                            <div key={group}>
+                              <span className="text-[8px] uppercase tracking-wider text-muted-foreground/60 font-semibold">{group}</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {vars.map(v => (
+                                  <button key={v.value} type="button"
+                                    className={cn(
+                                      "text-[9px] px-1.5 py-0.5 rounded border transition-colors font-mono",
+                                      v.group === 'Form Fields'
+                                        ? "bg-[hsl(220,70%,50%)]/10 border-[hsl(220,70%,50%)]/20 text-[hsl(220,70%,50%)] hover:bg-[hsl(220,70%,50%)]/20"
+                                        : "bg-muted/40 border-border/30 text-muted-foreground hover:text-primary hover:border-primary/30"
+                                    )}
+                                    onClick={() => {
+                                      const current = localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || '';
+                                      updateMapping(f.key, current + `{{${v.value}}}`);
+                                    }}
+                                    title={v.group === 'Form Fields' ? v.label : v.value}>
+                                    {v.group === 'Form Fields' ? v.label : v.value}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ));
+                        })()}
                       </div>
                     ) : f.type === 'bot_select' ? (
                       <div className="space-y-1">

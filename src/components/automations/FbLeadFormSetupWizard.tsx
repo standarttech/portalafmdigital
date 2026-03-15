@@ -30,6 +30,7 @@ interface TriggerConfig {
   page_subscribed?: boolean;
   webhook_verified?: boolean;
   live_ingestion_active?: boolean;
+  form_fields?: Array<{ key: string; label: string; type: string; slug: string }>;
   [key: string]: unknown;
 }
 
@@ -205,6 +206,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
       form_id: config.form_id,
       form_name: config.form_name,
       page_subscribed: config.page_subscribed,
+      form_fields: config.form_fields,
       webhook_verified: true,
       live_ingestion_active: true,
     };

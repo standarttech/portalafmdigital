@@ -4,6 +4,7 @@
  * POST: Runs the full setup flow (token per-integration, not per-automation)
  * POST ?action=test-lead — Sends a synthetic test lead
  * GET  ?action=get-integration-config&connection_id=X — Returns verify token for a given integration
+ * GET  ?action=get-form-fields&connection_id=X&form_id=Y — Returns form questions/fields
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -35,7 +36,6 @@ async function getTokenFromVault(admin: ReturnType<typeof createClient>, ref: st
 
 /** Resolve the Meta API token from a specific connection */
 async function resolveMetaToken(admin: ReturnType<typeof createClient>, connectionId: string): Promise<{ token: string; source: string } | null> {
-  // Try platform_connections first (the selected connection)
   const { data: conn } = await admin
     .from('platform_connections')
     .select('token_reference')
@@ -46,7 +46,6 @@ async function resolveMetaToken(admin: ReturnType<typeof createClient>, connecti
     if (t) return { token: t, source: 'platform_connection' };
   }
 
-  // Try platform_integrations with matching id
   const { data: integ } = await admin
     .from('platform_integrations')
     .select('secret_ref')
@@ -58,65 +57,93 @@ async function resolveMetaToken(admin: ReturnType<typeof createClient>, connecti
     if (t) return { token: t, source: 'platform_integration' };
   }
 
-  // Fallback: system token
   const sys = Deno.env.get('META_SYSTEM_USER_TOKEN');
   if (sys) return { token: sys, source: 'system_token' };
 
   return null;
 }
 
-/** 
- * Get or create a stable verify token for a specific integration.
- * Stored in platform_settings keyed by connection ID.
- */
 async function ensureIntegrationVerifyToken(
   admin: ReturnType<typeof createClient>,
   connectionId: string,
   userId: string
 ): Promise<string> {
   const settingKey = `fb_leadgen_verify_token__${connectionId}`;
-  
-  // Check if already exists
   const { data: existing } = await admin
     .from('platform_settings')
     .select('value')
     .eq('key', settingKey)
     .maybeSingle();
-  
   if (existing?.value) {
     const parsed = typeof existing.value === 'string' ? JSON.parse(existing.value) : existing.value;
     if (parsed.token) return parsed.token;
   }
-
-  // Also check the legacy global token as migration path
   const globalToken = Deno.env.get('FB_LEADGEN_VERIFY_TOKEN') || '';
   if (globalToken) {
-    // Persist global token for this integration
     await admin.from('platform_settings').upsert({
       key: settingKey,
       value: JSON.stringify({ token: globalToken, updated_at: new Date().toISOString(), updated_by: userId, source: 'migrated_from_global' }),
     }, { onConflict: 'key' });
     return globalToken;
   }
-
-  // Generate new token
   const arr = new Uint8Array(32);
   crypto.getRandomValues(arr);
   const newToken = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
-  
   await admin.from('platform_settings').upsert({
     key: settingKey,
     value: JSON.stringify({ token: newToken, updated_at: new Date().toISOString(), updated_by: userId }),
   }, { onConflict: 'key' });
-  
-  // Also write to legacy global key for backward compat with webhook
   await admin.from('platform_settings').upsert({
     key: 'fb_leadgen_verify_token',
     value: JSON.stringify({ token: newToken, updated_at: new Date().toISOString(), updated_by: userId }),
   }, { onConflict: 'key' });
-  
   console.log(`[intake-setup] Generated verify token for integration ${connectionId}`);
   return newToken;
+}
+
+/** Convert a question label to a safe slug variable name (transliterated) */
+function toSlug(label: string): string {
+  // Basic transliteration map for Cyrillic
+  const map: Record<string, string> = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+    'з': 'z', 'и': 'i', 'й': 'j', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+    'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts',
+    'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
+    'я': 'ya',
+  };
+  return label
+    .toLowerCase()
+    .split('')
+    .map(ch => map[ch] ?? ch)
+    .join('')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .substring(0, 60) || 'field';
+}
+
+/** Fetch form questions from Meta Graph API */
+async function fetchFormFields(token: string, formId: string): Promise<{
+  questions: Array<{ key: string; label: string; type: string; slug: string }>;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${formId}?fields=id,name,questions&access_token=${token}`
+    );
+    const data = await res.json();
+    if (data.error) {
+      return { questions: [], error: data.error.message };
+    }
+    const questions = (data.questions || []).map((q: any) => ({
+      key: q.key || q.id || '',
+      label: q.label || q.key || '',
+      type: q.type || 'CUSTOM',
+      slug: toSlug(q.label || q.key || ''),
+    }));
+    return { questions };
+  } catch (err) {
+    return { questions: [], error: String(err) };
+  }
 }
 
 interface StepResult {
@@ -140,7 +167,6 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // Check admin role
   const { data: agencyUser } = await admin
     .from('agency_users')
     .select('agency_role')
@@ -155,7 +181,7 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
 
-  // ── GET INTEGRATION CONFIG (verify token + callback URL for a specific integration) ──
+  // ── GET INTEGRATION CONFIG ──
   if (req.method === 'GET' && action === 'get-integration-config') {
     const connectionId = url.searchParams.get('connection_id');
     if (!connectionId) {
@@ -172,6 +198,27 @@ Deno.serve(async (req) => {
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
+  // ── GET FORM FIELDS ──
+  if (req.method === 'GET' && action === 'get-form-fields') {
+    const connectionId = url.searchParams.get('connection_id');
+    const formId = url.searchParams.get('form_id');
+    if (!connectionId || !formId) {
+      return new Response(JSON.stringify({ error: 'connection_id and form_id required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const tokenResult = await resolveMetaToken(admin, connectionId);
+    if (!tokenResult) {
+      return new Response(JSON.stringify({ error: 'No Meta token available' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const { questions, error: fieldsError } = await fetchFormFields(tokenResult.token, formId);
+    return new Response(JSON.stringify({ questions, error: fieldsError }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
@@ -186,17 +233,42 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const testPayload = {
+
+      // Load automation trigger_config to get form_fields for realistic test payload
+      const { data: autoData } = await admin
+        .from('automations')
+        .select('trigger_config')
+        .eq('id', automation_id)
+        .single();
+      const tc = (autoData?.trigger_config as Record<string, any>) || {};
+      const formFields = (tc.form_fields || []) as Array<{ key: string; label: string; slug: string }>;
+
+      // Build test fields object
+      const fieldsObj: Record<string, string> = {};
+      const answersLines: string[] = [];
+      for (const f of formFields) {
+        const testVal = `Test ${f.label}`;
+        fieldsObj[f.slug] = testVal;
+        answersLines.push(`${f.label}: ${testVal}`);
+      }
+
+      const testPayload: Record<string, any> = {
         leadgen_id: `test_${Date.now()}`,
         full_name: 'Test Lead',
         email: 'test@example.com',
         phone: '+1234567890',
-        form_id: 'test_form',
-        page_id: 'test_page',
+        form_id: tc.form_id || 'test_form',
+        form_name: tc.form_name || 'Test Form',
+        page_id: tc.page_id || 'test_page',
+        page_name: tc.page_name || 'Test Page',
         platform: 'facebook',
         source: 'fb_lead_form_test',
         created_at: new Date().toISOString(),
+        fields: fieldsObj,
+        form_answers_text: answersLines.length > 0 ? answersLines.join('\n') : 'No custom fields',
+        form_answers_json: JSON.stringify(fieldsObj),
       };
+
       const execResp = await fetch(`${SUPABASE_URL}/functions/v1/automation-execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}` },
@@ -235,13 +307,9 @@ Deno.serve(async (req) => {
 
     const steps: StepResult[] = [];
     const callbackUrl = `${SUPABASE_URL}/functions/v1/fb-leadgen-webhook`;
+    const triggerConfig: Record<string, unknown> = { meta_connection_id };
 
-    // Clean trigger_config — only these fields
-    const triggerConfig: Record<string, unknown> = {
-      meta_connection_id,
-    };
-
-    // ── STEP 1: Resolve Meta token from selected integration ──
+    // ── STEP 1: Resolve Meta token ──
     console.log(`[intake-setup] Step 1: Resolving Meta token for connection ${meta_connection_id}...`);
     const tokenResult = await resolveMetaToken(admin, meta_connection_id);
     if (!tokenResult) {
@@ -252,7 +320,7 @@ Deno.serve(async (req) => {
     }
     steps.push({ step: 'check_meta_connection', status: 'success', message: `Token found via ${tokenResult.source}` });
 
-    // ── STEP 2: Ensure stable verify token for this integration ──
+    // ── STEP 2: Ensure verify token ──
     console.log(`[intake-setup] Step 2: Ensuring verify token for integration ${meta_connection_id}...`);
     const verifyToken = await ensureIntegrationVerifyToken(admin, meta_connection_id, user.id);
     steps.push({ step: 'ensure_verify_token', status: 'success', message: 'Verify token ready (integration-level)' });
@@ -312,6 +380,17 @@ Deno.serve(async (req) => {
     triggerConfig.form_id = form_id;
     triggerConfig.form_name = selectedForm?.name || form_id;
 
+    // ── STEP 4b: Load form questions/fields ──
+    console.log(`[intake-setup] Step 4b: Loading form fields for ${form_id}...`);
+    const { questions: formQuestions, error: formFieldsError } = await fetchFormFields(formToken, form_id);
+    if (formFieldsError) {
+      steps.push({ step: 'load_form_fields', status: 'error', message: `Form fields: ${formFieldsError}` });
+    } else {
+      steps.push({ step: 'load_form_fields', status: 'success', message: `Found ${formQuestions.length} form fields` });
+    }
+    // Store form field definitions for variable resolution
+    triggerConfig.form_fields = formQuestions;
+
     // ── STEP 5: Subscribe page to leadgen ──
     console.log(`[intake-setup] Step 5: Subscribing page ${page_id} to leadgen...`);
     let pageSubscribed = false;
@@ -360,9 +439,8 @@ Deno.serve(async (req) => {
       steps.push({ step: 'check_webhook', status: 'error', message: `Endpoint unreachable: ${String(err)}` });
     }
 
-    // Statuses — honest, not fake
-    triggerConfig.webhook_verified = false; // Only true after real Meta verification
-    triggerConfig.live_ingestion_active = false; // Only true after manual Meta step confirmed
+    triggerConfig.webhook_verified = false;
+    triggerConfig.live_ingestion_active = false;
 
     // ── STEP 7: Save trigger_config ──
     console.log(`[intake-setup] Step 7: Saving trigger_config...`);
@@ -380,6 +458,7 @@ Deno.serve(async (req) => {
       success: !steps.some(s => s.status === 'error' && ['check_meta_connection', 'load_pages', 'save_config'].includes(s.step)),
       steps,
       config: triggerConfig,
+      form_fields: formQuestions,
       callback_url: callbackUrl,
       verify_token: verifyToken,
       manual_meta_step_required: true,
