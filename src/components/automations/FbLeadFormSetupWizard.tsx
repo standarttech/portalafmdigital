@@ -369,10 +369,50 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
                 </div>
               </div>
             )}
+
+            {/* Connection selector — shown when 2+ connections */}
+            {metaConns.length >= 2 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-foreground">Meta Connection</p>
+                <Select value={selectedConnectionId} onValueChange={setSelectedConnectionId}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Select Meta connection..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metaConns.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{c.label}</span>
+                          {c.clientName && <span className="text-[10px] text-muted-foreground">({c.clientName})</span>}
+                          <Badge variant="outline" className={cn('text-[8px] h-3.5 px-1',
+                            c.status === 'healthy' ? 'text-emerald-400 border-emerald-400/30' : 'text-amber-400 border-amber-400/30'
+                          )}>{c.subType || c.type}</Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedConn && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Using: <strong className="text-foreground">{selectedConn.label}</strong>
+                    {selectedConn.clientName && <> · {selectedConn.clientName}</>}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Single connection — show which one */}
+            {metaConns.length === 1 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground p-2 rounded-md bg-muted/20 border border-border/20">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Using: <strong className="text-foreground">{metaConns[0].label}</strong></span>
+              </div>
+            )}
+
             <Button
               className="w-full h-11 gap-2 bg-[hsl(220,70%,50%)] hover:bg-[hsl(220,70%,45%)] text-white font-medium"
               onClick={() => runSetup()}
-              disabled={metaConns.length === 0}
+              disabled={metaConns.length === 0 || (metaConns.length >= 2 && !selectedConnectionId)}
             >
               <Zap className="h-4 w-4" />
               Setup Facebook Lead Intake
