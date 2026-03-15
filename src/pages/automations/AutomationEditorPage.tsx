@@ -279,21 +279,7 @@ export default function AutomationEditorPage() {
 
   const buildDefaultTelegramMessage = useCallback(() => {
     if (automation?.trigger_type !== 'fb_lead_form') return '';
-    const lines: string[] = ['📋 Новый лид с Facebook', ''];
-    lines.push('👤 {{trigger.full_name}}');
-    lines.push('📧 {{trigger.email}}');
-    lines.push('📱 {{trigger.phone}}');
-    if (formFields.length > 0) {
-      lines.push('');
-      lines.push('📝 Ответы из формы:');
-      for (const f of formFields) {
-        lines.push(`${f.label}: {{trigger.fields.${f.slug}}}`);
-      }
-    }
-    lines.push('');
-    lines.push('📄 Форма: {{trigger.form_name}}');
-    lines.push('📊 Кампания: {{trigger.campaign_name}}');
-    return lines.join('\n');
+    return buildTelegramLeadTemplate(formFields);
   }, [automation?.trigger_type, formFields]);
 
   const addStepMutation = useMutation({
