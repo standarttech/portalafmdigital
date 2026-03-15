@@ -2,16 +2,75 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+/* ── SSRF blocklist ── */
+const BLOCKED_HOST_PATTERNS = [
+  /^localhost$/i,
+  /^127\.\d+\.\d+\.\d+$/,
+  /^10\.\d+\.\d+\.\d+$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+  /^192\.168\.\d+\.\d+$/,
+  /^0\.0\.0\.0$/,
+  /^169\.254\.\d+\.\d+$/,       // link-local / cloud metadata
+  /^fd[0-9a-f]{2}:/i,            // IPv6 ULA
+  /^fe80:/i,                      // IPv6 link-local
+  /^::1$/,                        // IPv6 loopback
+  /\.local$/i,
+  /\.internal$/i,
+  /\.metadata\.google\.internal$/i,
+  /^metadata\.google\.internal$/i,
+];
+
+function isUrlSafe(rawUrl: string): boolean {
+  try {
+    const u = new URL(rawUrl);
+    if (!['http:', 'https:'].includes(u.protocol)) return false;
+    const host = u.hostname;
+    return !BLOCKED_HOST_PATTERNS.some(p => p.test(host));
+  } catch { return false; }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    /* ── 1. AUTH: verify caller ── */
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const userSupabase = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claims, error: claimsErr } = await userSupabase.auth.getClaims(token);
+    if (claimsErr || !claims?.claims?.sub) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const callerId: string = claims.claims.sub as string;
+
+    // Service-role client for execution
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Verify caller is agency member
+    const { data: agencyUser } = await supabase
+      .from('agency_users').select('agency_role').eq('user_id', callerId).maybeSingle();
+    if (!agencyUser) {
+      return new Response(JSON.stringify({ error: 'Forbidden: not an agency member' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { automation_id, trigger_payload = {}, test_mode = false } = await req.json();
     if (!automation_id) throw new Error('automation_id required');
@@ -21,6 +80,20 @@ Deno.serve(async (req) => {
       .from('automations').select('*').eq('id', automation_id).single();
     if (autoErr || !automation) throw new Error('Automation not found');
     if (!automation.is_active && !test_mode) throw new Error('Automation is inactive');
+
+    // Verify client scope access
+    if (automation.client_id) {
+      const isAdmin = agencyUser.agency_role === 'AgencyAdmin';
+      if (!isAdmin) {
+        const { data: access } = await supabase
+          .from('client_users').select('id').eq('user_id', callerId).eq('client_id', automation.client_id).maybeSingle();
+        if (!access) {
+          return new Response(JSON.stringify({ error: 'Forbidden: no access to this client' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
 
     // Load steps
     const { data: steps } = await supabase
@@ -44,12 +117,13 @@ Deno.serve(async (req) => {
 
     let stepsCompleted = 0;
     let stepsFailed = 0;
+    /* Step outputs keyed as: trigger, step_0, step_1, ... and "last" alias */
     const stepOutputs: Record<string, any> = { trigger: trigger_payload };
 
     for (const step of steps) {
       const stepStart = Date.now();
-      const resolvedInput = resolveFieldMapping(step.field_mapping || {}, stepOutputs, trigger_payload);
-      const fullInput = { ...resolvedInput, ...(step.config || {}) };
+      const resolvedMapping = resolveFieldMapping(step.field_mapping || {}, stepOutputs);
+      const fullInput = { ...resolvedMapping, ...(step.config || {}) };
 
       const { data: runStep } = await supabase
         .from('automation_run_steps').insert({
@@ -66,7 +140,7 @@ Deno.serve(async (req) => {
       try {
         // Filter/condition
         if (step.step_type === 'condition' || step.action_type === 'filter') {
-          const passes = evaluateCondition(step.condition_config, trigger_payload, stepOutputs);
+          const passes = evaluateCondition(step.condition_config, stepOutputs);
           if (!passes) {
             await supabase.from('automation_run_steps').update({
               status: 'skipped',
@@ -78,16 +152,16 @@ Deno.serve(async (req) => {
           }
           stepsCompleted++;
           await supabase.from('automation_run_steps').update({
-            status: 'completed',
-            output_payload: { passed: true },
-            completed_at: new Date().toISOString(),
-            duration_ms: Date.now() - stepStart,
+            status: 'completed', output_payload: { passed: true },
+            completed_at: new Date().toISOString(), duration_ms: Date.now() - stepStart,
           }).eq('id', runStep!.id);
           continue;
         }
 
         const result = await executeAction(step.action_type, fullInput, supabase, automation);
-        stepOutputs[`step_${step.step_order}`] = result;
+        const stepKey = `step_${step.step_order}`;
+        stepOutputs[stepKey] = result;
+        stepOutputs['last'] = result;   // alias for convenience
         stepsCompleted++;
 
         await supabase.from('automation_run_steps').update({
@@ -111,39 +185,38 @@ Deno.serve(async (req) => {
     const runEnd = new Date().toISOString();
 
     await supabase.from('automation_runs').update({
-      status: finalStatus,
-      completed_at: runEnd,
+      status: finalStatus, completed_at: runEnd,
       duration_ms: Date.now() - new Date(run.started_at).getTime(),
-      steps_completed: stepsCompleted,
-      steps_failed: stepsFailed,
+      steps_completed: stepsCompleted, steps_failed: stepsFailed,
     }).eq('id', run.id);
 
     await supabase.from('automations').update({
-      last_run_at: runEnd,
-      last_run_status: finalStatus,
+      last_run_at: runEnd, last_run_status: finalStatus,
       run_count: (automation.run_count || 0) + 1,
     }).eq('id', automation_id);
 
     return new Response(JSON.stringify({
-      success: true,
-      run_id: run.id,
-      status: finalStatus,
-      steps_completed: stepsCompleted,
-      steps_failed: stepsFailed,
+      success: true, run_id: run.id, status: finalStatus,
+      steps_completed: stepsCompleted, steps_failed: stepsFailed,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
 
-function resolveFieldMapping(mapping: Record<string, any>, stepOutputs: Record<string, any>, triggerPayload: any): Record<string, any> {
+/* ══════════════════════════════════════════════
+   Variable resolution — unified context object
+   stepOutputs = { trigger: {...}, step_0: {...}, step_1: {...}, last: {...} }
+   Templates: {{trigger.full_name}}, {{step_0.lead_id}}, {{last.lead_id}}
+   ══════════════════════════════════════════════ */
+
+function resolveFieldMapping(mapping: Record<string, any>, ctx: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {};
   for (const [targetField, sourceExpr] of Object.entries(mapping)) {
     if (typeof sourceExpr === 'string') {
-      result[targetField] = resolveTemplate(sourceExpr, stepOutputs, triggerPayload);
+      result[targetField] = resolveTemplate(sourceExpr, ctx);
     } else {
       result[targetField] = sourceExpr;
     }
@@ -151,10 +224,10 @@ function resolveFieldMapping(mapping: Record<string, any>, stepOutputs: Record<s
   return result;
 }
 
-function resolveTemplate(template: string, stepOutputs: Record<string, any>, triggerPayload: any): string {
-  return template.replace(/\{\{([^}]+)\}\}/g, (_, path) => {
+function resolveTemplate(template: string, ctx: Record<string, any>): string {
+  return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
     const trimmed = path.trim();
-    const val = getNestedValue(triggerPayload, trimmed) ?? getNestedValue(stepOutputs, trimmed);
+    const val = getNestedValue(ctx, trimmed);
     return val !== undefined && val !== null ? String(val) : '';
   });
 }
@@ -163,10 +236,12 @@ function getNestedValue(obj: any, path: string): any {
   return path.split('.').reduce((o: any, k: string) => o?.[k], obj);
 }
 
-function evaluateCondition(config: any, triggerPayload: any, stepOutputs: Record<string, any>): boolean {
+function evaluateCondition(config: any, ctx: Record<string, any>): boolean {
   if (!config) return true;
   const { field, operator, value } = config;
-  const actual = getNestedValue(triggerPayload, field) ?? getNestedValue(stepOutputs, field);
+  // Support dotted paths like trigger.phone or step_0.lead_id
+  const fieldPath = field?.includes('.') ? field : `trigger.${field}`;
+  const actual = getNestedValue(ctx, fieldPath);
 
   switch (operator) {
     case 'exists': return actual !== undefined && actual !== null && actual !== '';
@@ -181,6 +256,7 @@ function evaluateCondition(config: any, triggerPayload: any, stepOutputs: Record
   }
 }
 
+/* ── Action dispatcher ── */
 async function executeAction(actionType: string, input: any, supabase: any, automation: any): Promise<any> {
   switch (actionType) {
     case 'send_telegram': return await executeTelegram(input, supabase);
@@ -197,14 +273,14 @@ async function executeAction(actionType: string, input: any, supabase: any, auto
 }
 
 async function executeTelegram(input: any, supabase: any): Promise<any> {
-  const { chat_id, message } = input;
+  const { chat_id, message, bot_profile_id } = input;
   if (!chat_id || !message) throw new Error('chat_id and message required');
 
   let botToken: string | null = null;
 
-  if (input.bot_profile_id) {
+  if (bot_profile_id) {
     const { data: profile } = await supabase
-      .from('telegram_bot_profiles').select('token_reference').eq('id', input.bot_profile_id).single();
+      .from('telegram_bot_profiles').select('token_reference').eq('id', bot_profile_id).single();
     if (profile?.token_reference) {
       const { data: tokenData } = await supabase.rpc('get_social_token', { _token_reference: profile.token_reference });
       botToken = tokenData;
@@ -226,7 +302,7 @@ async function executeTelegram(input: any, supabase: any): Promise<any> {
 
 async function executeCreateCrmLead(input: any, supabase: any, automation: any): Promise<any> {
   const clientId = input.client_id || automation.client_id;
-  if (!clientId) throw new Error('client_id required');
+  if (!clientId) throw new Error('client_id required for CRM lead');
 
   const leadData: any = {
     client_id: clientId,
@@ -240,7 +316,6 @@ async function executeCreateCrmLead(input: any, supabase: any, automation: any):
     utm_campaign: input.utm_campaign || null,
     metadata: input.metadata || {},
   };
-
   if (input.pipeline_id) leadData.pipeline_id = input.pipeline_id;
   if (input.stage_id) leadData.stage_id = input.stage_id;
   if (input.assigned_to) leadData.assigned_to = input.assigned_to;
@@ -255,21 +330,25 @@ async function executeCreateCrmLead(input: any, supabase: any, automation: any):
     if (existing && (input.dedupe_strategy === 'update_existing' || input.dedupe_strategy === 'upsert')) {
       const { data, error } = await supabase.from('crm_leads').update(leadData).eq('id', existing.id).select().single();
       if (error) throw error;
-      return { lead_id: data.id, action: 'updated' };
+      return { lead_id: data.id, action: 'updated', full_name: data.full_name };
     } else if (existing) {
-      return { lead_id: existing.id, action: 'skipped_duplicate' };
+      return { lead_id: existing.id, action: 'skipped_duplicate', full_name: leadData.full_name };
     }
   }
 
   const { data, error } = await supabase.from('crm_leads').insert(leadData).select().single();
   if (error) throw error;
-  return { lead_id: data.id, action: 'created' };
+  return { lead_id: data.id, action: 'created', full_name: data.full_name };
 }
 
 async function executeUpdateCrmLead(input: any, supabase: any): Promise<any> {
   const { lead_id, ...updateFields } = input;
   if (!lead_id) throw new Error('lead_id required');
-  const { error } = await supabase.from('crm_leads').update(updateFields).eq('id', lead_id);
+  const clean: any = {};
+  for (const [k, v] of Object.entries(updateFields)) {
+    if (v !== undefined && v !== null && v !== '') clean[k] = v;
+  }
+  const { error } = await supabase.from('crm_leads').update(clean).eq('id', lead_id);
   if (error) throw error;
   return { lead_id, updated: true };
 }
@@ -277,10 +356,8 @@ async function executeUpdateCrmLead(input: any, supabase: any): Promise<any> {
 async function executeAddSheetsRow(input: any, supabase: any): Promise<any> {
   const { connection_id, row_data } = input;
   if (!connection_id) throw new Error('connection_id required');
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
   const resp = await fetch(`${supabaseUrl}/functions/v1/sync-google-sheet`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceKey}` },
@@ -295,10 +372,16 @@ async function executeSendWebhook(input: any): Promise<any> {
   const { url, method = 'POST', headers: customHeaders = {}, body } = input;
   if (!url) throw new Error('url required');
 
+  // SSRF protection
+  if (!isUrlSafe(url)) {
+    throw new Error('Webhook URL is blocked: private/internal addresses are not allowed');
+  }
+
   const resp = await fetch(url, {
     method,
     headers: { 'Content-Type': 'application/json', ...customHeaders },
     body: method !== 'GET' ? JSON.stringify(body || input) : undefined,
+    signal: AbortSignal.timeout(15000),
   });
   const responseText = await resp.text();
   return { status: resp.status, response: responseText.substring(0, 1000) };
@@ -307,7 +390,6 @@ async function executeSendWebhook(input: any): Promise<any> {
 async function executeSendNotification(input: any, supabase: any): Promise<any> {
   const { title, message, user_ids, type = 'info', link } = input;
   if (!title || !message) throw new Error('title and message required');
-
   let targets = user_ids;
   if (!targets?.length) {
     const { data: admins } = await supabase
@@ -315,7 +397,6 @@ async function executeSendNotification(input: any, supabase: any): Promise<any> 
     targets = admins?.map((a: any) => a.user_id) || [];
   }
   if (!targets.length) throw new Error('No notification targets');
-
   const notifications = targets.map((uid: string) => ({
     user_id: uid, title, message, type, link: link || '/automations',
   }));
@@ -329,7 +410,7 @@ async function executeAssignManager(input: any, supabase: any): Promise<any> {
   if (!lead_id || !assigned_to) throw new Error('lead_id and assigned_to required');
   const { error } = await supabase.from('crm_leads').update({ assigned_to }).eq('id', lead_id);
   if (error) throw error;
-  return { assigned: true };
+  return { lead_id, assigned_to, assigned: true };
 }
 
 async function executeTagLead(input: any, supabase: any): Promise<any> {
@@ -337,11 +418,11 @@ async function executeTagLead(input: any, supabase: any): Promise<any> {
   if (!lead_id) throw new Error('lead_id required');
   const { data: lead } = await supabase.from('crm_leads').select('tags').eq('id', lead_id).single();
   const currentTags = lead?.tags || [];
-  const newTags = Array.isArray(tags) ? tags : [tags];
+  const newTags = Array.isArray(tags) ? tags : String(tags).split(',').map((t: string) => t.trim()).filter(Boolean);
   const mergedTags = [...new Set([...currentTags, ...newTags])];
   const { error } = await supabase.from('crm_leads').update({ tags: mergedTags }).eq('id', lead_id);
   if (error) throw error;
-  return { tags: mergedTags };
+  return { lead_id, tags: mergedTags };
 }
 
 async function executeUpdateLeadStatus(input: any, supabase: any): Promise<any> {
@@ -352,13 +433,13 @@ async function executeUpdateLeadStatus(input: any, supabase: any): Promise<any> 
   if (stage_id) update.stage_id = stage_id;
   const { error } = await supabase.from('crm_leads').update(update).eq('id', lead_id);
   if (error) throw error;
-  return { updated: true };
+  return { lead_id, updated: true, status, stage_id };
 }
 
 function sanitizePayload(payload: any): any {
   if (!payload || typeof payload !== 'object') return payload;
   const sanitized = { ...payload };
-  const sensitiveKeys = ['token', 'secret', 'password', 'api_key', 'access_token', 'bot_token', 'token_reference'];
+  const sensitiveKeys = ['token', 'secret', 'password', 'api_key', 'access_token', 'bot_token', 'token_reference', 'service_role'];
   for (const key of Object.keys(sanitized)) {
     if (sensitiveKeys.some(sk => key.toLowerCase().includes(sk))) {
       sanitized[key] = '***REDACTED***';
