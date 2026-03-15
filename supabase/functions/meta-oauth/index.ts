@@ -358,8 +358,20 @@ Deno.serve(async (req) => {
       }
 
       try {
+        // Lead forms require a Page Access Token, not a user token.
+        // First, get the page access token via /me/accounts
+        let pageToken = token;
+        try {
+          const pagesRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,access_token&access_token=${token}`);
+          const pagesData = await pagesRes.json();
+          const matchedPage = (pagesData.data || []).find((p: any) => String(p.id) === String(page_id));
+          if (matchedPage?.access_token) {
+            pageToken = matchedPage.access_token;
+          }
+        } catch { /* use the original token as fallback */ }
+
         const formsRes = await fetch(
-          `https://graph.facebook.com/v21.0/${page_id}/leadgen_forms?fields=id,name,status&access_token=${token}`
+          `https://graph.facebook.com/v21.0/${page_id}/leadgen_forms?fields=id,name,status&access_token=${pageToken}`
         );
         const formsData = await formsRes.json();
 
