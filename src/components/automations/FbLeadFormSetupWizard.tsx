@@ -287,19 +287,13 @@ function StepSelectPage({ status, config, onSave }: {
     setLoading(true);
     setFetchError(null);
     try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) { setFetchError('Not authenticated'); return; }
-      const resp = await supabase.functions.invoke('meta-oauth', {
-        body: {},
-        headers: {},
-      });
-      // meta-oauth status action returns pages
-      // Try fetching social_media_connections for page info
-      const { data: connections } = await supabase
+      // Query social_media_connections directly for Facebook page info
+      const { data: connections, error } = await supabase
         .from('social_media_connections' as any)
         .select('page_id, page_name')
         .eq('platform', 'facebook')
         .eq('is_active', true);
+      if (error) { setFetchError(error.message); return; }
       if (connections && connections.length > 0) {
         setMetaPages(connections.map((c: any) => ({ id: c.page_id || '', name: c.page_name || 'Facebook Page' })).filter((p: any) => p.id));
       } else {
