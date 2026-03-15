@@ -356,25 +356,39 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   };
 
   const reloadFormFields = async () => {
-    const connId = (config.meta_connection_id as string) || selectedConnectionId;
-    const fId = (config.form_id as string) || selectedFormId;
-    const pId = (config.page_id as string) || selectedPageId;
-
-    if (!connId) {
-      toast.error('Select a Meta integration first');
-      return;
-    }
-    if (!fId) {
-      toast.error('Select a lead form first');
-      return;
-    }
-
     setFormFieldsLoading(true);
     try {
-      const questions = await getFormQuestions(connId, fId, pId);
+      const { data: automationData } = await supabase
+        .from('automations')
+        .select('trigger_config')
+        .eq('id', automationId)
+        .maybeSingle();
+
+      const latestConfig = ((automationData?.trigger_config as TriggerConfig) || {}) as TriggerConfig;
+      const connId = String(latestConfig.meta_connection_id || config.meta_connection_id || selectedConnectionId || '');
+      const fId = String(latestConfig.form_id || config.form_id || selectedFormId || '');
+      const pId = String(latestConfig.page_id || config.page_id || selectedPageId || '');
+
+      if (!connId) {
+        toast.error('Meta integration is missing in trigger configuration');
+        return;
+      }
+      if (!fId) {
+        toast.error('Lead form is missing in trigger configuration');
+        return;
+      }
+
+      const questions = await getFormQuestions(connId, fId, pId || undefined);
       setFormFieldsPreview(questions);
 
-      const newConfig = { ...config, form_fields: questions };
+      const newConfig: TriggerConfig = {
+        ...latestConfig,
+        meta_connection_id: connId,
+        form_id: fId,
+        page_id: pId || latestConfig.page_id,
+        form_fields: questions,
+      };
+
       const { error: updateError } = await supabase
         .from('automations')
         .update({ trigger_config: newConfig as unknown as Record<string, never> })
