@@ -345,11 +345,6 @@ export default function AutomationEditorPage() {
   const triggerDef = automation ? triggerInfo(automation.trigger_type) : TRIGGER_TYPES[7];
   const TriggerIcon = triggerDef.icon;
   const triggerFields = triggerDef.fields || [];
-  // Extract form fields from trigger config
-  const formFields: Array<{ key: string; label: string; slug: string }> = 
-    (automation?.trigger_type === 'fb_lead_form' && automation?.trigger_config)
-      ? ((automation.trigger_config as any).form_fields || [])
-      : [];
   // Merge client-scoped ad connections + global meta_ads_management API key (has page/form access)
   const metaConns = [
     ...platformApiResources.filter(r => r.provider === 'meta_ads_management' && r.isActive && r.hasSecret),
