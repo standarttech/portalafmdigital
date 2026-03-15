@@ -27,7 +27,9 @@ import { cn } from '@/lib/utils';
 
 /* ── Trigger definitions with readiness status ── */
 const TRIGGER_TYPES = [
-  { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false, note: 'Requires Meta webhook ingestion (coming soon)',
+  { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false,
+    note: 'Requires Meta webhook ingestion. Connect Meta in CRM or AI Ads → Integrations first. Current status: webhook endpoint not yet verified. Use Manual trigger for testing.',
+    configHint: 'To activate: 1) Connect Meta account in platform integrations, 2) Configure page & form, 3) Verify webhook endpoint.',
     fields: ['full_name', 'email', 'phone', 'campaign_name', 'form_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
   { id: 'internal_form', label: 'Internal Form', icon: FileSpreadsheet, color: 'hsl(160,70%,40%)', live: true,
     fields: ['full_name', 'email', 'phone', 'message', 'form_id', 'page_url', 'utm_source'] },
