@@ -449,6 +449,7 @@ export default function AutomationEditorPage() {
                 bots={bots}
                 agencyUsers={agencyUsers}
                 automationClientId={automation.client_id}
+                clients={clients}
                 onUpdate={(updated: any) => updateStepMutation.mutate(updated)}
                 onDelete={() => deleteStepMutation.mutate(editingStep.id)}
                 onClose={() => setEditingStep(null)}
