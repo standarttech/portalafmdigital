@@ -572,9 +572,13 @@ function StepWebhook({ status, config, webhookUrl, onSave, automationId }: {
       </div>
 
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={checkVerification} disabled={checking}>
-          {checking ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          Verify Webhook Endpoint
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
+          <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-3 w-3" /> Open Meta Developer Console
+          </a>
+        </Button>
+        <Button size="sm" className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmVerified}>
+          <CheckCircle2 className="h-3 w-3" /> I've verified in Meta
         </Button>
       </div>
 
