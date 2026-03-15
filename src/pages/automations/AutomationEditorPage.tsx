@@ -474,9 +474,7 @@ export default function AutomationEditorPage() {
                 sheetResources={sheetResources}
                 agencyUsers={agencyUsers}
                 automationClientId={automation.client_id}
-                formFields={(automation.trigger_type === 'fb_lead_form' && automation.trigger_config)
-                  ? ((automation.trigger_config as any).form_fields || [])
-                  : []}
+                formFields={formFields}
                 onUpdate={(updated: any) => updateStepMutation.mutate(updated)}
                 onDelete={() => deleteStepMutation.mutate(editingStep.id)}
                 onClose={() => setEditingStep(null)}
