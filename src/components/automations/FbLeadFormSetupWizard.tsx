@@ -317,6 +317,34 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
             </div>
           </div>
 
+          {/* Form fields summary */}
+          {config.form_fields && (config.form_fields as any[]).length > 0 ? (
+            <div className="p-2 rounded-md bg-[hsl(220,70%,50%)]/5 border border-[hsl(220,70%,50%)]/15">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-foreground">Form Questions ({(config.form_fields as any[]).length})</span>
+                <Button variant="ghost" size="sm" className="h-5 text-[8px] text-muted-foreground gap-0.5 px-1.5" onClick={reloadFormFields} disabled={formFieldsLoading}>
+                  {formFieldsLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <RotateCcw className="h-2.5 w-2.5" />}
+                  Reload
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {(config.form_fields as Array<{ label: string; slug: string }>).map((f, i) => (
+                  <span key={i} className="text-[8px] px-1.5 py-0.5 rounded border font-mono bg-[hsl(220,70%,50%)]/10 border-[hsl(220,70%,50%)]/20 text-[hsl(220,70%,50%)]">
+                    {f.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={reloadFormFields} disabled={formFieldsLoading}>
+                {formFieldsLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Zap className="h-2.5 w-2.5" />}
+                Load Form Questions
+              </Button>
+              <span className="text-[9px] text-muted-foreground">Fetch custom questions for variable mapping</span>
+            </div>
+          )}
+
           <div className="flex items-center gap-3 text-[10px]">
             {config.page_subscribed && <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 gap-1"><CheckCircle2 className="h-2.5 w-2.5" />Page subscribed</Badge>}
             {config.webhook_verified && <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 gap-1"><CheckCircle2 className="h-2.5 w-2.5" />Webhook verified</Badge>}
