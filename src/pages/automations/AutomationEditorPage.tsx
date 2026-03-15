@@ -654,25 +654,44 @@ function StepConfigPanel({ step, triggerFields, allSteps, botResources, sheetRes
                           className="text-xs h-8 font-mono" placeholder="{{trigger.field}} or fixed value" />
                       </div>
                     ) : f.type === 'template' ? (
-                      <div className="space-y-1 mt-0.5">
+                      <div className="space-y-1.5 mt-0.5">
                         <Textarea
                           value={localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || ''}
                           onChange={e => updateMapping(f.key, e.target.value)}
-                          className="text-xs font-mono" rows={3}
-                          placeholder={`Use {{trigger.field_name}} or {{step_0.lead_id}}`}
+                          className="text-xs font-mono" rows={4}
+                          placeholder={`Use {{trigger.field_name}} or {{trigger.fields.slug}}`}
                         />
-                        <div className="flex flex-wrap gap-1">
-                          {availableVars.slice(0, 8).map(v => (
-                            <button key={v.value} type="button"
-                              className="text-[9px] px-1.5 py-0.5 rounded bg-muted/40 border border-border/30 text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors font-mono"
-                              onClick={() => {
-                                const current = localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || '';
-                                updateMapping(f.key, current + `{{${v.value}}}`);
-                              }}>
-                              {v.value}
-                            </button>
-                          ))}
-                        </div>
+                        {/* Variable chips grouped */}
+                        {(() => {
+                          const groups = new Map<string, typeof availableVars>();
+                          for (const v of availableVars) {
+                            if (!groups.has(v.group)) groups.set(v.group, []);
+                            groups.get(v.group)!.push(v);
+                          }
+                          return Array.from(groups.entries()).map(([group, vars]) => (
+                            <div key={group}>
+                              <span className="text-[8px] uppercase tracking-wider text-muted-foreground/60 font-semibold">{group}</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {vars.map(v => (
+                                  <button key={v.value} type="button"
+                                    className={cn(
+                                      "text-[9px] px-1.5 py-0.5 rounded border transition-colors font-mono",
+                                      v.group === 'Form Fields'
+                                        ? "bg-[hsl(220,70%,50%)]/10 border-[hsl(220,70%,50%)]/20 text-[hsl(220,70%,50%)] hover:bg-[hsl(220,70%,50%)]/20"
+                                        : "bg-muted/40 border-border/30 text-muted-foreground hover:text-primary hover:border-primary/30"
+                                    )}
+                                    onClick={() => {
+                                      const current = localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || '';
+                                      updateMapping(f.key, current + `{{${v.value}}}`);
+                                    }}
+                                    title={v.group === 'Form Fields' ? v.label : v.value}>
+                                    {v.group === 'Form Fields' ? v.label : v.value}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ));
+                        })()}
                       </div>
                     ) : f.type === 'bot_select' ? (
                       <div className="space-y-1">
