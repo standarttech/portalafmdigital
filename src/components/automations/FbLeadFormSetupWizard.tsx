@@ -495,7 +495,28 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
             <div className="space-y-2">
               <p className="text-xs font-medium text-foreground">Select Lead Form</p>
               {forms.length > 0 ? (
-                <Select value={selectedFormId} onValueChange={setSelectedFormId}>
+                <Select value={selectedFormId} onValueChange={async (val) => {
+                  setSelectedFormId(val);
+                  // Auto-fetch form fields when form is selected
+                  if (val && selectedConnectionId) {
+                    setFormFieldsLoading(true);
+                    setFormFieldsPreview([]);
+                    try {
+                      const { data: session } = await supabase.auth.getSession();
+                      if (session.session) {
+                        const resp = await fetch(
+                          `https://${PROJECT_ID}.supabase.co/functions/v1/facebook-lead-intake-setup?action=get-form-fields&connection_id=${selectedConnectionId}&form_id=${val}`,
+                          { headers: { 'Authorization': `Bearer ${session.session.access_token}` } }
+                        );
+                        const result = await resp.json();
+                        if (result.questions?.length > 0) {
+                          setFormFieldsPreview(result.questions);
+                        }
+                      }
+                    } catch { /* silent */ }
+                    setFormFieldsLoading(false);
+                  }
+                }}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select a form..." /></SelectTrigger>
                   <SelectContent>
                     {forms.map(f => (
@@ -509,6 +530,39 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
               ) : (
                 <p className="text-xs text-muted-foreground">No forms found. The token may lack leads_retrieval scope.</p>
               )}
+
+              {/* Form fields preview */}
+              {formFieldsLoading && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground p-2 rounded-md bg-muted/10 border border-border/20">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Loading form questions…</span>
+                </div>
+              )}
+              {formFieldsPreview.length > 0 && (
+                <div className="p-2.5 rounded-md bg-muted/10 border border-border/20 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                    <span className="text-[10px] font-semibold text-foreground">Form Questions ({formFieldsPreview.length})</span>
+                  </div>
+                  <div className="space-y-1">
+                    {formFieldsPreview.map((q, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[10px]">
+                        <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-mono bg-[hsl(220,70%,50%)]/5 border-[hsl(220,70%,50%)]/20 text-[hsl(220,70%,50%)]">
+                          {q.type}
+                        </Badge>
+                        <span className="text-foreground">{q.label}</span>
+                        <span className="text-muted-foreground/50">→</span>
+                        <code className="text-[9px] font-mono text-primary">{'{{'}trigger.fields.{q.slug}{'}}'}</code>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground pt-1 border-t border-border/10">
+                    <Info className="h-2.5 w-2.5" />
+                    <span>These fields will be available as variables in your automation steps (e.g. Telegram message).</span>
+                  </div>
+                </div>
+              )}
+
               <Button size="sm" className="h-8 text-xs gap-1.5" disabled={!selectedFormId} onClick={handleFormSelected}>
                 Continue — subscribe & configure
               </Button>
