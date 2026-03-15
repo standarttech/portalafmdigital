@@ -246,6 +246,12 @@ export default function AutomationEditorPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Extract form fields from trigger config (needed before buildDefaultTelegramMessage)
+  const formFields: Array<{ key: string; label: string; slug: string }> = 
+    (automation?.trigger_type === 'fb_lead_form' && automation?.trigger_config)
+      ? ((automation.trigger_config as any).form_fields || [])
+      : [];
+
   const buildDefaultTelegramMessage = useCallback(() => {
     if (automation?.trigger_type !== 'fb_lead_form') return '';
     const lines: string[] = ['📋 Новый лид с Facebook', ''];
