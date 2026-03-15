@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
 
           leadsProcessed++;
 
-          // ── Match active automations by page_id + form_id ──
+          // ── Match active automations by page_id + form_id (strict) ──
           const { data: matchingAutos } = await supabase
             .from('automations')
             .select('id, trigger_config, client_id')
@@ -167,11 +167,12 @@ Deno.serve(async (req) => {
             const configPageId = String(tc.page_id || '');
             const configFormId = String(tc.form_id || '');
 
-            // Must match page_id. If form_id configured, must also match.
-            if (!configPageId || configPageId !== pageId) continue;
-            if (configFormId && configFormId !== formId) continue;
             // Must have live_ingestion_active
             if (!tc.live_ingestion_active) continue;
+            // Must match page_id exactly
+            if (!configPageId || configPageId !== pageId) continue;
+            // Must match form_id exactly (both must be present)
+            if (!configFormId || configFormId !== formId) continue;
 
             matched = true;
 
