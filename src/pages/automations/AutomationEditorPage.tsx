@@ -77,7 +77,7 @@ const ACTION_TYPES = [
   { id: 'add_sheets_row', label: 'Add Google Sheets Row', icon: FileSpreadsheet, color: 'hsl(120,60%,40%)',
     outputFields: ['appended'],
     fields: [
-      { key: 'connection_id', label: 'Sheet Connection', type: 'connection_select' },
+      { key: 'connection_id', label: 'Sheet Connection', type: 'sheet_select' },
       { key: 'row_data', label: 'Row Data (JSON)', type: 'json' },
     ] },
   { id: 'send_webhook', label: 'Send Webhook', icon: Webhook, color: 'hsl(340,70%,50%)',
