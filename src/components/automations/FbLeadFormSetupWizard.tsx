@@ -84,7 +84,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
     mutationFn: async (newConfig: TriggerConfig) => {
       const { error } = await supabase
         .from('automations')
-        .update({ trigger_config: newConfig as Record<string, unknown> })
+        .update({ trigger_config: newConfig as unknown as Record<string, never> })
         .eq('id', automationId);
       if (error) throw error;
     },
