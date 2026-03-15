@@ -100,6 +100,9 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   const [forms, setForms] = useState<{ id: string; name: string; status?: string }[]>([]);
   const [selectedPageId, setSelectedPageId] = useState('');
   const [selectedFormId, setSelectedFormId] = useState('');
+  const [selectedConnectionId, setSelectedConnectionId] = useState(
+    (triggerConfig?.meta_connection_id as string) || (metaConns.length === 1 ? metaConns[0]?.id : '') || ''
+  );
   const [callbackUrl, setCallbackUrl] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
   const [error, setError] = useState('');
@@ -115,7 +118,7 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   const completedSteps = steps.filter(s => s.status === 'success').length;
   const progressPct = phase === 'done' ? 100 : phase === 'idle' ? 0 : Math.round((completedSteps / totalSteps) * 100);
 
-  const selectedConnectionId = metaConns.length > 0 ? metaConns[0]?.id : undefined;
+  const selectedConn = metaConns.find(c => c.id === selectedConnectionId);
 
   const runSetup = useCallback(async (pageId?: string, formId?: string) => {
     setPhase('running');
