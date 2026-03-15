@@ -113,6 +113,8 @@ export default function FbLeadFormSetupWizard({ automationId, metaConns, trigger
   const [testResult, setTestResult] = useState<Record<string, unknown> | null>(null);
   const [testLoading, setTestLoading] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
+  const [formFieldsPreview, setFormFieldsPreview] = useState<Array<{ key: string; label: string; type: string; slug: string }>>([]);
+  const [formFieldsLoading, setFormFieldsLoading] = useState(false);
 
   const isLive = config.live_ingestion_active === true;
   const isConfigured = config.page_id && config.form_id && config.page_subscribed;
