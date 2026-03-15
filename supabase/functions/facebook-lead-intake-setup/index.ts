@@ -312,21 +312,50 @@ Deno.serve(async (req) => {
       const sinceTimestamp = Math.floor((Date.now() - days * 86400000) / 1000);
       const formFields = (tc.form_fields || []) as Array<{ key: string; label: string; slug: string }>;
 
+      console.log(`[intake-setup] Fetching historical leads for form ${formId}, days=${days}, since=${sinceTimestamp}`);
+
       // Fetch leads from Meta Graph API with pagination
+      // Use filtering param with URL-encoded JSON
       let allLeads: any[] = [];
-      let nextUrl: string | null = `https://graph.facebook.com/v21.0/${formId}/leads?access_token=${apiToken}&filtering=[{"field":"time_created","operator":"GREATER_THAN","value":${sinceTimestamp}}]&limit=50`;
+      const filterJson = JSON.stringify([{ field: "time_created", operator: "GREATER_THAN", value: sinceTimestamp }]);
+      let nextUrl: string | null = `https://graph.facebook.com/v21.0/${formId}/leads?access_token=${apiToken}&filtering=${encodeURIComponent(filterJson)}&limit=50`;
 
       while (nextUrl && allLeads.length < 500) {
+        console.log(`[intake-setup] Fetching leads page, current count: ${allLeads.length}`);
         const res = await fetch(nextUrl);
-        const data = await res.json();
+        const rawText = await res.text();
+        let data: any;
+        try { data = JSON.parse(rawText); } catch { data = { error: { message: `Invalid JSON: ${rawText.substring(0, 200)}` } }; }
         if (data.error) {
+          console.error(`[intake-setup] Meta API error:`, data.error);
+          // Retry without filter as fallback
+          if (allLeads.length === 0 && nextUrl.includes('filtering=')) {
+            console.log(`[intake-setup] Retrying without time filter...`);
+            nextUrl = `https://graph.facebook.com/v21.0/${formId}/leads?access_token=${apiToken}&limit=50`;
+            continue;
+          }
           return new Response(JSON.stringify({ success: false, error: `Meta API: ${data.error.message}` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        allLeads = allLeads.concat(data.data || []);
+        const leads = data.data || [];
+        console.log(`[intake-setup] Got ${leads.length} leads from this page`);
+        // If no filter applied, manually filter by created_time
+        if (!nextUrl.includes('filtering=')) {
+          const filtered = leads.filter((l: any) => {
+            const ct = new Date(l.created_time).getTime() / 1000;
+            return ct >= sinceTimestamp;
+          });
+          allLeads = allLeads.concat(filtered);
+          // If we got leads older than our window, stop paginating
+          if (filtered.length < leads.length) break;
+        } else {
+          allLeads = allLeads.concat(leads);
+        }
         nextUrl = data.paging?.next || null;
       }
+
+      console.log(`[intake-setup] Total leads fetched: ${allLeads.length}`);
 
       // Process each lead through the automation
       let leadsProcessed = 0;
