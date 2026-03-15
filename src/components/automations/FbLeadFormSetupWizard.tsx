@@ -116,6 +116,7 @@ function buildTelegramLeadTemplate(formFields: FormField[]): string {
   lines.push('🔎 Raw answers JSON: {{trigger.form_answers_json}}');
   lines.push('📄 Form: {{trigger.form_name}}');
   lines.push('📣 Page: {{trigger.page_name}}');
+  lines.push('🎯 Campaign: {{trigger.campaign_name}}');
 
   return lines.join('\n');
 }
