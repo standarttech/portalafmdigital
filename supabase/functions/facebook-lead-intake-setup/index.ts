@@ -134,15 +134,39 @@ async function fetchFormFields(token: string, formId: string): Promise<{
     if (data.error) {
       return { questions: [], error: data.error.message };
     }
-    const questions = (data.questions || []).map((q: any) => ({
-      key: q.key || q.id || '',
-      label: q.label || q.key || '',
-      type: q.type || 'CUSTOM',
-      slug: toSlug(q.label || q.key || ''),
-    }));
+
+    const usedSlugs = new Map<string, number>();
+    const questions = (data.questions || []).map((q: any, idx: number) => {
+      const label = q.label || q.key || `Field ${idx + 1}`;
+      const baseSlug = toSlug(label) || `field_${idx + 1}`;
+      const seen = usedSlugs.get(baseSlug) || 0;
+      usedSlugs.set(baseSlug, seen + 1);
+      const slug = seen === 0 ? baseSlug : `${baseSlug}_${seen + 1}`;
+
+      return {
+        key: q.key || q.id || slug,
+        label,
+        type: q.type || 'CUSTOM',
+        slug,
+      };
+    });
+
     return { questions };
   } catch (err) {
     return { questions: [], error: String(err) };
+  }
+}
+
+async function fetchPageAccessToken(userToken: string, pageId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${pageId}?fields=access_token&access_token=${userToken}`
+    );
+    const data = await res.json();
+    if (data?.error || !data?.access_token) return null;
+    return data.access_token as string;
+  } catch {
+    return null;
   }
 }
 
