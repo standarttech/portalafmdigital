@@ -30,6 +30,7 @@ interface TriggerConfig {
   page_subscribed?: boolean;
   webhook_verified?: boolean;
   live_ingestion_active?: boolean;
+  form_fields?: Array<{ key: string; label: string; type: string; slug: string }>;
   [key: string]: unknown;
 }
 
