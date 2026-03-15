@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,33 +18,43 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, Save, Play, Plus, Trash2, GripVertical, Settings, ChevronDown,
+  ArrowLeft, Save, Play, Plus, Trash2, Settings, ChevronDown,
   CheckCircle2, XCircle, AlertTriangle, Clock, Facebook, MessageSquare,
   FileSpreadsheet, Globe, Bell, Users, Webhook, Database, GitBranch,
-  Filter, Zap, Send, ToggleLeft, ToggleRight, ChevronRight, Eye, X,
+  Filter, Zap, Send, ToggleLeft, ToggleRight, ChevronRight, Eye, X, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/* ── Type defs ── */
+/* ── Trigger definitions with readiness status ── */
 const TRIGGER_TYPES = [
-  { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', fields: ['full_name', 'email', 'phone', 'campaign_name', 'form_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
-  { id: 'internal_form', label: 'Internal Form', icon: FileSpreadsheet, color: 'hsl(160,70%,40%)', fields: ['full_name', 'email', 'phone', 'message', 'form_id', 'page_url', 'utm_source'] },
-  { id: 'gos_form', label: 'GOS Form', icon: Globe, color: 'hsl(270,60%,50%)', fields: ['full_name', 'email', 'phone', 'company', 'answers', 'form_id', 'session_id'] },
-  { id: 'crm_lead_created', label: 'CRM Lead Created', icon: Database, color: 'hsl(25,60%,50%)', fields: ['lead_id', 'full_name', 'email', 'phone', 'source', 'status', 'pipeline_id', 'stage_id', 'client_id'] },
-  { id: 'crm_lead_updated', label: 'CRM Lead Updated', icon: Database, color: 'hsl(25,60%,50%)', fields: ['lead_id', 'full_name', 'email', 'phone', 'source', 'status', 'old_status', 'pipeline_id', 'stage_id'] },
-  { id: 'crm_external_sync', label: 'External CRM Sync', icon: GitBranch, color: 'hsl(200,70%,50%)', fields: ['lead_id', 'full_name', 'email', 'phone', 'external_id', 'provider', 'stage_name'] },
-  { id: 'webhook', label: 'Webhook', icon: Webhook, color: 'hsl(340,70%,50%)', fields: ['body', 'headers'] },
-  { id: 'manual', label: 'Manual / Test', icon: Play, color: 'hsl(0,0%,50%)', fields: ['test', 'timestamp'] },
+  { id: 'fb_lead_form', label: 'Facebook Lead Form', icon: Facebook, color: 'hsl(220,70%,50%)', live: false, note: 'Requires Meta webhook ingestion (coming soon)',
+    fields: ['full_name', 'email', 'phone', 'campaign_name', 'form_name', 'ad_name', 'utm_source', 'utm_medium', 'utm_campaign', 'platform', 'created_at'] },
+  { id: 'internal_form', label: 'Internal Form', icon: FileSpreadsheet, color: 'hsl(160,70%,40%)', live: true,
+    fields: ['full_name', 'email', 'phone', 'message', 'form_id', 'page_url', 'utm_source'] },
+  { id: 'gos_form', label: 'GOS Form', icon: Globe, color: 'hsl(270,60%,50%)', live: true,
+    fields: ['full_name', 'email', 'phone', 'company', 'answers', 'form_id', 'session_id'] },
+  { id: 'crm_lead_created', label: 'CRM Lead Created', icon: Database, color: 'hsl(25,60%,50%)', live: true,
+    fields: ['lead_id', 'full_name', 'email', 'phone', 'source', 'status', 'pipeline_id', 'stage_id', 'client_id'] },
+  { id: 'crm_lead_updated', label: 'CRM Lead Updated', icon: Database, color: 'hsl(25,60%,50%)', live: true,
+    fields: ['lead_id', 'full_name', 'email', 'phone', 'source', 'status', 'old_status', 'pipeline_id', 'stage_id'] },
+  { id: 'crm_external_sync', label: 'External CRM Sync', icon: GitBranch, color: 'hsl(200,70%,50%)', live: true,
+    fields: ['lead_id', 'full_name', 'email', 'phone', 'external_id', 'provider', 'stage_name'] },
+  { id: 'webhook', label: 'Webhook', icon: Webhook, color: 'hsl(340,70%,50%)', live: true,
+    fields: ['body', 'headers'] },
+  { id: 'manual', label: 'Manual / Test', icon: Play, color: 'hsl(0,0%,50%)', live: true,
+    fields: ['test', 'timestamp'] },
 ] as const;
 
 const ACTION_TYPES = [
   { id: 'send_telegram', label: 'Send Telegram', icon: Send, color: 'hsl(200,80%,50%)',
+    outputFields: ['message_id', 'sent'],
     fields: [
       { key: 'bot_profile_id', label: 'Telegram Bot', type: 'bot_select' },
       { key: 'chat_id', label: 'Chat ID', type: 'text' },
       { key: 'message', label: 'Message', type: 'template' },
     ] },
   { id: 'create_crm_lead', label: 'Create CRM Lead', icon: Database, color: 'hsl(25,60%,50%)',
+    outputFields: ['lead_id', 'action', 'full_name'],
     fields: [
       { key: 'full_name', label: 'Full Name', type: 'mapping' },
       { key: 'email', label: 'Email', type: 'mapping' },
@@ -56,42 +66,50 @@ const ACTION_TYPES = [
       { key: 'dedupe_strategy', label: 'Dedupe Strategy', type: 'select', options: ['create_new', 'update_existing', 'upsert'] },
     ] },
   { id: 'update_crm_lead', label: 'Update CRM Lead', icon: Database, color: 'hsl(25,60%,50%)',
+    outputFields: ['lead_id', 'updated'],
     fields: [
       { key: 'lead_id', label: 'Lead ID', type: 'mapping' },
       { key: 'status', label: 'Status', type: 'text' },
       { key: 'stage_id', label: 'Stage', type: 'text' },
     ] },
   { id: 'add_sheets_row', label: 'Add Google Sheets Row', icon: FileSpreadsheet, color: 'hsl(120,60%,40%)',
+    outputFields: ['appended'],
     fields: [
       { key: 'connection_id', label: 'Sheet Connection', type: 'connection_select' },
       { key: 'row_data', label: 'Row Data (JSON)', type: 'json' },
     ] },
   { id: 'send_webhook', label: 'Send Webhook', icon: Webhook, color: 'hsl(340,70%,50%)',
+    outputFields: ['status', 'response'],
     fields: [
       { key: 'url', label: 'URL', type: 'text' },
       { key: 'method', label: 'Method', type: 'select', options: ['POST', 'PUT', 'PATCH'] },
     ] },
   { id: 'send_notification', label: 'Send Notification', icon: Bell, color: 'hsl(45,80%,50%)',
+    outputFields: ['sent_to'],
     fields: [
       { key: 'title', label: 'Title', type: 'template' },
       { key: 'message', label: 'Message', type: 'template' },
     ] },
   { id: 'assign_manager', label: 'Assign Manager', icon: Users, color: 'hsl(280,60%,50%)',
+    outputFields: ['lead_id', 'assigned_to', 'assigned'],
     fields: [
       { key: 'lead_id', label: 'Lead ID', type: 'mapping' },
       { key: 'assigned_to', label: 'Manager User ID', type: 'user_select' },
     ] },
   { id: 'tag_lead', label: 'Tag Lead', icon: Zap, color: 'hsl(160,70%,40%)',
+    outputFields: ['lead_id', 'tags'],
     fields: [
       { key: 'lead_id', label: 'Lead ID', type: 'mapping' },
       { key: 'tags', label: 'Tags (comma-separated)', type: 'text' },
     ] },
   { id: 'update_lead_status', label: 'Update Lead Status', icon: GitBranch, color: 'hsl(200,70%,50%)',
+    outputFields: ['lead_id', 'updated', 'status'],
     fields: [
       { key: 'lead_id', label: 'Lead ID', type: 'mapping' },
       { key: 'status', label: 'Status', type: 'text' },
     ] },
   { id: 'filter', label: 'Filter / Condition', icon: Filter, color: 'hsl(0,0%,60%)',
+    outputFields: ['passed'],
     fields: [
       { key: 'field', label: 'Field', type: 'text' },
       { key: 'operator', label: 'Operator', type: 'select', options: ['exists', 'not_exists', 'equals', 'not_equals', 'contains', 'starts_with', 'greater_than', 'less_than'] },
@@ -113,6 +131,30 @@ const statusIcon = (status: string) => {
   }
 };
 
+/* ── Build available variables from trigger + preceding steps ── */
+function buildAvailableVars(triggerFields: readonly string[], steps: any[], currentStepOrder: number) {
+  const vars: { label: string; value: string; group: string }[] = [];
+  triggerFields.forEach(f => vars.push({ label: f, value: `trigger.${f}`, group: 'Trigger' }));
+  for (const s of steps) {
+    if (s.step_order >= currentStepOrder) break;
+    const act = actionInfo(s.action_type);
+    const outputs = act?.outputFields || [];
+    const stepKey = `step_${s.step_order}`;
+    outputs.forEach(o => vars.push({ label: `${s.name || act?.label}.${o}`, value: `${stepKey}.${o}`, group: `Step #${s.step_order}` }));
+  }
+  // Also add "last" alias for the immediately preceding step
+  if (steps.length > 0) {
+    const prevStep = steps.filter(s => s.step_order < currentStepOrder).pop();
+    if (prevStep) {
+      const prevAct = actionInfo(prevStep.action_type);
+      (prevAct?.outputFields || []).forEach(o =>
+        vars.push({ label: `last.${o}`, value: `last.${o}`, group: 'Previous Step (last)' })
+      );
+    }
+  }
+  return vars;
+}
+
 export default function AutomationEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -128,7 +170,6 @@ export default function AutomationEditorPage() {
   const [autoDesc, setAutoDesc] = useState('');
   const [autoActive, setAutoActive] = useState(false);
 
-  // Load automation
   const { data: automation, isLoading } = useQuery({
     queryKey: ['automation', id],
     queryFn: async () => {
@@ -139,7 +180,6 @@ export default function AutomationEditorPage() {
     enabled: !!id,
   });
 
-  // Load steps
   const { data: steps = [] } = useQuery({
     queryKey: ['automation-steps', id],
     queryFn: async () => {
@@ -150,7 +190,6 @@ export default function AutomationEditorPage() {
     enabled: !!id,
   });
 
-  // Load runs
   const { data: runs = [] } = useQuery({
     queryKey: ['automation-runs', id],
     queryFn: async () => {
@@ -160,16 +199,14 @@ export default function AutomationEditorPage() {
     enabled: !!id && activeTab === 'runs',
   });
 
-  // Load bots for telegram
   const { data: bots = [] } = useQuery({
     queryKey: ['telegram-bots'],
     queryFn: async () => {
-      const { data } = await supabase.from('telegram_bot_profiles' as any).select('id, bot_name, is_default').eq('is_active', true);
+      const { data } = await supabase.from('telegram_bot_profiles' as any).select('id, bot_name, is_default, client_id').eq('is_active', true);
       return data || [];
     },
   });
 
-  // Load clients
   const { data: clients = [] } = useQuery({
     queryKey: ['clients-auto-editor'],
     queryFn: async () => {
@@ -178,7 +215,6 @@ export default function AutomationEditorPage() {
     },
   });
 
-  // Load agency users
   const { data: agencyUsers = [] } = useQuery({
     queryKey: ['agency-users-auto'],
     queryFn: async () => {
@@ -187,7 +223,6 @@ export default function AutomationEditorPage() {
     },
   });
 
-  // Sync local state
   useEffect(() => {
     if (automation) {
       setAutoName(automation.name);
@@ -196,7 +231,6 @@ export default function AutomationEditorPage() {
     }
   }, [automation]);
 
-  // Save automation
   const saveMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('automations' as any).update({
@@ -208,7 +242,6 @@ export default function AutomationEditorPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Add step
   const addStepMutation = useMutation({
     mutationFn: async (actionType: string) => {
       const act = actionInfo(actionType);
@@ -232,7 +265,6 @@ export default function AutomationEditorPage() {
     },
   });
 
-  // Update step
   const updateStepMutation = useMutation({
     mutationFn: async (step: any) => {
       const { id: stepId, created_at, updated_at, ...rest } = step;
@@ -245,7 +277,6 @@ export default function AutomationEditorPage() {
     },
   });
 
-  // Delete step
   const deleteStepMutation = useMutation({
     mutationFn: async (stepId: string) => {
       const { error } = await supabase.from('automation_steps' as any).delete().eq('id', stepId);
@@ -258,7 +289,6 @@ export default function AutomationEditorPage() {
     },
   });
 
-  // Test run
   const testMutation = useMutation({
     mutationFn: async () => {
       let payload = {};
@@ -320,7 +350,6 @@ export default function AutomationEditorPage() {
         </Button>
       </div>
 
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="flow">Flow</TabsTrigger>
@@ -330,7 +359,6 @@ export default function AutomationEditorPage() {
         {/* ── Flow Tab ── */}
         <TabsContent value="flow" className="mt-4">
           <div className="flex gap-6">
-            {/* Flow Canvas */}
             <div className="flex-1 space-y-0">
               {/* Trigger Card */}
               <Card className="border-border bg-card">
@@ -343,11 +371,27 @@ export default function AutomationEditorPage() {
                     <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Trigger</div>
                     <div className="font-medium text-foreground">{triggerDef.label}</div>
                   </div>
-                  <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
+                  <div className="flex items-center gap-2">
+                    {!triggerDef.live && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Badge variant="outline" className="text-[10px] text-amber-400 border-amber-400/30 bg-amber-400/10 gap-1">
+                            <AlertTriangle className="h-3 w-3" /> Not Live
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs text-xs">
+                          {'note' in triggerDef ? (triggerDef as any).note : 'This trigger is not yet connected to a live data source. Use Manual/Test trigger for now.'}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {triggerDef.live && (
+                      <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/30 bg-green-400/10">Live</Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">{triggerFields.length} fields</Badge>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Connector */}
               <div className="flex justify-center py-1">
                 <div className="w-0.5 h-6 bg-border" />
               </div>
@@ -388,7 +432,6 @@ export default function AutomationEditorPage() {
                 );
               })}
 
-              {/* Add Step Button */}
               <button onClick={() => setShowAddStep(true)}
                 className="w-full border-2 border-dashed border-border/50 rounded-xl p-4 flex items-center justify-center gap-2 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all text-sm font-medium">
                 <Plus className="h-4 w-4" /> Add Step
@@ -400,8 +443,10 @@ export default function AutomationEditorPage() {
               <StepConfigPanel
                 step={editingStep}
                 triggerFields={triggerFields}
+                allSteps={steps}
                 bots={bots}
                 agencyUsers={agencyUsers}
+                automationClientId={automation.client_id}
                 onUpdate={(updated: any) => updateStepMutation.mutate(updated)}
                 onDelete={() => deleteStepMutation.mutate(editingStep.id)}
                 onClose={() => setEditingStep(null)}
@@ -457,6 +502,13 @@ export default function AutomationEditorPage() {
             <div className="text-xs text-muted-foreground">
               Available trigger fields: {triggerFields.join(', ')}
             </div>
+            <div className="p-2 rounded-lg bg-muted/20 border border-border/30 text-xs text-muted-foreground flex items-start gap-2">
+              <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+              <span>
+                Use <code className="text-primary">{'{{trigger.field_name}}'}</code> in step mappings.
+                Reference previous step outputs with <code className="text-primary">{'{{step_0.lead_id}}'}</code> or <code className="text-primary">{'{{last.lead_id}}'}</code>.
+              </span>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTestPanel(false)}>Cancel</Button>
@@ -472,32 +524,41 @@ export default function AutomationEditorPage() {
 }
 
 /* ── Step Config Panel ── */
-function StepConfigPanel({ step, triggerFields, bots, agencyUsers, onUpdate, onDelete, onClose }: {
-  step: any; triggerFields: readonly string[]; bots: any[]; agencyUsers: any[];
+function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, automationClientId, onUpdate, onDelete, onClose }: {
+  step: any; triggerFields: readonly string[]; allSteps: any[]; bots: any[]; agencyUsers: any[];
+  automationClientId?: string;
   onUpdate: (s: any) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [localStep, setLocalStep] = useState(step);
   const act = actionInfo(step.action_type);
   const isCondition = step.action_type === 'filter';
 
+  // Available variables from trigger + previous steps
+  const availableVars = useMemo(
+    () => buildAvailableVars(triggerFields, allSteps, step.step_order),
+    [triggerFields, allSteps, step.step_order]
+  );
+
+  // Filter bots by client scope
+  const filteredBots = useMemo(() => {
+    if (!automationClientId) return bots;
+    return bots.filter((b: any) => !b.client_id || b.client_id === automationClientId);
+  }, [bots, automationClientId]);
+
   useEffect(() => { setLocalStep(step); }, [step]);
 
   const updateField = (key: string, value: any) => {
     setLocalStep((s: any) => ({ ...s, [key]: value }));
   };
-
   const updateConfig = (key: string, value: any) => {
     setLocalStep((s: any) => ({ ...s, config: { ...(s.config || {}), [key]: value } }));
   };
-
   const updateMapping = (key: string, value: string) => {
     setLocalStep((s: any) => ({ ...s, field_mapping: { ...(s.field_mapping || {}), [key]: value } }));
   };
-
   const updateCondition = (key: string, value: any) => {
     setLocalStep((s: any) => ({ ...s, condition_config: { ...(s.condition_config || {}), [key]: value } }));
   };
-
   const handleSave = () => onUpdate(localStep);
 
   return (
@@ -529,11 +590,11 @@ function StepConfigPanel({ step, triggerFields, bots, agencyUsers, onUpdate, onD
               <div className="space-y-2 p-3 rounded-lg bg-muted/30 border border-border/50">
                 <Label className="text-xs font-semibold">Condition</Label>
                 <div>
-                  <Label className="text-[10px] text-muted-foreground">Field</Label>
+                  <Label className="text-[10px] text-muted-foreground">Field (e.g. trigger.phone)</Label>
                   <Select value={localStep.condition_config?.field || ''} onValueChange={v => updateCondition('field', v)}>
                     <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select field" /></SelectTrigger>
                     <SelectContent>
-                      {triggerFields.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                      {availableVars.map(v => <SelectItem key={v.value} value={v.value}>{v.value}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -543,7 +604,7 @@ function StepConfigPanel({ step, triggerFields, bots, agencyUsers, onUpdate, onD
                     <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {['exists', 'not_exists', 'equals', 'not_equals', 'contains', 'starts_with', 'greater_than', 'less_than'].map(op =>
-                        <SelectItem key={op} value={op}>{op.replace('_', ' ')}</SelectItem>
+                        <SelectItem key={op} value={op}>{op.replace(/_/g, ' ')}</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -566,38 +627,54 @@ function StepConfigPanel({ step, triggerFields, bots, agencyUsers, onUpdate, onD
                   <div key={f.key}>
                     <Label className="text-[10px] text-muted-foreground">{f.label}</Label>
                     {f.type === 'mapping' ? (
-                      <div className="flex gap-1 mt-0.5">
-                        <Select value={localStep.field_mapping?.[f.key] || ''} onValueChange={v => updateMapping(f.key, `{{${v}}}`)}>
-                          <SelectTrigger className="text-xs h-8 flex-1"><SelectValue placeholder="Map from trigger" /></SelectTrigger>
+                      <div className="space-y-1 mt-0.5">
+                        <Select value={localStep.field_mapping?.[f.key]?.replace(/^\{\{|\}\}$/g, '') || ''} onValueChange={v => updateMapping(f.key, `{{${v}}}`)}>
+                          <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Select variable" /></SelectTrigger>
                           <SelectContent>
-                            {triggerFields.map(tf => <SelectItem key={tf} value={tf}>{tf}</SelectItem>)}
+                            {availableVars.map(v => (
+                              <SelectItem key={v.value} value={v.value}>
+                                <span className="font-mono text-[11px]">{v.value}</span>
+                                <span className="text-muted-foreground ml-2 text-[10px]">({v.group})</span>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <Input value={localStep.field_mapping?.[f.key] || ''} onChange={e => updateMapping(f.key, e.target.value)}
-                          className="text-xs h-8 flex-1 font-mono" placeholder="{{field}}" />
+                          className="text-xs h-8 font-mono" placeholder="{{trigger.field}} or fixed value" />
                       </div>
                     ) : f.type === 'template' ? (
-                      <Textarea
-                        value={localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || ''}
-                        onChange={e => {
-                          if (f.key === 'message' || f.key === 'title') {
-                            updateMapping(f.key, e.target.value);
-                          } else {
-                            updateConfig(f.key, e.target.value);
-                          }
-                        }}
-                        className="mt-0.5 text-xs font-mono" rows={3}
-                        placeholder={`Use {{field_name}} for variables\ne.g. New lead: {{full_name}} | {{phone}}`}
-                      />
+                      <div className="space-y-1 mt-0.5">
+                        <Textarea
+                          value={localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || ''}
+                          onChange={e => updateMapping(f.key, e.target.value)}
+                          className="text-xs font-mono" rows={3}
+                          placeholder={`Use {{trigger.field_name}} or {{step_0.lead_id}}\ne.g. New lead: {{trigger.full_name}} | {{trigger.phone}}`}
+                        />
+                        <div className="flex flex-wrap gap-1">
+                          {availableVars.slice(0, 8).map(v => (
+                            <button key={v.value} type="button"
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-muted/40 border border-border/30 text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors font-mono"
+                              onClick={() => {
+                                const current = localStep.field_mapping?.[f.key] || localStep.config?.[f.key] || '';
+                                updateMapping(f.key, current + `{{${v.value}}}`);
+                              }}>
+                              {v.value}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     ) : f.type === 'bot_select' ? (
                       <Select value={localStep.config?.[f.key] || ''} onValueChange={v => updateConfig(f.key, v)}>
                         <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue placeholder="Select bot" /></SelectTrigger>
                         <SelectContent>
-                          {bots.map((b: any) => (
+                          {filteredBots.map((b: any) => (
                             <SelectItem key={b.id} value={b.id}>
-                              {b.bot_name} {b.is_default && '(default)'}
+                              {b.bot_name} {b.is_default && '⭐'} {b.client_id && '(client-scoped)'}
                             </SelectItem>
                           ))}
+                          {filteredBots.length === 0 && (
+                            <div className="p-2 text-xs text-muted-foreground text-center">No bots configured</div>
+                          )}
                         </SelectContent>
                       </Select>
                     ) : f.type === 'user_select' ? (
@@ -615,7 +692,7 @@ function StepConfigPanel({ step, triggerFields, bots, agencyUsers, onUpdate, onD
                       <Select value={localStep.config?.[f.key] || f.options?.[0] || ''} onValueChange={v => updateConfig(f.key, v)}>
                         <SelectTrigger className="mt-0.5 text-xs h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {f.options?.map((o: string) => <SelectItem key={o} value={o}>{o.replace('_', ' ')}</SelectItem>)}
+                          {f.options?.map((o: string) => <SelectItem key={o} value={o}>{o.replace(/_/g, ' ')}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     ) : f.type === 'json' ? (
@@ -648,13 +725,31 @@ function StepConfigPanel({ step, triggerFields, bots, agencyUsers, onUpdate, onD
                   {Object.entries(localStep.field_mapping || {}).map(([k, v]) => (
                     <div key={k} className="flex items-center gap-2 text-xs">
                       <span className="text-muted-foreground">{k}</span>
-                      <ArrowLeft className="h-3 w-3 text-muted-foreground/50 rotate-180" />
+                      <span className="text-muted-foreground/50">←</span>
                       <span className="font-mono text-primary text-[11px]">{String(v)}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
+            {/* Available Variables Reference */}
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                <ChevronDown className="h-3 w-3" />
+                Available Variables ({availableVars.length})
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-1 p-2 rounded-lg bg-muted/10 border border-border/20 space-y-0.5">
+                  {availableVars.map(v => (
+                    <div key={v.value} className="flex items-center gap-2 text-[10px]">
+                      <code className="text-primary font-mono">{`{{${v.value}}}`}</code>
+                      <span className="text-muted-foreground">{v.group}</span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </ScrollArea>
 
@@ -715,7 +810,7 @@ function RunCard({ run }: { run: any }) {
                     {rs.error_message}
                   </span>
                 )}
-                {rs.status === 'completed' && (
+                {rs.status === 'completed' && rs.output_payload && (
                   <Tooltip>
                     <TooltipTrigger>
                       <Eye className="h-3 w-3 text-muted-foreground ml-auto cursor-pointer" />
@@ -727,7 +822,6 @@ function RunCard({ run }: { run: any }) {
                 )}
               </div>
             ))}
-            {/* Trigger payload */}
             <details className="mt-2">
               <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground">Trigger Payload</summary>
               <pre className="text-[10px] text-muted-foreground mt-1 p-2 rounded bg-muted/20 overflow-auto max-h-32">
