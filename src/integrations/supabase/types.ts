@@ -1086,6 +1086,275 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_run_steps: {
+        Row: {
+          action_type: string | null
+          completed_at: string | null
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_payload: Json | null
+          output_payload: Json | null
+          run_id: string
+          started_at: string | null
+          status: string | null
+          step_id: string | null
+          step_name: string | null
+          step_order: number
+        }
+        Insert: {
+          action_type?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_payload?: Json | null
+          output_payload?: Json | null
+          run_id: string
+          started_at?: string | null
+          status?: string | null
+          step_id?: string | null
+          step_name?: string | null
+          step_order?: number
+        }
+        Update: {
+          action_type?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_payload?: Json | null
+          output_payload?: Json | null
+          run_id?: string
+          started_at?: string | null
+          status?: string | null
+          step_id?: string | null
+          step_name?: string | null
+          step_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_run_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_runs: {
+        Row: {
+          automation_id: string
+          completed_at: string | null
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          is_test: boolean | null
+          started_at: string | null
+          status: string | null
+          steps_completed: number | null
+          steps_failed: number | null
+          steps_total: number | null
+          trigger_payload: Json | null
+        }
+        Insert: {
+          automation_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          is_test?: boolean | null
+          started_at?: string | null
+          status?: string | null
+          steps_completed?: number | null
+          steps_failed?: number | null
+          steps_total?: number | null
+          trigger_payload?: Json | null
+        }
+        Update: {
+          automation_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          is_test?: boolean | null
+          started_at?: string | null
+          status?: string | null
+          steps_completed?: number | null
+          steps_failed?: number | null
+          steps_total?: number | null
+          trigger_payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_steps: {
+        Row: {
+          action_type: string | null
+          automation_id: string
+          condition_config: Json | null
+          config: Json | null
+          created_at: string | null
+          field_mapping: Json | null
+          id: string
+          is_active: boolean | null
+          name: string | null
+          step_order: number
+          step_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_type?: string | null
+          automation_id: string
+          condition_config?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          field_mapping?: Json | null
+          id?: string
+          is_active?: boolean | null
+          name?: string | null
+          step_order?: number
+          step_type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_type?: string | null
+          automation_id?: string
+          condition_config?: Json | null
+          config?: Json | null
+          created_at?: string | null
+          field_mapping?: Json | null
+          id?: string
+          is_active?: boolean | null
+          name?: string | null
+          step_order?: number
+          step_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_steps_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_templates: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          steps_config: Json | null
+          trigger_type: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          steps_config?: Json | null
+          trigger_type: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          steps_config?: Json | null
+          trigger_type?: string
+        }
+        Relationships: []
+      }
+      automations: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          folder: string | null
+          id: string
+          is_active: boolean | null
+          is_global: boolean | null
+          last_run_at: string | null
+          last_run_status: string | null
+          name: string
+          run_count: number | null
+          trigger_config: Json | null
+          trigger_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          folder?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_global?: boolean | null
+          last_run_at?: string | null
+          last_run_status?: string | null
+          name: string
+          run_count?: number | null
+          trigger_config?: Json | null
+          trigger_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          folder?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_global?: boolean | null
+          last_run_at?: string | null
+          last_run_status?: string | null
+          name?: string
+          run_count?: number | null
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_plans: {
         Row: {
           client_id: string
