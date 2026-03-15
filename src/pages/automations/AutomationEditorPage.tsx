@@ -246,10 +246,34 @@ export default function AutomationEditorPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const buildDefaultTelegramMessage = useCallback(() => {
+    if (automation?.trigger_type !== 'fb_lead_form') return '';
+    const lines: string[] = ['📋 Новый лид с Facebook', ''];
+    lines.push('👤 {{trigger.full_name}}');
+    lines.push('📧 {{trigger.email}}');
+    lines.push('📱 {{trigger.phone}}');
+    if (formFields.length > 0) {
+      lines.push('');
+      lines.push('📝 Ответы из формы:');
+      for (const f of formFields) {
+        lines.push(`${f.label}: {{trigger.fields.${f.slug}}}`);
+      }
+    }
+    lines.push('');
+    lines.push('📄 Форма: {{trigger.form_name}}');
+    lines.push('📊 Кампания: {{trigger.campaign_name}}');
+    return lines.join('\n');
+  }, [automation?.trigger_type, formFields]);
+
   const addStepMutation = useMutation({
     mutationFn: async (actionType: string) => {
       const act = actionInfo(actionType);
       const isCondition = actionType === 'filter';
+      // Auto-generate message template for Telegram steps with FB Lead Form trigger
+      const fieldMapping: Record<string, string> = {};
+      if (actionType === 'send_telegram' && automation?.trigger_type === 'fb_lead_form') {
+        fieldMapping.message = buildDefaultTelegramMessage();
+      }
       const { error } = await supabase.from('automation_steps').insert({
         automation_id: id!,
         step_order: steps.length,
@@ -257,7 +281,7 @@ export default function AutomationEditorPage() {
         action_type: actionType,
         name: act?.label || actionType,
         config: {},
-        field_mapping: {},
+        field_mapping: fieldMapping,
         condition_config: isCondition ? { field: '', operator: 'exists', value: '' } : null,
       });
       if (error) throw error;
