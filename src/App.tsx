@@ -537,6 +537,7 @@ function AppRoutes() {
         <Route path="/branding" element={<BrandingPage />} />
         <Route path="/automations" element={<AutomationsPage />} />
         <Route path="/automations/:id" element={<AutomationEditorPage />} />
+        <Route path="/connections" element={<ConnectionsCenterPage />} />
       </Route>
       {/* Client Portal — admin can preview with isolated layout */}
       <Route element={<PortalLayout />}>
