@@ -526,9 +526,9 @@ export default function AutomationEditorPage() {
 }
 
 /* ── Step Config Panel ── */
-function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, automationClientId, onUpdate, onDelete, onClose }: {
+function StepConfigPanel({ step, triggerFields, allSteps, bots, agencyUsers, automationClientId, clients, onUpdate, onDelete, onClose }: {
   step: any; triggerFields: readonly string[]; allSteps: any[]; bots: any[]; agencyUsers: any[];
-  automationClientId?: string;
+  automationClientId?: string; clients?: any[];
   onUpdate: (s: any) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [localStep, setLocalStep] = useState(step);
